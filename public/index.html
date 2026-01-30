@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OpenClaw Control Panel - Replit</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>OpenClaw Control Panel</h1>
+      <p class="subtitle">AI Assistant Experimentation Platform on Replit</p>
+    </header>
+
+    <section id="status-section" class="card">
+      <h2>System Status</h2>
+      <div class="status-grid">
+        <div class="status-item">
+          <span class="label">Node.js</span>
+          <span id="node-version" class="value">--</span>
+        </div>
+        <div class="status-item">
+          <span class="label">OpenClaw</span>
+          <span id="openclaw-version" class="value">--</span>
+        </div>
+        <div class="status-item">
+          <span class="label">Configuration</span>
+          <span id="config-status" class="value">--</span>
+        </div>
+        <div class="status-item">
+          <span class="label">Gateway</span>
+          <span id="gateway-status" class="value">--</span>
+        </div>
+      </div>
+      <button id="refresh-status" class="btn btn-secondary">Refresh Status</button>
+    </section>
+
+    <section id="setup-section" class="card">
+      <h2>Quick Setup</h2>
+      <div class="button-group">
+        <button id="run-setup" class="btn btn-primary">Run Initial Setup</button>
+        <button id="install-openclaw" class="btn btn-primary">Install OpenClaw</button>
+      </div>
+      <div id="setup-output" class="output-box"></div>
+    </section>
+
+    <section id="env-section" class="card">
+      <h2>Environment Variables</h2>
+      <p class="hint">Configure these in Replit Secrets for security</p>
+      <div class="env-grid" id="env-grid">
+        <div class="env-item">
+          <span class="env-name">ANTHROPIC_API_KEY</span>
+          <span id="env-anthropic" class="env-status">Checking...</span>
+        </div>
+        <div class="env-item">
+          <span class="env-name">OPENAI_API_KEY</span>
+          <span id="env-openai" class="env-status">Checking...</span>
+        </div>
+        <div class="env-item">
+          <span class="env-name">TELEGRAM_BOT_TOKEN</span>
+          <span id="env-telegram" class="env-status">Checking...</span>
+        </div>
+        <div class="env-item">
+          <span class="env-name">DISCORD_BOT_TOKEN</span>
+          <span id="env-discord" class="env-status">Checking...</span>
+        </div>
+        <div class="env-item">
+          <span class="env-name">SLACK_BOT_TOKEN</span>
+          <span id="env-slack" class="env-status">Checking...</span>
+        </div>
+      </div>
+    </section>
+
+    <section id="gateway-section" class="card">
+      <h2>Gateway Control</h2>
+      <p class="hint">The Gateway handles all AI agent communications on port 18789</p>
+      <div class="button-group">
+        <button id="start-gateway" class="btn btn-success">Start Gateway</button>
+        <button id="stop-gateway" class="btn btn-danger">Stop Gateway</button>
+      </div>
+      <div id="gateway-output" class="output-box"></div>
+    </section>
+
+    <section id="config-section" class="card">
+      <h2>Configuration Editor</h2>
+      <p class="hint">Edit your OpenClaw configuration (openclaw.json)</p>
+      <textarea id="config-editor" rows="20" placeholder="Loading configuration..."></textarea>
+      <div class="button-group">
+        <button id="load-config" class="btn btn-secondary">Reload</button>
+        <button id="save-config" class="btn btn-primary">Save Configuration</button>
+      </div>
+    </section>
+
+    <section id="docs-section" class="card">
+      <h2>Quick Reference</h2>
+      <div class="docs-grid">
+        <div class="doc-item">
+          <h3>CLI Commands</h3>
+          <ul>
+            <li><code>openclaw onboard</code> - Run setup wizard</li>
+            <li><code>openclaw gateway --port 18789</code> - Start gateway</li>
+            <li><code>openclaw status</code> - Check status</li>
+            <li><code>openclaw skills install &lt;name&gt;</code> - Install skill</li>
+            <li><code>openclaw skills list</code> - List installed skills</li>
+          </ul>
+        </div>
+        <div class="doc-item">
+          <h3>Important Paths</h3>
+          <ul>
+            <li><code>~/.openclaw/openclaw.json</code> - Main config</li>
+            <li><code>~/.openclaw/workspace/skills/</code> - Custom skills</li>
+          </ul>
+        </div>
+        <div class="doc-item">
+          <h3>Replit Notes</h3>
+          <ul>
+            <li>Skip <code>--install-daemon</code> (not supported)</li>
+            <li>Use Secrets for API keys</li>
+            <li>Gateway runs on port 18789</li>
+            <li>Use "Always On" for persistence (paid)</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      <p>OpenClaw Experimentation Platform v1.0 | <a href="https://github.com/openclaw/openclaw" target="_blank">GitHub</a></p>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

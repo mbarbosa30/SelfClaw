@@ -1,0 +1,27 @@
+{
+  "name": "openclaw-replit",
+  "version": "1.0.0",
+  "description": "OpenClaw AI Assistant Experimentation Platform on Replit",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "setup": "node scripts/setup.js",
+    "install-openclaw": "npm install -g openclaw@latest",
+    "onboard": "openclaw onboard",
+    "gateway": "openclaw gateway --port 18789 --verbose",
+    "status": "openclaw status"
+  },
+  "keywords": [
+    "openclaw",
+    "ai-assistant",
+    "automation",
+    "replit"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "dotenv": "^16.3.1"
+  }
+}

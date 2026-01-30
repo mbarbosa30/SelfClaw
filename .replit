@@ -1,2 +1,3 @@
+modules = ["nodejs-22"]
 [agent]
 expertMode = true

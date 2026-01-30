@@ -1,0 +1,12 @@
+node_modules/
+.env
+.env.local
+*.log
+npm-debug.log*
+.DS_Store
+.openclaw/
+*.pem
+*.key
+.replit.nix
+.upm/
+.cache/
