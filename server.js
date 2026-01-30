@@ -1,6 +1,6 @@
 import express from 'express';
 import { execSync, spawn } from 'child_process';
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs';
+import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync, statSync } from 'fs';
 import { homedir } from 'os';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
@@ -178,7 +178,6 @@ app.get('/api/skills', (req, res) => {
       return res.json({ skills: [] });
     }
     
-    const { readdirSync, statSync } = require('fs');
     const skills = readdirSync(SKILLS_DIR)
       .filter(name => statSync(join(SKILLS_DIR, name)).isDirectory())
       .map(name => ({ name, path: join(SKILLS_DIR, name) }));
