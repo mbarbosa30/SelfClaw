@@ -1,0 +1,138 @@
+# Product Requirements Document (PRD): OpenClaw Experimentation Platform on Replit
+
+## Version History
+- **Version**: 1.0
+- **Date**: January 30, 2026
+- **Authors**: Grok (based on OpenClaw project details and Replit platform capabilities)
+- **Status**: Draft for Initial Setup and Exploration
+
+## Executive Summary
+This PRD outlines the requirements for setting up and experimenting with OpenClaw, an open-source personal AI assistant, on Replit. OpenClaw is a modular, local-first AI agent framework that integrates with messaging apps to automate tasks like email management, calendar scheduling, web browsing, and custom workflows. By hosting on Replit—a cloud-based IDE with free tiers—this project enables low-risk, isolated experimentation without local hardware commitments. The setup focuses on core installation, configuration, and basic integrations, while allowing for multiple Replit projects to test varied use cases. This approach minimizes security risks (e.g., no direct system access) and supports iterative development.
+
+Key benefits:
+- Rapid prototyping in a sandboxed environment.
+- Scalable to paid Replit tiers for persistent running.
+- Exploration of OpenClaw's extensibility via skills and plugins.
+
+## Problem Statement and Objectives
+### Problem
+Users interested in OpenClaw often face barriers like local setup complexity (e.g., Node.js dependencies, daemon installation), security concerns (e.g., granting AI system-level access), and resource limitations on personal devices. Traditional setups require handling OS-specific services (e.g., launchd on macOS, systemd on Linux), which can be error-prone for beginners. Additionally, experimenting with multiple configurations risks configuration conflicts or unintended data exposure.
+
+### Objectives
+- **Primary**: Provide a turnkey, cloud-based setup on Replit to onboard users quickly and safely.
+- **Secondary**: Enable parallel experimentation across Replit projects to explore OpenClaw's features without interference.
+- **Success Metrics**:
+  - Successful gateway launch and basic messaging in under 30 minutes.
+  - Ability to install and test at least 3 custom skills.
+  - Zero local system impact; all operations confined to Replit's container.
+
+## Scope
+### In Scope
+- Installation and onboarding of OpenClaw via npm in Replit's Node.js environment.
+- Configuration of core components: Gateway, agents, channels (e.g., Telegram, Discord), and basic skills.
+- Setup of multiple Replit projects for isolated testing (e.g., one for personal assistant, one for automation).
+- Basic security measures: Use Replit's sandbox; avoid daemon installation; implement API key management.
+- Integration with free-tier AI models (e.g., via Anthropic or OpenAI APIs).
+- Documentation for troubleshooting common issues (e.g., port exposure, resource limits).
+
+### Out of Scope
+- Production deployment (e.g., 24/7 uptime requires Replit paid plans or migration to Railway/Render).
+- Advanced features like voice interaction, Canvas rendering, or device nodes (limited by Replit's headless environment).
+- Full Docker/Nix setups (Replit supports basic containers, but focus on npm for simplicity).
+- Custom hardware integrations (e.g., camera access) due to cloud constraints.
+
+## Target Users and Personas
+- **Beginner Experimenters**: Developers or hobbyists new to AI agents, seeking safe testing.
+- **Power Users**: Those extending OpenClaw with custom skills for workflows like email automation or data analysis.
+- **Teams/Collaborators**: Small groups sharing Replit invites to co-develop configurations.
+
+## Functional Requirements
+### Core Setup
+1. **Replit Environment Preparation**:
+   - Create a new Repl using the Node.js template (Node.js ≥22 required; Replit defaults to recent versions).
+   - Install OpenClaw globally: `npm install -g openclaw@latest`.
+   - Alternative: Clone repo for source-based setup: `git clone https://github.com/openclaw/openclaw.git && cd openclaw && npm install`.
+
+2. **Onboarding Wizard**:
+   - Run `openclaw onboard` (skip `--install-daemon` as Replit doesn't support persistent services).
+   - Interactive steps:
+     - Select AI provider (e.g., Anthropic Claude Opus 4.5) and input API keys (store in Replit secrets or env vars).
+     - Configure Gateway (default port 18789; expose via Replit's webview or ngrok for external access).
+     - Set up channels: Provide bot tokens for Telegram/Discord; skip WhatsApp QR if not feasible in headless mode.
+     - Install bundled skills from ClawHub.
+
+3. **Running the Gateway**:
+   - Launch: `openclaw gateway --port 18789 --verbose`.
+   - Keep Repl active (use "Always On" on paid plans for persistence).
+   - Test: `openclaw status` or send a message via configured chat app.
+
+4. **Configuration Management**:
+   - Edit `~/.openclaw/openclaw.json` for custom settings (e.g., agent model, channel allowlists).
+   - Use Replit's file system for workspace skills in `~/.openclaw/workspace/skills/`.
+
+### Features and Integrations
+- **Messaging Channels**: Support Telegram, Discord, Slack (via tokens); test inbound/outbound messages.
+- **AI Agents**: Configure for task processing (e.g., "summarize emails"); support model failover.
+- **Skills/Plugins**: Install from ClawHub via `openclaw skills install <name>`; create custom ones (e.g., Todoist integration).
+- **Tools**: Enable browser control (headless in Replit), cron jobs (limited persistence), webhooks.
+- **Security**: Enforce "pairing" DM policy; sandbox non-main sessions if feasible.
+
+### User Interface
+- Replit Console/Shell for CLI interactions.
+- Gateway-served WebChat/Control UI (access via Replit's exposed port).
+- External chat apps for agent communication.
+
+## Non-Functional Requirements
+- **Performance**: Replit free tier limits (e.g., 0.5 vCPU, 1GB RAM); upgrade for heavier loads.
+- **Security**: All data in Replit sandbox; use env vars for secrets; avoid committing configs to git.
+- **Scalability**: Multiple Repls for parallel setups; migrate to dedicated cloud for production.
+- **Compatibility**: Node.js ≥22; test on Replit's Linux-based containers.
+- **Documentation**: Include README in each Repl with setup steps and troubleshooting.
+
+## Assumptions and Risks
+### Assumptions
+- Users have Replit accounts and basic CLI knowledge.
+- API keys for AI providers and chat bots are available.
+- Replit's environment supports all OpenClaw dependencies (e.g., no pip, but Node.js libs are fine).
+
+### Risks and Mitigations
+- **Resource Limits**: Free tier may timeout; mitigate with paid upgrades or scheduled runs.
+- **Port Exposure**: Limited external access; use ngrok or Replit tools.
+- **Persistence**: No daemon; run in foreground and monitor.
+- **Security**: API key exposure; use Replit secrets and avoid sharing Repls publicly.
+- **Dependency Issues**: Test for Node.js version mismatches; fallback to source install.
+
+## Dependencies
+- Replit account (free tier sufficient for start).
+- External APIs: Anthropic/OpenAI keys, chat bot tokens.
+- OpenClaw repo: https://github.com/openclaw/openclaw.
+
+## Appendix: Setup Checklist
+1. Create Repl → Install OpenClaw → Onboard → Configure channels → Run gateway → Test message.
+2. For multiple projects: Duplicate Repls and vary configs (e.g., different AI models).
+
+This PRD provides a foundation to kickstart the project. Iterate based on testing feedback.
+
+# Additional Use Cases for OpenClaw
+Beyond the personal assistant basics (e.g., email/calendar management), OpenClaw's modular design supports diverse applications. Here are expanded use cases drawn from community examples and showcases:
+
+### Automation and Productivity
+- **Morning Briefings**: Set up cron jobs to deliver personalized daily summaries of emails, tasks (e.g., from Todoist), news, or X bookmarks via chat apps. For instance, integrate with Gmail Pub/Sub for real-time notifications and rollups.
+- **Job Hunting Automation**: Automate resume tailoring, job searches, and outreach emails using tools like Hunter.io for leads and personalized messaging guidelines.
+- **Content Creation Pipeline**: Generate, review, and deploy content (e.g., blog posts, social media) with skills for writing, SEO keyword research (via Google Autocomplete/Serper), and scheduling posts to X or Reddit.
+
+### Development and Coding
+- **Code Review and Deployment**: Use sub-agents for autonomous testing, error fixing via Sentry webhooks, and GitHub PR creation. Deploy landing pages or apps directly (e.g., to Vercel).
+- **UI Auditing and Prototyping**: Skills for automated interface evaluations or generating interactive prototypes with image models like Google's Nano Banana Pro.
+- **Data Analysis and Research**: Handle deep research, file organization, or analytics with browser automation for scraping and APIs like Keywords Everywhere.
+
+### Home and Personal Life
+- **Smart Home Integration**: Control devices (e.g., Philips Hue, Sonos) or sync with Home Assistant APIs for automation like lighting or music based on routines.
+- **Health and Finance Management**: Submit reimbursements, find appointments, track costs/splits from trips, or analyze expenses with custom skills.
+- **Creative and Fun**: Generate images/infographics, transcribe audio (e.g., car conversations to PDFs), or impersonate users in group chats for entertainment.
+
+### Enterprise/Team Applications
+- **Workflow Orchestration**: Manage Slack/Teams for team tasks, issue tracking on GitHub, or cybersecurity threat detection.
+- **Healthcare/Industry-Specific**: Accelerate patient access (e.g., cancer treatment copilot) or adapt for sectors like marketing/coding with departmental tools.
+
+These use cases leverage OpenClaw's skills registry (700+ community-built) and can be tested in separate Replit projects. For Replit-specific adaptations, focus on headless-compatible features to avoid device dependencies. If exploring hardware integrations (e.g., with Rabbit r1), note X discussions on voice-prompted companions, but these require local setups beyond Replit.
