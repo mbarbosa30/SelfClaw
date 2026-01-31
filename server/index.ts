@@ -179,6 +179,55 @@ async function main() {
     res.json(balance);
   });
 
+  app.get("/api/profile", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      res.json({
+        linkedinUrl: user.linkedinUrl,
+        twitterUsername: user.twitterUsername,
+        githubUsername: user.githubUsername,
+        birthdate: user.birthdate,
+        timezone: user.timezone,
+        profession: user.profession,
+        goals: user.goals,
+        communicationStyle: user.communicationStyle,
+        profileComplete: user.profileComplete,
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/profile", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { linkedinUrl, twitterUsername, githubUsername, birthdate, timezone, profession, goals, communicationStyle } = req.body;
+      
+      await db.update(users)
+        .set({
+          linkedinUrl,
+          twitterUsername,
+          githubUsername,
+          birthdate,
+          timezone,
+          profession,
+          goals,
+          communicationStyle,
+          profileComplete: true,
+          updatedAt: new Date(),
+        })
+        .where(eq(users.id, userId));
+      
+      res.json({ success: true, message: "Profile updated" });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.get("/api/agents", isAuthenticated, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
@@ -727,6 +776,35 @@ async function main() {
         });
       }
 
+      const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+      let userContext = "";
+      if (user) {
+        const contextParts = [];
+        if (user.firstName || user.lastName) contextParts.push(`Name: ${[user.firstName, user.lastName].filter(Boolean).join(' ')}`);
+        if (user.profession) contextParts.push(`Profession: ${user.profession}`);
+        if (user.goals) contextParts.push(`Goals: ${user.goals}`);
+        if (user.communicationStyle) contextParts.push(`Preferred communication style: ${user.communicationStyle}`);
+        if (user.timezone) contextParts.push(`Timezone: ${user.timezone}`);
+        if (user.birthdate) {
+          const age = Math.floor((Date.now() - new Date(user.birthdate).getTime()) / (365.25 * 24 * 60 * 60 * 1000));
+          contextParts.push(`Age: ${age}`);
+        }
+        if (contextParts.length > 0) {
+          userContext = `\n\nUser context:\n${contextParts.join('\n')}`;
+        }
+      }
+
+      const enhancedMessages = messages.map((m: any, i: number) => {
+        if (i === 0 && m.role === 'system' && userContext) {
+          return { ...m, content: m.content + userContext };
+        }
+        return m;
+      });
+      
+      const hasSystemMessage = messages.length > 0 && messages[0].role === 'system';
+      const finalMessages = hasSystemMessage ? enhancedMessages : 
+        userContext ? [{ role: 'system', content: `You are a helpful AI assistant.${userContext}` }, ...messages] : messages;
+
       let response;
       let provider = "unknown";
 
@@ -750,7 +828,7 @@ async function main() {
           body: JSON.stringify({
             model: selectedModel,
             max_tokens: 1024,
-            messages
+            messages: finalMessages
           })
         });
         response = await anthropicResponse.json();
@@ -762,7 +840,7 @@ async function main() {
         });
         const completion = await openai.chat.completions.create({
           model: selectedModel,
-          messages
+          messages: finalMessages
         });
         response = completion;
         provider = "agent-openai";
@@ -773,7 +851,7 @@ async function main() {
         });
         const completion = await openai.chat.completions.create({
           model: selectedModel.includes("claude") ? "gpt-4o" : selectedModel,
-          messages
+          messages: finalMessages
         });
         response = completion;
         provider = "replit-integration";
@@ -781,7 +859,7 @@ async function main() {
         const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
         const completion = await openai.chat.completions.create({
           model: selectedModel.includes("claude") ? "gpt-4o" : selectedModel,
-          messages
+          messages: finalMessages
         });
         response = completion;
         provider = "platform-openai";
@@ -796,7 +874,7 @@ async function main() {
           body: JSON.stringify({
             model: selectedModel,
             max_tokens: 1024,
-            messages
+            messages: finalMessages
           })
         });
         response = await anthropicResponse.json();

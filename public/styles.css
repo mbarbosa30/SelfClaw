@@ -1134,6 +1134,78 @@ h2 {
   font-style: italic;
 }
 
+/* Onboarding */
+.onboarding-section {
+  margin: 2rem 0;
+}
+
+.onboarding-card {
+  background: var(--white);
+  border: 3px solid var(--black);
+  padding: 2rem;
+  max-width: 700px;
+  margin: 0 auto;
+}
+
+.onboarding-card h2 {
+  margin-bottom: 0.5rem;
+}
+
+.onboarding-card h3 {
+  margin-top: 2rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+  letter-spacing: 0.1em;
+}
+
+.onboarding-form {
+  margin-top: 1.5rem;
+}
+
+.form-group {
+  margin-bottom: 1rem;
+}
+
+.form-group label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.onboarding-form textarea.input {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.onboarding-form .note {
+  font-size: 0.8rem;
+  color: var(--gray-600);
+  margin-bottom: 1rem;
+}
+
+.onboarding-form .form-actions {
+  margin-top: 2rem;
+  display: flex;
+  gap: 1rem;
+}
+
+@media (max-width: 600px) {
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+  
+  .onboarding-form .form-actions {
+    flex-direction: column;
+  }
+}
+
 /* Marketplace */
 .marketplace-dashboard {
   margin-top: 2rem;

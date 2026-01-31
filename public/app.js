@@ -23,6 +23,8 @@ document.addEventListener('DOMContentLoaded', () => {
   
   document.getElementById('category-filter')?.addEventListener('change', loadMarketplace);
   document.getElementById('search-filter')?.addEventListener('input', debounce(loadMarketplace, 300));
+  document.getElementById('save-profile')?.addEventListener('click', saveProfile);
+  document.getElementById('skip-profile')?.addEventListener('click', skipProfile);
 
   setInterval(loadStatus, 30000);
 });
@@ -61,6 +63,7 @@ async function loadAuthState() {
   const loggedOutEl = document.getElementById('auth-logged-out');
   const loggedInEl = document.getElementById('auth-logged-in');
   const agentsSection = document.getElementById('agents-section');
+  const onboardingSection = document.getElementById('onboarding-section');
   const heroSignin = document.getElementById('hero-signin');
 
   try {
@@ -70,7 +73,6 @@ async function loadAuthState() {
       loadingEl.style.display = 'none';
       loggedOutEl.style.display = 'none';
       loggedInEl.style.display = 'flex';
-      agentsSection.style.display = 'block';
       if (heroSignin) heroSignin.style.display = 'none';
 
       document.getElementById('user-name').textContent = 
@@ -80,13 +82,29 @@ async function loadAuthState() {
         document.getElementById('user-avatar').style.display = 'block';
       }
 
-      loadAgents();
+      const profileRes = await fetch('/api/profile');
+      if (profileRes.ok) {
+        const profile = await profileRes.json();
+        if (!profile.profileComplete) {
+          onboardingSection.style.display = 'block';
+          agentsSection.style.display = 'none';
+          loadProfileForm(profile);
+        } else {
+          onboardingSection.style.display = 'none';
+          agentsSection.style.display = 'block';
+          loadAgents();
+        }
+      } else {
+        onboardingSection.style.display = 'block';
+        agentsSection.style.display = 'none';
+      }
     } else {
       currentUser = null;
       loadingEl.style.display = 'none';
       loggedOutEl.style.display = 'block';
       loggedInEl.style.display = 'none';
       agentsSection.style.display = 'none';
+      onboardingSection.style.display = 'none';
     }
   } catch (error) {
     console.error('Auth check failed:', error);
@@ -94,7 +112,57 @@ async function loadAuthState() {
     loggedOutEl.style.display = 'block';
     loggedInEl.style.display = 'none';
     agentsSection.style.display = 'none';
+    onboardingSection.style.display = 'none';
   }
+}
+
+function loadProfileForm(profile) {
+  if (profile.profession) document.getElementById('profile-profession').value = profile.profession;
+  if (profile.goals) document.getElementById('profile-goals').value = profile.goals;
+  if (profile.communicationStyle) document.getElementById('profile-style').value = profile.communicationStyle;
+  if (profile.birthdate) document.getElementById('profile-birthdate').value = profile.birthdate;
+  if (profile.timezone) document.getElementById('profile-timezone').value = profile.timezone;
+  if (profile.linkedinUrl) document.getElementById('profile-linkedin').value = profile.linkedinUrl;
+  if (profile.twitterUsername) document.getElementById('profile-twitter').value = profile.twitterUsername;
+  if (profile.githubUsername) document.getElementById('profile-github').value = profile.githubUsername;
+}
+
+async function saveProfile() {
+  const data = {
+    profession: document.getElementById('profile-profession').value,
+    goals: document.getElementById('profile-goals').value,
+    communicationStyle: document.getElementById('profile-style').value,
+    birthdate: document.getElementById('profile-birthdate').value,
+    timezone: document.getElementById('profile-timezone').value || Intl.DateTimeFormat().resolvedOptions().timeZone,
+    linkedinUrl: document.getElementById('profile-linkedin').value,
+    twitterUsername: document.getElementById('profile-twitter').value.replace('@', ''),
+    githubUsername: document.getElementById('profile-github').value,
+  };
+
+  try {
+    const res = await fetch('/api/profile', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    
+    if (res.ok) {
+      document.getElementById('onboarding-section').style.display = 'none';
+      document.getElementById('agents-section').style.display = 'block';
+      loadAgents();
+    } else {
+      const err = await res.json();
+      openModal('Error', `<p class="error">${err.error}</p>`);
+    }
+  } catch (error) {
+    openModal('Error', `<p class="error">${error.message}</p>`);
+  }
+}
+
+function skipProfile() {
+  document.getElementById('onboarding-section').style.display = 'none';
+  document.getElementById('agents-section').style.display = 'block';
+  loadAgents();
 }
 
 async function loadAgents() {

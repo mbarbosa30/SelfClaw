@@ -53,6 +53,81 @@
       </div>
     </section>
 
+    <section id="onboarding-section" class="onboarding-section" style="display:none;">
+      <div class="onboarding-card">
+        <h2>TELL US ABOUT YOURSELF</h2>
+        <p class="section-intro">Help your AI agents understand you better. This information helps personalize their responses and recommendations.</p>
+        
+        <div class="onboarding-form">
+          <div class="form-group">
+            <label>What do you do?</label>
+            <input type="text" id="profile-profession" class="input" placeholder="e.g., Software Engineer, Marketing Manager, Entrepreneur" />
+          </div>
+          
+          <div class="form-group">
+            <label>What do you want your agents to help with?</label>
+            <textarea id="profile-goals" class="input" rows="3" placeholder="e.g., Research, scheduling, content creation, automation..."></textarea>
+          </div>
+          
+          <div class="form-group">
+            <label>Communication style</label>
+            <select id="profile-style" class="input">
+              <option value="">Select your preferred style</option>
+              <option value="formal">Formal - Professional and structured</option>
+              <option value="casual">Casual - Friendly and conversational</option>
+              <option value="concise">Concise - Brief and to the point</option>
+              <option value="detailed">Detailed - Thorough explanations</option>
+            </select>
+          </div>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label>Birth date (optional)</label>
+              <input type="date" id="profile-birthdate" class="input" />
+            </div>
+            <div class="form-group">
+              <label>Timezone</label>
+              <select id="profile-timezone" class="input">
+                <option value="">Auto-detect</option>
+                <option value="America/New_York">Eastern (ET)</option>
+                <option value="America/Chicago">Central (CT)</option>
+                <option value="America/Denver">Mountain (MT)</option>
+                <option value="America/Los_Angeles">Pacific (PT)</option>
+                <option value="Europe/London">London (GMT)</option>
+                <option value="Europe/Paris">Central Europe (CET)</option>
+                <option value="Asia/Tokyo">Tokyo (JST)</option>
+                <option value="Asia/Singapore">Singapore (SGT)</option>
+              </select>
+            </div>
+          </div>
+          
+          <h3>SOCIAL PROFILES (OPTIONAL)</h3>
+          <p class="note">These help your agents learn more about your background and interests.</p>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label>LinkedIn URL</label>
+              <input type="url" id="profile-linkedin" class="input" placeholder="https://linkedin.com/in/yourprofile" />
+            </div>
+            <div class="form-group">
+              <label>X (Twitter) username</label>
+              <input type="text" id="profile-twitter" class="input" placeholder="@username" />
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label>GitHub username</label>
+            <input type="text" id="profile-github" class="input" placeholder="username" />
+          </div>
+          
+          <div class="form-actions">
+            <button id="save-profile" class="btn btn-large">SAVE & CONTINUE</button>
+            <button id="skip-profile" class="btn btn-outline">SKIP FOR NOW</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <section id="agents-section" class="agents-section" style="display:none;">
       <div class="section-header">
         <h2>MY AGENTS</h2>
