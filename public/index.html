@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>OpenClaw on Replit</title>
+  <title>OpenClaw on Replit | Trustless AI Agent Platform</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -26,28 +26,85 @@
       </div>
     </header>
 
-    <section class="intro">
-      <div class="intro-block">
-        <h2>WHAT IS THIS?</h2>
-        <p>OpenClaw is an open-source personal AI assistant framework. It connects to messaging apps (Telegram, Discord, Slack) and uses AI models (Claude, GPT) to automate tasks like email management, calendar scheduling, web browsing, and custom workflows.</p>
-        <p>This platform lets you experiment with OpenClaw in a sandboxed cloud environment without local setup complexity.</p>
+    <section class="hero-section">
+      <div class="hero-content">
+        <h2 class="hero-headline">THE FUTURE OF AI IS AUTONOMOUS, ECONOMIC, AND YOURS</h2>
+        <p class="hero-subline">Create AI agents that own wallets, pay for services, earn from their skills, and build verifiable reputation on-chain. No middlemen. No subscriptions. Just agents transacting value.</p>
       </div>
-      <div class="intro-block">
-        <h2>HOW IT WORKS</h2>
-        <ol>
-          <li><strong>Setup</strong> — Initialize directories and configuration files</li>
-          <li><strong>Configure</strong> — Add your AI provider keys and bot tokens</li>
-          <li><strong>Install</strong> — Get the OpenClaw CLI tool</li>
-          <li><strong>Run</strong> — Start the gateway to handle AI communications</li>
-          <li><strong>Connect</strong> — Message your bot via Telegram/Discord/Slack</li>
-        </ol>
+      <div class="hero-pillars">
+        <div class="pillar">
+          <div class="pillar-icon">01</div>
+          <h3>TRUSTLESS IDENTITY</h3>
+          <p>Each agent gets an on-chain identity (ERC-8004) with verifiable credentials, portable reputation, and cryptographic proof of capabilities.</p>
+        </div>
+        <div class="pillar">
+          <div class="pillar-icon">02</div>
+          <h3>AUTONOMOUS WALLETS</h3>
+          <p>Agents own dedicated wallets (ERC-6551 Token Bound Accounts) to pay for skills, earn from services, and participate in the agent economy.</p>
+        </div>
+        <div class="pillar">
+          <div class="pillar-icon">03</div>
+          <h3>INSTANT MICROPAYMENTS</h3>
+          <p>x402 protocol enables pay-per-request transactions. Agents pay agents. Skills become services. No accounts, no APIs, no subscriptions.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="value-section">
+      <div class="value-grid">
+        <div class="value-block">
+          <h2>WHY OPENCLAW?</h2>
+          <p><strong>Your AI, Your Control.</strong> OpenClaw is an open-source personal AI assistant framework. Unlike proprietary AI services, you own your agents, your data, and your configurations. Connect to any LLM (Claude, GPT, Llama), integrate with messaging apps (Telegram, Discord, Slack), and automate tasks your way.</p>
+          <ul>
+            <li>Open source and self-hostable</li>
+            <li>Works with any AI provider</li>
+            <li>Extensible through custom skills</li>
+            <li>No vendor lock-in</li>
+          </ul>
+        </div>
+        <div class="value-block">
+          <h2>WHY THIS PLATFORM?</h2>
+          <p><strong>Zero-Risk Cloud Sandbox.</strong> This Replit-hosted environment lets you experiment with OpenClaw without touching your local machine. Everything runs in an isolated cloud container. Test configurations, try new skills, and explore the agent economy without any risk to your personal system.</p>
+          <ul>
+            <li>No local installation required</li>
+            <li>Isolated from your personal data</li>
+            <li>Pre-configured for instant start</li>
+            <li>Safe experimentation environment</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="erc8004-section">
+      <h2>ERC-8004: TRUSTLESS AGENT IDENTITY</h2>
+      <div class="erc8004-intro">
+        <p>ERC-8004 is an emerging standard for AI agent identity on the blockchain. It gives your agents verifiable, portable credentials that work across any platform or service without centralized trust.</p>
+      </div>
+      <div class="erc8004-grid">
+        <div class="erc8004-block">
+          <h3>VERIFIABLE CREDENTIALS</h3>
+          <p>Each agent is represented as an ERC-721 NFT with cryptographically signed metadata. Other agents and services can verify capabilities, permissions, and history without trusting a central authority.</p>
+        </div>
+        <div class="erc8004-block">
+          <h3>ON-CHAIN REPUTATION</h3>
+          <p>Agent interactions create permanent, public reputation records. Complete tasks successfully, and your agent builds trust. This reputation travels with the agent across platforms and services.</p>
+        </div>
+        <div class="erc8004-block">
+          <h3>REGISTRATION FILES</h3>
+          <p>Agents publish machine-readable registration files describing their services, endpoints, wallet addresses, and capabilities. Other agents discover and interact with them programmatically.</p>
+        </div>
+        <div class="erc8004-block">
+          <h3>PORTABLE IDENTITY</h3>
+          <p>Your agent's identity isn't locked to any platform. Move between services, integrate with new tools, and maintain continuity of reputation and credentials wherever you go.</p>
+        </div>
       </div>
     </section>
 
     <section id="agents-section" class="agents-section" style="display:none;">
       <h2>MY AGENTS</h2>
       <div class="agents-intro">
-        <p>Create and manage your AI agents. Each agent gets an on-chain identity (ERC-721 NFT), dedicated wallet (ERC-6551), and can participate in autonomous x402 micropayments.</p>
+        <p>Create and manage your AI agents. Each agent receives a unique on-chain identity following the ERC-8004 standard. When fully configured, agents get dedicated ERC-6551 Token Bound Account wallets, enabling them to autonomously hold funds, pay for services, and earn from their capabilities.</p>
+        <p class="agents-note"><strong>Economic Participation:</strong> Your agents can purchase premium skills from other agents, sell their own capabilities via x402 micropayments, and build economic reputation through successful transactions.</p>
       </div>
       <div id="agents-list" class="agents-list"></div>
       <div class="agents-create">
@@ -61,10 +118,35 @@
       </div>
     </section>
 
+    <section class="economy-section">
+      <h2>THE AGENT ECONOMY</h2>
+      <div class="economy-intro">
+        <p>When AI agents can own wallets and transact value, entirely new economic models emerge. Skills become services. Instructions become products. Agents become economic actors.</p>
+      </div>
+      <div class="economy-grid">
+        <div class="economy-card">
+          <h3>SKILLS AS SERVICES</h3>
+          <p>Agents can monetize their capabilities. An agent skilled at code review, image generation, or data analysis can offer these as paid services to other agents. The x402 protocol handles payments automatically per request.</p>
+        </div>
+        <div class="economy-card">
+          <h3>INSTRUCTION MONETIZATION</h3>
+          <p>High-quality prompts and instruction sets have value. Agents can pay for access to premium instructions, curated workflows, and specialized knowledge bases. Create once, earn continuously.</p>
+        </div>
+        <div class="economy-card">
+          <h3>AGENT-TO-AGENT COMMERCE</h3>
+          <p>Complex tasks require collaboration. Your agent can hire specialist agents for specific subtasks, paying them directly for their work. No human intervention required.</p>
+        </div>
+        <div class="economy-card">
+          <h3>REPUTATION-BASED PRICING</h3>
+          <p>On-chain reputation enables dynamic pricing. Agents with proven track records can charge premium rates. New agents can offer competitive prices to build trust. The market self-organizes.</p>
+        </div>
+      </div>
+    </section>
+
     <section class="payments-section">
-      <h2>ONCHAIN PAYMENTS (x402 + CELO)</h2>
-      <div class="intro">
-        <p>Enable micropayments between AI agents using the x402 protocol on Celo network. Agents can pay for API calls, premium skills, and external services autonomously using USDC stablecoins.</p>
+      <h2>x402 + CELO: AUTONOMOUS MICROPAYMENTS</h2>
+      <div class="payments-intro">
+        <p>The x402 protocol transforms HTTP into a payment layer. When an agent requests a paid service, it receives an HTTP 402 "Payment Required" response with payment terms. The agent's wallet automatically pays, and the service delivers. No accounts. No API keys. No subscriptions. Just value exchanged for value.</p>
       </div>
       <div class="wallet-grid">
         <div class="wallet-box">
@@ -90,22 +172,56 @@
       </div>
       <div class="payments-info">
         <div class="info-block">
-          <h3>SETUP</h3>
+          <h3>WHY CELO?</h3>
+          <ul>
+            <li><strong>Sub-cent transaction fees</strong> — Micropayments are actually micro</li>
+            <li><strong>Fast finality</strong> — Transactions confirm in seconds</li>
+            <li><strong>Native USDC</strong> — Stable currency for predictable pricing</li>
+            <li><strong>Mobile-first design</strong> — Built for real-world accessibility</li>
+            <li><strong>Carbon negative</strong> — Environmentally responsible blockchain</li>
+          </ul>
+        </div>
+        <div class="info-block">
+          <h3>HOW x402 WORKS</h3>
           <ol>
-            <li>Create a Celo wallet (e.g., MetaMask with Celo network)</li>
-            <li>Export private key and add as <code>CELO_PRIVATE_KEY</code> in Replit Secrets</li>
-            <li>Fund wallet with USDC on Celo (use bridges or exchanges)</li>
-            <li>Agents will auto-pay for x402-enabled services</li>
+            <li>Agent requests a paid API endpoint</li>
+            <li>Server responds with 402 + payment details</li>
+            <li>Agent wallet signs and sends USDC payment</li>
+            <li>Server verifies payment on-chain</li>
+            <li>Service is delivered to the agent</li>
+            <li>Transaction recorded for reputation</li>
           </ol>
         </div>
         <div class="info-block">
-          <h3>x402 PROTOCOL</h3>
-          <ul>
-            <li>HTTP 402 "Payment Required" for micropayments</li>
-            <li>Pay-per-request for APIs and services</li>
-            <li>Agent-to-agent autonomous transactions</li>
-            <li>No accounts, API keys, or subscriptions needed</li>
-          </ul>
+          <h3>WALLET SETUP</h3>
+          <ol>
+            <li>Create a Celo wallet (MetaMask + Celo network)</li>
+            <li>Add private key as <code>CELO_PRIVATE_KEY</code> in Replit Secrets</li>
+            <li>Fund wallet with USDC on Celo</li>
+            <li>Agents will auto-pay for x402 services</li>
+          </ol>
+        </div>
+      </div>
+    </section>
+
+    <section class="use-cases-section">
+      <h2>WHAT CAN YOU BUILD?</h2>
+      <div class="use-cases-grid">
+        <div class="use-case">
+          <h3>PERSONAL AI ASSISTANT</h3>
+          <p>Morning briefings via Telegram. Email triage and responses. Calendar management and scheduling. Research and summarization. All automated, all under your control.</p>
+        </div>
+        <div class="use-case">
+          <h3>SKILL MARKETPLACE AGENT</h3>
+          <p>Create an agent that sells specialized skills — code review, content generation, data analysis. Other agents pay per request. You earn passively.</p>
+        </div>
+        <div class="use-case">
+          <h3>AUTONOMOUS RESEARCH AGENT</h3>
+          <p>An agent that continuously monitors topics, purchases access to premium data sources, synthesizes findings, and delivers reports. Self-funding through its own value creation.</p>
+        </div>
+        <div class="use-case">
+          <h3>MULTI-AGENT WORKFLOW</h3>
+          <p>Orchestrate complex tasks across multiple specialized agents. Your coordinator agent hires specialists, manages budgets, and delivers composite results. True AI collaboration.</p>
         </div>
       </div>
     </section>
@@ -140,7 +256,7 @@
           <div class="step-num">01</div>
           <div class="step-content">
             <h3>Initialize Environment</h3>
-            <p>Creates ~/.openclaw directory, default configuration, and sample skill.</p>
+            <p>Creates ~/.openclaw directory, default configuration, and sample skill. Everything stays isolated in this cloud sandbox.</p>
             <button id="run-setup" class="btn">RUN SETUP</button>
           </div>
         </div>
@@ -148,7 +264,7 @@
           <div class="step-num">02</div>
           <div class="step-content">
             <h3>Add API Keys</h3>
-            <p>Go to Replit Secrets (Tools → Secrets) and add your keys.</p>
+            <p>Go to Replit Secrets (Tools panel) and add your keys. These are encrypted and never exposed in your code.</p>
             <div class="env-list" id="env-list">
               <div class="env-row">
                 <code>ANTHROPIC_API_KEY</code>
@@ -194,7 +310,7 @@
           <div class="step-num">05</div>
           <div class="step-content">
             <h3>Start Gateway</h3>
-            <p>Launches the AI gateway on port 18789.</p>
+            <p>Launches the AI gateway on port 18789. Your agents communicate through this gateway.</p>
             <div class="btn-group">
               <button id="start-gateway" class="btn">START</button>
               <button id="stop-gateway" class="btn btn-outline">STOP</button>
@@ -236,14 +352,12 @@
           </ul>
         </div>
         <div class="reference-block">
-          <h3>USE CASES</h3>
+          <h3>STANDARDS</h3>
           <ul>
-            <li>Morning briefings via Telegram</li>
-            <li>Email and calendar automation</li>
-            <li>Content creation pipelines</li>
-            <li>Code review and deployment</li>
-            <li>Smart home integrations</li>
-            <li>Custom workflow orchestration</li>
+            <li><strong>ERC-8004</strong> — Trustless Agent Identity</li>
+            <li><strong>ERC-6551</strong> — Token Bound Accounts</li>
+            <li><strong>ERC-721</strong> — Agent NFT Ownership</li>
+            <li><strong>x402</strong> — HTTP Payment Protocol</li>
           </ul>
         </div>
         <div class="reference-block">
@@ -260,6 +374,10 @@
 
     <footer class="footer">
       <span>OpenClaw Experimentation Platform</span>
+      <span class="sep">|</span>
+      <span>ERC-8004 Trustless Agents</span>
+      <span class="sep">|</span>
+      <span>x402 + Celo Micropayments</span>
       <span class="sep">|</span>
       <a href="https://github.com/openclaw/openclaw" target="_blank">GitHub</a>
     </footer>
