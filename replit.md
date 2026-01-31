@@ -59,6 +59,13 @@ This is a multi-user experimentation platform for OpenClaw, an open-source perso
 - `POST /api/agents/:id/service` - Paid service endpoint (x402 demo)
 
 ## Recent Changes
+- **January 31, 2026**: Simplified UI and improved user flow
+  - Consolidated content from 11 sections to 5 focused sections (Hero, Agents, How It Works, Pricing, Technology)
+  - Moved OpenClaw CLI setup to collapsible "Advanced" section
+  - Replaced alert() dialogs with professional modal component for wallet viewing and AI chat
+  - Removed redundant global wallet UI - now focusing on per-agent wallets
+  - Cleaned up CSS by removing legacy styles and consolidating to only necessary component styles
+  - Used classList toggling for better state management in create form
 - **January 31, 2026**: Implemented x402 payment integration for agent wallets
   - Created AgentX402Client for outbound payments using derived wallets
   - Created agent payment middleware with 3% platform fee collection
