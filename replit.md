@@ -52,6 +52,13 @@ This is a multi-user experimentation platform for OpenClaw, an open-source perso
 - `GET /api/payments/balance` - Global wallet balance
 
 ## Recent Changes
+- **January 31, 2026**: Enhanced platform messaging and value proposition
+  - Added hero section with "The Future of AI is Autonomous, Economic, and Yours" headline
+  - Created ERC-8004 explainer section covering trustless identity benefits
+  - Expanded x402 + Celo section with economic potential narrative
+  - Added Agent Economy section (skills as services, instruction monetization, agent-to-agent commerce)
+  - Added use cases section (personal assistant, skill marketplace, research agent, multi-agent workflow)
+  - Enhanced value proposition content for OpenClaw and sandbox benefits
 - **January 31, 2026**: Added multi-user support with ERC-8004
   - Migrated to TypeScript with tsx for server
   - Added PostgreSQL database with Drizzle ORM (7 tables)
