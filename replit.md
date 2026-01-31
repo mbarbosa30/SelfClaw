@@ -59,9 +59,14 @@ This is a multi-user experimentation platform for OpenClaw, an open-source perso
 - `POST /api/agents/:id/service` - Paid service endpoint (x402 demo)
 
 ## Recent Changes
+- **January 31, 2026**: Balanced content to highlight both experimentation and economy
+  - Hero leads with "Your Personal AI, Your Way" - emphasizes sandbox experimentation first
+  - Added "Why OpenClaw" section: personal AI, skills, privacy, sandbox isolation
+  - Added "Agent Economy" section: skills marketplace, agent commerce, micropayments, trustless identity
+  - Three pillars in hero: Sandbox, Skills, Economy - clear progression
+  - Flow: experimentation → capabilities → economy → technology → advanced CLI
+  - Maintains clean 7-section structure with collapsible Advanced section
 - **January 31, 2026**: Simplified UI and improved user flow
-  - Consolidated content from 11 sections to 5 focused sections (Hero, Agents, How It Works, Pricing, Technology)
-  - Moved OpenClaw CLI setup to collapsible "Advanced" section
   - Replaced alert() dialogs with professional modal component for wallet viewing and AI chat
   - Removed redundant global wallet UI - now focusing on per-agent wallets
   - Cleaned up CSS by removing legacy styles and consolidating to only necessary component styles
