@@ -74,6 +74,12 @@ ClawPlit is your command center for OpenClaw agents. This multi-user platform pr
 - `POST /api/profile` - Update user profile (onboarding)
 
 ## Recent Changes
+- **January 31, 2026**: Added support for new OpenClaw v2026.1.30 models
+  - Added Kimi K2.5, Kimi Coding (Moonshot), MiniMax-01, DeepSeek R1, Llama 4 Maverick, Qwen3 235B
+  - Updated model dropdowns with grouped options by provider (OpenAI, Anthropic, Moonshot, MiniMax, Open Source)
+  - Created /api/agents/:id/models endpoint showing per-agent model availability
+  - Added models status display in Config tab showing available vs unavailable providers
+  - Updated API key form to include new providers (Moonshot, MiniMax, DeepSeek, OpenRouter)
 - **January 31, 2026**: Redesigned dashboard as agent cockpit control center
   - Replaced agent cards with sidebar navigation + dedicated cockpit view
   - Added tabbed interface: Console, Config, Skills, Wallet, Data

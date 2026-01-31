@@ -486,8 +486,9 @@ async function main() {
         { id: "qwen3-235b", name: "Qwen3 235B", provider: "openrouter", available: configuredKeys.includes("OPENROUTER_API_KEY") },
       ];
 
+      const agentConfig = agent.configJson as { model?: string } | null;
       res.json({
-        currentModel: agent.model || "gpt-4o",
+        currentModel: agentConfig?.model || "gpt-4o",
         models,
         configuredProviders: [...new Set(secrets.map(s => s.serviceName.replace("_API_KEY", "").toLowerCase()))]
       });
