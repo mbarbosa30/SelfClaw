@@ -213,41 +213,37 @@ h2 {
   background: var(--gray-200);
 }
 
-.hero-features {
-  display: flex;
-  justify-content: center;
-  gap: 3rem;
+.hero-pillars {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
   margin-top: 2.5rem;
-  flex-wrap: wrap;
 }
 
-.feature {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.75rem;
+.pillar {
+  border: 2px solid var(--white);
+  padding: 1.5rem;
   text-align: left;
 }
 
-.feature-icon {
-  width: 2rem;
-  height: 2rem;
-  background: var(--white);
-  color: var(--black);
-  font-weight: 900;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
+.pillar-icon {
+  font-family: 'SF Mono', Monaco, monospace;
+  font-size: 0.75rem;
+  font-weight: 700;
+  margin-bottom: 0.75rem;
+  opacity: 0.6;
 }
 
-.feature-text strong {
-  display: block;
-  font-size: 0.9rem;
+.pillar h3 {
+  font-size: 0.85rem;
+  letter-spacing: 0.1em;
+  margin-bottom: 0.75rem;
 }
 
-.feature-text span {
-  font-size: 0.8rem;
+.pillar p {
+  font-size: 0.85rem;
   color: var(--gray-300);
+  line-height: 1.5;
 }
 
 /* Agents Section */
@@ -475,6 +471,67 @@ h2 {
   font-size: 0.8rem;
   color: var(--gray-600);
   margin-top: 1rem;
+}
+
+/* Why OpenClaw */
+.why-openclaw {
+  margin-bottom: 3rem;
+}
+
+.value-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+.value-block {
+  border: 2px solid var(--black);
+  padding: 1.5rem;
+}
+
+.value-block h3 {
+  font-size: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.value-block p {
+  font-size: 0.85rem;
+  color: var(--gray-600);
+  line-height: 1.6;
+}
+
+/* Agent Economy */
+.agent-economy {
+  margin-bottom: 3rem;
+}
+
+.section-intro {
+  font-size: 1rem;
+  color: var(--gray-600);
+  margin-bottom: 1.5rem;
+}
+
+.economy-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+}
+
+.economy-item {
+  padding: 1.25rem;
+  background: var(--gray-100);
+}
+
+.economy-item h4 {
+  font-size: 0.9rem;
+  margin-bottom: 0.5rem;
+}
+
+.economy-item p {
+  font-size: 0.85rem;
+  color: var(--gray-600);
+  line-height: 1.5;
 }
 
 /* Technology */
@@ -873,16 +930,14 @@ h2 {
     font-size: 1.75rem;
   }
   
-  .hero-features {
-    flex-direction: column;
-    align-items: center;
-  }
-  
-  .steps-grid,
-  .pricing-grid {
+  .hero-pillars {
     grid-template-columns: 1fr;
   }
   
+  .value-grid,
+  .economy-grid,
+  .steps-grid,
+  .pricing-grid,
   .tech-grid {
     grid-template-columns: 1fr;
   }
