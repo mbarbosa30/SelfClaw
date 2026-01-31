@@ -8,7 +8,9 @@ import { db } from "./db.js";
 import { agents, payments, users, type InsertAgent, type InsertPayment } from "../shared/schema.js";
 import { eq, desc, sql } from "drizzle-orm";
 import { createCeloWallet, getWalletBalance, CELO_CONFIG } from "../lib/wallet.js";
-import { deriveAgentWalletAddress, getAgentWalletBalance, PLATFORM_FEE_PERCENT } from "../lib/agent-wallet.js";
+import { deriveAgentWalletAddress, getAgentWalletBalance, PLATFORM_FEE_PERCENT, createAgentWallet } from "../lib/agent-wallet.js";
+import { createAgentX402Client } from "../lib/agent-x402-client.js";
+import { createAgentPaymentMiddleware, getAgentReceivedPayments, getAgentTotalReceived } from "../lib/agent-x402-middleware.js";
 
 const app = express();
 const PORT = 5000;
@@ -416,6 +418,96 @@ async function main() {
       },
       platformFee: PLATFORM_FEE_PERCENT,
       newAgentBonus: 10
+    });
+  });
+
+  app.post("/api/agents/:id/x402/pay", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { url, maxPayment } = req.body;
+      const [agent] = await db.select().from(agents).where(eq(agents.id, req.params.id));
+
+      if (!agent || agent.userId !== userId) {
+        return res.status(404).json({ error: "Agent not found" });
+      }
+
+      if (!process.env.CELO_PRIVATE_KEY) {
+        return res.status(503).json({ error: "Platform wallet not configured" });
+      }
+
+      if (!agent.tbaAddress) {
+        return res.status(400).json({ error: "Agent wallet not configured" });
+      }
+
+      const client = createAgentX402Client(process.env.CELO_PRIVATE_KEY, agent.id, {
+        maxPayment: maxPayment || 1.0,
+        autoApprove: true
+      });
+
+      const response = await client.fetch(url, req.body.options || {});
+      const responseData = await response.text();
+
+      const payment: InsertPayment = {
+        agentId: agent.id,
+        direction: "outbound",
+        amount: client.getTotalSpent(),
+        token: "USDC",
+        network: "celo",
+        status: response.ok ? "confirmed" : "failed",
+        endpoint: url
+      };
+      await db.insert(payments).values(payment);
+
+      res.json({
+        status: response.status,
+        ok: response.ok,
+        data: responseData,
+        paymentHistory: client.getPaymentHistory(),
+        totalSpent: client.getTotalSpent()
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/agents/:id/x402/received", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const [agent] = await db.select().from(agents).where(eq(agents.id, req.params.id));
+
+      if (!agent || agent.userId !== userId) {
+        return res.status(404).json({ error: "Agent not found" });
+      }
+
+      const receivedPayments = getAgentReceivedPayments(agent.id);
+      const totals = getAgentTotalReceived(agent.id);
+
+      res.json({
+        payments: receivedPayments,
+        totals,
+        platformFeePercent: PLATFORM_FEE_PERCENT
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  const agentPaymentMiddleware = createAgentPaymentMiddleware({
+    getAgentRecipient: (agentId: string) => {
+      if (!process.env.CELO_PRIVATE_KEY) return null;
+      return deriveAgentWalletAddress(process.env.CELO_PRIVATE_KEY, agentId);
+    },
+    defaultPrice: "0.01",
+    token: "USDC",
+    network: "celo"
+  });
+
+  app.post("/api/agents/:id/service", agentPaymentMiddleware("0.01"), async (req: any, res: Response) => {
+    res.json({
+      success: true,
+      message: "Payment accepted",
+      payment: req.payment,
+      platformFee: PLATFORM_FEE_PERCENT + "%"
     });
   });
 
