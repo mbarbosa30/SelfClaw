@@ -1,6 +1,7 @@
-modules = ["nodejs-22"]
+modules = ["nodejs-22", "postgresql-16"]
 [agent]
 expertMode = true
+integrations = ["javascript_log_in_with_replit:2.0.0"]
 
 [nix]
 channel = "stable-25_05"
@@ -21,13 +22,13 @@ args = "Control Panel"
 name = "Control Panel"
 author = "agent"
 
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "node server.js"
-waitForPort = 5000
-
 [workflows.workflow.metadata]
 outputType = "webview"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run start"
+waitForPort = 5000
 
 [[ports]]
 localPort = 5000
