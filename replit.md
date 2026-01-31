@@ -48,10 +48,20 @@ This is a multi-user experimentation platform for OpenClaw, an open-source perso
 - `GET /api/agents/:id` - Get agent details (authenticated)
 - `GET /api/agents/:id/registration` - ERC-8004 registration file
 - `GET /api/agents/:id/payments` - Agent payment history
+- `GET /api/agents/:id/wallet` - Agent wallet balance (credits + on-chain)
+- `POST /api/agents/:id/ai/chat` - AI proxy endpoint (uses credits)
+- `POST /api/agents/:id/credits/add` - Add credits to agent
+- `GET /api/platform/pricing` - Platform pricing tiers
 - `GET /api/payments/status` - Global wallet status
 - `GET /api/payments/balance` - Global wallet balance
 
 ## Recent Changes
+- **January 31, 2026**: Added agent wallet and credits functionality
+  - Added wallet balance endpoint for per-agent derived wallets
+  - Created AI chat proxy endpoint with credit deduction
+  - Added credits top-up endpoint and platform pricing API
+  - Updated agent cards to show credits, wallet, and action buttons (Test AI, Wallet)
+  - Simplified onboarding text to emphasize free credits and ease of use
 - **January 31, 2026**: Enhanced platform messaging and value proposition
   - Added hero section with "The Future of AI is Autonomous, Economic, and Yours" headline
   - Created ERC-8004 explainer section covering trustless identity benefits
