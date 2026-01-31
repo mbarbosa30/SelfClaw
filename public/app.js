@@ -2,8 +2,12 @@ document.addEventListener('DOMContentLoaded', () => {
   loadStatus();
   loadEnvCheck();
   loadConfig();
+  loadWalletStatus();
 
-  document.getElementById('refresh-status').addEventListener('click', loadStatus);
+  document.getElementById('refresh-status').addEventListener('click', () => {
+    loadStatus();
+    loadWalletStatus();
+  });
   document.getElementById('run-setup').addEventListener('click', runSetup);
   document.getElementById('install-openclaw').addEventListener('click', installOpenClaw);
   document.getElementById('start-gateway').addEventListener('click', startGateway);
@@ -11,7 +15,10 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('load-config').addEventListener('click', loadConfig);
   document.getElementById('save-config').addEventListener('click', saveConfig);
 
-  setInterval(loadStatus, 15000);
+  setInterval(() => {
+    loadStatus();
+    loadWalletStatus();
+  }, 15000);
 });
 
 async function loadStatus() {
@@ -63,6 +70,7 @@ async function loadEnvCheck() {
     setEnvBadge('env-openai', envVars.OPENAI_API_KEY);
     setEnvBadge('env-telegram', envVars.TELEGRAM_BOT_TOKEN);
     setEnvBadge('env-discord', envVars.DISCORD_BOT_TOKEN);
+    setEnvBadge('env-celo', envVars.CELO_PRIVATE_KEY);
   } catch (error) {
     console.error('Failed to check env vars:', error);
   }
@@ -170,5 +178,46 @@ async function stopGateway() {
     loadStatus();
   } catch (error) {
     output.textContent = 'Error: ' + error.message;
+  }
+}
+
+async function loadWalletStatus() {
+  try {
+    const [statusRes, balanceRes] = await Promise.all([
+      fetch('/api/payments/status'),
+      fetch('/api/payments/balance')
+    ]);
+    
+    const status = await statusRes.json();
+    const balance = await balanceRes.json();
+    
+    const statusEl = document.getElementById('wallet-status');
+    const usdcEl = document.getElementById('wallet-usdc');
+    const celoEl = document.getElementById('wallet-celo');
+    const addressEl = document.getElementById('wallet-address');
+    
+    if (status.initialized) {
+      statusEl.textContent = 'CONNECTED';
+      statusEl.className = 'wallet-value ok';
+      addressEl.textContent = status.address;
+      
+      if (balance.usdc !== undefined) {
+        usdcEl.textContent = parseFloat(balance.usdc).toFixed(4) + ' USDC';
+        usdcEl.className = 'wallet-value' + (parseFloat(balance.usdc) > 0 ? ' ok' : '');
+      }
+      
+      if (balance.celo !== undefined) {
+        celoEl.textContent = parseFloat(balance.celo).toFixed(4) + ' CELO';
+        celoEl.className = 'wallet-value' + (parseFloat(balance.celo) > 0 ? ' ok' : '');
+      }
+    } else {
+      statusEl.textContent = 'NOT CONFIGURED';
+      statusEl.className = 'wallet-value warn';
+      usdcEl.textContent = '—';
+      celoEl.textContent = '—';
+      addressEl.textContent = 'Add CELO_PRIVATE_KEY to Secrets';
+    }
+  } catch (error) {
+    console.error('Failed to load wallet status:', error);
   }
 }

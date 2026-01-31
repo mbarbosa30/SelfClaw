@@ -4,6 +4,7 @@ import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync, statSy
 import { homedir } from 'os';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import { initializePayments, getPaymentStatus, getBalance, getPaymentHistory, getTotalSpent, getTotalReceived, CELO_CONFIG } from './lib/payments.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -167,7 +168,7 @@ app.get('/api/env-check', (req, res) => {
     OPENAI_API_KEY: !!process.env.OPENAI_API_KEY,
     TELEGRAM_BOT_TOKEN: !!process.env.TELEGRAM_BOT_TOKEN,
     DISCORD_BOT_TOKEN: !!process.env.DISCORD_BOT_TOKEN,
-    SLACK_BOT_TOKEN: !!process.env.SLACK_BOT_TOKEN
+    CELO_PRIVATE_KEY: !!process.env.CELO_PRIVATE_KEY
   };
   res.json(envVars);
 });
@@ -188,6 +189,44 @@ app.get('/api/skills', (req, res) => {
   }
 });
 
+app.get('/api/payments/status', async (req, res) => {
+  try {
+    const status = getPaymentStatus();
+    res.json(status);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/payments/balance', async (req, res) => {
+  try {
+    const balance = await getBalance();
+    res.json(balance);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/payments/history', (req, res) => {
+  try {
+    const history = getPaymentHistory();
+    res.json({ 
+      history,
+      totalSpent: getTotalSpent(),
+      totalReceived: getTotalReceived()
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/payments/config', (req, res) => {
+  res.json({
+    network: CELO_CONFIG,
+    hasPrivateKey: !!process.env.CELO_PRIVATE_KEY
+  });
+});
+
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`╔════════════════════════════════════════════════════════════╗`);
   console.log(`║     OpenClaw Control Panel running on port ${PORT}           ║`);
@@ -202,4 +241,15 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`  OpenClaw: ${status.openclawVersion}`);
   console.log(`  Config: ${status.configExists ? 'Found' : 'Not found (run setup)'}`);
   console.log('');
+  
+  const paymentResult = initializePayments(process.env.CELO_PRIVATE_KEY);
+  if (paymentResult.initialized) {
+    console.log('Payments:');
+    console.log(`  Network: Celo (${CELO_CONFIG.chainId})`);
+    console.log(`  Address: ${paymentResult.address}`);
+    console.log('');
+  } else {
+    console.log('Payments: Not configured (add CELO_PRIVATE_KEY to Secrets)');
+    console.log('');
+  }
 });

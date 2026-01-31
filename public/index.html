@@ -33,6 +33,55 @@
       </div>
     </section>
 
+    <section class="payments-section">
+      <h2>ONCHAIN PAYMENTS (x402 + CELO)</h2>
+      <div class="intro">
+        <p>Enable micropayments between AI agents using the x402 protocol on Celo network. Agents can pay for API calls, premium skills, and external services autonomously using USDC stablecoins.</p>
+      </div>
+      <div class="wallet-grid">
+        <div class="wallet-box">
+          <span class="wallet-label">NETWORK</span>
+          <span id="wallet-network" class="wallet-value">Celo</span>
+        </div>
+        <div class="wallet-box">
+          <span class="wallet-label">STATUS</span>
+          <span id="wallet-status" class="wallet-value">—</span>
+        </div>
+        <div class="wallet-box">
+          <span class="wallet-label">USDC BALANCE</span>
+          <span id="wallet-usdc" class="wallet-value">—</span>
+        </div>
+        <div class="wallet-box">
+          <span class="wallet-label">CELO BALANCE</span>
+          <span id="wallet-celo" class="wallet-value">—</span>
+        </div>
+      </div>
+      <div class="wallet-address-row">
+        <span class="wallet-label">ADDRESS</span>
+        <code id="wallet-address">Not configured</code>
+      </div>
+      <div class="payments-info">
+        <div class="info-block">
+          <h3>SETUP</h3>
+          <ol>
+            <li>Create a Celo wallet (e.g., MetaMask with Celo network)</li>
+            <li>Export private key and add as <code>CELO_PRIVATE_KEY</code> in Replit Secrets</li>
+            <li>Fund wallet with USDC on Celo (use bridges or exchanges)</li>
+            <li>Agents will auto-pay for x402-enabled services</li>
+          </ol>
+        </div>
+        <div class="info-block">
+          <h3>x402 PROTOCOL</h3>
+          <ul>
+            <li>HTTP 402 "Payment Required" for micropayments</li>
+            <li>Pay-per-request for APIs and services</li>
+            <li>Agent-to-agent autonomous transactions</li>
+            <li>No accounts, API keys, or subscriptions needed</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
     <section class="status-section">
       <h2>SYSTEM STATUS</h2>
       <div class="status-grid">
@@ -88,6 +137,10 @@
               <div class="env-row">
                 <code>DISCORD_BOT_TOKEN</code>
                 <span id="env-discord" class="env-badge">—</span>
+              </div>
+              <div class="env-row">
+                <code>CELO_PRIVATE_KEY</code>
+                <span id="env-celo" class="env-badge">—</span>
               </div>
             </div>
           </div>

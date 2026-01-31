@@ -34,7 +34,7 @@ Add your API keys in **Replit Secrets** (Tools > Secrets):
 | `OPENAI_API_KEY` | OpenAI API key for GPT models | One AI provider required |
 | `TELEGRAM_BOT_TOKEN` | Telegram bot token | Optional |
 | `DISCORD_BOT_TOKEN` | Discord bot token | Optional |
-| `SLACK_BOT_TOKEN` | Slack bot token | Optional |
+| `CELO_PRIVATE_KEY` | Celo wallet private key for x402 payments | Optional |
 
 ### 4. Install OpenClaw
 
@@ -192,6 +192,56 @@ export default {
 - Smart home integrations
 - Custom workflow orchestration
 
+## Onchain Payments (x402 + Celo)
+
+This platform includes experimental support for micropayments between AI agents using the x402 protocol on Celo network.
+
+### What is x402?
+
+x402 is an open payment protocol that activates the HTTP 402 "Payment Required" status code for instant, programmable micropayments. It enables:
+- **Pay-per-request** for APIs and services
+- **Agent-to-agent** autonomous transactions
+- **Micropayments** as small as $0.001 per request
+- **No accounts or subscriptions** needed
+
+### Setup
+
+1. Create a Celo wallet (e.g., MetaMask with Celo network)
+2. Export the private key and add as `CELO_PRIVATE_KEY` in Replit Secrets
+3. Fund the wallet with USDC on Celo (via bridges or exchanges)
+4. Agents will automatically pay for x402-enabled services
+
+### How It Works
+
+```
+Agent requests API → 402 Payment Required ($0.05 USDC)
+→ Agent signs payment with private key
+→ Server verifies on Celo (~400ms)
+→ 200 OK + response returned
+```
+
+### Payment Modules
+
+Located in `lib/`:
+- `wallet.js` - Celo wallet management and USDC transactions
+- `x402-client.js` - Client for making paid requests to x402 APIs
+- `x402-middleware.js` - Middleware for accepting payments on your APIs
+- `payments.js` - Unified payment management interface
+
+### Celo Network Details
+
+- **Chain ID**: 42220
+- **RPC**: https://forno.celo.org
+- **Explorer**: https://celoscan.io
+- **USDC Address**: `0xcebA9300f2b948710d2653dD7B07f33A8B32118C`
+
+### Resources
+
+- [x402 Protocol](https://www.x402.org/)
+- [x402 GitHub](https://github.com/coinbase/x402)
+- [Celo Network](https://celo.org/)
+- [USDC on Celo](https://www.circle.com/multi-chain-usdc/celo)
+
 ## Resources
 
 - [OpenClaw GitHub](https://github.com/openclaw/openclaw)
@@ -206,6 +256,11 @@ export default {
   server.js              # Control panel server
   scripts/
     setup.js             # Initial setup script
+  lib/
+    wallet.js            # Celo wallet management
+    x402-client.js       # x402 payment client
+    x402-middleware.js   # x402 server middleware
+    payments.js          # Unified payment interface
   public/
     index.html           # Control panel UI
     styles.css           # Styling
@@ -215,5 +270,5 @@ export default {
 
 ---
 
-**Version**: 1.0.0  
-**Last Updated**: January 30, 2026
+**Version**: 1.1.0  
+**Last Updated**: January 31, 2026

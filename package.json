@@ -22,6 +22,7 @@
   "license": "MIT",
   "dependencies": {
     "dotenv": "^16.6.1",
-    "express": "^4.22.1"
+    "express": "^4.22.1",
+    "viem": "^2.45.1"
   }
 }

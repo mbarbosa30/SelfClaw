@@ -357,6 +357,101 @@ pre {
   padding: 0.1rem 0.3rem;
 }
 
+.payments-section .intro {
+  margin-bottom: 1.5rem;
+}
+
+.payments-section .intro p {
+  margin-bottom: 0;
+}
+
+.wallet-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1px;
+  background: var(--black);
+  border: 2px solid var(--black);
+  margin-bottom: 1rem;
+}
+
+.wallet-box {
+  background: var(--white);
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.wallet-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--gray-600);
+}
+
+.wallet-value {
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.wallet-value.ok { color: var(--green); }
+.wallet-value.warn { color: var(--yellow); }
+.wallet-value.err { color: var(--red); }
+
+.wallet-address-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  background: var(--gray-100);
+  border: 1px solid var(--gray-300);
+  margin-bottom: 1.5rem;
+}
+
+.wallet-address-row code {
+  font-family: 'SF Mono', 'Monaco', monospace;
+  font-size: 0.8rem;
+  word-break: break-all;
+}
+
+.payments-info {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+}
+
+.info-block {
+  border: 1px solid var(--gray-300);
+  padding: 1.25rem;
+}
+
+.info-block h3 {
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--gray-300);
+}
+
+.info-block ol,
+.info-block ul {
+  padding-left: 1.25rem;
+}
+
+.info-block li {
+  font-size: 0.85rem;
+  padding: 0.25rem 0;
+  color: var(--gray-800);
+}
+
+.info-block code {
+  font-family: 'SF Mono', 'Monaco', monospace;
+  font-size: 0.8rem;
+  background: var(--gray-100);
+  padding: 0.1rem 0.3rem;
+}
+
 .footer {
   border-top: 1px solid var(--gray-300);
   padding-top: 1.5rem;
@@ -390,7 +485,8 @@ pre {
     font-size: 2rem;
   }
   
-  .status-grid {
+  .status-grid,
+  .wallet-grid {
     grid-template-columns: repeat(2, 1fr);
   }
   
@@ -401,5 +497,11 @@ pre {
   .step-num {
     font-size: 1rem;
     padding: 1rem 0.5rem;
+  }
+  
+  .wallet-address-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
   }
 }
