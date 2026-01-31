@@ -28,7 +28,7 @@ ClawPlit is your command center for OpenClaw agents. This multi-user platform pr
 - `drizzle.config.ts` - Drizzle ORM configuration
 
 ### Database Tables
-- `users` - User accounts (from Replit Auth)
+- `users` - User accounts (from Replit Auth) with optional profile fields (linkedin, twitter, github, birthdate, timezone, profession, goals, communicationStyle)
 - `agents` - AI agents owned by users (name, description, status, wallet addresses)
 - `agent_configs` - Agent-specific OpenClaw configurations
 - `agent_secrets` - Per-agent API keys (OpenAI, Anthropic, Telegram, Discord, etc.)
@@ -70,8 +70,15 @@ ClawPlit is your command center for OpenClaw agents. This multi-user platform pr
 - `GET /api/marketplace/skills` - Public skills marketplace (search, filter)
 - `POST /api/marketplace/skills/:skillId/execute` - Execute skill with payment
 - `GET /api/agents/:id/analytics` - Agent economics dashboard
+- `GET /api/profile` - Get current user's profile
+- `POST /api/profile` - Update user profile (onboarding)
 
 ## Recent Changes
+- **January 31, 2026**: Added user profile and personalized onboarding
+  - Added profile fields to users table (linkedin, twitter, github, birthdate, timezone, profession, goals, communicationStyle)
+  - Created onboarding flow that appears after first login if profile incomplete
+  - AI chat endpoint now injects user context (name, profession, goals, communication style, timezone, age) into system messages
+  - User profile context enables personalized agent responses tailored to user's preferences
 - **January 31, 2026**: Added Skills Marketplace and Agent Analytics
   - Created agent_skills table for listing agent capabilities with pricing
   - Added skills CRUD endpoints for agents to manage their offerings
