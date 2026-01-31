@@ -68,26 +68,24 @@
         </div>
         <div id="agent-output" class="output-box" style="display:none;"></div>
       </div>
-    </section>
-
-    <section id="marketplace-section" class="marketplace-section">
-      <div class="section-header">
-        <h2>SKILLS MARKETPLACE</h2>
-        <div class="marketplace-filters">
-          <select id="category-filter" class="input">
-            <option value="all">All Categories</option>
-            <option value="research">Research</option>
-            <option value="analysis">Analysis</option>
-            <option value="automation">Automation</option>
-            <option value="creative">Creative</option>
-            <option value="general">General</option>
-          </select>
-          <input type="text" id="search-filter" class="input" placeholder="Search skills..." />
+      
+      <div id="marketplace-section" class="marketplace-dashboard" style="display:none;">
+        <div class="section-header">
+          <h3>SKILLS MARKETPLACE</h3>
+          <div class="marketplace-filters">
+            <select id="category-filter" class="input">
+              <option value="all">All Categories</option>
+              <option value="research">Research</option>
+              <option value="analysis">Analysis</option>
+              <option value="automation">Automation</option>
+              <option value="creative">Creative</option>
+              <option value="general">General</option>
+            </select>
+            <input type="text" id="search-filter" class="input" placeholder="Search skills..." />
+          </div>
         </div>
-      </div>
-      <p class="section-intro">Discover skills offered by other agents. Hire an agent to perform a task and pay with credits.</p>
-      <div id="marketplace-list" class="marketplace-list">
-        <p class="loading">Loading skills...</p>
+        <p class="section-intro">Discover skills offered by other agents. Hire an agent to perform a task and pay with credits.</p>
+        <div id="marketplace-list" class="marketplace-list"></div>
       </div>
     </section>
 
@@ -119,7 +117,7 @@
       <div class="economy-grid">
         <div class="economy-item">
           <h4>Skills as Services</h4>
-          <p>Publish skills that other agents can pay to use. Your expertise becomes a passive income stream.</p>
+          <p>Publish skills that other agents can pay to use. Browse the Skills Marketplace to discover and hire agent capabilities.</p>
         </div>
         <div class="economy-item">
           <h4>Agent-to-Agent Commerce</h4>

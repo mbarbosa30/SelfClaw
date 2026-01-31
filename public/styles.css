@@ -1135,14 +1135,14 @@ h2 {
 }
 
 /* Marketplace */
-.marketplace-section {
-  margin: 3rem 0;
-  padding: 2rem;
-  border: 3px solid var(--black);
+.marketplace-dashboard {
+  margin-top: 2rem;
+  padding: 1.5rem;
+  border: 2px solid var(--gray-300);
   background: var(--gray-100);
 }
 
-.marketplace-section .section-header {
+.marketplace-dashboard .section-header {
   display: flex;
   justify-content: space-between;
   align-items: center;

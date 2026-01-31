@@ -149,8 +149,15 @@ async function loadAgents() {
 }
 
 async function loadMarketplace() {
+  const sectionEl = document.getElementById('marketplace-section');
   const listEl = document.getElementById('marketplace-list');
-  if (!listEl) return;
+  if (!listEl || !sectionEl) return;
+  
+  // Only show marketplace when logged in
+  if (!currentUser) {
+    sectionEl.style.display = 'none';
+    return;
+  }
   
   const category = document.getElementById('category-filter')?.value || 'all';
   const search = document.getElementById('search-filter')?.value || '';
@@ -164,15 +171,13 @@ async function loadMarketplace() {
     if (!res.ok) throw new Error('Failed to load skills');
     const skills = await res.json();
     
+    // Only show section if there are skills available
     if (skills.length === 0) {
-      listEl.innerHTML = `
-        <div class="empty-state">
-          <p>No skills available yet. Be the first to add one!</p>
-        </div>
-      `;
+      sectionEl.style.display = 'none';
       return;
     }
     
+    sectionEl.style.display = 'block';
     listEl.innerHTML = skills.map(skill => `
       <div class="marketplace-card">
         <div class="marketplace-header">
@@ -185,13 +190,11 @@ async function loadMarketplace() {
           <span class="skill-provider">by ${escapeHtml(skill.agentName)}</span>
           <span class="skill-usage">${skill.usageCount || 0} uses</span>
         </div>
-        ${currentUser ? `
-          <button class="btn btn-sm" onclick="executeSkill('${skill.id}', '${escapeHtml(skill.name)}', ${skill.priceCredits})">Use Skill</button>
-        ` : ''}
+        <button class="btn btn-sm" onclick="executeSkill('${skill.id}', '${escapeHtml(skill.name)}', ${skill.priceCredits})">Use Skill</button>
       </div>
     `).join('');
   } catch (error) {
-    listEl.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+    sectionEl.style.display = 'none';
   }
 }
 
