@@ -35,6 +35,11 @@ body {
   border-bottom: 3px solid var(--black);
   padding-bottom: 1.5rem;
   margin-bottom: 3rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
 }
 
 .header-title {
@@ -42,6 +47,41 @@ body {
   align-items: baseline;
   gap: 1rem;
   flex-wrap: wrap;
+}
+
+.auth-section {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.auth-loading {
+  font-size: 0.85rem;
+  color: var(--gray-600);
+}
+
+.auth-logged-in {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.user-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid var(--black);
+  display: none;
+}
+
+.user-name {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.btn-sm {
+  padding: 0.4rem 0.75rem;
+  font-size: 0.7rem;
 }
 
 .header h1 {
@@ -450,6 +490,148 @@ pre {
   font-size: 0.8rem;
   background: var(--gray-100);
   padding: 0.1rem 0.3rem;
+}
+
+.agents-section {
+  background: var(--gray-100);
+  padding: 2rem;
+  margin: -1rem -2rem 4rem -2rem;
+  padding: 2rem;
+}
+
+.agents-intro {
+  margin-bottom: 1.5rem;
+}
+
+.agents-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.agent-card {
+  background: var(--white);
+  border: 2px solid var(--black);
+  padding: 1.25rem;
+}
+
+.agent-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.agent-name {
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+.agent-status {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  padding: 0.2rem 0.5rem;
+  background: var(--gray-200);
+}
+
+.agent-status.active {
+  background: var(--green);
+  color: var(--white);
+}
+
+.agent-status.pending {
+  background: var(--yellow);
+  color: var(--black);
+}
+
+.agent-desc {
+  font-size: 0.9rem;
+  color: var(--gray-600);
+  margin-bottom: 1rem;
+}
+
+.agent-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  margin-bottom: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--gray-200);
+}
+
+.agent-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.detail-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--gray-600);
+}
+
+.detail-value {
+  font-size: 0.8rem;
+}
+
+.agent-actions {
+  display: flex;
+  gap: 0.5rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--gray-200);
+}
+
+.agents-create {
+  background: var(--white);
+  border: 2px solid var(--black);
+  padding: 1.5rem;
+}
+
+.agents-create h3 {
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
+  margin-bottom: 1rem;
+}
+
+.create-form {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.input {
+  font-family: inherit;
+  font-size: 0.9rem;
+  padding: 0.65rem 1rem;
+  border: 2px solid var(--black);
+  background: var(--white);
+  flex: 1;
+  min-width: 150px;
+}
+
+.input:focus {
+  outline: none;
+  background: var(--gray-100);
+}
+
+.no-agents,
+.loading,
+.error {
+  font-size: 0.9rem;
+  color: var(--gray-600);
+  padding: 1rem;
+  text-align: center;
+  background: var(--white);
+  border: 1px solid var(--gray-300);
+}
+
+.error {
+  color: var(--red);
+  border-color: var(--red);
 }
 
 .footer {

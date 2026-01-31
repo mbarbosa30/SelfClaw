@@ -13,6 +13,17 @@
         <h1>OPENCLAW</h1>
         <span class="tag">REPLIT EDITION</span>
       </div>
+      <div id="auth-section" class="auth-section">
+        <div id="auth-loading" class="auth-loading">Loading...</div>
+        <div id="auth-logged-out" class="auth-logged-out" style="display:none;">
+          <a href="/api/login" class="btn btn-outline">SIGN IN</a>
+        </div>
+        <div id="auth-logged-in" class="auth-logged-in" style="display:none;">
+          <img id="user-avatar" class="user-avatar" src="" alt="" />
+          <span id="user-name" class="user-name"></span>
+          <a href="/api/logout" class="btn btn-outline btn-sm">LOGOUT</a>
+        </div>
+      </div>
     </header>
 
     <section class="intro">
@@ -30,6 +41,23 @@
           <li><strong>Run</strong> — Start the gateway to handle AI communications</li>
           <li><strong>Connect</strong> — Message your bot via Telegram/Discord/Slack</li>
         </ol>
+      </div>
+    </section>
+
+    <section id="agents-section" class="agents-section" style="display:none;">
+      <h2>MY AGENTS</h2>
+      <div class="agents-intro">
+        <p>Create and manage your AI agents. Each agent gets an on-chain identity (ERC-721 NFT), dedicated wallet (ERC-6551), and can participate in autonomous x402 micropayments.</p>
+      </div>
+      <div id="agents-list" class="agents-list"></div>
+      <div class="agents-create">
+        <h3>CREATE NEW AGENT</h3>
+        <div class="create-form">
+          <input type="text" id="agent-name" placeholder="Agent name" class="input" />
+          <input type="text" id="agent-description" placeholder="Description (optional)" class="input" />
+          <button id="create-agent" class="btn">CREATE AGENT</button>
+        </div>
+        <div id="agent-output" class="output-box" style="display:none;"></div>
       </div>
     </section>
 

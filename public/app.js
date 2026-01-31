@@ -1,4 +1,7 @@
+let currentUser = null;
+
 document.addEventListener('DOMContentLoaded', () => {
+  loadAuthState();
   loadStatus();
   loadEnvCheck();
   loadConfig();
@@ -14,12 +17,169 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('stop-gateway').addEventListener('click', stopGateway);
   document.getElementById('load-config').addEventListener('click', loadConfig);
   document.getElementById('save-config').addEventListener('click', saveConfig);
+  document.getElementById('create-agent').addEventListener('click', createAgent);
 
   setInterval(() => {
     loadStatus();
     loadWalletStatus();
   }, 15000);
 });
+
+async function loadAuthState() {
+  const loadingEl = document.getElementById('auth-loading');
+  const loggedOutEl = document.getElementById('auth-logged-out');
+  const loggedInEl = document.getElementById('auth-logged-in');
+  const agentsSection = document.getElementById('agents-section');
+
+  try {
+    const res = await fetch('/api/auth/user');
+    if (res.ok) {
+      currentUser = await res.json();
+      loadingEl.style.display = 'none';
+      loggedOutEl.style.display = 'none';
+      loggedInEl.style.display = 'flex';
+      agentsSection.style.display = 'block';
+
+      document.getElementById('user-name').textContent = 
+        currentUser.firstName || currentUser.email || 'User';
+      if (currentUser.profileImageUrl) {
+        document.getElementById('user-avatar').src = currentUser.profileImageUrl;
+        document.getElementById('user-avatar').style.display = 'block';
+      }
+
+      loadAgents();
+    } else {
+      currentUser = null;
+      loadingEl.style.display = 'none';
+      loggedOutEl.style.display = 'block';
+      loggedInEl.style.display = 'none';
+      agentsSection.style.display = 'none';
+    }
+  } catch (error) {
+    console.error('Auth check failed:', error);
+    loadingEl.style.display = 'none';
+    loggedOutEl.style.display = 'block';
+    loggedInEl.style.display = 'none';
+    agentsSection.style.display = 'none';
+  }
+}
+
+async function loadAgents() {
+  const listEl = document.getElementById('agents-list');
+  listEl.innerHTML = '<div class="loading">Loading agents...</div>';
+
+  try {
+    const res = await fetch('/api/agents');
+    if (!res.ok) throw new Error('Failed to load agents');
+    const agents = await res.json();
+
+    if (agents.length === 0) {
+      listEl.innerHTML = '<div class="no-agents">No agents yet. Create your first agent below.</div>';
+      return;
+    }
+
+    listEl.innerHTML = agents.map(agent => `
+      <div class="agent-card">
+        <div class="agent-header">
+          <span class="agent-name">${escapeHtml(agent.name)}</span>
+          <span class="agent-status ${agent.status}">${agent.status.toUpperCase()}</span>
+        </div>
+        ${agent.description ? `<div class="agent-desc">${escapeHtml(agent.description)}</div>` : ''}
+        <div class="agent-details">
+          <div class="agent-detail">
+            <span class="detail-label">ID</span>
+            <code class="detail-value">${agent.id}</code>
+          </div>
+          ${agent.tbaAddress ? `
+            <div class="agent-detail">
+              <span class="detail-label">WALLET (TBA)</span>
+              <code class="detail-value">${agent.tbaAddress}</code>
+            </div>
+          ` : ''}
+          <div class="agent-detail">
+            <span class="detail-label">CREATED</span>
+            <span class="detail-value">${new Date(agent.createdAt).toLocaleDateString()}</span>
+          </div>
+        </div>
+        <div class="agent-actions">
+          <button class="btn btn-sm" onclick="viewRegistration('${agent.id}')">REGISTRATION FILE</button>
+          <button class="btn btn-sm btn-outline" onclick="viewPayments('${agent.id}')">PAYMENTS</button>
+        </div>
+      </div>
+    `).join('');
+  } catch (error) {
+    listEl.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+  }
+}
+
+async function createAgent() {
+  const nameInput = document.getElementById('agent-name');
+  const descInput = document.getElementById('agent-description');
+  const outputEl = document.getElementById('agent-output');
+  
+  const name = nameInput.value.trim();
+  if (!name) {
+    outputEl.style.display = 'block';
+    outputEl.textContent = 'Please enter an agent name.';
+    return;
+  }
+
+  outputEl.style.display = 'block';
+  outputEl.textContent = 'Creating agent...';
+
+  try {
+    const res = await fetch('/api/agents', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name,
+        description: descInput.value.trim() || null
+      })
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Failed to create agent');
+    }
+
+    const agent = await res.json();
+    outputEl.textContent = `Agent "${agent.name}" created successfully!`;
+    nameInput.value = '';
+    descInput.value = '';
+    loadAgents();
+  } catch (error) {
+    outputEl.textContent = 'Error: ' + error.message;
+  }
+}
+
+async function viewRegistration(agentId) {
+  try {
+    const res = await fetch(`/api/agents/${agentId}/registration`);
+    const data = await res.json();
+    alert('ERC-8004 Registration:\n\n' + JSON.stringify(data, null, 2));
+  } catch (error) {
+    alert('Error: ' + error.message);
+  }
+}
+
+async function viewPayments(agentId) {
+  try {
+    const res = await fetch(`/api/agents/${agentId}/payments`);
+    const payments = await res.json();
+    if (payments.length === 0) {
+      alert('No payments recorded for this agent yet.');
+    } else {
+      alert('Agent Payments:\n\n' + JSON.stringify(payments, null, 2));
+    }
+  } catch (error) {
+    alert('Error: ' + error.message);
+  }
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
 
 async function loadStatus() {
   try {
