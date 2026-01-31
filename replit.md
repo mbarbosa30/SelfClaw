@@ -74,6 +74,15 @@ ClawPlit is your command center for OpenClaw agents. This multi-user platform pr
 - `POST /api/profile` - Update user profile (onboarding)
 
 ## Recent Changes
+- **January 31, 2026**: Redesigned dashboard as agent cockpit control center
+  - Replaced agent cards with sidebar navigation + dedicated cockpit view
+  - Added tabbed interface: Console, Config, Skills, Wallet, Data
+  - Built agent setup wizard with 3 steps: Identity, Personality, Review
+  - Console tab: Real-time chat interface with message history
+  - Config tab: Agent settings, system prompt, model selection, API keys
+  - Skills tab: Agent skills management + marketplace preview
+  - Wallet tab: Credits balance, USDC balance, transactions
+  - Data tab: Analytics, activity log, ERC-8004 registration download
 - **January 31, 2026**: Added user profile and personalized onboarding
   - Added profile fields to users table (linkedin, twitter, github, birthdate, timezone, profession, goals, communicationStyle)
   - Created onboarding flow that appears after first login if profile incomplete
