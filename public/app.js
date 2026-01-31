@@ -383,7 +383,43 @@ async function loadConfigTab() {
   document.getElementById('config-system-prompt').value = currentAgent.systemPrompt || '';
   document.getElementById('config-model').value = currentAgent.model || 'gpt-4o';
 
-  await loadSecrets();
+  await Promise.all([loadSecrets(), loadModelsStatus()]);
+}
+
+async function loadModelsStatus() {
+  if (!currentAgent) return;
+
+  const statusEl = document.getElementById('models-status');
+  if (!statusEl) return;
+
+  try {
+    const res = await fetch(`/api/agents/${currentAgent.id}/models`);
+    const data = await res.json();
+
+    const availableCount = data.models.filter(m => m.available).length;
+    const totalCount = data.models.length;
+
+    const providers = {};
+    data.models.forEach(m => {
+      if (!providers[m.provider]) providers[m.provider] = { available: 0, total: 0 };
+      providers[m.provider].total++;
+      if (m.available) providers[m.provider].available++;
+    });
+
+    const providerStatus = Object.entries(providers).map(([name, stats]) => {
+      const isAvailable = stats.available > 0;
+      return `<span class="provider-badge ${isAvailable ? 'available' : 'unavailable'}">${name}: ${stats.available}/${stats.total}</span>`;
+    }).join(' ');
+
+    statusEl.innerHTML = `
+      <div class="models-status-info">
+        <span class="models-count">${availableCount}/${totalCount} models available</span>
+        <div class="provider-badges">${providerStatus}</div>
+      </div>
+    `;
+  } catch (error) {
+    statusEl.innerHTML = '';
+  }
 }
 
 async function loadSecrets() {
@@ -421,10 +457,18 @@ function showAddSecretForm() {
       <div class="form-group">
         <label>Service</label>
         <select id="new-secret-service" class="input">
-          <option value="openai">OpenAI</option>
-          <option value="anthropic">Anthropic</option>
-          <option value="telegram">Telegram Bot</option>
-          <option value="discord">Discord Bot</option>
+          <optgroup label="AI Providers">
+            <option value="openai">OpenAI (GPT-4o, o3)</option>
+            <option value="anthropic">Anthropic (Claude)</option>
+            <option value="moonshot">Moonshot (Kimi K2.5)</option>
+            <option value="minimax">MiniMax</option>
+            <option value="deepseek">DeepSeek (R1)</option>
+            <option value="openrouter">OpenRouter (Llama, Qwen)</option>
+          </optgroup>
+          <optgroup label="Messaging">
+            <option value="telegram">Telegram Bot</option>
+            <option value="discord">Discord Bot</option>
+          </optgroup>
         </select>
       </div>
       <div class="form-group">

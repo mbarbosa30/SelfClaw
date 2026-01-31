@@ -456,6 +456,46 @@ async function main() {
     }
   });
 
+  // Models status endpoint - shows which models are available for an agent
+  app.get("/api/agents/:id/models", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const [agent] = await db.select().from(agents).where(eq(agents.id, req.params.id));
+
+      if (!agent || agent.userId !== userId) {
+        return res.status(404).json({ error: "Agent not found" });
+      }
+
+      // Get agent's configured API keys
+      const secrets = await db.select().from(agentSecrets).where(eq(agentSecrets.agentId, agent.id));
+      const configuredKeys = secrets.map(s => s.serviceName);
+
+      // Define available models based on configured keys
+      const models = [
+        { id: "gpt-4o", name: "GPT-4o", provider: "openai", available: configuredKeys.includes("OPENAI_API_KEY") || !!process.env.OPENAI_API_KEY },
+        { id: "gpt-4o-mini", name: "GPT-4o Mini", provider: "openai", available: configuredKeys.includes("OPENAI_API_KEY") || !!process.env.OPENAI_API_KEY },
+        { id: "gpt-4.1", name: "GPT-4.1", provider: "openai", available: configuredKeys.includes("OPENAI_API_KEY") || !!process.env.OPENAI_API_KEY },
+        { id: "o3", name: "o3", provider: "openai", available: configuredKeys.includes("OPENAI_API_KEY") || !!process.env.OPENAI_API_KEY },
+        { id: "claude-sonnet-4-20250514", name: "Claude Sonnet 4", provider: "anthropic", available: configuredKeys.includes("ANTHROPIC_API_KEY") || !!process.env.ANTHROPIC_API_KEY },
+        { id: "claude-opus-4-20250514", name: "Claude Opus 4", provider: "anthropic", available: configuredKeys.includes("ANTHROPIC_API_KEY") || !!process.env.ANTHROPIC_API_KEY },
+        { id: "kimi-k2.5", name: "Kimi K2.5", provider: "moonshot", available: configuredKeys.includes("MOONSHOT_API_KEY") },
+        { id: "kimi-coding", name: "Kimi Coding", provider: "moonshot", available: configuredKeys.includes("MOONSHOT_API_KEY") },
+        { id: "minimax-01", name: "MiniMax-01", provider: "minimax", available: configuredKeys.includes("MINIMAX_API_KEY") },
+        { id: "llama-4-maverick", name: "Llama 4 Maverick", provider: "openrouter", available: configuredKeys.includes("OPENROUTER_API_KEY") },
+        { id: "deepseek-r1", name: "DeepSeek R1", provider: "deepseek", available: configuredKeys.includes("DEEPSEEK_API_KEY") },
+        { id: "qwen3-235b", name: "Qwen3 235B", provider: "openrouter", available: configuredKeys.includes("OPENROUTER_API_KEY") },
+      ];
+
+      res.json({
+        currentModel: agent.model || "gpt-4o",
+        models,
+        configuredProviders: [...new Set(secrets.map(s => s.serviceName.replace("_API_KEY", "").toLowerCase()))]
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Skills CRUD endpoints
   app.get("/api/agents/:id/skills", isAuthenticated, async (req: any, res: Response) => {
     try {

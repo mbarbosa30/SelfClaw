@@ -201,11 +201,31 @@
                   <div class="form-group">
                     <label>Model</label>
                     <select id="config-model" class="input">
-                      <option value="gpt-4o">GPT-4o (Default)</option>
-                      <option value="gpt-4o-mini">GPT-4o Mini (Faster)</option>
-                      <option value="claude-sonnet-4-20250514">Claude Sonnet 4</option>
+                      <optgroup label="OpenAI">
+                        <option value="gpt-4o">GPT-4o (Default)</option>
+                        <option value="gpt-4o-mini">GPT-4o Mini (Faster)</option>
+                        <option value="gpt-4.1">GPT-4.1</option>
+                        <option value="o3">o3 (Reasoning)</option>
+                      </optgroup>
+                      <optgroup label="Anthropic">
+                        <option value="claude-sonnet-4-20250514">Claude Sonnet 4</option>
+                        <option value="claude-opus-4-20250514">Claude Opus 4</option>
+                      </optgroup>
+                      <optgroup label="Moonshot">
+                        <option value="kimi-k2.5">Kimi K2.5 (New)</option>
+                        <option value="kimi-coding">Kimi Coding</option>
+                      </optgroup>
+                      <optgroup label="MiniMax">
+                        <option value="minimax-01">MiniMax-01</option>
+                      </optgroup>
+                      <optgroup label="Open Source">
+                        <option value="llama-4-maverick">Llama 4 Maverick</option>
+                        <option value="deepseek-r1">DeepSeek R1</option>
+                        <option value="qwen3-235b">Qwen3 235B</option>
+                      </optgroup>
                     </select>
                   </div>
+                  <div id="models-status" class="models-status" style="margin-top: 0.5rem;"></div>
                   <h4>API Keys</h4>
                   <p class="note">Optional: Add your own API keys for custom model access</p>
                   <div id="config-secrets" class="secrets-list"></div>
@@ -349,9 +369,28 @@
                 <div class="form-group">
                   <label>AI Model</label>
                   <select id="wizard-model" class="input">
-                    <option value="gpt-4o">GPT-4o (Recommended)</option>
-                    <option value="gpt-4o-mini">GPT-4o Mini (Faster, Cheaper)</option>
-                    <option value="claude-sonnet-4-20250514">Claude Sonnet 4</option>
+                    <optgroup label="OpenAI">
+                      <option value="gpt-4o">GPT-4o (Recommended)</option>
+                      <option value="gpt-4o-mini">GPT-4o Mini (Faster, Cheaper)</option>
+                      <option value="gpt-4.1">GPT-4.1</option>
+                      <option value="o3">o3 (Reasoning)</option>
+                    </optgroup>
+                    <optgroup label="Anthropic">
+                      <option value="claude-sonnet-4-20250514">Claude Sonnet 4</option>
+                      <option value="claude-opus-4-20250514">Claude Opus 4</option>
+                    </optgroup>
+                    <optgroup label="Moonshot">
+                      <option value="kimi-k2.5">Kimi K2.5 (New)</option>
+                      <option value="kimi-coding">Kimi Coding</option>
+                    </optgroup>
+                    <optgroup label="MiniMax">
+                      <option value="minimax-01">MiniMax-01</option>
+                    </optgroup>
+                    <optgroup label="Open Source">
+                      <option value="llama-4-maverick">Llama 4 Maverick</option>
+                      <option value="deepseek-r1">DeepSeek R1</option>
+                      <option value="qwen3-235b">Qwen3 235B</option>
+                    </optgroup>
                   </select>
                 </div>
                 <div class="wizard-actions">
