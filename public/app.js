@@ -5,31 +5,53 @@ document.addEventListener('DOMContentLoaded', () => {
   loadStatus();
   loadEnvCheck();
   loadConfig();
-  loadWalletStatus();
 
-  document.getElementById('refresh-status').addEventListener('click', () => {
-    loadStatus();
-    loadWalletStatus();
+  document.getElementById('run-setup')?.addEventListener('click', runSetup);
+  document.getElementById('install-openclaw')?.addEventListener('click', installOpenClaw);
+  document.getElementById('start-gateway')?.addEventListener('click', startGateway);
+  document.getElementById('stop-gateway')?.addEventListener('click', stopGateway);
+  document.getElementById('load-config')?.addEventListener('click', loadConfig);
+  document.getElementById('save-config')?.addEventListener('click', saveConfig);
+  document.getElementById('create-agent')?.addEventListener('click', createAgent);
+  document.getElementById('create-agent-btn')?.addEventListener('click', toggleCreateForm);
+  document.getElementById('cancel-create')?.addEventListener('click', toggleCreateForm);
+  document.getElementById('modal-close')?.addEventListener('click', closeModal);
+  document.getElementById('modal')?.addEventListener('click', (e) => {
+    if (e.target.id === 'modal') closeModal();
   });
-  document.getElementById('run-setup').addEventListener('click', runSetup);
-  document.getElementById('install-openclaw').addEventListener('click', installOpenClaw);
-  document.getElementById('start-gateway').addEventListener('click', startGateway);
-  document.getElementById('stop-gateway').addEventListener('click', stopGateway);
-  document.getElementById('load-config').addEventListener('click', loadConfig);
-  document.getElementById('save-config').addEventListener('click', saveConfig);
-  document.getElementById('create-agent').addEventListener('click', createAgent);
 
-  setInterval(() => {
-    loadStatus();
-    loadWalletStatus();
-  }, 15000);
+  setInterval(loadStatus, 30000);
 });
+
+function toggleCreateForm() {
+  const form = document.getElementById('create-form');
+  const btn = document.getElementById('create-agent-btn');
+  if (form.style.display === 'none') {
+    form.style.display = 'block';
+    btn.style.display = 'none';
+    document.getElementById('agent-name').focus();
+  } else {
+    form.style.display = 'none';
+    btn.style.display = 'block';
+  }
+}
+
+function openModal(title, content) {
+  document.getElementById('modal-title').textContent = title;
+  document.getElementById('modal-body').innerHTML = content;
+  document.getElementById('modal').style.display = 'flex';
+}
+
+function closeModal() {
+  document.getElementById('modal').style.display = 'none';
+}
 
 async function loadAuthState() {
   const loadingEl = document.getElementById('auth-loading');
   const loggedOutEl = document.getElementById('auth-logged-out');
   const loggedInEl = document.getElementById('auth-logged-in');
   const agentsSection = document.getElementById('agents-section');
+  const heroSignin = document.getElementById('hero-signin');
 
   try {
     const res = await fetch('/api/auth/user');
@@ -39,6 +61,7 @@ async function loadAuthState() {
       loggedOutEl.style.display = 'none';
       loggedInEl.style.display = 'flex';
       agentsSection.style.display = 'block';
+      if (heroSignin) heroSignin.style.display = 'none';
 
       document.getElementById('user-name').textContent = 
         currentUser.firstName || currentUser.email || 'User';
@@ -74,7 +97,11 @@ async function loadAgents() {
     const agents = await res.json();
 
     if (agents.length === 0) {
-      listEl.innerHTML = '<div class="no-agents">No agents yet. Create your first agent below.</div>';
+      listEl.innerHTML = `
+        <div class="empty-state">
+          <p>No agents yet. Create your first agent to get started.</p>
+        </div>
+      `;
       return;
     }
 
@@ -82,29 +109,25 @@ async function loadAgents() {
       <div class="agent-card">
         <div class="agent-header">
           <span class="agent-name">${escapeHtml(agent.name)}</span>
-          <span class="agent-status ${agent.status}">${agent.status.toUpperCase()}</span>
+          <span class="agent-status ${agent.status}">${agent.status}</span>
         </div>
         ${agent.description ? `<div class="agent-desc">${escapeHtml(agent.description)}</div>` : ''}
-        <div class="agent-details">
-          <div class="agent-detail">
-            <span class="detail-label">CREDITS</span>
-            <span class="detail-value credits-value">${parseFloat(agent.credits || 0).toFixed(2)}</span>
+        <div class="agent-stats">
+          <div class="stat">
+            <span class="stat-value">${parseFloat(agent.credits || 0).toFixed(2)}</span>
+            <span class="stat-label">credits</span>
           </div>
           ${agent.tbaAddress ? `
-            <div class="agent-detail">
-              <span class="detail-label">WALLET</span>
-              <code class="detail-value wallet-address">${agent.tbaAddress.slice(0, 8)}...${agent.tbaAddress.slice(-6)}</code>
+            <div class="stat">
+              <span class="stat-value wallet-addr">${agent.tbaAddress.slice(0, 6)}...${agent.tbaAddress.slice(-4)}</span>
+              <span class="stat-label">wallet</span>
             </div>
           ` : ''}
-          <div class="agent-detail">
-            <span class="detail-label">CREATED</span>
-            <span class="detail-value">${new Date(agent.createdAt).toLocaleDateString()}</span>
-          </div>
         </div>
         <div class="agent-actions">
-          <button class="btn btn-sm" onclick="viewWallet('${agent.id}')">WALLET</button>
-          <button class="btn btn-sm" onclick="testAI('${agent.id}')">TEST AI</button>
-          <button class="btn btn-sm btn-outline" onclick="viewRegistration('${agent.id}')">REG FILE</button>
+          <button class="btn btn-sm" onclick="testAI('${agent.id}')">Chat</button>
+          <button class="btn btn-sm btn-outline" onclick="viewWallet('${agent.id}')">Wallet</button>
+          <button class="btn btn-sm btn-outline" onclick="viewRegistration('${agent.id}')">Identity</button>
         </div>
       </div>
     `).join('');
@@ -144,9 +167,13 @@ async function createAgent() {
     }
 
     const agent = await res.json();
-    outputEl.textContent = `Agent "${agent.name}" created successfully!`;
+    outputEl.textContent = `Agent "${agent.name}" created with 10 free credits!`;
     nameInput.value = '';
     descInput.value = '';
+    setTimeout(() => {
+      toggleCreateForm();
+      outputEl.style.display = 'none';
+    }, 2000);
     loadAgents();
   } catch (error) {
     outputEl.textContent = 'Error: ' + error.message;
@@ -157,23 +184,23 @@ async function viewRegistration(agentId) {
   try {
     const res = await fetch(`/api/agents/${agentId}/registration`);
     const data = await res.json();
-    alert('ERC-8004 Registration:\n\n' + JSON.stringify(data, null, 2));
+    
+    const content = `
+      <div class="modal-info">
+        <p><strong>Name:</strong> ${escapeHtml(data.name)}</p>
+        <p><strong>Wallet:</strong> <code>${data.wallet}</code></p>
+        <p><strong>Network:</strong> ${data.network} (Chain ${data.chainId})</p>
+        <h4>Services</h4>
+        <ul>
+          ${data.services.map(s => `<li><strong>${s.name}:</strong> <code>${s.endpoint}</code></li>`).join('')}
+        </ul>
+        <h4>Raw Registration</h4>
+        <pre>${JSON.stringify(data, null, 2)}</pre>
+      </div>
+    `;
+    openModal('Agent Identity (ERC-8004)', content);
   } catch (error) {
-    alert('Error: ' + error.message);
-  }
-}
-
-async function viewPayments(agentId) {
-  try {
-    const res = await fetch(`/api/agents/${agentId}/payments`);
-    const payments = await res.json();
-    if (payments.length === 0) {
-      alert('No payments recorded for this agent yet.');
-    } else {
-      alert('Agent Payments:\n\n' + JSON.stringify(payments, null, 2));
-    }
-  } catch (error) {
-    alert('Error: ' + error.message);
+    openModal('Error', `<p class="error">${error.message}</p>`);
   }
 }
 
@@ -182,68 +209,125 @@ async function viewWallet(agentId) {
     const res = await fetch(`/api/agents/${agentId}/wallet`);
     const wallet = await res.json();
     
-    let message = `Agent Wallet\n\n`;
-    message += `Credits: ${parseFloat(wallet.credits || 0).toFixed(2)}\n`;
+    let content = `
+      <div class="modal-info">
+        <div class="wallet-balance">
+          <div class="balance-item">
+            <span class="balance-value">${parseFloat(wallet.credits || 0).toFixed(2)}</span>
+            <span class="balance-label">Platform Credits</span>
+          </div>
+        </div>
+    `;
     
     if (wallet.walletEnabled) {
-      message += `\nOn-Chain Wallet:\n`;
-      message += `Address: ${wallet.address}\n`;
-      message += `USDC: ${wallet.usdc}\n`;
-      message += `CELO: ${wallet.celo}\n`;
+      content += `
+        <hr>
+        <h4>On-Chain Wallet</h4>
+        <p><strong>Address:</strong> <code>${wallet.address}</code></p>
+        <div class="wallet-balance">
+          <div class="balance-item">
+            <span class="balance-value">${parseFloat(wallet.usdc || 0).toFixed(4)}</span>
+            <span class="balance-label">USDC</span>
+          </div>
+          <div class="balance-item">
+            <span class="balance-value">${parseFloat(wallet.celo || 0).toFixed(4)}</span>
+            <span class="balance-label">CELO</span>
+          </div>
+        </div>
+        <p class="note">Send USDC on Celo network to fund this wallet.</p>
+      `;
     } else {
-      message += `\nOn-chain wallet not configured. Add CELO_PRIVATE_KEY to enable.`;
+      content += `
+        <hr>
+        <p class="note">On-chain wallet not configured. Platform needs CELO_PRIVATE_KEY in Secrets.</p>
+      `;
     }
     
-    alert(message);
+    content += '</div>';
+    openModal('Agent Wallet', content);
   } catch (error) {
-    alert('Error: ' + error.message);
+    openModal('Error', `<p class="error">${error.message}</p>`);
   }
 }
 
 async function testAI(agentId) {
-  const userMessage = prompt('Enter a message to test your agent:');
-  if (!userMessage) return;
+  const content = `
+    <div class="chat-interface">
+      <div id="chat-messages" class="chat-messages"></div>
+      <div class="chat-input-area">
+        <input type="text" id="chat-input" class="input" placeholder="Type a message..." />
+        <button id="chat-send" class="btn">Send</button>
+      </div>
+    </div>
+  `;
+  openModal('Chat with Agent', content);
   
-  try {
-    const res = await fetch(`/api/agents/${agentId}/ai/chat`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        messages: [{ role: 'user', content: userMessage }]
-      })
-    });
+  const input = document.getElementById('chat-input');
+  const sendBtn = document.getElementById('chat-send');
+  const messages = document.getElementById('chat-messages');
+  
+  async function sendMessage() {
+    const text = input.value.trim();
+    if (!text) return;
     
-    const result = await res.json();
+    messages.innerHTML += `<div class="chat-msg user">${escapeHtml(text)}</div>`;
+    input.value = '';
+    messages.innerHTML += `<div class="chat-msg assistant loading">Thinking...</div>`;
+    messages.scrollTop = messages.scrollHeight;
     
-    if (res.status === 402) {
-      alert(`Insufficient credits!\n\nRequired: ${result.required}\nAvailable: ${result.available}\n\nAdd more credits to continue.`);
-      return;
+    try {
+      const res = await fetch(`/api/agents/${agentId}/ai/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [{ role: 'user', content: text }]
+        })
+      });
+      
+      const result = await res.json();
+      const loadingMsg = messages.querySelector('.loading');
+      if (loadingMsg) loadingMsg.remove();
+      
+      if (res.status === 402) {
+        messages.innerHTML += `<div class="chat-msg error">Insufficient credits. Add more credits to continue.</div>`;
+        return;
+      }
+      
+      if (res.status === 503) {
+        messages.innerHTML += `<div class="chat-msg error">No AI provider configured. Add ANTHROPIC_API_KEY or OPENAI_API_KEY to Secrets.</div>`;
+        return;
+      }
+      
+      if (!res.ok) {
+        messages.innerHTML += `<div class="chat-msg error">${result.error || 'Unknown error'}</div>`;
+        return;
+      }
+      
+      let responseText = '';
+      if (result.response?.content?.[0]?.text) {
+        responseText = result.response.content[0].text;
+      } else if (result.response?.choices?.[0]?.message?.content) {
+        responseText = result.response.choices[0].message.content;
+      } else {
+        responseText = JSON.stringify(result.response);
+      }
+      
+      messages.innerHTML += `<div class="chat-msg assistant">${escapeHtml(responseText)}</div>`;
+      messages.innerHTML += `<div class="chat-cost">-${result.creditsUsed} credits (${result.creditsRemaining} remaining)</div>`;
+      messages.scrollTop = messages.scrollHeight;
+      loadAgents();
+    } catch (error) {
+      const loadingMsg = messages.querySelector('.loading');
+      if (loadingMsg) loadingMsg.remove();
+      messages.innerHTML += `<div class="chat-msg error">${error.message}</div>`;
     }
-    
-    if (res.status === 503) {
-      alert('No AI provider configured. Add ANTHROPIC_API_KEY or OPENAI_API_KEY to Secrets.');
-      return;
-    }
-    
-    if (!res.ok) {
-      alert('Error: ' + (result.error || 'Unknown error'));
-      return;
-    }
-    
-    let responseText = '';
-    if (result.response?.content?.[0]?.text) {
-      responseText = result.response.content[0].text;
-    } else if (result.response?.choices?.[0]?.message?.content) {
-      responseText = result.response.choices[0].message.content;
-    } else {
-      responseText = JSON.stringify(result.response, null, 2);
-    }
-    
-    alert(`AI Response:\n\n${responseText}\n\n---\nCredits used: ${result.creditsUsed}\nCredits remaining: ${result.creditsRemaining}`);
-    loadAgents();
-  } catch (error) {
-    alert('Error: ' + error.message);
   }
+  
+  sendBtn.addEventListener('click', sendMessage);
+  input.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') sendMessage();
+  });
+  input.focus();
 }
 
 function escapeHtml(str) {
@@ -257,34 +341,27 @@ async function loadStatus() {
     const status = await res.json();
     
     const nodeEl = document.getElementById('node-version');
-    nodeEl.textContent = status.nodeVersion;
-    nodeEl.className = 'status-value ok';
+    if (nodeEl) {
+      nodeEl.textContent = status.nodeVersion;
+      nodeEl.className = 'status-value ok';
+    }
     
     const openclawEl = document.getElementById('openclaw-version');
-    if (status.openclawInstalled) {
-      openclawEl.textContent = status.openclawVersion;
-      openclawEl.className = 'status-value ok';
-    } else {
-      openclawEl.textContent = 'NOT INSTALLED';
-      openclawEl.className = 'status-value warn';
+    if (openclawEl) {
+      openclawEl.textContent = status.openclawInstalled ? status.openclawVersion : 'Not installed';
+      openclawEl.className = 'status-value ' + (status.openclawInstalled ? 'ok' : 'warn');
     }
     
     const configEl = document.getElementById('config-status');
-    if (status.configExists) {
-      configEl.textContent = 'READY';
-      configEl.className = 'status-value ok';
-    } else {
-      configEl.textContent = 'NOT FOUND';
-      configEl.className = 'status-value warn';
+    if (configEl) {
+      configEl.textContent = status.configExists ? 'Ready' : 'Not found';
+      configEl.className = 'status-value ' + (status.configExists ? 'ok' : 'warn');
     }
     
     const gatewayEl = document.getElementById('gateway-status');
-    if (status.gatewayRunning) {
-      gatewayEl.textContent = 'RUNNING';
-      gatewayEl.className = 'status-value ok';
-    } else {
-      gatewayEl.textContent = 'STOPPED';
-      gatewayEl.className = 'status-value err';
+    if (gatewayEl) {
+      gatewayEl.textContent = status.gatewayRunning ? 'Running' : 'Stopped';
+      gatewayEl.className = 'status-value ' + (status.gatewayRunning ? 'ok' : 'err');
     }
   } catch (error) {
     console.error('Failed to load status:', error);
@@ -298,8 +375,6 @@ async function loadEnvCheck() {
     
     setEnvBadge('env-anthropic', envVars.ANTHROPIC_API_KEY);
     setEnvBadge('env-openai', envVars.OPENAI_API_KEY);
-    setEnvBadge('env-telegram', envVars.TELEGRAM_BOT_TOKEN);
-    setEnvBadge('env-discord', envVars.DISCORD_BOT_TOKEN);
     setEnvBadge('env-celo', envVars.CELO_PRIVATE_KEY);
   } catch (error) {
     console.error('Failed to check env vars:', error);
@@ -308,32 +383,34 @@ async function loadEnvCheck() {
 
 function setEnvBadge(id, isSet) {
   const el = document.getElementById(id);
-  if (isSet) {
-    el.textContent = 'SET';
-    el.className = 'env-badge set';
-  } else {
-    el.textContent = 'NOT SET';
-    el.className = 'env-badge not-set';
-  }
+  if (!el) return;
+  el.textContent = isSet ? 'SET' : 'NOT SET';
+  el.className = 'env-badge ' + (isSet ? 'set' : 'not-set');
 }
 
 async function loadConfig() {
   try {
     const res = await fetch('/api/config');
+    const editor = document.getElementById('config-editor');
+    if (!editor) return;
+    
     if (res.ok) {
       const config = await res.json();
-      document.getElementById('config-editor').value = JSON.stringify(config, null, 2);
+      editor.value = JSON.stringify(config, null, 2);
     } else {
-      document.getElementById('config-editor').value = '// Config not found. Run setup first.';
+      editor.value = '// Config not found. Run setup first.';
     }
   } catch (error) {
-    document.getElementById('config-editor').value = '// Error: ' + error.message;
+    const editor = document.getElementById('config-editor');
+    if (editor) editor.value = '// Error: ' + error.message;
   }
 }
 
 async function saveConfig() {
   const editor = document.getElementById('config-editor');
   const output = document.getElementById('output-box');
+  if (!editor || !output) return;
+  
   try {
     const config = JSON.parse(editor.value);
     const res = await fetch('/api/config', {
@@ -350,13 +427,14 @@ async function saveConfig() {
 
 async function runSetup() {
   const output = document.getElementById('output-box');
+  if (!output) return;
   output.textContent = 'Running setup...';
   
   try {
     const res = await fetch('/api/setup', { method: 'POST' });
     const result = await res.json();
     output.textContent = result.success 
-      ? 'Setup complete. Directories and config created.'
+      ? 'Setup complete.'
       : 'Error: ' + result.error;
     loadStatus();
     loadConfig();
@@ -367,14 +445,15 @@ async function runSetup() {
 
 async function installOpenClaw() {
   const output = document.getElementById('output-box');
-  output.textContent = 'Installing OpenClaw... This may take a few minutes.';
+  if (!output) return;
+  output.textContent = 'Installing OpenClaw...';
   
   try {
     const res = await fetch('/api/install-openclaw', { method: 'POST' });
     const result = await res.json();
     output.textContent = result.success 
-      ? 'OpenClaw installed successfully.\n\n' + (result.output || '')
-      : 'Error: ' + result.error + '\n' + (result.output || '');
+      ? 'OpenClaw installed.'
+      : 'Error: ' + result.error;
     loadStatus();
   } catch (error) {
     output.textContent = 'Error: ' + error.message;
@@ -383,13 +462,14 @@ async function installOpenClaw() {
 
 async function startGateway() {
   const output = document.getElementById('output-box');
-  output.textContent = 'Starting gateway on port 18789...';
+  if (!output) return;
+  output.textContent = 'Starting gateway...';
   
   try {
     const res = await fetch('/api/gateway/start', { method: 'POST' });
     const result = await res.json();
     output.textContent = result.success 
-      ? 'Gateway started. PID: ' + result.pid
+      ? 'Gateway started.'
       : result.message || 'Failed to start gateway';
     loadStatus();
   } catch (error) {
@@ -399,6 +479,7 @@ async function startGateway() {
 
 async function stopGateway() {
   const output = document.getElementById('output-box');
+  if (!output) return;
   output.textContent = 'Stopping gateway...';
   
   try {
@@ -408,46 +489,5 @@ async function stopGateway() {
     loadStatus();
   } catch (error) {
     output.textContent = 'Error: ' + error.message;
-  }
-}
-
-async function loadWalletStatus() {
-  try {
-    const [statusRes, balanceRes] = await Promise.all([
-      fetch('/api/payments/status'),
-      fetch('/api/payments/balance')
-    ]);
-    
-    const status = await statusRes.json();
-    const balance = await balanceRes.json();
-    
-    const statusEl = document.getElementById('wallet-status');
-    const usdcEl = document.getElementById('wallet-usdc');
-    const celoEl = document.getElementById('wallet-celo');
-    const addressEl = document.getElementById('wallet-address');
-    
-    if (status.initialized) {
-      statusEl.textContent = 'CONNECTED';
-      statusEl.className = 'wallet-value ok';
-      addressEl.textContent = status.address;
-      
-      if (balance.usdc !== undefined) {
-        usdcEl.textContent = parseFloat(balance.usdc).toFixed(4) + ' USDC';
-        usdcEl.className = 'wallet-value' + (parseFloat(balance.usdc) > 0 ? ' ok' : '');
-      }
-      
-      if (balance.celo !== undefined) {
-        celoEl.textContent = parseFloat(balance.celo).toFixed(4) + ' CELO';
-        celoEl.className = 'wallet-value' + (parseFloat(balance.celo) > 0 ? ' ok' : '');
-      }
-    } else {
-      statusEl.textContent = 'NOT CONFIGURED';
-      statusEl.className = 'wallet-value warn';
-      usdcEl.textContent = '—';
-      celoEl.textContent = '—';
-      addressEl.textContent = 'Add CELO_PRIVATE_KEY to Secrets';
-    }
-  } catch (error) {
-    console.error('Failed to load wallet status:', error);
   }
 }
