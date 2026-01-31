@@ -52,8 +52,17 @@ function getSystemStatus() {
 }
 
 async function main() {
-  await setupAuth(app);
-  registerAuthRoutes(app);
+  try {
+    await setupAuth(app);
+    registerAuthRoutes(app);
+    console.log("[auth] Authentication routes registered successfully");
+  } catch (error) {
+    console.error("[auth] Failed to setup authentication:", error);
+    // Add fallback login route that shows an error message
+    app.get("/api/login", (req, res) => {
+      res.status(503).json({ error: "Authentication not available. Please try again later." });
+    });
+  }
 
   app.get("/api/status", (req: Request, res: Response) => {
     res.json(getSystemStatus());
