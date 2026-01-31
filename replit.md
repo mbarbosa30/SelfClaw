@@ -1,7 +1,7 @@
-# OpenClaw Experimentation Platform
+# ClawPlit — Agentic Cockpit
 
 ## Overview
-This is a multi-user experimentation platform for OpenClaw, an open-source personal AI assistant framework. It provides a web-based control panel for managing OpenClaw installation, configuration, and gateway operations on Replit. Features include ERC-8004 Trustless Agents support, user authentication via Replit Auth, per-user agent management with PostgreSQL persistence, and x402 + Celo integration for onchain micropayments between AI agents.
+ClawPlit is your command center for OpenClaw agents. This multi-user platform provides a web-based cockpit for managing OpenClaw installation, configuration, and gateway operations on Replit. Features include ERC-8004 Trustless Agents support, user authentication via Replit Auth, per-user agent management with PostgreSQL persistence, and x402 + Celo integration for onchain micropayments between AI agents.
 
 ## Project Architecture
 

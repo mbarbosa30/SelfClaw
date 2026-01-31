@@ -943,7 +943,7 @@ async function main() {
   app.listen(PORT, "0.0.0.0", async () => {
     console.log(`
 ╔════════════════════════════════════════════════════════════╗
-║     OpenClaw Control Panel running on port ${PORT}           ║
+║       ClawPlit Agentic Cockpit on port ${PORT}               ║
 ╚════════════════════════════════════════════════════════════╝
 `);
     console.log(`Access the control panel at: http://0.0.0.0:${PORT}`);
