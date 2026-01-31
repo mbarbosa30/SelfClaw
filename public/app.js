@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('load-config').addEventListener('click', loadConfig);
   document.getElementById('save-config').addEventListener('click', saveConfig);
 
-  setInterval(loadStatus, 10000);
+  setInterval(loadStatus, 15000);
 });
 
 async function loadStatus() {
@@ -19,34 +19,35 @@ async function loadStatus() {
     const res = await fetch('/api/status');
     const status = await res.json();
     
-    document.getElementById('node-version').textContent = status.nodeVersion;
-    document.getElementById('node-version').className = 'value success';
+    const nodeEl = document.getElementById('node-version');
+    nodeEl.textContent = status.nodeVersion;
+    nodeEl.className = 'status-value ok';
     
     const openclawEl = document.getElementById('openclaw-version');
     if (status.openclawInstalled) {
       openclawEl.textContent = status.openclawVersion;
-      openclawEl.className = 'value success';
+      openclawEl.className = 'status-value ok';
     } else {
-      openclawEl.textContent = 'Not installed';
-      openclawEl.className = 'value warning';
+      openclawEl.textContent = 'NOT INSTALLED';
+      openclawEl.className = 'status-value warn';
     }
     
     const configEl = document.getElementById('config-status');
     if (status.configExists) {
-      configEl.textContent = 'Found';
-      configEl.className = 'value success';
+      configEl.textContent = 'READY';
+      configEl.className = 'status-value ok';
     } else {
-      configEl.textContent = 'Not found';
-      configEl.className = 'value warning';
+      configEl.textContent = 'NOT FOUND';
+      configEl.className = 'status-value warn';
     }
     
     const gatewayEl = document.getElementById('gateway-status');
     if (status.gatewayRunning) {
-      gatewayEl.textContent = 'Running';
-      gatewayEl.className = 'value success';
+      gatewayEl.textContent = 'RUNNING';
+      gatewayEl.className = 'status-value ok';
     } else {
-      gatewayEl.textContent = 'Stopped';
-      gatewayEl.className = 'value danger';
+      gatewayEl.textContent = 'STOPPED';
+      gatewayEl.className = 'status-value err';
     }
   } catch (error) {
     console.error('Failed to load status:', error);
@@ -58,24 +59,23 @@ async function loadEnvCheck() {
     const res = await fetch('/api/env-check');
     const envVars = await res.json();
     
-    updateEnvStatus('env-anthropic', envVars.ANTHROPIC_API_KEY);
-    updateEnvStatus('env-openai', envVars.OPENAI_API_KEY);
-    updateEnvStatus('env-telegram', envVars.TELEGRAM_BOT_TOKEN);
-    updateEnvStatus('env-discord', envVars.DISCORD_BOT_TOKEN);
-    updateEnvStatus('env-slack', envVars.SLACK_BOT_TOKEN);
+    setEnvBadge('env-anthropic', envVars.ANTHROPIC_API_KEY);
+    setEnvBadge('env-openai', envVars.OPENAI_API_KEY);
+    setEnvBadge('env-telegram', envVars.TELEGRAM_BOT_TOKEN);
+    setEnvBadge('env-discord', envVars.DISCORD_BOT_TOKEN);
   } catch (error) {
     console.error('Failed to check env vars:', error);
   }
 }
 
-function updateEnvStatus(elementId, isSet) {
-  const el = document.getElementById(elementId);
+function setEnvBadge(id, isSet) {
+  const el = document.getElementById(id);
   if (isSet) {
-    el.textContent = 'Set';
-    el.className = 'env-status set';
+    el.textContent = 'SET';
+    el.className = 'env-badge set';
   } else {
-    el.textContent = 'Not set';
-    el.className = 'env-status not-set';
+    el.textContent = 'NOT SET';
+    el.className = 'env-badge not-set';
   }
 }
 
@@ -86,15 +86,16 @@ async function loadConfig() {
       const config = await res.json();
       document.getElementById('config-editor').value = JSON.stringify(config, null, 2);
     } else {
-      document.getElementById('config-editor').value = '// Configuration not found. Run setup first.';
+      document.getElementById('config-editor').value = '// Config not found. Run setup first.';
     }
   } catch (error) {
-    document.getElementById('config-editor').value = '// Error loading configuration: ' + error.message;
+    document.getElementById('config-editor').value = '// Error: ' + error.message;
   }
 }
 
 async function saveConfig() {
   const editor = document.getElementById('config-editor');
+  const output = document.getElementById('output-box');
   try {
     const config = JSON.parse(editor.value);
     const res = await fetch('/api/config', {
@@ -103,81 +104,71 @@ async function saveConfig() {
       body: JSON.stringify(config)
     });
     const result = await res.json();
-    if (result.success) {
-      alert('Configuration saved successfully!');
-    } else {
-      alert('Failed to save: ' + result.error);
-    }
+    output.textContent = result.success ? 'Configuration saved.' : 'Error: ' + result.error;
   } catch (error) {
-    alert('Invalid JSON: ' + error.message);
+    output.textContent = 'Invalid JSON: ' + error.message;
   }
 }
 
 async function runSetup() {
-  const outputBox = document.getElementById('setup-output');
-  outputBox.textContent = 'Running setup...';
+  const output = document.getElementById('output-box');
+  output.textContent = 'Running setup...';
   
   try {
     const res = await fetch('/api/setup', { method: 'POST' });
     const result = await res.json();
-    if (result.success) {
-      outputBox.textContent = 'Setup completed successfully!';
-      loadStatus();
-      loadConfig();
-    } else {
-      outputBox.textContent = 'Setup failed: ' + result.error;
-    }
+    output.textContent = result.success 
+      ? 'Setup complete. Directories and config created.'
+      : 'Error: ' + result.error;
+    loadStatus();
+    loadConfig();
   } catch (error) {
-    outputBox.textContent = 'Error: ' + error.message;
+    output.textContent = 'Error: ' + error.message;
   }
 }
 
 async function installOpenClaw() {
-  const outputBox = document.getElementById('setup-output');
-  outputBox.textContent = 'Installing OpenClaw... This may take a few minutes.';
+  const output = document.getElementById('output-box');
+  output.textContent = 'Installing OpenClaw... This may take a few minutes.';
   
   try {
     const res = await fetch('/api/install-openclaw', { method: 'POST' });
     const result = await res.json();
-    if (result.success) {
-      outputBox.textContent = 'OpenClaw installed successfully!\n\n' + (result.output || '');
-      loadStatus();
-    } else {
-      outputBox.textContent = 'Installation failed: ' + result.error + '\n\n' + (result.output || '');
-    }
+    output.textContent = result.success 
+      ? 'OpenClaw installed successfully.\n\n' + (result.output || '')
+      : 'Error: ' + result.error + '\n' + (result.output || '');
+    loadStatus();
   } catch (error) {
-    outputBox.textContent = 'Error: ' + error.message;
+    output.textContent = 'Error: ' + error.message;
   }
 }
 
 async function startGateway() {
-  const outputBox = document.getElementById('gateway-output');
-  outputBox.textContent = 'Starting gateway on port 18789...';
+  const output = document.getElementById('output-box');
+  output.textContent = 'Starting gateway on port 18789...';
   
   try {
     const res = await fetch('/api/gateway/start', { method: 'POST' });
     const result = await res.json();
-    if (result.success) {
-      outputBox.textContent = 'Gateway started! PID: ' + result.pid + '\nListening on port 18789';
-    } else {
-      outputBox.textContent = result.message || 'Failed to start gateway';
-    }
+    output.textContent = result.success 
+      ? 'Gateway started. PID: ' + result.pid
+      : result.message || 'Failed to start gateway';
     loadStatus();
   } catch (error) {
-    outputBox.textContent = 'Error: ' + error.message;
+    output.textContent = 'Error: ' + error.message;
   }
 }
 
 async function stopGateway() {
-  const outputBox = document.getElementById('gateway-output');
-  outputBox.textContent = 'Stopping gateway...';
+  const output = document.getElementById('output-box');
+  output.textContent = 'Stopping gateway...';
   
   try {
     const res = await fetch('/api/gateway/stop', { method: 'POST' });
     const result = await res.json();
-    outputBox.textContent = result.message || 'Gateway stopped';
+    output.textContent = result.message || 'Gateway stopped.';
     loadStatus();
   } catch (error) {
-    outputBox.textContent = 'Error: ' + error.message;
+    output.textContent = 'Error: ' + error.message;
   }
 }
