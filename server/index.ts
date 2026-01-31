@@ -12,6 +12,7 @@ import { createCeloWallet, getWalletBalance, CELO_CONFIG } from "../lib/wallet.j
 import { deriveAgentWalletAddress, getAgentWalletBalance, PLATFORM_FEE_PERCENT, createAgentWallet } from "../lib/agent-wallet.js";
 import { createAgentX402Client } from "../lib/agent-x402-client.js";
 import { createAgentPaymentMiddleware, getAgentReceivedPayments, getAgentTotalReceived } from "../lib/agent-x402-middleware.js";
+import { seedMarketplace } from "./seed-marketplace.js";
 
 const app = express();
 const PORT = 5000;
@@ -939,7 +940,7 @@ async function main() {
     });
   });
 
-  app.listen(PORT, "0.0.0.0", () => {
+  app.listen(PORT, "0.0.0.0", async () => {
     console.log(`
 ╔════════════════════════════════════════════════════════════╗
 ║     OpenClaw Control Panel running on port ${PORT}           ║
@@ -948,6 +949,8 @@ async function main() {
     console.log(`Access the control panel at: http://0.0.0.0:${PORT}`);
     console.log("System Status:", getSystemStatus());
     initializeWallet();
+    
+    await seedMarketplace();
   });
 }
 
