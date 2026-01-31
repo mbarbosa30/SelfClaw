@@ -256,7 +256,8 @@ async function main() {
         description: agent.description || "",
         services: [
           { name: "web", endpoint: `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co/agents/${agent.id}` },
-          { name: "x402", endpoint: `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co/api/agents/${agent.id}/pay` },
+          { name: "x402", endpoint: `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co/api/agents/${agent.id}/x402/pay` },
+          { name: "service", endpoint: `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co/api/agents/${agent.id}/service` },
         ],
         wallet: agent.tbaAddress || agent.ownerAddress,
         network: "celo",

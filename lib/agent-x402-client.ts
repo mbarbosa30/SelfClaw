@@ -1,5 +1,4 @@
-import { createAgentWallet, PLATFORM_FEE_PERCENT, calculatePlatformFee } from './agent-wallet.js';
-import { formatUnits, parseUnits } from 'viem';
+import { createAgentWallet } from './agent-wallet.js';
 
 export interface PaymentDetails {
   amount: string;

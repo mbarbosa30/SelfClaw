@@ -183,6 +183,14 @@ export function createAgentPaymentMiddleware(options: {
           });
         }
 
+        const paymentAge = Date.now() - parseInt(paymentTimestamp);
+        if (paymentAge > CHALLENGE_EXPIRY_MS || paymentAge < -30000) {
+          return res.status(402).json({
+            error: 'Invalid payment',
+            message: 'Payment expired or invalid timestamp'
+          });
+        }
+
         const expectedMessage = `x402:${paymentNonce}:${paymentAmount}:${challenge.recipient}:${paymentTimestamp}`;
         const isValid = await verifyPaymentSignature(expectedMessage, paymentSignature, paymentPayer);
 

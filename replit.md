@@ -54,8 +54,17 @@ This is a multi-user experimentation platform for OpenClaw, an open-source perso
 - `GET /api/platform/pricing` - Platform pricing tiers
 - `GET /api/payments/status` - Global wallet status
 - `GET /api/payments/balance` - Global wallet balance
+- `POST /api/agents/:id/x402/pay` - Make x402 payment from agent wallet
+- `GET /api/agents/:id/x402/received` - View payments received by agent
+- `POST /api/agents/:id/service` - Paid service endpoint (x402 demo)
 
 ## Recent Changes
+- **January 31, 2026**: Implemented x402 payment integration for agent wallets
+  - Created AgentX402Client for outbound payments using derived wallets
+  - Created agent payment middleware with 3% platform fee collection
+  - Added x402 pay endpoint for agents to make payments
+  - Added received payments endpoint to track agent earnings
+  - Added demo service endpoint with x402 payment gate
 - **January 31, 2026**: Added agent wallet and credits functionality
   - Added wallet balance endpoint for per-agent derived wallets
   - Created AI chat proxy endpoint with credit deduction
