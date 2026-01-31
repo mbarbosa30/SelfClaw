@@ -31,10 +31,13 @@ This is a multi-user experimentation platform for OpenClaw, an open-source perso
 - `users` - User accounts (from Replit Auth)
 - `agents` - AI agents owned by users (name, description, status, wallet addresses)
 - `agent_configs` - Agent-specific OpenClaw configurations
+- `agent_secrets` - Per-agent API keys (OpenAI, Anthropic, Telegram, Discord, etc.)
 - `payments` - x402 payment records per agent
 - `reputations` - Agent reputation scores
 - `validations` - Agent validation records
 - `sessions` - Express session storage
+- `conversations` - Chat conversation history (Replit AI integration)
+- `messages` - Chat messages (Replit AI integration)
 
 ### OpenClaw Paths
 - `~/.openclaw/openclaw.json` - Main configuration
@@ -57,8 +60,18 @@ This is a multi-user experimentation platform for OpenClaw, an open-source perso
 - `POST /api/agents/:id/x402/pay` - Make x402 payment from agent wallet
 - `GET /api/agents/:id/x402/received` - View payments received by agent
 - `POST /api/agents/:id/service` - Paid service endpoint (x402 demo)
+- `GET /api/agents/:id/secrets` - List agent's API key configurations
+- `POST /api/agents/:id/secrets` - Add/update agent API key
+- `DELETE /api/agents/:id/secrets/:serviceName` - Remove agent API key
 
 ## Recent Changes
+- **January 31, 2026**: Added Replit AI integration and per-agent API key management
+  - Integrated Replit AI (OpenAI) for built-in AI access without user API keys
+  - Created agent_secrets table for per-agent custom API keys (OpenAI, Anthropic, Telegram, Discord)
+  - Implemented three-tier AI request priority: agent's custom key → Replit integration → platform fallback
+  - Added API endpoints for managing agent secrets (GET, POST, DELETE)
+  - Added "API Keys" button to agent cards with modal UI for managing keys
+  - Users can now bring their own API keys per-agent for cost control
 - **January 31, 2026**: Balanced content to highlight both experimentation and economy
   - Hero leads with "Your Personal AI, Your Way" - emphasizes sandbox experimentation first
   - Added "Why OpenClaw" section: personal AI, skills, privacy, sandbox isolation

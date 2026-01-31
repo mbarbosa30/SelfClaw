@@ -5,8 +5,9 @@ import { homedir } from "os";
 import { execSync, spawn } from "child_process";
 import { setupAuth, isAuthenticated, registerAuthRoutes } from "./replit_integrations/auth/index.js";
 import { db } from "./db.js";
-import { agents, payments, users, type InsertAgent, type InsertPayment } from "../shared/schema.js";
-import { eq, desc, sql } from "drizzle-orm";
+import { agents, payments, users, agentSecrets, type InsertAgent, type InsertPayment, type InsertAgentSecret } from "../shared/schema.js";
+import OpenAI from "openai";
+import { eq, desc, sql, and } from "drizzle-orm";
 import { createCeloWallet, getWalletBalance, CELO_CONFIG } from "../lib/wallet.js";
 import { deriveAgentWalletAddress, getAgentWalletBalance, PLATFORM_FEE_PERCENT, createAgentWallet } from "../lib/agent-wallet.js";
 import { createAgentX402Client } from "../lib/agent-x402-client.js";
@@ -331,6 +332,80 @@ async function main() {
     }
   });
 
+  app.get("/api/agents/:id/secrets", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const [agent] = await db.select().from(agents).where(eq(agents.id, req.params.id));
+
+      if (!agent || agent.userId !== userId) {
+        return res.status(404).json({ error: "Agent not found" });
+      }
+
+      const secrets = await db.select({
+        id: agentSecrets.id,
+        serviceName: agentSecrets.serviceName,
+        hasKey: sql<boolean>`true`,
+        isActive: agentSecrets.isActive,
+        createdAt: agentSecrets.createdAt
+      }).from(agentSecrets).where(eq(agentSecrets.agentId, agent.id));
+
+      res.json(secrets);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/agents/:id/secrets", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { serviceName, apiKey, baseUrl } = req.body;
+      const [agent] = await db.select().from(agents).where(eq(agents.id, req.params.id));
+
+      if (!agent || agent.userId !== userId) {
+        return res.status(404).json({ error: "Agent not found" });
+      }
+
+      const existing = await db.select().from(agentSecrets)
+        .where(and(eq(agentSecrets.agentId, agent.id), eq(agentSecrets.serviceName, serviceName)));
+
+      if (existing.length > 0) {
+        await db.update(agentSecrets)
+          .set({ apiKey, baseUrl, isActive: true, updatedAt: new Date() })
+          .where(eq(agentSecrets.id, existing[0].id));
+        return res.json({ success: true, updated: true });
+      }
+
+      await db.insert(agentSecrets).values({
+        agentId: agent.id,
+        serviceName,
+        apiKey,
+        baseUrl
+      });
+
+      res.json({ success: true, created: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/agents/:id/secrets/:serviceName", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const [agent] = await db.select().from(agents).where(eq(agents.id, req.params.id));
+
+      if (!agent || agent.userId !== userId) {
+        return res.status(404).json({ error: "Agent not found" });
+      }
+
+      await db.delete(agentSecrets)
+        .where(and(eq(agentSecrets.agentId, agent.id), eq(agentSecrets.serviceName, req.params.serviceName)));
+
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.post("/api/agents/:id/ai/chat", isAuthenticated, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
@@ -352,10 +427,65 @@ async function main() {
         });
       }
 
-      const selectedModel = model || "claude-sonnet-4-20250514";
       let response;
+      let provider = "unknown";
 
-      if (process.env.ANTHROPIC_API_KEY && selectedModel.includes("claude")) {
+      const agentOpenAISecret = await db.select().from(agentSecrets)
+        .where(and(eq(agentSecrets.agentId, agent.id), eq(agentSecrets.serviceName, "openai"), eq(agentSecrets.isActive, true)));
+
+      const agentAnthropicSecret = await db.select().from(agentSecrets)
+        .where(and(eq(agentSecrets.agentId, agent.id), eq(agentSecrets.serviceName, "anthropic"), eq(agentSecrets.isActive, true)));
+
+      const selectedModel = model || "gpt-4o";
+      const isClaude = selectedModel.includes("claude");
+
+      if (isClaude && agentAnthropicSecret.length > 0) {
+        const anthropicResponse = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-api-key": agentAnthropicSecret[0].apiKey,
+            "anthropic-version": "2023-06-01"
+          },
+          body: JSON.stringify({
+            model: selectedModel,
+            max_tokens: 1024,
+            messages
+          })
+        });
+        response = await anthropicResponse.json();
+        provider = "agent-anthropic";
+      } else if (!isClaude && agentOpenAISecret.length > 0) {
+        const openai = new OpenAI({
+          apiKey: agentOpenAISecret[0].apiKey,
+          baseURL: agentOpenAISecret[0].baseUrl || undefined
+        });
+        const completion = await openai.chat.completions.create({
+          model: selectedModel,
+          messages
+        });
+        response = completion;
+        provider = "agent-openai";
+      } else if (process.env.AI_INTEGRATIONS_OPENAI_API_KEY) {
+        const openai = new OpenAI({
+          apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+          baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL
+        });
+        const completion = await openai.chat.completions.create({
+          model: selectedModel.includes("claude") ? "gpt-4o" : selectedModel,
+          messages
+        });
+        response = completion;
+        provider = "replit-integration";
+      } else if (process.env.OPENAI_API_KEY) {
+        const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+        const completion = await openai.chat.completions.create({
+          model: selectedModel.includes("claude") ? "gpt-4o" : selectedModel,
+          messages
+        });
+        response = completion;
+        provider = "platform-openai";
+      } else if (process.env.ANTHROPIC_API_KEY && selectedModel.includes("claude")) {
         const anthropicResponse = await fetch("https://api.anthropic.com/v1/messages", {
           method: "POST",
           headers: {
@@ -366,25 +496,13 @@ async function main() {
           body: JSON.stringify({
             model: selectedModel,
             max_tokens: 1024,
-            messages: messages
+            messages
           })
         });
         response = await anthropicResponse.json();
-      } else if (process.env.OPENAI_API_KEY) {
-        const openaiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`
-          },
-          body: JSON.stringify({
-            model: "gpt-4o",
-            messages: messages
-          })
-        });
-        response = await openaiResponse.json();
+        provider = "platform-anthropic";
       } else {
-        return res.status(503).json({ error: "No AI provider configured" });
+        return res.status(503).json({ error: "No AI provider configured. Add your API key or use platform credits." });
       }
 
       const newCredits = (currentCredits - costPerRequest).toFixed(6);
@@ -405,6 +523,7 @@ async function main() {
 
       res.json({
         response,
+        provider,
         creditsUsed: costPerRequest,
         creditsRemaining: newCredits
       });

@@ -125,6 +125,7 @@ async function loadAgents() {
         <div class="agent-actions">
           <button class="btn btn-sm" onclick="testAI('${agent.id}')">Chat</button>
           <button class="btn btn-sm btn-outline" onclick="viewWallet('${agent.id}')">Wallet</button>
+          <button class="btn btn-sm btn-outline" onclick="manageSecrets('${agent.id}')">API Keys</button>
           <button class="btn btn-sm btn-outline" onclick="viewRegistration('${agent.id}')">Identity</button>
         </div>
       </div>
@@ -243,6 +244,123 @@ async function viewWallet(agentId) {
     
     content += '</div>';
     openModal('Agent Wallet', content);
+  } catch (error) {
+    openModal('Error', `<p class="error">${error.message}</p>`);
+  }
+}
+
+async function manageSecrets(agentId) {
+  try {
+    const res = await fetch(`/api/agents/${agentId}/secrets`);
+    const secrets = await res.json();
+    
+    const services = [
+      { name: 'openai', label: 'OpenAI', hint: 'sk-...' },
+      { name: 'anthropic', label: 'Anthropic', hint: 'sk-ant-...' },
+      { name: 'telegram', label: 'Telegram Bot', hint: 'Bot token from @BotFather' },
+      { name: 'discord', label: 'Discord Bot', hint: 'Bot token from Discord Developer Portal' }
+    ];
+    
+    const secretsMap = {};
+    secrets.forEach(s => secretsMap[s.serviceName] = s);
+    
+    let content = `
+      <div class="modal-info secrets-manager">
+        <p class="note">Add your own API keys so your agent uses your accounts. Keys are stored securely and only used by this agent.</p>
+        <div class="secrets-list">
+    `;
+    
+    services.forEach(svc => {
+      const hasKey = secretsMap[svc.name];
+      content += `
+        <div class="secret-item" data-service="${svc.name}">
+          <div class="secret-header">
+            <span class="secret-name">${svc.label}</span>
+            <span class="secret-status ${hasKey ? 'set' : ''}">${hasKey ? 'Configured' : 'Not set'}</span>
+          </div>
+          <div class="secret-form ${hasKey ? 'hidden' : ''}">
+            <input type="password" class="input secret-input" placeholder="${svc.hint}" />
+            <button class="btn btn-sm" onclick="saveSecret('${agentId}', '${svc.name}', this)">Save</button>
+          </div>
+          ${hasKey ? `
+            <div class="secret-actions">
+              <button class="btn btn-sm btn-outline" onclick="showSecretForm('${svc.name}')">Update</button>
+              <button class="btn btn-sm btn-danger" onclick="deleteSecret('${agentId}', '${svc.name}')">Remove</button>
+            </div>
+          ` : ''}
+        </div>
+      `;
+    });
+    
+    content += `
+        </div>
+        <hr>
+        <p class="note">Priority: Your API keys are used first, then Replit's built-in AI, then platform fallback.</p>
+      </div>
+    `;
+    
+    openModal('Agent API Keys', content);
+  } catch (error) {
+    openModal('Error', `<p class="error">${error.message}</p>`);
+  }
+}
+
+function showSecretForm(serviceName) {
+  const item = document.querySelector(`.secret-item[data-service="${serviceName}"]`);
+  if (item) {
+    item.querySelector('.secret-form').classList.remove('hidden');
+    item.querySelector('.secret-actions')?.classList.add('hidden');
+  }
+}
+
+async function saveSecret(agentId, serviceName, btn) {
+  const item = btn.closest('.secret-item');
+  const input = item.querySelector('.secret-input');
+  const apiKey = input.value.trim();
+  
+  if (!apiKey) {
+    input.focus();
+    return;
+  }
+  
+  btn.disabled = true;
+  btn.textContent = 'Saving...';
+  
+  try {
+    const res = await fetch(`/api/agents/${agentId}/secrets`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ serviceName, apiKey })
+    });
+    
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Failed to save');
+    }
+    
+    manageSecrets(agentId);
+  } catch (error) {
+    btn.disabled = false;
+    btn.textContent = 'Save';
+    item.querySelector('.secret-form').insertAdjacentHTML('beforeend', 
+      `<div class="error">${error.message}</div>`);
+  }
+}
+
+async function deleteSecret(agentId, serviceName) {
+  if (!confirm(`Remove ${serviceName} API key from this agent?`)) return;
+  
+  try {
+    const res = await fetch(`/api/agents/${agentId}/secrets/${serviceName}`, {
+      method: 'DELETE'
+    });
+    
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Failed to remove');
+    }
+    
+    manageSecrets(agentId);
   } catch (error) {
     openModal('Error', `<p class="error">${error.message}</p>`);
   }

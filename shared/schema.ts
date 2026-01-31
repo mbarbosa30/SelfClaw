@@ -102,3 +102,21 @@ export type Payment = typeof payments.$inferSelect;
 export type InsertPayment = typeof payments.$inferInsert;
 export type Reputation = typeof reputations.$inferSelect;
 export type Validation = typeof validations.$inferSelect;
+
+export const agentSecrets = pgTable("agent_secrets", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  agentId: varchar("agent_id").notNull().references(() => agents.id),
+  serviceName: varchar("service_name").notNull(),
+  apiKey: text("api_key").notNull(),
+  baseUrl: text("base_url"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  uniqueAgentService: sql`UNIQUE(${table.agentId}, ${table.serviceName})`
+}));
+
+export type AgentSecret = typeof agentSecrets.$inferSelect;
+export type InsertAgentSecret = typeof agentSecrets.$inferInsert;
+
+export * from "./models/chat";
