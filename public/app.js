@@ -87,13 +87,13 @@ async function loadAgents() {
         ${agent.description ? `<div class="agent-desc">${escapeHtml(agent.description)}</div>` : ''}
         <div class="agent-details">
           <div class="agent-detail">
-            <span class="detail-label">ID</span>
-            <code class="detail-value">${agent.id}</code>
+            <span class="detail-label">CREDITS</span>
+            <span class="detail-value credits-value">${parseFloat(agent.credits || 0).toFixed(2)}</span>
           </div>
           ${agent.tbaAddress ? `
             <div class="agent-detail">
-              <span class="detail-label">WALLET (TBA)</span>
-              <code class="detail-value">${agent.tbaAddress}</code>
+              <span class="detail-label">WALLET</span>
+              <code class="detail-value wallet-address">${agent.tbaAddress.slice(0, 8)}...${agent.tbaAddress.slice(-6)}</code>
             </div>
           ` : ''}
           <div class="agent-detail">
@@ -102,8 +102,9 @@ async function loadAgents() {
           </div>
         </div>
         <div class="agent-actions">
-          <button class="btn btn-sm" onclick="viewRegistration('${agent.id}')">REGISTRATION FILE</button>
-          <button class="btn btn-sm btn-outline" onclick="viewPayments('${agent.id}')">PAYMENTS</button>
+          <button class="btn btn-sm" onclick="viewWallet('${agent.id}')">WALLET</button>
+          <button class="btn btn-sm" onclick="testAI('${agent.id}')">TEST AI</button>
+          <button class="btn btn-sm btn-outline" onclick="viewRegistration('${agent.id}')">REG FILE</button>
         </div>
       </div>
     `).join('');
@@ -171,6 +172,75 @@ async function viewPayments(agentId) {
     } else {
       alert('Agent Payments:\n\n' + JSON.stringify(payments, null, 2));
     }
+  } catch (error) {
+    alert('Error: ' + error.message);
+  }
+}
+
+async function viewWallet(agentId) {
+  try {
+    const res = await fetch(`/api/agents/${agentId}/wallet`);
+    const wallet = await res.json();
+    
+    let message = `Agent Wallet\n\n`;
+    message += `Credits: ${parseFloat(wallet.credits || 0).toFixed(2)}\n`;
+    
+    if (wallet.walletEnabled) {
+      message += `\nOn-Chain Wallet:\n`;
+      message += `Address: ${wallet.address}\n`;
+      message += `USDC: ${wallet.usdc}\n`;
+      message += `CELO: ${wallet.celo}\n`;
+    } else {
+      message += `\nOn-chain wallet not configured. Add CELO_PRIVATE_KEY to enable.`;
+    }
+    
+    alert(message);
+  } catch (error) {
+    alert('Error: ' + error.message);
+  }
+}
+
+async function testAI(agentId) {
+  const userMessage = prompt('Enter a message to test your agent:');
+  if (!userMessage) return;
+  
+  try {
+    const res = await fetch(`/api/agents/${agentId}/ai/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messages: [{ role: 'user', content: userMessage }]
+      })
+    });
+    
+    const result = await res.json();
+    
+    if (res.status === 402) {
+      alert(`Insufficient credits!\n\nRequired: ${result.required}\nAvailable: ${result.available}\n\nAdd more credits to continue.`);
+      return;
+    }
+    
+    if (res.status === 503) {
+      alert('No AI provider configured. Add ANTHROPIC_API_KEY or OPENAI_API_KEY to Secrets.');
+      return;
+    }
+    
+    if (!res.ok) {
+      alert('Error: ' + (result.error || 'Unknown error'));
+      return;
+    }
+    
+    let responseText = '';
+    if (result.response?.content?.[0]?.text) {
+      responseText = result.response.content[0].text;
+    } else if (result.response?.choices?.[0]?.message?.content) {
+      responseText = result.response.choices[0].message.content;
+    } else {
+      responseText = JSON.stringify(result.response, null, 2);
+    }
+    
+    alert(`AI Response:\n\n${responseText}\n\n---\nCredits used: ${result.creditsUsed}\nCredits remaining: ${result.creditsRemaining}`);
+    loadAgents();
   } catch (error) {
     alert('Error: ' + error.message);
   }

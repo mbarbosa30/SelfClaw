@@ -1,13 +1,14 @@
 import express, { type Request, type Response } from "express";
-import { readdirSync, statSync, existsSync, readFileSync, writeFileSync, mkdirSync } from "fs";
+import { existsSync, readFileSync, writeFileSync, mkdirSync } from "fs";
 import { join } from "path";
 import { homedir } from "os";
 import { execSync, spawn } from "child_process";
 import { setupAuth, isAuthenticated, registerAuthRoutes } from "./replit_integrations/auth/index.js";
 import { db } from "./db.js";
-import { agents, payments, reputations, users, type InsertAgent, type InsertPayment } from "../shared/schema.js";
-import { eq, desc } from "drizzle-orm";
+import { agents, payments, users, type InsertAgent, type InsertPayment } from "../shared/schema.js";
+import { eq, desc, sql } from "drizzle-orm";
 import { createCeloWallet, getWalletBalance, CELO_CONFIG } from "../lib/wallet.js";
+import { deriveAgentWalletAddress, getAgentWalletBalance, PLATFORM_FEE_PERCENT } from "../lib/agent-wallet.js";
 
 const app = express();
 const PORT = 5000;
@@ -180,11 +181,21 @@ async function main() {
       const userId = req.user.claims.sub;
       const { name, description } = req.body;
 
+      const tempId = crypto.randomUUID();
+      let walletAddress: string | null = null;
+      
+      if (process.env.CELO_PRIVATE_KEY) {
+        walletAddress = deriveAgentWalletAddress(process.env.CELO_PRIVATE_KEY, tempId);
+      }
+
       const newAgent: InsertAgent = {
+        id: tempId,
         userId,
         name,
         description,
-        status: "pending",
+        status: walletAddress ? "active" : "pending",
+        tbaAddress: walletAddress,
+        credits: "10.00",
         configJson: {
           provider: "anthropic",
           model: "claude-sonnet-4-20250514",
@@ -254,6 +265,158 @@ async function main() {
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
+  });
+
+  app.get("/api/agents/:id/wallet", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const [agent] = await db.select().from(agents).where(eq(agents.id, req.params.id));
+
+      if (!agent || agent.userId !== userId) {
+        return res.status(404).json({ error: "Agent not found" });
+      }
+
+      if (!process.env.CELO_PRIVATE_KEY || !agent.tbaAddress) {
+        return res.json({ 
+          address: null, 
+          credits: agent.credits,
+          walletEnabled: false 
+        });
+      }
+
+      const balance = await getAgentWalletBalance(process.env.CELO_PRIVATE_KEY, agent.id);
+      res.json({
+        ...balance,
+        credits: agent.credits,
+        walletEnabled: true
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/agents/:id/credits/add", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { amount } = req.body;
+      const [agent] = await db.select().from(agents).where(eq(agents.id, req.params.id));
+
+      if (!agent || agent.userId !== userId) {
+        return res.status(404).json({ error: "Agent not found" });
+      }
+
+      const currentCredits = parseFloat(agent.credits || "0");
+      const addAmount = parseFloat(amount);
+      const newCredits = (currentCredits + addAmount).toFixed(6);
+
+      await db.update(agents)
+        .set({ credits: newCredits, updatedAt: new Date() })
+        .where(eq(agents.id, agent.id));
+
+      res.json({ success: true, credits: newCredits });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/agents/:id/ai/chat", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { messages, model } = req.body;
+      const [agent] = await db.select().from(agents).where(eq(agents.id, req.params.id));
+
+      if (!agent || agent.userId !== userId) {
+        return res.status(404).json({ error: "Agent not found" });
+      }
+
+      const currentCredits = parseFloat(agent.credits || "0");
+      const costPerRequest = 0.01;
+
+      if (currentCredits < costPerRequest) {
+        return res.status(402).json({ 
+          error: "Insufficient credits",
+          required: costPerRequest,
+          available: currentCredits
+        });
+      }
+
+      const selectedModel = model || "claude-sonnet-4-20250514";
+      let response;
+
+      if (process.env.ANTHROPIC_API_KEY && selectedModel.includes("claude")) {
+        const anthropicResponse = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-api-key": process.env.ANTHROPIC_API_KEY,
+            "anthropic-version": "2023-06-01"
+          },
+          body: JSON.stringify({
+            model: selectedModel,
+            max_tokens: 1024,
+            messages: messages
+          })
+        });
+        response = await anthropicResponse.json();
+      } else if (process.env.OPENAI_API_KEY) {
+        const openaiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`
+          },
+          body: JSON.stringify({
+            model: "gpt-4o",
+            messages: messages
+          })
+        });
+        response = await openaiResponse.json();
+      } else {
+        return res.status(503).json({ error: "No AI provider configured" });
+      }
+
+      const newCredits = (currentCredits - costPerRequest).toFixed(6);
+      await db.update(agents)
+        .set({ credits: newCredits, updatedAt: new Date() })
+        .where(eq(agents.id, agent.id));
+
+      const payment: InsertPayment = {
+        agentId: agent.id,
+        direction: "outbound",
+        amount: costPerRequest.toString(),
+        token: "CREDITS",
+        network: "platform",
+        status: "confirmed",
+        endpoint: "/api/ai/chat"
+      };
+      await db.insert(payments).values(payment);
+
+      res.json({
+        response,
+        creditsUsed: costPerRequest,
+        creditsRemaining: newCredits
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/platform/pricing", (req: Request, res: Response) => {
+    res.json({
+      credits: {
+        starterPack: { amount: 100, priceUsd: 10 },
+        proPack: { amount: 500, priceUsd: 40 },
+        enterprisePack: { amount: 2000, priceUsd: 150 }
+      },
+      aiCosts: {
+        claudeSonnet: 0.01,
+        claudeOpus: 0.05,
+        gpt4o: 0.02,
+        gpt4oMini: 0.005
+      },
+      platformFee: PLATFORM_FEE_PERCENT,
+      newAgentBonus: 10
+    });
   });
 
   app.listen(PORT, "0.0.0.0", () => {

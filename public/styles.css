@@ -812,6 +812,15 @@ pre {
   font-size: 0.8rem;
 }
 
+.credits-value {
+  font-weight: 700;
+  color: var(--green);
+}
+
+.wallet-address {
+  font-size: 0.7rem;
+}
+
 .agent-actions {
   display: flex;
   gap: 0.5rem;

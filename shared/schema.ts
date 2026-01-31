@@ -39,6 +39,8 @@ export const agents = pgTable("agents", {
   registryTokenId: varchar("registry_token_id"),
   ownerAddress: varchar("owner_address"),
   tbaAddress: varchar("tba_address"),
+  walletIndex: integer("wallet_index"),
+  credits: decimal("credits", { precision: 18, scale: 6 }).default("0"),
   configJson: jsonb("config_json"),
   status: varchar("status").default("pending"),
   registrationFileUrl: varchar("registration_file_url"),
