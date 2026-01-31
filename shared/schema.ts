@@ -146,4 +146,66 @@ export const agentSkills = pgTable("agent_skills", {
 export type AgentSkill = typeof agentSkills.$inferSelect;
 export type InsertAgentSkill = typeof agentSkills.$inferInsert;
 
+export const agentGoals = pgTable("agent_goals", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  agentId: varchar("agent_id").notNull().references(() => agents.id),
+  goal: text("goal").notNull(),
+  priority: integer("priority").default(1),
+  status: varchar("status").default("active"),
+  progress: integer("progress").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+  completedAt: timestamp("completed_at"),
+});
+
+export type AgentGoal = typeof agentGoals.$inferSelect;
+export type InsertAgentGoal = typeof agentGoals.$inferInsert;
+
+export const agentScheduledTasks = pgTable("agent_scheduled_tasks", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  agentId: varchar("agent_id").notNull().references(() => agents.id),
+  name: varchar("name").notNull(),
+  description: text("description"),
+  cronExpression: varchar("cron_expression").notNull(),
+  taskType: varchar("task_type").default("goal_check"),
+  taskData: jsonb("task_data"),
+  isActive: boolean("is_active").default(true),
+  lastRunAt: timestamp("last_run_at"),
+  nextRunAt: timestamp("next_run_at"),
+  lastResult: jsonb("last_result"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export type AgentScheduledTask = typeof agentScheduledTasks.$inferSelect;
+export type InsertAgentScheduledTask = typeof agentScheduledTasks.$inferInsert;
+
+export const agentMemory = pgTable("agent_memory", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  agentId: varchar("agent_id").notNull().references(() => agents.id),
+  memoryType: varchar("memory_type").default("fact"),
+  content: text("content").notNull(),
+  metadata: jsonb("metadata"),
+  importance: integer("importance").default(5),
+  createdAt: timestamp("created_at").defaultNow(),
+  lastAccessedAt: timestamp("last_accessed_at"),
+});
+
+export type AgentMemory = typeof agentMemory.$inferSelect;
+export type InsertAgentMemory = typeof agentMemory.$inferInsert;
+
+export const agentToolExecutions = pgTable("agent_tool_executions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  agentId: varchar("agent_id").notNull().references(() => agents.id),
+  toolName: varchar("tool_name").notNull(),
+  input: jsonb("input"),
+  output: jsonb("output"),
+  status: varchar("status").default("pending"),
+  creditsCost: decimal("credits_cost", { precision: 18, scale: 6 }).default("0"),
+  errorMessage: text("error_message"),
+  executionTimeMs: integer("execution_time_ms"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export type AgentToolExecution = typeof agentToolExecutions.$inferSelect;
+export type InsertAgentToolExecution = typeof agentToolExecutions.$inferInsert;
+
 export * from "./models/chat";

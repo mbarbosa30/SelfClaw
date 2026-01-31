@@ -167,6 +167,8 @@
             
             <nav class="cockpit-tabs">
               <button class="tab-btn active" data-tab="console">Console</button>
+              <button class="tab-btn" data-tab="goals">Goals</button>
+              <button class="tab-btn" data-tab="tasks">Tasks</button>
               <button class="tab-btn" data-tab="config">Config</button>
               <button class="tab-btn" data-tab="skills">Skills</button>
               <button class="tab-btn" data-tab="wallet">Wallet</button>
@@ -180,6 +182,86 @@
                   <div class="chat-input-area">
                     <textarea id="chat-input" class="input chat-input" placeholder="Send a message to your agent..." rows="2"></textarea>
                     <button id="send-chat" class="btn">SEND</button>
+                  </div>
+                </div>
+              </div>
+              
+              <div id="tab-goals" class="tab-panel">
+                <div class="goals-panel">
+                  <div class="section-header">
+                    <h4>Agent Goals</h4>
+                    <button id="add-goal-btn" class="btn btn-sm">+ ADD GOAL</button>
+                  </div>
+                  <p class="note">Goals persist across sessions. Your agent remembers its objectives and works toward them autonomously.</p>
+                  <div id="goals-list" class="goals-list"></div>
+                  
+                  <div id="add-goal-form" class="add-form" style="display:none;">
+                    <h5>New Goal</h5>
+                    <div class="form-group">
+                      <label>Goal</label>
+                      <textarea id="new-goal-text" class="input" rows="3" placeholder="Describe what your agent should accomplish..."></textarea>
+                    </div>
+                    <div class="form-group">
+                      <label>Priority (1-10)</label>
+                      <input type="number" id="new-goal-priority" class="input" value="5" min="1" max="10" />
+                    </div>
+                    <div class="form-actions">
+                      <button id="save-goal-btn" class="btn btn-sm">Save Goal</button>
+                      <button id="cancel-goal-btn" class="btn btn-sm btn-outline">Cancel</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div id="tab-tasks" class="tab-panel">
+                <div class="tasks-panel">
+                  <div class="section-header">
+                    <h4>Scheduled Tasks</h4>
+                    <button id="add-task-btn" class="btn btn-sm">+ ADD TASK</button>
+                  </div>
+                  <p class="note">Schedule autonomous actions. Your agent runs these tasks on its own without prompting.</p>
+                  <div id="tasks-list" class="tasks-list"></div>
+                  
+                  <div id="add-task-form" class="add-form" style="display:none;">
+                    <h5>New Scheduled Task</h5>
+                    <div class="form-group">
+                      <label>Task Name</label>
+                      <input type="text" id="new-task-name" class="input" placeholder="e.g., Daily Research" />
+                    </div>
+                    <div class="form-group">
+                      <label>Description</label>
+                      <textarea id="new-task-description" class="input" rows="2" placeholder="What should the agent do?"></textarea>
+                    </div>
+                    <div class="form-group">
+                      <label>Schedule (Cron)</label>
+                      <select id="new-task-cron" class="input">
+                        <option value="0 * * * *">Every hour</option>
+                        <option value="0 */6 * * *">Every 6 hours</option>
+                        <option value="0 9 * * *">Daily at 9 AM</option>
+                        <option value="0 9 * * 1">Weekly (Mondays)</option>
+                        <option value="*/30 * * * *">Every 30 minutes</option>
+                      </select>
+                    </div>
+                    <div class="form-group">
+                      <label>Task Type</label>
+                      <select id="new-task-type" class="input">
+                        <option value="goal_check">Goal Progress Check</option>
+                        <option value="web_research">Web Research</option>
+                        <option value="skill_execution">Execute Skill</option>
+                        <option value="custom">Custom Prompt</option>
+                      </select>
+                    </div>
+                    <div class="form-actions">
+                      <button id="save-task-btn" class="btn btn-sm">Save Task</button>
+                      <button id="cancel-task-btn" class="btn btn-sm btn-outline">Cancel</button>
+                    </div>
+                  </div>
+                  
+                  <div class="tool-executions-section" style="margin-top: 2rem;">
+                    <h4>RECENT TOOL EXECUTIONS</h4>
+                    <div id="tool-executions-list" class="tool-executions-list">
+                      <p class="note">Tool calls will appear here as your agent runs.</p>
+                    </div>
                   </div>
                 </div>
               </div>

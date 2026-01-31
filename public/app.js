@@ -44,6 +44,14 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('category-filter')?.addEventListener('change', loadMarketplacePreview);
   document.getElementById('search-filter')?.addEventListener('input', debounce(loadMarketplacePreview, 300));
 
+  document.getElementById('add-goal-btn')?.addEventListener('click', showAddGoalForm);
+  document.getElementById('save-goal-btn')?.addEventListener('click', saveGoal);
+  document.getElementById('cancel-goal-btn')?.addEventListener('click', hideAddGoalForm);
+
+  document.getElementById('add-task-btn')?.addEventListener('click', showAddTaskForm);
+  document.getElementById('save-task-btn')?.addEventListener('click', saveTask);
+  document.getElementById('cancel-task-btn')?.addEventListener('click', hideAddTaskForm);
+
   setInterval(loadStatus, 30000);
 });
 
@@ -278,6 +286,13 @@ function loadTabContent(tabName) {
   switch (tabName) {
     case 'console':
       loadConsole();
+      break;
+    case 'goals':
+      loadGoals();
+      break;
+    case 'tasks':
+      loadTasks();
+      loadToolExecutions();
       break;
     case 'config':
       loadConfigTab();
@@ -1172,4 +1187,259 @@ async function stopGateway() {
   } catch (error) {
     output.textContent = 'Error: ' + error.message;
   }
+}
+
+function showAddGoalForm() {
+  document.getElementById('add-goal-form').style.display = 'block';
+}
+
+function hideAddGoalForm() {
+  document.getElementById('add-goal-form').style.display = 'none';
+  document.getElementById('new-goal-text').value = '';
+  document.getElementById('new-goal-priority').value = '5';
+}
+
+async function loadGoals() {
+  if (!currentAgent) return;
+  const list = document.getElementById('goals-list');
+  if (!list) return;
+
+  try {
+    const res = await fetch(`/api/agents/${currentAgent.id}/goals`);
+    if (!res.ok) throw new Error('Failed to load goals');
+    const goals = await res.json();
+
+    if (goals.length === 0) {
+      list.innerHTML = '<p class="note">No goals set yet. Add goals to give your agent persistent objectives.</p>';
+      return;
+    }
+
+    list.innerHTML = goals.map(g => `
+      <div class="goal-card ${g.status}">
+        <div class="goal-header">
+          <span class="goal-priority">P${g.priority}</span>
+          <span class="goal-status status-${g.status}">${g.status}</span>
+        </div>
+        <p class="goal-text">${escapeHtml(g.goal)}</p>
+        ${g.progress ? `<div class="goal-progress"><div class="progress-bar" style="width:${g.progress}%"></div><span>${g.progress}%</span></div>` : ''}
+        <div class="goal-actions">
+          ${g.status === 'active' ? `
+            <button class="btn btn-xs" onclick="updateGoalStatus('${g.id}', 'completed')">Complete</button>
+            <button class="btn btn-xs btn-outline" onclick="updateGoalStatus('${g.id}', 'paused')">Pause</button>
+          ` : ''}
+          ${g.status === 'paused' ? `
+            <button class="btn btn-xs" onclick="updateGoalStatus('${g.id}', 'active')">Resume</button>
+          ` : ''}
+          <button class="btn btn-xs btn-danger" onclick="deleteGoal('${g.id}')">Delete</button>
+        </div>
+      </div>
+    `).join('');
+  } catch (error) {
+    list.innerHTML = `<p class="note error">Error: ${error.message}</p>`;
+  }
+}
+
+async function saveGoal() {
+  if (!currentAgent) return;
+  const goal = document.getElementById('new-goal-text').value.trim();
+  const priority = parseInt(document.getElementById('new-goal-priority').value) || 5;
+
+  if (!goal) {
+    alert('Please enter a goal description');
+    return;
+  }
+
+  try {
+    const res = await fetch(`/api/agents/${currentAgent.id}/goals`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ goal, priority })
+    });
+    if (!res.ok) throw new Error('Failed to save goal');
+    hideAddGoalForm();
+    loadGoals();
+  } catch (error) {
+    alert('Error saving goal: ' + error.message);
+  }
+}
+
+async function updateGoalStatus(goalId, status) {
+  if (!currentAgent) return;
+  try {
+    const res = await fetch(`/api/agents/${currentAgent.id}/goals/${goalId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status })
+    });
+    if (!res.ok) throw new Error('Failed to update goal');
+    loadGoals();
+  } catch (error) {
+    alert('Error updating goal: ' + error.message);
+  }
+}
+
+async function deleteGoal(goalId) {
+  if (!currentAgent) return;
+  if (!confirm('Delete this goal?')) return;
+  try {
+    const res = await fetch(`/api/agents/${currentAgent.id}/goals/${goalId}`, {
+      method: 'DELETE'
+    });
+    if (!res.ok) throw new Error('Failed to delete goal');
+    loadGoals();
+  } catch (error) {
+    alert('Error deleting goal: ' + error.message);
+  }
+}
+
+function showAddTaskForm() {
+  document.getElementById('add-task-form').style.display = 'block';
+}
+
+function hideAddTaskForm() {
+  document.getElementById('add-task-form').style.display = 'none';
+  document.getElementById('new-task-name').value = '';
+  document.getElementById('new-task-description').value = '';
+}
+
+async function loadTasks() {
+  if (!currentAgent) return;
+  const list = document.getElementById('tasks-list');
+  if (!list) return;
+
+  try {
+    const res = await fetch(`/api/agents/${currentAgent.id}/tasks`);
+    if (!res.ok) throw new Error('Failed to load tasks');
+    const tasks = await res.json();
+
+    if (tasks.length === 0) {
+      list.innerHTML = '<p class="note">No scheduled tasks. Add tasks to let your agent act autonomously.</p>';
+      return;
+    }
+
+    list.innerHTML = tasks.map(t => `
+      <div class="task-card ${t.isActive ? 'active' : 'inactive'}">
+        <div class="task-header">
+          <span class="task-name">${escapeHtml(t.name)}</span>
+          <span class="task-cron">${cronToHuman(t.cronExpression)}</span>
+        </div>
+        <p class="task-description">${escapeHtml(t.description || '')}</p>
+        <div class="task-meta">
+          <span class="task-type">${t.taskType}</span>
+          ${t.lastRunAt ? `<span class="task-last-run">Last: ${new Date(t.lastRunAt).toLocaleString()}</span>` : ''}
+          ${t.nextRunAt ? `<span class="task-next-run">Next: ${new Date(t.nextRunAt).toLocaleString()}</span>` : ''}
+        </div>
+        <div class="task-actions">
+          <button class="btn btn-xs ${t.isActive ? 'btn-outline' : ''}" onclick="toggleTask('${t.id}', ${!t.isActive})">${t.isActive ? 'Pause' : 'Enable'}</button>
+          <button class="btn btn-xs btn-danger" onclick="deleteTask('${t.id}')">Delete</button>
+        </div>
+      </div>
+    `).join('');
+  } catch (error) {
+    list.innerHTML = `<p class="note error">Error: ${error.message}</p>`;
+  }
+}
+
+function cronToHuman(cron) {
+  const cronMap = {
+    '0 * * * *': 'Every hour',
+    '0 */6 * * *': 'Every 6 hours',
+    '0 9 * * *': 'Daily at 9 AM',
+    '0 9 * * 1': 'Weekly (Mondays)',
+    '*/30 * * * *': 'Every 30 min'
+  };
+  return cronMap[cron] || cron;
+}
+
+async function saveTask() {
+  if (!currentAgent) return;
+  const name = document.getElementById('new-task-name').value.trim();
+  const description = document.getElementById('new-task-description').value.trim();
+  const cronExpression = document.getElementById('new-task-cron').value;
+  const taskType = document.getElementById('new-task-type').value;
+
+  if (!name) {
+    alert('Please enter a task name');
+    return;
+  }
+
+  try {
+    const res = await fetch(`/api/agents/${currentAgent.id}/tasks`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, description, cronExpression, taskType })
+    });
+    if (!res.ok) throw new Error('Failed to save task');
+    hideAddTaskForm();
+    loadTasks();
+  } catch (error) {
+    alert('Error saving task: ' + error.message);
+  }
+}
+
+async function toggleTask(taskId, isActive) {
+  if (!currentAgent) return;
+  try {
+    const res = await fetch(`/api/agents/${currentAgent.id}/tasks/${taskId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ isActive })
+    });
+    if (!res.ok) throw new Error('Failed to update task');
+    loadTasks();
+  } catch (error) {
+    alert('Error updating task: ' + error.message);
+  }
+}
+
+async function deleteTask(taskId) {
+  if (!currentAgent) return;
+  if (!confirm('Delete this scheduled task?')) return;
+  try {
+    const res = await fetch(`/api/agents/${currentAgent.id}/tasks/${taskId}`, {
+      method: 'DELETE'
+    });
+    if (!res.ok) throw new Error('Failed to delete task');
+    loadTasks();
+  } catch (error) {
+    alert('Error deleting task: ' + error.message);
+  }
+}
+
+async function loadToolExecutions() {
+  if (!currentAgent) return;
+  const list = document.getElementById('tool-executions-list');
+  if (!list) return;
+
+  try {
+    const res = await fetch(`/api/agents/${currentAgent.id}/tool-executions`);
+    if (!res.ok) throw new Error('Failed to load tool executions');
+    const executions = await res.json();
+
+    if (executions.length === 0) {
+      list.innerHTML = '<p class="note">No tool executions yet.</p>';
+      return;
+    }
+
+    list.innerHTML = executions.slice(0, 20).map(e => `
+      <div class="execution-entry ${e.success ? 'success' : 'error'}">
+        <div class="execution-header">
+          <span class="tool-name">${escapeHtml(e.toolName)}</span>
+          <span class="execution-time">${new Date(e.createdAt).toLocaleString()}</span>
+        </div>
+        <div class="execution-details">
+          <span class="execution-cost">${e.creditsCost} credits</span>
+          <span class="execution-status">${e.success ? 'OK' : 'FAILED'}</span>
+        </div>
+      </div>
+    `).join('');
+  } catch (error) {
+    list.innerHTML = `<p class="note error">Error: ${error.message}</p>`;
+  }
+}
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
 }

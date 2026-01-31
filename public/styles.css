@@ -2002,6 +2002,191 @@ h2 {
   margin-top: 0.25rem;
 }
 
+/* Goals Panel */
+.goals-panel, .tasks-panel {
+  padding: 1rem;
+}
+
+.goal-card, .task-card {
+  background: var(--gray-100);
+  border: 2px solid var(--black);
+  padding: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.goal-card.completed {
+  opacity: 0.6;
+  border-color: var(--green);
+}
+
+.goal-card.paused {
+  border-style: dashed;
+}
+
+.goal-header, .task-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.goal-priority {
+  background: var(--black);
+  color: var(--white);
+  padding: 0.15rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.goal-status, .task-type {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.status-active { color: var(--green); }
+.status-completed { color: var(--gray-600); }
+.status-paused { color: var(--yellow); }
+
+.goal-text, .task-description {
+  font-size: 0.9rem;
+  margin-bottom: 0.75rem;
+}
+
+.goal-progress {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.goal-progress .progress-bar {
+  flex: 1;
+  height: 6px;
+  background: var(--gray-200);
+  position: relative;
+}
+
+.goal-progress .progress-bar::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  background: var(--green);
+  width: inherit;
+}
+
+.goal-actions, .task-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.task-card.inactive {
+  opacity: 0.7;
+  border-style: dashed;
+}
+
+.task-name {
+  font-weight: 600;
+}
+
+.task-cron {
+  font-size: 0.75rem;
+  color: var(--gray-600);
+}
+
+.task-meta {
+  font-size: 0.75rem;
+  color: var(--gray-600);
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+  flex-wrap: wrap;
+}
+
+/* Tool Executions */
+.tool-executions-list {
+  max-height: 300px;
+  overflow-y: auto;
+  border: 1px solid var(--gray-300);
+  padding: 0.5rem;
+}
+
+.execution-entry {
+  padding: 0.5rem;
+  border-bottom: 1px solid var(--gray-200);
+  font-size: 0.85rem;
+}
+
+.execution-entry:last-child {
+  border-bottom: none;
+}
+
+.execution-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.25rem;
+}
+
+.tool-name {
+  font-weight: 600;
+  font-family: monospace;
+}
+
+.execution-time {
+  font-size: 0.75rem;
+  color: var(--gray-600);
+}
+
+.execution-details {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.execution-cost {
+  font-size: 0.75rem;
+  color: var(--gray-600);
+}
+
+.execution-status {
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.execution-entry.success .execution-status { color: var(--green); }
+.execution-entry.error .execution-status { color: var(--red); }
+
+/* Button variants */
+.btn-xs {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+}
+
+.btn-danger {
+  background: var(--red);
+  color: var(--white);
+  border-color: var(--red);
+}
+
+.btn-danger:hover {
+  background: #dc2626;
+}
+
+/* Add form styling */
+.add-form {
+  background: var(--gray-100);
+  border: 2px solid var(--black);
+  padding: 1rem;
+  margin-top: 1rem;
+}
+
+.add-form h5 {
+  margin-bottom: 1rem;
+  font-size: 1rem;
+}
+
 /* Responsive Dashboard */
 @media (max-width: 768px) {
   .dashboard-layout {

@@ -5,7 +5,9 @@ import { homedir } from "os";
 import { execSync, spawn } from "child_process";
 import { setupAuth, isAuthenticated, registerAuthRoutes } from "./replit_integrations/auth/index.js";
 import { db } from "./db.js";
-import { agents, payments, users, agentSecrets, agentSkills, type InsertAgent, type InsertPayment, type InsertAgentSecret, type InsertAgentSkill } from "../shared/schema.js";
+import { agents, payments, users, agentSecrets, agentSkills, agentGoals, agentScheduledTasks, agentMemory, agentToolExecutions, type InsertAgent, type InsertPayment, type InsertAgentSecret, type InsertAgentSkill, type InsertAgentGoal, type InsertAgentScheduledTask } from "../shared/schema.js";
+import { runAgentTurn, buildAgentContext, AVAILABLE_TOOLS } from "./agent-runtime.js";
+import { startScheduler } from "./scheduler.js";
 import OpenAI from "openai";
 import { eq, desc, sql, and } from "drizzle-orm";
 import { createCeloWallet, getWalletBalance, CELO_CONFIG } from "../lib/wallet.js";
@@ -1062,6 +1064,253 @@ async function main() {
     });
   });
 
+  // Goals CRUD
+  app.get("/api/agents/:id/goals", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const [agent] = await db.select().from(agents).where(eq(agents.id, req.params.id));
+      if (!agent || agent.userId !== userId) {
+        return res.status(404).json({ error: "Agent not found" });
+      }
+      const goals = await db.select().from(agentGoals).where(eq(agentGoals.agentId, agent.id)).orderBy(desc(agentGoals.priority));
+      res.json(goals);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/agents/:id/goals", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { goal, priority } = req.body;
+      const [agent] = await db.select().from(agents).where(eq(agents.id, req.params.id));
+      if (!agent || agent.userId !== userId) {
+        return res.status(404).json({ error: "Agent not found" });
+      }
+      const [newGoal] = await db.insert(agentGoals).values({
+        agentId: agent.id,
+        goal,
+        priority: priority || 1
+      }).returning();
+      res.json(newGoal);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.put("/api/agents/:id/goals/:goalId", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { goal, priority, status, progress } = req.body;
+      const [agent] = await db.select().from(agents).where(eq(agents.id, req.params.id));
+      if (!agent || agent.userId !== userId) {
+        return res.status(404).json({ error: "Agent not found" });
+      }
+      const updates: any = {};
+      if (goal !== undefined) updates.goal = goal;
+      if (priority !== undefined) updates.priority = priority;
+      if (status !== undefined) {
+        updates.status = status;
+        if (status === "completed") updates.completedAt = new Date();
+      }
+      if (progress !== undefined) updates.progress = progress;
+      const [updated] = await db.update(agentGoals).set(updates).where(and(eq(agentGoals.id, req.params.goalId), eq(agentGoals.agentId, agent.id))).returning();
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/agents/:id/goals/:goalId", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const [agent] = await db.select().from(agents).where(eq(agents.id, req.params.id));
+      if (!agent || agent.userId !== userId) {
+        return res.status(404).json({ error: "Agent not found" });
+      }
+      await db.delete(agentGoals).where(and(eq(agentGoals.id, req.params.goalId), eq(agentGoals.agentId, agent.id)));
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Scheduled Tasks CRUD
+  app.get("/api/agents/:id/tasks", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const [agent] = await db.select().from(agents).where(eq(agents.id, req.params.id));
+      if (!agent || agent.userId !== userId) {
+        return res.status(404).json({ error: "Agent not found" });
+      }
+      const tasks = await db.select().from(agentScheduledTasks).where(eq(agentScheduledTasks.agentId, agent.id)).orderBy(desc(agentScheduledTasks.createdAt));
+      res.json(tasks);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/agents/:id/tasks", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { name, description, cronExpression, taskType, taskData } = req.body;
+      const [agent] = await db.select().from(agents).where(eq(agents.id, req.params.id));
+      if (!agent || agent.userId !== userId) {
+        return res.status(404).json({ error: "Agent not found" });
+      }
+      const [task] = await db.insert(agentScheduledTasks).values({
+        agentId: agent.id,
+        name,
+        description,
+        cronExpression: cronExpression || "0 * * * *",
+        taskType: taskType || "goal_check",
+        taskData
+      }).returning();
+      res.json(task);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.put("/api/agents/:id/tasks/:taskId", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { name, description, cronExpression, taskType, taskData, isActive } = req.body;
+      const [agent] = await db.select().from(agents).where(eq(agents.id, req.params.id));
+      if (!agent || agent.userId !== userId) {
+        return res.status(404).json({ error: "Agent not found" });
+      }
+      const updates: any = {};
+      if (name !== undefined) updates.name = name;
+      if (description !== undefined) updates.description = description;
+      if (cronExpression !== undefined) updates.cronExpression = cronExpression;
+      if (taskType !== undefined) updates.taskType = taskType;
+      if (taskData !== undefined) updates.taskData = taskData;
+      if (isActive !== undefined) updates.isActive = isActive;
+      const [updated] = await db.update(agentScheduledTasks).set(updates).where(and(eq(agentScheduledTasks.id, req.params.taskId), eq(agentScheduledTasks.agentId, agent.id))).returning();
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/agents/:id/tasks/:taskId", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const [agent] = await db.select().from(agents).where(eq(agents.id, req.params.id));
+      if (!agent || agent.userId !== userId) {
+        return res.status(404).json({ error: "Agent not found" });
+      }
+      await db.delete(agentScheduledTasks).where(and(eq(agentScheduledTasks.id, req.params.taskId), eq(agentScheduledTasks.agentId, agent.id)));
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Memory endpoints
+  app.get("/api/agents/:id/memory", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const [agent] = await db.select().from(agents).where(eq(agents.id, req.params.id));
+      if (!agent || agent.userId !== userId) {
+        return res.status(404).json({ error: "Agent not found" });
+      }
+      const memories = await db.select().from(agentMemory).where(eq(agentMemory.agentId, agent.id)).orderBy(desc(agentMemory.importance)).limit(50);
+      res.json(memories);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/agents/:id/memory", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { content, importance, memoryType } = req.body;
+      const [agent] = await db.select().from(agents).where(eq(agents.id, req.params.id));
+      if (!agent || agent.userId !== userId) {
+        return res.status(404).json({ error: "Agent not found" });
+      }
+      const [memory] = await db.insert(agentMemory).values({
+        agentId: agent.id,
+        content,
+        importance: importance || 5,
+        memoryType: memoryType || "fact"
+      }).returning();
+      res.json(memory);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/agents/:id/memory/:memoryId", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const [agent] = await db.select().from(agents).where(eq(agents.id, req.params.id));
+      if (!agent || agent.userId !== userId) {
+        return res.status(404).json({ error: "Agent not found" });
+      }
+      await db.delete(agentMemory).where(and(eq(agentMemory.id, req.params.memoryId), eq(agentMemory.agentId, agent.id)));
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Tool executions log
+  app.get("/api/agents/:id/tool-executions", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const [agent] = await db.select().from(agents).where(eq(agents.id, req.params.id));
+      if (!agent || agent.userId !== userId) {
+        return res.status(404).json({ error: "Agent not found" });
+      }
+      const executions = await db.select().from(agentToolExecutions).where(eq(agentToolExecutions.agentId, agent.id)).orderBy(desc(agentToolExecutions.createdAt)).limit(50);
+      res.json(executions);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Enhanced AI chat endpoint using agent runtime
+  app.post("/api/agents/:id/ai/chat", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { message, conversationHistory } = req.body;
+      const [agent] = await db.select().from(agents).where(eq(agents.id, req.params.id));
+      if (!agent || agent.userId !== userId) {
+        return res.status(404).json({ error: "Agent not found" });
+      }
+      const result = await runAgentTurn(agent.id, message, conversationHistory || []);
+      res.json({
+        response: result.response,
+        toolsUsed: result.toolsUsed,
+        creditsCost: result.creditsCost,
+        remainingCredits: parseFloat((await db.select().from(agents).where(eq(agents.id, agent.id)))[0]?.credits || "0")
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Agent context endpoint (for debugging/display)
+  app.get("/api/agents/:id/context", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const [agent] = await db.select().from(agents).where(eq(agents.id, req.params.id));
+      if (!agent || agent.userId !== userId) {
+        return res.status(404).json({ error: "Agent not found" });
+      }
+      const context = await buildAgentContext(agent.id);
+      res.json({
+        ...context,
+        availableTools: AVAILABLE_TOOLS.map(t => ({ name: t.name, description: t.description }))
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.listen(PORT, "0.0.0.0", async () => {
     console.log(`
 ╔════════════════════════════════════════════════════════════╗
@@ -1073,6 +1322,8 @@ async function main() {
     initializeWallet();
     
     await seedMarketplace();
+    
+    startScheduler(60000);
   });
 }
 

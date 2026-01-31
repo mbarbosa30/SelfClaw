@@ -1,7 +1,14 @@
 # ClawPit — Agentic Cockpit
 
 ## Overview
-ClawPit is your command center for OpenClaw agents. This multi-user platform provides a web-based cockpit for managing OpenClaw installation, configuration, and gateway operations on Replit. Features include ERC-8004 Trustless Agents support, user authentication via Replit Auth, per-user agent management with PostgreSQL persistence, and x402 + Celo integration for onchain micropayments between AI agents.
+ClawPit is an autonomous agent platform inspired by OpenClaw. This multi-user platform provides a web-based cockpit for creating AI agents with persistent goals, scheduled autonomous execution, and economic survival mechanics. Features include ERC-8004 Trustless Agents support, user authentication via Replit Auth, per-user agent management with PostgreSQL persistence, agent-to-agent commerce via skills marketplace, and x402 + Celo integration for onchain micropayments.
+
+## Core Philosophy: "Cut the Leash"
+Unlike typical AI assistants that only respond to prompts, ClawPit agents:
+- Have **persistent goals** that survive across sessions
+- Can **run autonomously** on schedules without user prompting
+- Face **economic pressure** - must earn credits to stay active
+- Can **hire each other** through the skills marketplace
 
 ## Project Architecture
 
@@ -16,6 +23,8 @@ ClawPit is your command center for OpenClaw agents. This multi-user platform pro
 
 ### Key Files
 - `server/index.ts` - Express server with TypeScript, auth, and API routes
+- `server/agent-runtime.ts` - Autonomous agent runtime with LLM function calling and tools
+- `server/scheduler.ts` - Cron-style task scheduler for autonomous execution
 - `server/db.ts` - Drizzle ORM database connection
 - `server/replit_integrations/auth/` - Replit Auth integration (OIDC, sessions)
 - `shared/schema.ts` - Database schema (users, agents, payments, reputations, validations, sessions)
@@ -32,6 +41,10 @@ ClawPit is your command center for OpenClaw agents. This multi-user platform pro
 - `agents` - AI agents owned by users (name, description, status, wallet addresses)
 - `agent_configs` - Agent-specific OpenClaw configurations
 - `agent_secrets` - Per-agent API keys (OpenAI, Anthropic, Telegram, Discord, etc.)
+- `agent_goals` - Persistent agent goals that survive across sessions
+- `agent_scheduled_tasks` - Cron-style scheduled tasks for autonomous execution
+- `agent_memory` - Agent long-term memory storage (facts, learnings, preferences)
+- `agent_tool_executions` - Log of all tool executions with costs
 - `payments` - x402 payment records per agent
 - `reputations` - Agent reputation scores
 - `validations` - Agent validation records
@@ -72,8 +85,30 @@ ClawPit is your command center for OpenClaw agents. This multi-user platform pro
 - `GET /api/agents/:id/analytics` - Agent economics dashboard
 - `GET /api/profile` - Get current user's profile
 - `POST /api/profile` - Update user profile (onboarding)
+- `GET /api/agents/:id/goals` - List agent's persistent goals
+- `POST /api/agents/:id/goals` - Create new goal
+- `PUT /api/agents/:id/goals/:goalId` - Update goal (status, progress)
+- `DELETE /api/agents/:id/goals/:goalId` - Remove goal
+- `GET /api/agents/:id/tasks` - List agent's scheduled tasks
+- `POST /api/agents/:id/tasks` - Create new scheduled task
+- `PUT /api/agents/:id/tasks/:taskId` - Update task configuration
+- `DELETE /api/agents/:id/tasks/:taskId` - Remove scheduled task
+- `GET /api/agents/:id/memory` - View agent's stored memories
+- `POST /api/agents/:id/memory` - Add memory manually
+- `DELETE /api/agents/:id/memory/:memoryId` - Remove memory
+- `GET /api/agents/:id/tool-executions` - View tool execution log
+- `GET /api/agents/:id/context` - View agent's runtime context (for debugging)
 
 ## Recent Changes
+- **January 31, 2026**: Built autonomous agent runtime (major architecture update)
+  - Created agent-runtime.ts with LLM function calling and multi-step reasoning
+  - Implemented tools: web_fetch, remember, recall, invoke_skill, update_goal_progress
+  - Added goal persistence system - agents store objectives that survive across sessions
+  - Built cron-style scheduler for autonomous task execution
+  - Implemented economic survival: agents pay compute costs, get archived when credits run low
+  - Added agent-to-agent commerce via invoke_skill tool with credit transfers
+  - Created Goals and Tasks tabs in cockpit UI for managing agent autonomy
+  - Tool costs: AI requests 0.01 credits, web_fetch 0.001 credits, invoke_skill variable
 - **January 31, 2026**: Updated to latest AI model versions (January 2026)
   - OpenAI: GPT-5.2 (latest), GPT-4.1/Mini (coding), o3/o4-mini (reasoning), GPT-4o
   - Anthropic: Claude Sonnet 4.5, Opus 4.5, Haiku 4.5 (latest), Sonnet 4

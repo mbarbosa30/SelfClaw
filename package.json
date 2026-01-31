@@ -31,6 +31,7 @@
     "@types/passport": "^1.0.17",
     "@types/pg": "^8.16.0",
     "connect-pg-simple": "^10.0.0",
+    "cron-parser": "^5.5.0",
     "dotenv": "^16.6.1",
     "drizzle-kit": "^0.31.8",
     "drizzle-orm": "^0.45.1",
