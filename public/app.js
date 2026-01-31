@@ -26,13 +26,11 @@ document.addEventListener('DOMContentLoaded', () => {
 function toggleCreateForm() {
   const form = document.getElementById('create-form');
   const btn = document.getElementById('create-agent-btn');
-  if (form.style.display === 'none') {
-    form.style.display = 'block';
-    btn.style.display = 'none';
+  const isHidden = form.classList.contains('hidden');
+  form.classList.toggle('hidden', !isHidden);
+  btn.classList.toggle('hidden', isHidden);
+  if (isHidden) {
     document.getElementById('agent-name').focus();
-  } else {
-    form.style.display = 'none';
-    btn.style.display = 'block';
   }
 }
 
