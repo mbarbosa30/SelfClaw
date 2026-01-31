@@ -1,11 +1,13 @@
 let currentUser = null;
+let currentAgent = null;
+let currentWizardStep = 1;
+let chatHistory = [];
 
 document.addEventListener('DOMContentLoaded', () => {
   loadAuthState();
   loadStatus();
   loadEnvCheck();
   loadConfig();
-  loadMarketplace();
 
   document.getElementById('run-setup')?.addEventListener('click', runSetup);
   document.getElementById('install-openclaw')?.addEventListener('click', installOpenClaw);
@@ -13,18 +15,34 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('stop-gateway')?.addEventListener('click', stopGateway);
   document.getElementById('load-config')?.addEventListener('click', loadConfig);
   document.getElementById('save-config')?.addEventListener('click', saveConfig);
-  document.getElementById('create-agent')?.addEventListener('click', createAgent);
-  document.getElementById('create-agent-btn')?.addEventListener('click', toggleCreateForm);
-  document.getElementById('cancel-create')?.addEventListener('click', toggleCreateForm);
+  document.getElementById('create-agent-btn')?.addEventListener('click', showCreateWizard);
   document.getElementById('modal-close')?.addEventListener('click', closeModal);
   document.getElementById('modal')?.addEventListener('click', (e) => {
     if (e.target.id === 'modal') closeModal();
   });
   
-  document.getElementById('category-filter')?.addEventListener('change', loadMarketplace);
-  document.getElementById('search-filter')?.addEventListener('input', debounce(loadMarketplace, 300));
   document.getElementById('save-profile')?.addEventListener('click', saveProfile);
   document.getElementById('skip-profile')?.addEventListener('click', skipProfile);
+
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+  });
+
+  document.getElementById('send-chat')?.addEventListener('click', sendChatMessage);
+  document.getElementById('chat-input')?.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendChatMessage();
+    }
+  });
+
+  document.getElementById('save-config-btn')?.addEventListener('click', saveAgentConfig);
+  document.getElementById('add-secret-btn')?.addEventListener('click', showAddSecretForm);
+  document.getElementById('add-skill-btn')?.addEventListener('click', showAddSkillForm);
+  document.getElementById('download-registration')?.addEventListener('click', downloadRegistration);
+
+  document.getElementById('category-filter')?.addEventListener('change', loadMarketplacePreview);
+  document.getElementById('search-filter')?.addEventListener('input', debounce(loadMarketplacePreview, 300));
 
   setInterval(loadStatus, 30000);
 });
@@ -35,17 +53,6 @@ function debounce(fn, delay) {
     clearTimeout(timeout);
     timeout = setTimeout(() => fn.apply(this, args), delay);
   };
-}
-
-function toggleCreateForm() {
-  const form = document.getElementById('create-form');
-  const btn = document.getElementById('create-agent-btn');
-  const isHidden = form.classList.contains('hidden');
-  form.classList.toggle('hidden', !isHidden);
-  btn.classList.toggle('hidden', isHidden);
-  if (isHidden) {
-    document.getElementById('agent-name').focus();
-  }
 }
 
 function openModal(title, content) {
@@ -166,8 +173,8 @@ function skipProfile() {
 }
 
 async function loadAgents() {
-  const listEl = document.getElementById('agents-list');
-  listEl.innerHTML = '<div class="loading">Loading agents...</div>';
+  const navEl = document.getElementById('agents-nav');
+  navEl.innerHTML = '<div class="loading">Loading...</div>';
 
   try {
     const res = await fetch('/api/agents');
@@ -175,77 +182,497 @@ async function loadAgents() {
     const agents = await res.json();
 
     if (agents.length === 0) {
-      listEl.innerHTML = `
-        <div class="empty-state">
-          <p>No agents yet. Create your first agent to get started.</p>
+      navEl.innerHTML = `
+        <div class="nav-empty">
+          <p>No agents yet</p>
         </div>
       `;
+      document.getElementById('cockpit-empty').style.display = 'flex';
+      document.getElementById('cockpit-view').style.display = 'none';
+      document.getElementById('create-wizard').style.display = 'none';
       return;
     }
 
-    listEl.innerHTML = agents.map(agent => `
-      <div class="agent-card">
-        <div class="agent-header">
-          <span class="agent-name">${escapeHtml(agent.name)}</span>
-          <span class="agent-status ${agent.status}">${agent.status}</span>
-        </div>
-        ${agent.description ? `<div class="agent-desc">${escapeHtml(agent.description)}</div>` : ''}
-        <div class="agent-stats">
-          <div class="stat">
-            <span class="stat-value">${parseFloat(agent.credits || 0).toFixed(2)}</span>
-            <span class="stat-label">credits</span>
-          </div>
-          ${agent.tbaAddress ? `
-            <div class="stat">
-              <span class="stat-value wallet-addr">${agent.tbaAddress.slice(0, 6)}...${agent.tbaAddress.slice(-4)}</span>
-              <span class="stat-label">wallet</span>
-            </div>
-          ` : ''}
-        </div>
-        <div class="agent-actions">
-          <button class="btn btn-sm" onclick="testAI('${agent.id}')">Chat</button>
-          <button class="btn btn-sm btn-outline" onclick="manageSkills('${agent.id}')">Skills</button>
-          <button class="btn btn-sm btn-outline" onclick="viewAnalytics('${agent.id}')">Analytics</button>
-          <button class="btn btn-sm btn-outline" onclick="viewWallet('${agent.id}')">Wallet</button>
-          <button class="btn btn-sm btn-outline" onclick="manageSecrets('${agent.id}')">Keys</button>
-        </div>
+    navEl.innerHTML = agents.map(agent => `
+      <div class="nav-agent ${currentAgent?.id === agent.id ? 'active' : ''}" 
+           onclick="selectAgent('${agent.id}')" 
+           data-agent-id="${agent.id}">
+        <span class="nav-agent-name">${escapeHtml(agent.name)}</span>
+        <span class="nav-agent-status ${agent.status}">${agent.status}</span>
       </div>
     `).join('');
+
+    if (!currentAgent && agents.length > 0) {
+      selectAgent(agents[0].id);
+    } else if (currentAgent) {
+      const agentStillExists = agents.find(a => a.id === currentAgent.id);
+      if (agentStillExists) {
+        selectAgent(currentAgent.id);
+      } else {
+        selectAgent(agents[0].id);
+      }
+    }
   } catch (error) {
-    listEl.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+    navEl.innerHTML = `<div class="error">Error: ${error.message}</div>`;
   }
 }
 
-async function loadMarketplace() {
-  const sectionEl = document.getElementById('marketplace-section');
-  const listEl = document.getElementById('marketplace-list');
-  if (!listEl || !sectionEl) return;
+async function selectAgent(agentId) {
+  try {
+    const res = await fetch(`/api/agents`);
+    if (!res.ok) throw new Error('Failed to load agents');
+    const agents = await res.json();
+    const agent = agents.find(a => a.id === agentId);
+    
+    if (!agent) {
+      console.error('Agent not found:', agentId);
+      return;
+    }
+
+    currentAgent = agent;
+    chatHistory = [];
+
+    document.querySelectorAll('.nav-agent').forEach(el => {
+      el.classList.toggle('active', el.dataset.agentId === agentId);
+    });
+
+    document.getElementById('cockpit-agent-name').textContent = agent.name;
+    document.getElementById('cockpit-agent-status').textContent = agent.status;
+    document.getElementById('cockpit-agent-status').className = `agent-status ${agent.status}`;
+    document.getElementById('cockpit-credits').textContent = parseFloat(agent.credits || 0).toFixed(2);
+    
+    if (agent.tbaAddress) {
+      document.getElementById('cockpit-wallet').textContent = 
+        `${agent.tbaAddress.slice(0, 6)}...${agent.tbaAddress.slice(-4)}`;
+    } else {
+      document.getElementById('cockpit-wallet').textContent = '---';
+    }
+
+    document.getElementById('cockpit-empty').style.display = 'none';
+    document.getElementById('create-wizard').style.display = 'none';
+    document.getElementById('cockpit-view').style.display = 'block';
+
+    const activeTab = document.querySelector('.tab-btn.active')?.dataset.tab || 'console';
+    loadTabContent(activeTab);
+  } catch (error) {
+    console.error('Failed to select agent:', error);
+    openModal('Error', `<p class="error">${error.message}</p>`);
+  }
+}
+
+function switchTab(tabName) {
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tab === tabName);
+  });
+
+  document.querySelectorAll('.tab-panel').forEach(panel => {
+    panel.classList.toggle('active', panel.id === `tab-${tabName}`);
+  });
+
+  loadTabContent(tabName);
+}
+
+function loadTabContent(tabName) {
+  if (!currentAgent) return;
+
+  switch (tabName) {
+    case 'console':
+      loadConsole();
+      break;
+    case 'config':
+      loadConfigTab();
+      break;
+    case 'skills':
+      loadSkillsTab();
+      break;
+    case 'wallet':
+      loadWalletTab();
+      break;
+    case 'data':
+      loadDataTab();
+      break;
+  }
+}
+
+function loadConsole() {
+  const messagesEl = document.getElementById('chat-messages');
+  if (chatHistory.length === 0) {
+    messagesEl.innerHTML = `
+      <div class="chat-welcome">
+        <p>Start a conversation with <strong>${escapeHtml(currentAgent.name)}</strong></p>
+      </div>
+    `;
+  }
+}
+
+async function sendChatMessage() {
+  if (!currentAgent) return;
+
+  const input = document.getElementById('chat-input');
+  const messagesEl = document.getElementById('chat-messages');
+  const text = input.value.trim();
   
-  // Only show marketplace when logged in
-  if (!currentUser) {
-    sectionEl.style.display = 'none';
+  if (!text) return;
+
+  if (chatHistory.length === 0) {
+    messagesEl.innerHTML = '';
+  }
+
+  chatHistory.push({ role: 'user', content: text });
+  messagesEl.innerHTML += `<div class="chat-msg user">${escapeHtml(text)}</div>`;
+  input.value = '';
+  
+  messagesEl.innerHTML += `<div class="chat-msg assistant loading">Thinking...</div>`;
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+
+  try {
+    const res = await fetch(`/api/agents/${currentAgent.id}/ai/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messages: chatHistory
+      })
+    });
+
+    const result = await res.json();
+    const loadingMsg = messagesEl.querySelector('.loading');
+    if (loadingMsg) loadingMsg.remove();
+
+    if (res.status === 402) {
+      messagesEl.innerHTML += `<div class="chat-msg error">Insufficient credits. Add more credits to continue.</div>`;
+      return;
+    }
+
+    if (res.status === 503) {
+      messagesEl.innerHTML += `<div class="chat-msg error">No AI provider configured. Add API keys to enable chat.</div>`;
+      return;
+    }
+
+    if (!res.ok) {
+      messagesEl.innerHTML += `<div class="chat-msg error">${result.error || 'Unknown error'}</div>`;
+      return;
+    }
+
+    let responseText = '';
+    if (result.response?.content?.[0]?.text) {
+      responseText = result.response.content[0].text;
+    } else if (result.response?.choices?.[0]?.message?.content) {
+      responseText = result.response.choices[0].message.content;
+    } else {
+      responseText = JSON.stringify(result.response);
+    }
+
+    chatHistory.push({ role: 'assistant', content: responseText });
+    messagesEl.innerHTML += `<div class="chat-msg assistant">${escapeHtml(responseText)}</div>`;
+    messagesEl.innerHTML += `<div class="chat-cost">-${result.creditsUsed} credits (${result.creditsRemaining} remaining)</div>`;
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+
+    document.getElementById('cockpit-credits').textContent = parseFloat(result.creditsRemaining).toFixed(2);
+  } catch (error) {
+    const loadingMsg = messagesEl.querySelector('.loading');
+    if (loadingMsg) loadingMsg.remove();
+    messagesEl.innerHTML += `<div class="chat-msg error">${error.message}</div>`;
+  }
+}
+
+async function loadConfigTab() {
+  if (!currentAgent) return;
+
+  document.getElementById('config-name').value = currentAgent.name || '';
+  document.getElementById('config-description').value = currentAgent.description || '';
+  document.getElementById('config-system-prompt').value = currentAgent.systemPrompt || '';
+  document.getElementById('config-model').value = currentAgent.model || 'gpt-4o';
+
+  await loadSecrets();
+}
+
+async function loadSecrets() {
+  if (!currentAgent) return;
+
+  const secretsEl = document.getElementById('config-secrets');
+  secretsEl.innerHTML = '<div class="loading">Loading...</div>';
+
+  try {
+    const res = await fetch(`/api/agents/${currentAgent.id}/secrets`);
+    const secrets = await res.json();
+
+    if (secrets.length === 0) {
+      secretsEl.innerHTML = '<p class="note">No API keys configured</p>';
+      return;
+    }
+
+    secretsEl.innerHTML = secrets.map(secret => `
+      <div class="secret-item" data-service="${secret.serviceName}">
+        <span class="secret-name">${escapeHtml(secret.serviceName)}</span>
+        <span class="secret-status set">Configured</span>
+        <button class="btn btn-sm btn-outline" onclick="deleteSecret('${currentAgent.id}', '${secret.serviceName}')">Remove</button>
+      </div>
+    `).join('');
+  } catch (error) {
+    secretsEl.innerHTML = `<p class="error">${error.message}</p>`;
+  }
+}
+
+function showAddSecretForm() {
+  if (!currentAgent) return;
+
+  const content = `
+    <div class="modal-info">
+      <div class="form-group">
+        <label>Service</label>
+        <select id="new-secret-service" class="input">
+          <option value="openai">OpenAI</option>
+          <option value="anthropic">Anthropic</option>
+          <option value="telegram">Telegram Bot</option>
+          <option value="discord">Discord Bot</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>API Key</label>
+        <input type="password" id="new-secret-key" class="input" placeholder="sk-..." />
+      </div>
+      <button class="btn" onclick="saveNewSecret()">Save API Key</button>
+    </div>
+  `;
+  openModal('Add API Key', content);
+}
+
+async function saveNewSecret() {
+  if (!currentAgent) return;
+
+  const serviceName = document.getElementById('new-secret-service').value;
+  const apiKey = document.getElementById('new-secret-key').value.trim();
+
+  if (!apiKey) {
+    document.getElementById('new-secret-key').focus();
     return;
   }
-  
+
+  try {
+    const res = await fetch(`/api/agents/${currentAgent.id}/secrets`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ serviceName, apiKey })
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Failed to save');
+    }
+
+    closeModal();
+    loadSecrets();
+  } catch (error) {
+    openModal('Error', `<p class="error">${error.message}</p>`);
+  }
+}
+
+async function deleteSecret(agentId, serviceName) {
+  if (!confirm(`Remove ${serviceName} API key?`)) return;
+
+  try {
+    const res = await fetch(`/api/agents/${agentId}/secrets/${serviceName}`, {
+      method: 'DELETE'
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Failed to remove');
+    }
+
+    loadSecrets();
+  } catch (error) {
+    openModal('Error', `<p class="error">${error.message}</p>`);
+  }
+}
+
+async function saveAgentConfig() {
+  if (!currentAgent) return;
+
+  const name = document.getElementById('config-name').value.trim();
+  const description = document.getElementById('config-description').value.trim();
+  const systemPrompt = document.getElementById('config-system-prompt').value.trim();
+  const model = document.getElementById('config-model').value;
+
+  if (!name) {
+    openModal('Error', '<p class="error">Agent name is required</p>');
+    return;
+  }
+
+  try {
+    const res = await fetch(`/api/agents/${currentAgent.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, description, systemPrompt, model })
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Failed to save');
+    }
+
+    openModal('Success', '<p>Configuration saved successfully</p>');
+    currentAgent.name = name;
+    currentAgent.description = description;
+    currentAgent.systemPrompt = systemPrompt;
+    currentAgent.model = model;
+    
+    document.getElementById('cockpit-agent-name').textContent = name;
+    loadAgents();
+  } catch (error) {
+    openModal('Error', `<p class="error">${error.message}</p>`);
+  }
+}
+
+async function loadSkillsTab() {
+  if (!currentAgent) return;
+
+  const skillsListEl = document.getElementById('agent-skills-list');
+  skillsListEl.innerHTML = '<div class="loading">Loading...</div>';
+
+  try {
+    const res = await fetch(`/api/agents/${currentAgent.id}/skills`);
+    const skills = await res.json();
+
+    if (skills.length === 0) {
+      skillsListEl.innerHTML = '<p class="note">No skills yet. Add your first skill to get started.</p>';
+    } else {
+      skillsListEl.innerHTML = skills.map(skill => `
+        <div class="skill-item" data-id="${skill.id}">
+          <div class="skill-header">
+            <span class="skill-name">${escapeHtml(skill.name)}</span>
+            <span class="skill-price">${skill.priceCredits} credits</span>
+          </div>
+          <div class="skill-meta">
+            <span class="skill-category">${skill.category}</span>
+            <span class="skill-usage">${skill.usageCount || 0} uses</span>
+            <span class="skill-status ${skill.isActive ? 'active' : 'inactive'}">${skill.isActive ? 'Active' : 'Inactive'}</span>
+          </div>
+          ${skill.description ? `<div class="skill-desc">${escapeHtml(skill.description)}</div>` : ''}
+          <div class="skill-actions">
+            <button class="btn btn-sm ${skill.isActive ? 'btn-outline' : ''}" onclick="toggleSkill('${currentAgent.id}', '${skill.id}', ${!skill.isActive})">${skill.isActive ? 'Disable' : 'Enable'}</button>
+            <button class="btn btn-sm btn-outline" onclick="deleteSkill('${currentAgent.id}', '${skill.id}')">Remove</button>
+          </div>
+        </div>
+      `).join('');
+    }
+  } catch (error) {
+    skillsListEl.innerHTML = `<p class="error">${error.message}</p>`;
+  }
+
+  loadMarketplacePreview();
+}
+
+function showAddSkillForm() {
+  if (!currentAgent) return;
+
+  const content = `
+    <div class="modal-info">
+      <div class="form-group">
+        <label>Skill Name</label>
+        <input type="text" id="new-skill-name" class="input" placeholder="e.g., Data Summarization" />
+      </div>
+      <div class="form-group">
+        <label>Description</label>
+        <textarea id="new-skill-desc" class="input" rows="2" placeholder="What does this skill do?"></textarea>
+      </div>
+      <div class="form-group">
+        <label>Category</label>
+        <select id="new-skill-category" class="input">
+          <option value="general">General</option>
+          <option value="research">Research</option>
+          <option value="analysis">Analysis</option>
+          <option value="automation">Automation</option>
+          <option value="creative">Creative</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Price (credits)</label>
+        <input type="number" id="new-skill-price" class="input" value="0.01" step="0.01" min="0" />
+      </div>
+      <button class="btn" onclick="saveNewSkill()">Add Skill</button>
+    </div>
+  `;
+  openModal('Add Skill', content);
+}
+
+async function saveNewSkill() {
+  if (!currentAgent) return;
+
+  const name = document.getElementById('new-skill-name').value.trim();
+  const description = document.getElementById('new-skill-desc').value.trim();
+  const category = document.getElementById('new-skill-category').value;
+  const priceCredits = document.getElementById('new-skill-price').value || '0.01';
+
+  if (!name) {
+    document.getElementById('new-skill-name').focus();
+    return;
+  }
+
+  try {
+    const res = await fetch(`/api/agents/${currentAgent.id}/skills`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, description, category, priceCredits })
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Failed to add skill');
+    }
+
+    closeModal();
+    loadSkillsTab();
+  } catch (error) {
+    openModal('Error', `<p class="error">${error.message}</p>`);
+  }
+}
+
+async function toggleSkill(agentId, skillId, isActive) {
+  try {
+    await fetch(`/api/agents/${agentId}/skills/${skillId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ isActive })
+    });
+    loadSkillsTab();
+  } catch (error) {
+    openModal('Error', `<p class="error">${error.message}</p>`);
+  }
+}
+
+async function deleteSkill(agentId, skillId) {
+  if (!confirm('Remove this skill?')) return;
+
+  try {
+    await fetch(`/api/agents/${agentId}/skills/${skillId}`, { method: 'DELETE' });
+    loadSkillsTab();
+  } catch (error) {
+    openModal('Error', `<p class="error">${error.message}</p>`);
+  }
+}
+
+async function loadMarketplacePreview() {
+  const listEl = document.getElementById('marketplace-list');
+  if (!listEl || !currentUser) return;
+
   const category = document.getElementById('category-filter')?.value || 'all';
   const search = document.getElementById('search-filter')?.value || '';
-  
+
   try {
     const params = new URLSearchParams();
     if (category && category !== 'all') params.append('category', category);
     if (search) params.append('search', search);
-    
+
     const res = await fetch(`/api/marketplace/skills?${params}`);
     if (!res.ok) throw new Error('Failed to load skills');
     const skills = await res.json();
-    
-    // Only show section if there are skills available
+
     if (skills.length === 0) {
-      sectionEl.style.display = 'none';
+      listEl.innerHTML = '<p class="note">No skills available in the marketplace yet.</p>';
       return;
     }
-    
-    sectionEl.style.display = 'block';
+
     listEl.innerHTML = skills.map(skill => `
       <div class="marketplace-card">
         <div class="marketplace-header">
@@ -262,103 +689,266 @@ async function loadMarketplace() {
       </div>
     `).join('');
   } catch (error) {
-    sectionEl.style.display = 'none';
+    listEl.innerHTML = `<p class="error">${error.message}</p>`;
   }
 }
 
 async function executeSkill(skillId, skillName, price) {
-  if (!currentUser) {
-    openModal('Sign In Required', '<p>Please sign in to use skills from the marketplace.</p>');
+  if (!currentAgent) {
+    openModal('Select Agent', '<p>Please select an agent first to use marketplace skills.</p>');
     return;
   }
-  
-  // Get user's agents to select which one will pay
-  try {
-    const res = await fetch('/api/agents');
-    if (!res.ok) throw new Error('Failed to load your agents');
-    const agents = await res.json();
-    
-    if (agents.length === 0) {
-      openModal('No Agents', '<p>You need to create an agent first to use marketplace skills.</p>');
-      return;
-    }
-    
-    let content = `
-      <div class="modal-info">
-        <p>Use <strong>${skillName}</strong> for <strong>${price} credits</strong></p>
-        <p class="note">Select which agent will pay for and execute this skill:</p>
-        <select id="agent-select" class="input">
-          ${agents.map(a => `<option value="${a.id}">${escapeHtml(a.name)} (${parseFloat(a.credits || 0).toFixed(2)} credits)</option>`).join('')}
-        </select>
-        <div style="margin-top: 1rem;">
-          <button class="btn" onclick="confirmExecuteSkill('${skillId}')">Execute Skill</button>
-        </div>
-      </div>
-    `;
-    openModal('Execute Skill', content);
-  } catch (error) {
-    openModal('Error', `<p class="error">${error.message}</p>`);
-  }
+
+  const content = `
+    <div class="modal-info">
+      <p>Use <strong>${skillName}</strong> for <strong>${price} credits</strong></p>
+      <p class="note">This will be charged to <strong>${escapeHtml(currentAgent.name)}</strong></p>
+      <button class="btn" onclick="confirmExecuteSkill('${skillId}')">Execute Skill</button>
+    </div>
+  `;
+  openModal('Execute Skill', content);
 }
 
 async function confirmExecuteSkill(skillId) {
-  const agentId = document.getElementById('agent-select').value;
-  
+  if (!currentAgent) return;
+
   try {
     const res = await fetch(`/api/marketplace/skills/${skillId}/execute`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ agentId })
+      body: JSON.stringify({ agentId: currentAgent.id })
     });
-    
+
     const result = await res.json();
-    
+
     if (res.status === 402) {
-      openModal('Insufficient Credits', `<p>This agent doesn't have enough credits. Required: ${result.required}, Available: ${result.available}</p>`);
+      openModal('Insufficient Credits', `<p>Not enough credits. Required: ${result.required}, Available: ${result.available}</p>`);
       return;
     }
-    
+
     if (!res.ok) {
       throw new Error(result.error || 'Failed to execute skill');
     }
-    
+
     openModal('Success', `
       <div class="modal-info">
         <p>${result.message}</p>
         <p class="note">Platform fee: ${result.platformFee.toFixed(4)} credits</p>
       </div>
     `);
-    
-    loadAgents();
-    loadMarketplace();
+
+    selectAgent(currentAgent.id);
   } catch (error) {
     openModal('Error', `<p class="error">${error.message}</p>`);
   }
 }
 
-async function createAgent() {
-  const nameInput = document.getElementById('agent-name');
-  const descInput = document.getElementById('agent-description');
-  const outputEl = document.getElementById('agent-output');
+async function loadWalletTab() {
+  if (!currentAgent) return;
+
+  document.getElementById('wallet-credits').textContent = parseFloat(currentAgent.credits || 0).toFixed(2);
+
+  try {
+    const res = await fetch(`/api/agents/${currentAgent.id}/wallet`);
+    const wallet = await res.json();
+
+    if (wallet.walletEnabled && wallet.address) {
+      document.getElementById('wallet-usdc').textContent = `$${parseFloat(wallet.usdc || 0).toFixed(2)}`;
+      document.getElementById('wallet-full-address').textContent = wallet.address;
+    } else {
+      document.getElementById('wallet-usdc').textContent = '$0.00';
+      document.getElementById('wallet-full-address').textContent = 'Wallet not configured';
+    }
+
+    await loadTransactions();
+  } catch (error) {
+    console.error('Failed to load wallet:', error);
+  }
+}
+
+async function loadTransactions() {
+  if (!currentAgent) return;
+
+  const transactionsEl = document.getElementById('wallet-transactions');
+
+  try {
+    const res = await fetch(`/api/agents/${currentAgent.id}/analytics`);
+    const data = await res.json();
+
+    if (data.recentPayments && data.recentPayments.length > 0) {
+      transactionsEl.innerHTML = data.recentPayments.slice(0, 10).map(p => {
+        const icon = p.direction === 'inbound' ? '+' : '-';
+        const cls = p.direction === 'inbound' ? 'positive' : 'negative';
+        return `
+          <div class="transaction-item">
+            <span class="tx-amount ${cls}">${icon}${parseFloat(p.amount).toFixed(4)}</span>
+            <span class="tx-endpoint">${escapeHtml(p.endpoint || 'Transaction')}</span>
+          </div>
+        `;
+      }).join('');
+    } else {
+      transactionsEl.innerHTML = '<p class="note">No transactions yet</p>';
+    }
+  } catch (error) {
+    transactionsEl.innerHTML = `<p class="error">${error.message}</p>`;
+  }
+}
+
+async function loadDataTab() {
+  if (!currentAgent) return;
+
+  const statsEl = document.getElementById('analytics-stats');
+  const logEl = document.getElementById('activity-log');
+
+  try {
+    const res = await fetch(`/api/agents/${currentAgent.id}/analytics`);
+    const data = await res.json();
+
+    const profitClass = parseFloat(data.totals.profit) >= 0 ? 'positive' : 'negative';
+
+    statsEl.innerHTML = `
+      <div class="analytics-card">
+        <span class="analytics-value">${parseFloat(data.currentCredits).toFixed(2)}</span>
+        <span class="analytics-label">Current Credits</span>
+      </div>
+      <div class="analytics-card">
+        <span class="analytics-value">${data.totals.earned}</span>
+        <span class="analytics-label">Total Earned</span>
+      </div>
+      <div class="analytics-card">
+        <span class="analytics-value">${data.totals.spent}</span>
+        <span class="analytics-label">Total Spent</span>
+      </div>
+      <div class="analytics-card ${profitClass}">
+        <span class="analytics-value">${data.totals.profit}</span>
+        <span class="analytics-label">Net Profit/Loss</span>
+      </div>
+    `;
+
+    if (data.recentPayments && data.recentPayments.length > 0) {
+      logEl.innerHTML = data.recentPayments.map(p => {
+        const icon = p.direction === 'inbound' ? '↓' : '↑';
+        const cls = p.direction === 'inbound' ? 'positive' : 'negative';
+        return `
+          <div class="activity-item">
+            <span class="activity-icon ${cls}">${icon}</span>
+            <span class="activity-desc">${escapeHtml(p.endpoint || 'Transaction')}</span>
+            <span class="activity-amount ${cls}">${parseFloat(p.amount).toFixed(4)} credits</span>
+          </div>
+        `;
+      }).join('');
+    } else {
+      logEl.innerHTML = '<p class="note">Activity will appear here as your agent is used.</p>';
+    }
+  } catch (error) {
+    statsEl.innerHTML = `<p class="error">${error.message}</p>`;
+    logEl.innerHTML = '';
+  }
+}
+
+async function downloadRegistration() {
+  if (!currentAgent) return;
+
+  try {
+    const res = await fetch(`/api/agents/${currentAgent.id}/registration`);
+    const data = await res.json();
+
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `agent-${currentAgent.id}-registration.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  } catch (error) {
+    openModal('Error', `<p class="error">${error.message}</p>`);
+  }
+}
+
+function showCreateWizard() {
+  currentWizardStep = 1;
   
-  const name = nameInput.value.trim();
-  if (!name) {
-    outputEl.style.display = 'block';
-    outputEl.textContent = 'Please enter an agent name.';
-    return;
+  document.getElementById('wizard-name').value = '';
+  document.getElementById('wizard-description').value = '';
+  document.getElementById('wizard-prompt').value = '';
+  document.getElementById('wizard-model').value = 'gpt-4o';
+
+  updateWizardStep();
+
+  document.getElementById('cockpit-empty').style.display = 'none';
+  document.getElementById('cockpit-view').style.display = 'none';
+  document.getElementById('create-wizard').style.display = 'block';
+}
+
+function hideCreateWizard() {
+  document.getElementById('create-wizard').style.display = 'none';
+  
+  if (currentAgent) {
+    document.getElementById('cockpit-view').style.display = 'block';
+  } else {
+    document.getElementById('cockpit-empty').style.display = 'flex';
+  }
+}
+
+function updateWizardStep() {
+  document.querySelectorAll('.wizard-step').forEach(step => {
+    const stepNum = parseInt(step.dataset.step);
+    step.classList.toggle('active', stepNum === currentWizardStep);
+    step.classList.toggle('completed', stepNum < currentWizardStep);
+  });
+
+  document.querySelectorAll('.wizard-panel').forEach(panel => {
+    panel.classList.remove('active');
+  });
+  document.getElementById(`wizard-step-${currentWizardStep}`).classList.add('active');
+
+  if (currentWizardStep === 3) {
+    document.getElementById('review-name').textContent = document.getElementById('wizard-name').value || '-';
+    document.getElementById('review-description').textContent = document.getElementById('wizard-description').value || '-';
+    document.getElementById('review-model').textContent = document.getElementById('wizard-model').value;
+  }
+}
+
+function wizardNext() {
+  if (currentWizardStep === 1) {
+    const name = document.getElementById('wizard-name').value.trim();
+    if (!name) {
+      document.getElementById('wizard-name').focus();
+      return;
+    }
   }
 
-  outputEl.style.display = 'block';
-  outputEl.textContent = 'Creating agent...';
+  if (currentWizardStep < 3) {
+    currentWizardStep++;
+    updateWizardStep();
+  }
+}
+
+function wizardPrev() {
+  if (currentWizardStep > 1) {
+    currentWizardStep--;
+    updateWizardStep();
+  }
+}
+
+async function createAgentFromWizard() {
+  const name = document.getElementById('wizard-name').value.trim();
+  const description = document.getElementById('wizard-description').value.trim();
+  const systemPrompt = document.getElementById('wizard-prompt').value.trim();
+  const model = document.getElementById('wizard-model').value;
+
+  if (!name) {
+    openModal('Error', '<p class="error">Agent name is required</p>');
+    return;
+  }
 
   try {
     const res = await fetch('/api/agents', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name,
-        description: descInput.value.trim() || null
-      })
+      body: JSON.stringify({ name, description, systemPrompt, model })
     });
 
     if (!res.ok) {
@@ -367,472 +957,15 @@ async function createAgent() {
     }
 
     const agent = await res.json();
-    outputEl.textContent = `Agent "${agent.name}" created with 10 free credits!`;
-    nameInput.value = '';
-    descInput.value = '';
-    setTimeout(() => {
-      toggleCreateForm();
-      outputEl.style.display = 'none';
-    }, 2000);
-    loadAgents();
-  } catch (error) {
-    outputEl.textContent = 'Error: ' + error.message;
-  }
-}
-
-async function viewRegistration(agentId) {
-  try {
-    const res = await fetch(`/api/agents/${agentId}/registration`);
-    const data = await res.json();
     
-    const content = `
-      <div class="modal-info">
-        <p><strong>Name:</strong> ${escapeHtml(data.name)}</p>
-        <p><strong>Wallet:</strong> <code>${data.wallet}</code></p>
-        <p><strong>Network:</strong> ${data.network} (Chain ${data.chainId})</p>
-        <h4>Services</h4>
-        <ul>
-          ${data.services.map(s => `<li><strong>${s.name}:</strong> <code>${s.endpoint}</code></li>`).join('')}
-        </ul>
-        <h4>Raw Registration</h4>
-        <pre>${JSON.stringify(data, null, 2)}</pre>
-      </div>
-    `;
-    openModal('Agent Identity (ERC-8004)', content);
+    hideCreateWizard();
+    await loadAgents();
+    selectAgent(agent.id);
+
+    openModal('Success', `<p>Agent "${escapeHtml(agent.name)}" created with 10 free credits!</p>`);
   } catch (error) {
     openModal('Error', `<p class="error">${error.message}</p>`);
   }
-}
-
-async function viewWallet(agentId) {
-  try {
-    const res = await fetch(`/api/agents/${agentId}/wallet`);
-    const wallet = await res.json();
-    
-    let content = `
-      <div class="modal-info">
-        <div class="wallet-balance">
-          <div class="balance-item">
-            <span class="balance-value">${parseFloat(wallet.credits || 0).toFixed(2)}</span>
-            <span class="balance-label">Platform Credits</span>
-          </div>
-        </div>
-    `;
-    
-    if (wallet.walletEnabled) {
-      content += `
-        <hr>
-        <h4>On-Chain Wallet</h4>
-        <p><strong>Address:</strong> <code>${wallet.address}</code></p>
-        <div class="wallet-balance">
-          <div class="balance-item">
-            <span class="balance-value">${parseFloat(wallet.usdc || 0).toFixed(4)}</span>
-            <span class="balance-label">USDC</span>
-          </div>
-          <div class="balance-item">
-            <span class="balance-value">${parseFloat(wallet.celo || 0).toFixed(4)}</span>
-            <span class="balance-label">CELO</span>
-          </div>
-        </div>
-        <p class="note">Send USDC on Celo network to fund this wallet.</p>
-      `;
-    } else {
-      content += `
-        <hr>
-        <p class="note">On-chain wallet not configured. Platform needs CELO_PRIVATE_KEY in Secrets.</p>
-      `;
-    }
-    
-    content += '</div>';
-    openModal('Agent Wallet', content);
-  } catch (error) {
-    openModal('Error', `<p class="error">${error.message}</p>`);
-  }
-}
-
-async function manageSkills(agentId) {
-  try {
-    const res = await fetch(`/api/agents/${agentId}/skills`);
-    const skills = await res.json();
-    
-    let content = `
-      <div class="modal-info skills-manager">
-        <p class="note">Add skills your agent can offer to others. Set a price in credits.</p>
-        
-        <div class="add-skill-form">
-          <input type="text" id="skill-name" class="input" placeholder="Skill name (e.g., 'Data Summarization')" />
-          <input type="text" id="skill-desc" class="input" placeholder="Description" />
-          <div class="form-row">
-            <select id="skill-category" class="input">
-              <option value="general">General</option>
-              <option value="research">Research</option>
-              <option value="analysis">Analysis</option>
-              <option value="automation">Automation</option>
-              <option value="creative">Creative</option>
-            </select>
-            <input type="number" id="skill-price" class="input" placeholder="Price" value="0.01" step="0.01" min="0" />
-          </div>
-          <button class="btn" onclick="addSkill('${agentId}')">Add Skill</button>
-        </div>
-        
-        <hr>
-        <h4>Your Skills</h4>
-        <div class="skills-list">
-    `;
-    
-    if (skills.length === 0) {
-      content += '<p class="empty">No skills yet. Add your first skill above.</p>';
-    } else {
-      skills.forEach(skill => {
-        content += `
-          <div class="skill-item" data-id="${skill.id}">
-            <div class="skill-header">
-              <span class="skill-name">${escapeHtml(skill.name)}</span>
-              <span class="skill-price">${skill.priceCredits} credits</span>
-            </div>
-            <div class="skill-meta">
-              <span class="skill-category">${skill.category}</span>
-              <span class="skill-usage">${skill.usageCount || 0} uses</span>
-              <span class="skill-earned">${parseFloat(skill.totalEarned || 0).toFixed(4)} earned</span>
-            </div>
-            ${skill.description ? `<div class="skill-desc">${escapeHtml(skill.description)}</div>` : ''}
-            <div class="skill-actions">
-              <button class="btn btn-sm ${skill.isActive ? 'btn-outline' : ''}" onclick="toggleSkill('${agentId}', '${skill.id}', ${!skill.isActive})">${skill.isActive ? 'Disable' : 'Enable'}</button>
-              <button class="btn btn-sm btn-danger" onclick="deleteSkill('${agentId}', '${skill.id}')">Remove</button>
-            </div>
-          </div>
-        `;
-      });
-    }
-    
-    content += '</div></div>';
-    openModal('Agent Skills', content);
-  } catch (error) {
-    openModal('Error', `<p class="error">${error.message}</p>`);
-  }
-}
-
-async function addSkill(agentId) {
-  const name = document.getElementById('skill-name').value.trim();
-  const description = document.getElementById('skill-desc').value.trim();
-  const category = document.getElementById('skill-category').value;
-  const priceCredits = document.getElementById('skill-price').value || "0.01";
-  
-  if (!name) {
-    document.getElementById('skill-name').focus();
-    return;
-  }
-  
-  try {
-    const res = await fetch(`/api/agents/${agentId}/skills`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, description, category, priceCredits })
-    });
-    
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.error || 'Failed to add skill');
-    }
-    
-    manageSkills(agentId);
-  } catch (error) {
-    openModal('Error', `<p class="error">${error.message}</p>`);
-  }
-}
-
-async function toggleSkill(agentId, skillId, isActive) {
-  try {
-    await fetch(`/api/agents/${agentId}/skills/${skillId}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ isActive })
-    });
-    manageSkills(agentId);
-  } catch (error) {
-    openModal('Error', `<p class="error">${error.message}</p>`);
-  }
-}
-
-async function deleteSkill(agentId, skillId) {
-  if (!confirm('Remove this skill?')) return;
-  
-  try {
-    await fetch(`/api/agents/${agentId}/skills/${skillId}`, { method: 'DELETE' });
-    manageSkills(agentId);
-  } catch (error) {
-    openModal('Error', `<p class="error">${error.message}</p>`);
-  }
-}
-
-async function viewAnalytics(agentId) {
-  try {
-    const res = await fetch(`/api/agents/${agentId}/analytics`);
-    const data = await res.json();
-    
-    const profitClass = parseFloat(data.totals.profit) >= 0 ? 'positive' : 'negative';
-    
-    let content = `
-      <div class="modal-info analytics-dashboard">
-        <div class="analytics-grid">
-          <div class="analytics-card">
-            <span class="analytics-value">${parseFloat(data.currentCredits).toFixed(2)}</span>
-            <span class="analytics-label">Current Credits</span>
-          </div>
-          <div class="analytics-card">
-            <span class="analytics-value">${data.totals.earned}</span>
-            <span class="analytics-label">Total Earned</span>
-          </div>
-          <div class="analytics-card">
-            <span class="analytics-value">${data.totals.spent}</span>
-            <span class="analytics-label">Total Spent</span>
-          </div>
-          <div class="analytics-card ${profitClass}">
-            <span class="analytics-value">${data.totals.profit}</span>
-            <span class="analytics-label">Net Profit/Loss</span>
-          </div>
-        </div>
-        
-        <hr>
-        <h4>Breakdown</h4>
-        <div class="breakdown-list">
-          <div class="breakdown-item">
-            <span>AI Costs</span>
-            <span class="negative">-${data.breakdown.aiCosts}</span>
-          </div>
-          <div class="breakdown-item">
-            <span>Skill Earnings</span>
-            <span class="positive">+${data.breakdown.skillEarnings}</span>
-          </div>
-        </div>
-        
-        <hr>
-        <h4>Skills Overview</h4>
-        <p>${data.skills.active} active skills / ${data.skills.total} total</p>
-        <p>${data.skills.totalUsage} total skill executions</p>
-        
-        <hr>
-        <h4>Recent Transactions</h4>
-        <div class="transactions-list">
-    `;
-    
-    if (data.recentPayments.length === 0) {
-      content += '<p class="empty">No transactions yet.</p>';
-    } else {
-      data.recentPayments.forEach(p => {
-        const icon = p.direction === 'inbound' ? '+' : '-';
-        const cls = p.direction === 'inbound' ? 'positive' : 'negative';
-        content += `
-          <div class="transaction-item">
-            <span class="tx-amount ${cls}">${icon}${parseFloat(p.amount).toFixed(4)}</span>
-            <span class="tx-endpoint">${p.endpoint || 'Unknown'}</span>
-          </div>
-        `;
-      });
-    }
-    
-    content += '</div></div>';
-    openModal('Agent Analytics', content);
-  } catch (error) {
-    openModal('Error', `<p class="error">${error.message}</p>`);
-  }
-}
-
-async function manageSecrets(agentId) {
-  try {
-    const res = await fetch(`/api/agents/${agentId}/secrets`);
-    const secrets = await res.json();
-    
-    const services = [
-      { name: 'openai', label: 'OpenAI', hint: 'sk-...' },
-      { name: 'anthropic', label: 'Anthropic', hint: 'sk-ant-...' },
-      { name: 'telegram', label: 'Telegram Bot', hint: 'Bot token from @BotFather' },
-      { name: 'discord', label: 'Discord Bot', hint: 'Bot token from Discord Developer Portal' }
-    ];
-    
-    const secretsMap = {};
-    secrets.forEach(s => secretsMap[s.serviceName] = s);
-    
-    let content = `
-      <div class="modal-info secrets-manager">
-        <p class="note">Add your own API keys so your agent uses your accounts. Keys are stored securely and only used by this agent.</p>
-        <div class="secrets-list">
-    `;
-    
-    services.forEach(svc => {
-      const hasKey = secretsMap[svc.name];
-      content += `
-        <div class="secret-item" data-service="${svc.name}">
-          <div class="secret-header">
-            <span class="secret-name">${svc.label}</span>
-            <span class="secret-status ${hasKey ? 'set' : ''}">${hasKey ? 'Configured' : 'Not set'}</span>
-          </div>
-          <div class="secret-form ${hasKey ? 'hidden' : ''}">
-            <input type="password" class="input secret-input" placeholder="${svc.hint}" />
-            <button class="btn btn-sm" onclick="saveSecret('${agentId}', '${svc.name}', this)">Save</button>
-          </div>
-          ${hasKey ? `
-            <div class="secret-actions">
-              <button class="btn btn-sm btn-outline" onclick="showSecretForm('${svc.name}')">Update</button>
-              <button class="btn btn-sm btn-danger" onclick="deleteSecret('${agentId}', '${svc.name}')">Remove</button>
-            </div>
-          ` : ''}
-        </div>
-      `;
-    });
-    
-    content += `
-        </div>
-        <hr>
-        <p class="note">Priority: Your API keys are used first, then Replit's built-in AI, then platform fallback.</p>
-      </div>
-    `;
-    
-    openModal('Agent API Keys', content);
-  } catch (error) {
-    openModal('Error', `<p class="error">${error.message}</p>`);
-  }
-}
-
-function showSecretForm(serviceName) {
-  const item = document.querySelector(`.secret-item[data-service="${serviceName}"]`);
-  if (item) {
-    item.querySelector('.secret-form').classList.remove('hidden');
-    item.querySelector('.secret-actions')?.classList.add('hidden');
-  }
-}
-
-async function saveSecret(agentId, serviceName, btn) {
-  const item = btn.closest('.secret-item');
-  const input = item.querySelector('.secret-input');
-  const apiKey = input.value.trim();
-  
-  if (!apiKey) {
-    input.focus();
-    return;
-  }
-  
-  btn.disabled = true;
-  btn.textContent = 'Saving...';
-  
-  try {
-    const res = await fetch(`/api/agents/${agentId}/secrets`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ serviceName, apiKey })
-    });
-    
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.error || 'Failed to save');
-    }
-    
-    manageSecrets(agentId);
-  } catch (error) {
-    btn.disabled = false;
-    btn.textContent = 'Save';
-    item.querySelector('.secret-form').insertAdjacentHTML('beforeend', 
-      `<div class="error">${error.message}</div>`);
-  }
-}
-
-async function deleteSecret(agentId, serviceName) {
-  if (!confirm(`Remove ${serviceName} API key from this agent?`)) return;
-  
-  try {
-    const res = await fetch(`/api/agents/${agentId}/secrets/${serviceName}`, {
-      method: 'DELETE'
-    });
-    
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.error || 'Failed to remove');
-    }
-    
-    manageSecrets(agentId);
-  } catch (error) {
-    openModal('Error', `<p class="error">${error.message}</p>`);
-  }
-}
-
-async function testAI(agentId) {
-  const content = `
-    <div class="chat-interface">
-      <div id="chat-messages" class="chat-messages"></div>
-      <div class="chat-input-area">
-        <input type="text" id="chat-input" class="input" placeholder="Type a message..." />
-        <button id="chat-send" class="btn">Send</button>
-      </div>
-    </div>
-  `;
-  openModal('Chat with Agent', content);
-  
-  const input = document.getElementById('chat-input');
-  const sendBtn = document.getElementById('chat-send');
-  const messages = document.getElementById('chat-messages');
-  
-  async function sendMessage() {
-    const text = input.value.trim();
-    if (!text) return;
-    
-    messages.innerHTML += `<div class="chat-msg user">${escapeHtml(text)}</div>`;
-    input.value = '';
-    messages.innerHTML += `<div class="chat-msg assistant loading">Thinking...</div>`;
-    messages.scrollTop = messages.scrollHeight;
-    
-    try {
-      const res = await fetch(`/api/agents/${agentId}/ai/chat`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: [{ role: 'user', content: text }]
-        })
-      });
-      
-      const result = await res.json();
-      const loadingMsg = messages.querySelector('.loading');
-      if (loadingMsg) loadingMsg.remove();
-      
-      if (res.status === 402) {
-        messages.innerHTML += `<div class="chat-msg error">Insufficient credits. Add more credits to continue.</div>`;
-        return;
-      }
-      
-      if (res.status === 503) {
-        messages.innerHTML += `<div class="chat-msg error">No AI provider configured. Add ANTHROPIC_API_KEY or OPENAI_API_KEY to Secrets.</div>`;
-        return;
-      }
-      
-      if (!res.ok) {
-        messages.innerHTML += `<div class="chat-msg error">${result.error || 'Unknown error'}</div>`;
-        return;
-      }
-      
-      let responseText = '';
-      if (result.response?.content?.[0]?.text) {
-        responseText = result.response.content[0].text;
-      } else if (result.response?.choices?.[0]?.message?.content) {
-        responseText = result.response.choices[0].message.content;
-      } else {
-        responseText = JSON.stringify(result.response);
-      }
-      
-      messages.innerHTML += `<div class="chat-msg assistant">${escapeHtml(responseText)}</div>`;
-      messages.innerHTML += `<div class="chat-cost">-${result.creditsUsed} credits (${result.creditsRemaining} remaining)</div>`;
-      messages.scrollTop = messages.scrollHeight;
-      loadAgents();
-    } catch (error) {
-      const loadingMsg = messages.querySelector('.loading');
-      if (loadingMsg) loadingMsg.remove();
-      messages.innerHTML += `<div class="chat-msg error">${error.message}</div>`;
-    }
-  }
-  
-  sendBtn.addEventListener('click', sendMessage);
-  input.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') sendMessage();
-  });
-  input.focus();
 }
 
 function escapeHtml(str) {

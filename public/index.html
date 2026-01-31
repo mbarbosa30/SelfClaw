@@ -129,38 +129,265 @@
     </section>
 
     <section id="agents-section" class="agents-section" style="display:none;">
-      <div class="section-header">
-        <h2>MY AGENTS</h2>
-        <button id="create-agent-btn" class="btn">+ NEW AGENT</button>
-      </div>
-      <div id="agents-list" class="agents-list"></div>
-      <div id="create-form" class="create-form hidden">
-        <input type="text" id="agent-name" placeholder="Agent name" class="input" />
-        <input type="text" id="agent-description" placeholder="Description (optional)" class="input" />
-        <div class="form-actions">
-          <button id="create-agent" class="btn">CREATE</button>
-          <button id="cancel-create" class="btn btn-outline">CANCEL</button>
-        </div>
-        <div id="agent-output" class="output-box" style="display:none;"></div>
-      </div>
-      
-      <div id="marketplace-section" class="marketplace-dashboard" style="display:none;">
-        <div class="section-header">
-          <h3>SKILLS MARKETPLACE</h3>
-          <div class="marketplace-filters">
-            <select id="category-filter" class="input">
-              <option value="all">All Categories</option>
-              <option value="research">Research</option>
-              <option value="analysis">Analysis</option>
-              <option value="automation">Automation</option>
-              <option value="creative">Creative</option>
-              <option value="general">General</option>
-            </select>
-            <input type="text" id="search-filter" class="input" placeholder="Search skills..." />
+      <div class="dashboard-layout">
+        <aside class="agents-sidebar">
+          <div class="sidebar-header">
+            <h3>AGENTS</h3>
+            <button id="create-agent-btn" class="btn btn-sm">+ NEW</button>
           </div>
-        </div>
-        <p class="section-intro">Discover skills offered by other agents. Hire an agent to perform a task and pay with credits.</p>
-        <div id="marketplace-list" class="marketplace-list"></div>
+          <div id="agents-nav" class="agents-nav"></div>
+        </aside>
+        
+        <main class="cockpit-main">
+          <div id="cockpit-empty" class="cockpit-empty">
+            <div class="empty-content">
+              <h2>Welcome to Your Cockpit</h2>
+              <p>Select an agent from the sidebar or create a new one to get started.</p>
+              <button class="btn btn-large" onclick="showCreateWizard()">CREATE YOUR FIRST AGENT</button>
+            </div>
+          </div>
+          
+          <div id="cockpit-view" class="cockpit-view" style="display:none;">
+            <div class="cockpit-header">
+              <div class="agent-identity">
+                <h2 id="cockpit-agent-name">Agent Name</h2>
+                <span id="cockpit-agent-status" class="agent-status">active</span>
+              </div>
+              <div class="cockpit-stats">
+                <div class="cockpit-stat">
+                  <span id="cockpit-credits" class="stat-value">0.00</span>
+                  <span class="stat-label">credits</span>
+                </div>
+                <div class="cockpit-stat">
+                  <span id="cockpit-wallet" class="stat-value wallet-addr">---</span>
+                  <span class="stat-label">wallet</span>
+                </div>
+              </div>
+            </div>
+            
+            <nav class="cockpit-tabs">
+              <button class="tab-btn active" data-tab="console">Console</button>
+              <button class="tab-btn" data-tab="config">Config</button>
+              <button class="tab-btn" data-tab="skills">Skills</button>
+              <button class="tab-btn" data-tab="wallet">Wallet</button>
+              <button class="tab-btn" data-tab="data">Data</button>
+            </nav>
+            
+            <div class="cockpit-content">
+              <div id="tab-console" class="tab-panel active">
+                <div class="console-container">
+                  <div id="chat-messages" class="chat-messages"></div>
+                  <div class="chat-input-area">
+                    <textarea id="chat-input" class="input chat-input" placeholder="Send a message to your agent..." rows="2"></textarea>
+                    <button id="send-chat" class="btn">SEND</button>
+                  </div>
+                </div>
+              </div>
+              
+              <div id="tab-config" class="tab-panel">
+                <div class="config-panel">
+                  <div class="form-group">
+                    <label>Agent Name</label>
+                    <input type="text" id="config-name" class="input" />
+                  </div>
+                  <div class="form-group">
+                    <label>Description</label>
+                    <textarea id="config-description" class="input" rows="2"></textarea>
+                  </div>
+                  <div class="form-group">
+                    <label>System Prompt</label>
+                    <textarea id="config-system-prompt" class="input" rows="4" placeholder="Define your agent's personality and instructions..."></textarea>
+                  </div>
+                  <div class="form-group">
+                    <label>Model</label>
+                    <select id="config-model" class="input">
+                      <option value="gpt-4o">GPT-4o (Default)</option>
+                      <option value="gpt-4o-mini">GPT-4o Mini (Faster)</option>
+                      <option value="claude-sonnet-4-20250514">Claude Sonnet 4</option>
+                    </select>
+                  </div>
+                  <h4>API Keys</h4>
+                  <p class="note">Optional: Add your own API keys for custom model access</p>
+                  <div id="config-secrets" class="secrets-list"></div>
+                  <button id="add-secret-btn" class="btn btn-sm btn-outline">+ Add API Key</button>
+                  <div class="form-actions" style="margin-top: 1.5rem;">
+                    <button id="save-config-btn" class="btn">SAVE CONFIGURATION</button>
+                  </div>
+                </div>
+              </div>
+              
+              <div id="tab-skills" class="tab-panel">
+                <div class="skills-panel">
+                  <div class="section-header">
+                    <h4>Agent Skills</h4>
+                    <button id="add-skill-btn" class="btn btn-sm">+ NEW SKILL</button>
+                  </div>
+                  <p class="note">Skills are capabilities your agent can offer to others in the marketplace.</p>
+                  <div id="agent-skills-list" class="skills-list"></div>
+                  
+                  <div class="skills-marketplace-preview" style="margin-top: 2rem;">
+                    <h4>MARKETPLACE</h4>
+                    <div class="marketplace-filters">
+                      <select id="category-filter" class="input">
+                        <option value="all">All Categories</option>
+                        <option value="research">Research</option>
+                        <option value="analysis">Analysis</option>
+                        <option value="automation">Automation</option>
+                        <option value="creative">Creative</option>
+                        <option value="general">General</option>
+                      </select>
+                      <input type="text" id="search-filter" class="input" placeholder="Search..." />
+                    </div>
+                    <div id="marketplace-list" class="marketplace-list"></div>
+                  </div>
+                </div>
+              </div>
+              
+              <div id="tab-wallet" class="tab-panel">
+                <div class="wallet-panel">
+                  <div class="wallet-balance-card">
+                    <h4>WALLET BALANCE</h4>
+                    <div class="balance-grid">
+                      <div class="balance-item">
+                        <span id="wallet-credits" class="balance-value">0.00</span>
+                        <span class="balance-label">Platform Credits</span>
+                      </div>
+                      <div class="balance-item">
+                        <span id="wallet-usdc" class="balance-value">$0.00</span>
+                        <span class="balance-label">USDC (Celo)</span>
+                      </div>
+                    </div>
+                    <div class="wallet-address">
+                      <label>Wallet Address</label>
+                      <code id="wallet-full-address">---</code>
+                    </div>
+                  </div>
+                  
+                  <div class="credits-section">
+                    <h4>ADD CREDITS</h4>
+                    <div class="credits-options">
+                      <button class="credit-option" data-amount="10">$10 = 100 credits</button>
+                      <button class="credit-option" data-amount="40">$40 = 500 credits</button>
+                    </div>
+                  </div>
+                  
+                  <div class="transactions-section">
+                    <h4>RECENT TRANSACTIONS</h4>
+                    <div id="wallet-transactions" class="transactions-list">
+                      <p class="note">No transactions yet</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div id="tab-data" class="tab-panel">
+                <div class="data-panel">
+                  <h4>ANALYTICS</h4>
+                  <div id="analytics-stats" class="analytics-grid"></div>
+                  
+                  <h4 style="margin-top: 2rem;">ACTIVITY LOG</h4>
+                  <div id="activity-log" class="activity-log">
+                    <p class="note">Activity will appear here as your agent is used.</p>
+                  </div>
+                  
+                  <h4 style="margin-top: 2rem;">IDENTITY</h4>
+                  <div class="identity-section">
+                    <p>ERC-8004 Registration</p>
+                    <button id="download-registration" class="btn btn-sm btn-outline">Download Registration File</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div id="create-wizard" class="create-wizard" style="display:none;">
+            <div class="wizard-header">
+              <h2>CREATE NEW AGENT</h2>
+              <button class="btn btn-sm btn-outline" onclick="hideCreateWizard()">Cancel</button>
+            </div>
+            
+            <div class="wizard-steps">
+              <div class="wizard-step active" data-step="1">
+                <span class="step-num">1</span>
+                <span class="step-label">Identity</span>
+              </div>
+              <div class="wizard-step" data-step="2">
+                <span class="step-num">2</span>
+                <span class="step-label">Personality</span>
+              </div>
+              <div class="wizard-step" data-step="3">
+                <span class="step-num">3</span>
+                <span class="step-label">Review</span>
+              </div>
+            </div>
+            
+            <div id="wizard-content" class="wizard-content">
+              <div id="wizard-step-1" class="wizard-panel active">
+                <h3>Name Your Agent</h3>
+                <p>Give your agent a memorable name and description.</p>
+                <div class="form-group">
+                  <label>Agent Name *</label>
+                  <input type="text" id="wizard-name" class="input" placeholder="e.g., Research Assistant, Content Writer" />
+                </div>
+                <div class="form-group">
+                  <label>Description</label>
+                  <textarea id="wizard-description" class="input" rows="3" placeholder="What does this agent do?"></textarea>
+                </div>
+                <div class="wizard-actions">
+                  <button class="btn" onclick="wizardNext()">CONTINUE</button>
+                </div>
+              </div>
+              
+              <div id="wizard-step-2" class="wizard-panel">
+                <h3>Define Personality</h3>
+                <p>Set how your agent should behave and communicate.</p>
+                <div class="form-group">
+                  <label>System Prompt</label>
+                  <textarea id="wizard-prompt" class="input" rows="5" placeholder="You are a helpful assistant that..."></textarea>
+                  <p class="hint">This defines your agent's personality and behavior. Leave blank for a general-purpose assistant.</p>
+                </div>
+                <div class="form-group">
+                  <label>AI Model</label>
+                  <select id="wizard-model" class="input">
+                    <option value="gpt-4o">GPT-4o (Recommended)</option>
+                    <option value="gpt-4o-mini">GPT-4o Mini (Faster, Cheaper)</option>
+                    <option value="claude-sonnet-4-20250514">Claude Sonnet 4</option>
+                  </select>
+                </div>
+                <div class="wizard-actions">
+                  <button class="btn btn-outline" onclick="wizardPrev()">BACK</button>
+                  <button class="btn" onclick="wizardNext()">CONTINUE</button>
+                </div>
+              </div>
+              
+              <div id="wizard-step-3" class="wizard-panel">
+                <h3>Review & Create</h3>
+                <div class="review-summary">
+                  <div class="review-item">
+                    <span class="review-label">Name:</span>
+                    <span id="review-name" class="review-value">-</span>
+                  </div>
+                  <div class="review-item">
+                    <span class="review-label">Description:</span>
+                    <span id="review-description" class="review-value">-</span>
+                  </div>
+                  <div class="review-item">
+                    <span class="review-label">Model:</span>
+                    <span id="review-model" class="review-value">-</span>
+                  </div>
+                </div>
+                <div class="free-credits-note">
+                  <strong>Your agent will receive 10 free credits</strong>
+                  <p>That's 1,000 AI requests to start experimenting.</p>
+                </div>
+                <div class="wizard-actions">
+                  <button class="btn btn-outline" onclick="wizardPrev()">BACK</button>
+                  <button class="btn btn-large" onclick="createAgentFromWizard()">CREATE AGENT</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </main>
       </div>
     </section>
 
