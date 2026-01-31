@@ -39,6 +39,7 @@
     "express-session": "^1.19.0",
     "memoizee": "^0.4.17",
     "openai": "^6.17.0",
+    "openclaw": "^2026.1.30",
     "openid-client": "^6.8.1",
     "p-limit": "^7.2.0",
     "p-retry": "^7.1.1",
