@@ -63,8 +63,24 @@ This is a multi-user experimentation platform for OpenClaw, an open-source perso
 - `GET /api/agents/:id/secrets` - List agent's API key configurations
 - `POST /api/agents/:id/secrets` - Add/update agent API key
 - `DELETE /api/agents/:id/secrets/:serviceName` - Remove agent API key
+- `GET /api/agents/:id/skills` - List agent's skills
+- `POST /api/agents/:id/skills` - Create new skill
+- `PUT /api/agents/:id/skills/:skillId` - Update skill
+- `DELETE /api/agents/:id/skills/:skillId` - Remove skill
+- `GET /api/marketplace/skills` - Public skills marketplace (search, filter)
+- `POST /api/marketplace/skills/:skillId/execute` - Execute skill with payment
+- `GET /api/agents/:id/analytics` - Agent economics dashboard
 
 ## Recent Changes
+- **January 31, 2026**: Added Skills Marketplace and Agent Analytics
+  - Created agent_skills table for listing agent capabilities with pricing
+  - Added skills CRUD endpoints for agents to manage their offerings
+  - Added public marketplace discovery endpoint with category/search filtering
+  - Implemented skill execution with credit payments (3% platform fee)
+  - Added agent analytics endpoint showing costs, earnings, and profit/loss
+  - Built Skills management UI with add/edit/toggle/remove functionality
+  - Built Analytics dashboard UI with grid stats and transaction history
+  - Added Skills Marketplace section to homepage for public discovery
 - **January 31, 2026**: Added Replit AI integration and per-agent API key management
   - Integrated Replit AI (OpenAI) for built-in AI access without user API keys
   - Created agent_secrets table for per-agent custom API keys (OpenAI, Anthropic, Telegram, Discord)

@@ -5,6 +5,7 @@ document.addEventListener('DOMContentLoaded', () => {
   loadStatus();
   loadEnvCheck();
   loadConfig();
+  loadMarketplace();
 
   document.getElementById('run-setup')?.addEventListener('click', runSetup);
   document.getElementById('install-openclaw')?.addEventListener('click', installOpenClaw);
@@ -19,9 +20,20 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('modal')?.addEventListener('click', (e) => {
     if (e.target.id === 'modal') closeModal();
   });
+  
+  document.getElementById('category-filter')?.addEventListener('change', loadMarketplace);
+  document.getElementById('search-filter')?.addEventListener('input', debounce(loadMarketplace, 300));
 
   setInterval(loadStatus, 30000);
 });
+
+function debounce(fn, delay) {
+  let timeout;
+  return function(...args) {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => fn.apply(this, args), delay);
+  };
+}
 
 function toggleCreateForm() {
   const form = document.getElementById('create-form');
@@ -124,14 +136,132 @@ async function loadAgents() {
         </div>
         <div class="agent-actions">
           <button class="btn btn-sm" onclick="testAI('${agent.id}')">Chat</button>
+          <button class="btn btn-sm btn-outline" onclick="manageSkills('${agent.id}')">Skills</button>
+          <button class="btn btn-sm btn-outline" onclick="viewAnalytics('${agent.id}')">Analytics</button>
           <button class="btn btn-sm btn-outline" onclick="viewWallet('${agent.id}')">Wallet</button>
-          <button class="btn btn-sm btn-outline" onclick="manageSecrets('${agent.id}')">API Keys</button>
-          <button class="btn btn-sm btn-outline" onclick="viewRegistration('${agent.id}')">Identity</button>
+          <button class="btn btn-sm btn-outline" onclick="manageSecrets('${agent.id}')">Keys</button>
         </div>
       </div>
     `).join('');
   } catch (error) {
     listEl.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+  }
+}
+
+async function loadMarketplace() {
+  const listEl = document.getElementById('marketplace-list');
+  if (!listEl) return;
+  
+  const category = document.getElementById('category-filter')?.value || 'all';
+  const search = document.getElementById('search-filter')?.value || '';
+  
+  try {
+    const params = new URLSearchParams();
+    if (category && category !== 'all') params.append('category', category);
+    if (search) params.append('search', search);
+    
+    const res = await fetch(`/api/marketplace/skills?${params}`);
+    if (!res.ok) throw new Error('Failed to load skills');
+    const skills = await res.json();
+    
+    if (skills.length === 0) {
+      listEl.innerHTML = `
+        <div class="empty-state">
+          <p>No skills available yet. Be the first to add one!</p>
+        </div>
+      `;
+      return;
+    }
+    
+    listEl.innerHTML = skills.map(skill => `
+      <div class="marketplace-card">
+        <div class="marketplace-header">
+          <span class="skill-name">${escapeHtml(skill.name)}</span>
+          <span class="skill-price">${skill.priceCredits} credits</span>
+        </div>
+        ${skill.description ? `<div class="skill-desc">${escapeHtml(skill.description)}</div>` : ''}
+        <div class="marketplace-meta">
+          <span class="skill-category">${skill.category}</span>
+          <span class="skill-provider">by ${escapeHtml(skill.agentName)}</span>
+          <span class="skill-usage">${skill.usageCount || 0} uses</span>
+        </div>
+        ${currentUser ? `
+          <button class="btn btn-sm" onclick="executeSkill('${skill.id}', '${escapeHtml(skill.name)}', ${skill.priceCredits})">Use Skill</button>
+        ` : ''}
+      </div>
+    `).join('');
+  } catch (error) {
+    listEl.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+  }
+}
+
+async function executeSkill(skillId, skillName, price) {
+  if (!currentUser) {
+    openModal('Sign In Required', '<p>Please sign in to use skills from the marketplace.</p>');
+    return;
+  }
+  
+  // Get user's agents to select which one will pay
+  try {
+    const res = await fetch('/api/agents');
+    if (!res.ok) throw new Error('Failed to load your agents');
+    const agents = await res.json();
+    
+    if (agents.length === 0) {
+      openModal('No Agents', '<p>You need to create an agent first to use marketplace skills.</p>');
+      return;
+    }
+    
+    let content = `
+      <div class="modal-info">
+        <p>Use <strong>${skillName}</strong> for <strong>${price} credits</strong></p>
+        <p class="note">Select which agent will pay for and execute this skill:</p>
+        <select id="agent-select" class="input">
+          ${agents.map(a => `<option value="${a.id}">${escapeHtml(a.name)} (${parseFloat(a.credits || 0).toFixed(2)} credits)</option>`).join('')}
+        </select>
+        <div style="margin-top: 1rem;">
+          <button class="btn" onclick="confirmExecuteSkill('${skillId}')">Execute Skill</button>
+        </div>
+      </div>
+    `;
+    openModal('Execute Skill', content);
+  } catch (error) {
+    openModal('Error', `<p class="error">${error.message}</p>`);
+  }
+}
+
+async function confirmExecuteSkill(skillId) {
+  const agentId = document.getElementById('agent-select').value;
+  
+  try {
+    const res = await fetch(`/api/marketplace/skills/${skillId}/execute`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ agentId })
+    });
+    
+    const result = await res.json();
+    
+    if (res.status === 402) {
+      openModal('Insufficient Credits', `<p>This agent doesn't have enough credits. Required: ${result.required}, Available: ${result.available}</p>`);
+      return;
+    }
+    
+    if (!res.ok) {
+      throw new Error(result.error || 'Failed to execute skill');
+    }
+    
+    openModal('Success', `
+      <div class="modal-info">
+        <p>${result.message}</p>
+        <p class="note">Platform fee: ${result.platformFee.toFixed(4)} credits</p>
+      </div>
+    `);
+    
+    loadAgents();
+    loadMarketplace();
+  } catch (error) {
+    openModal('Error', `<p class="error">${error.message}</p>`);
   }
 }
 
@@ -244,6 +374,194 @@ async function viewWallet(agentId) {
     
     content += '</div>';
     openModal('Agent Wallet', content);
+  } catch (error) {
+    openModal('Error', `<p class="error">${error.message}</p>`);
+  }
+}
+
+async function manageSkills(agentId) {
+  try {
+    const res = await fetch(`/api/agents/${agentId}/skills`);
+    const skills = await res.json();
+    
+    let content = `
+      <div class="modal-info skills-manager">
+        <p class="note">Add skills your agent can offer to others. Set a price in credits.</p>
+        
+        <div class="add-skill-form">
+          <input type="text" id="skill-name" class="input" placeholder="Skill name (e.g., 'Data Summarization')" />
+          <input type="text" id="skill-desc" class="input" placeholder="Description" />
+          <div class="form-row">
+            <select id="skill-category" class="input">
+              <option value="general">General</option>
+              <option value="research">Research</option>
+              <option value="analysis">Analysis</option>
+              <option value="automation">Automation</option>
+              <option value="creative">Creative</option>
+            </select>
+            <input type="number" id="skill-price" class="input" placeholder="Price" value="0.01" step="0.01" min="0" />
+          </div>
+          <button class="btn" onclick="addSkill('${agentId}')">Add Skill</button>
+        </div>
+        
+        <hr>
+        <h4>Your Skills</h4>
+        <div class="skills-list">
+    `;
+    
+    if (skills.length === 0) {
+      content += '<p class="empty">No skills yet. Add your first skill above.</p>';
+    } else {
+      skills.forEach(skill => {
+        content += `
+          <div class="skill-item" data-id="${skill.id}">
+            <div class="skill-header">
+              <span class="skill-name">${escapeHtml(skill.name)}</span>
+              <span class="skill-price">${skill.priceCredits} credits</span>
+            </div>
+            <div class="skill-meta">
+              <span class="skill-category">${skill.category}</span>
+              <span class="skill-usage">${skill.usageCount || 0} uses</span>
+              <span class="skill-earned">${parseFloat(skill.totalEarned || 0).toFixed(4)} earned</span>
+            </div>
+            ${skill.description ? `<div class="skill-desc">${escapeHtml(skill.description)}</div>` : ''}
+            <div class="skill-actions">
+              <button class="btn btn-sm ${skill.isActive ? 'btn-outline' : ''}" onclick="toggleSkill('${agentId}', '${skill.id}', ${!skill.isActive})">${skill.isActive ? 'Disable' : 'Enable'}</button>
+              <button class="btn btn-sm btn-danger" onclick="deleteSkill('${agentId}', '${skill.id}')">Remove</button>
+            </div>
+          </div>
+        `;
+      });
+    }
+    
+    content += '</div></div>';
+    openModal('Agent Skills', content);
+  } catch (error) {
+    openModal('Error', `<p class="error">${error.message}</p>`);
+  }
+}
+
+async function addSkill(agentId) {
+  const name = document.getElementById('skill-name').value.trim();
+  const description = document.getElementById('skill-desc').value.trim();
+  const category = document.getElementById('skill-category').value;
+  const priceCredits = document.getElementById('skill-price').value || "0.01";
+  
+  if (!name) {
+    document.getElementById('skill-name').focus();
+    return;
+  }
+  
+  try {
+    const res = await fetch(`/api/agents/${agentId}/skills`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, description, category, priceCredits })
+    });
+    
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Failed to add skill');
+    }
+    
+    manageSkills(agentId);
+  } catch (error) {
+    openModal('Error', `<p class="error">${error.message}</p>`);
+  }
+}
+
+async function toggleSkill(agentId, skillId, isActive) {
+  try {
+    await fetch(`/api/agents/${agentId}/skills/${skillId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ isActive })
+    });
+    manageSkills(agentId);
+  } catch (error) {
+    openModal('Error', `<p class="error">${error.message}</p>`);
+  }
+}
+
+async function deleteSkill(agentId, skillId) {
+  if (!confirm('Remove this skill?')) return;
+  
+  try {
+    await fetch(`/api/agents/${agentId}/skills/${skillId}`, { method: 'DELETE' });
+    manageSkills(agentId);
+  } catch (error) {
+    openModal('Error', `<p class="error">${error.message}</p>`);
+  }
+}
+
+async function viewAnalytics(agentId) {
+  try {
+    const res = await fetch(`/api/agents/${agentId}/analytics`);
+    const data = await res.json();
+    
+    const profitClass = parseFloat(data.totals.profit) >= 0 ? 'positive' : 'negative';
+    
+    let content = `
+      <div class="modal-info analytics-dashboard">
+        <div class="analytics-grid">
+          <div class="analytics-card">
+            <span class="analytics-value">${parseFloat(data.currentCredits).toFixed(2)}</span>
+            <span class="analytics-label">Current Credits</span>
+          </div>
+          <div class="analytics-card">
+            <span class="analytics-value">${data.totals.earned}</span>
+            <span class="analytics-label">Total Earned</span>
+          </div>
+          <div class="analytics-card">
+            <span class="analytics-value">${data.totals.spent}</span>
+            <span class="analytics-label">Total Spent</span>
+          </div>
+          <div class="analytics-card ${profitClass}">
+            <span class="analytics-value">${data.totals.profit}</span>
+            <span class="analytics-label">Net Profit/Loss</span>
+          </div>
+        </div>
+        
+        <hr>
+        <h4>Breakdown</h4>
+        <div class="breakdown-list">
+          <div class="breakdown-item">
+            <span>AI Costs</span>
+            <span class="negative">-${data.breakdown.aiCosts}</span>
+          </div>
+          <div class="breakdown-item">
+            <span>Skill Earnings</span>
+            <span class="positive">+${data.breakdown.skillEarnings}</span>
+          </div>
+        </div>
+        
+        <hr>
+        <h4>Skills Overview</h4>
+        <p>${data.skills.active} active skills / ${data.skills.total} total</p>
+        <p>${data.skills.totalUsage} total skill executions</p>
+        
+        <hr>
+        <h4>Recent Transactions</h4>
+        <div class="transactions-list">
+    `;
+    
+    if (data.recentPayments.length === 0) {
+      content += '<p class="empty">No transactions yet.</p>';
+    } else {
+      data.recentPayments.forEach(p => {
+        const icon = p.direction === 'inbound' ? '+' : '-';
+        const cls = p.direction === 'inbound' ? 'positive' : 'negative';
+        content += `
+          <div class="transaction-item">
+            <span class="tx-amount ${cls}">${icon}${parseFloat(p.amount).toFixed(4)}</span>
+            <span class="tx-endpoint">${p.endpoint || 'Unknown'}</span>
+          </div>
+        `;
+      });
+    }
+    
+    content += '</div></div>';
+    openModal('Agent Analytics', content);
   } catch (error) {
     openModal('Error', `<p class="error">${error.message}</p>`);
   }

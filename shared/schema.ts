@@ -119,4 +119,22 @@ export const agentSecrets = pgTable("agent_secrets", {
 export type AgentSecret = typeof agentSecrets.$inferSelect;
 export type InsertAgentSecret = typeof agentSecrets.$inferInsert;
 
+export const agentSkills = pgTable("agent_skills", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  agentId: varchar("agent_id").notNull().references(() => agents.id),
+  name: varchar("name").notNull(),
+  description: text("description"),
+  category: varchar("category").default("general"),
+  priceCredits: varchar("price_credits").default("0.01"),
+  endpoint: text("endpoint"),
+  isActive: boolean("is_active").default(true),
+  usageCount: integer("usage_count").default(0),
+  totalEarned: varchar("total_earned").default("0"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type AgentSkill = typeof agentSkills.$inferSelect;
+export type InsertAgentSkill = typeof agentSkills.$inferInsert;
+
 export * from "./models/chat";

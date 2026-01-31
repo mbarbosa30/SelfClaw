@@ -978,6 +978,224 @@ h2 {
   border-color: #dc2626;
 }
 
+/* Skills Manager */
+.skills-manager {
+  max-width: 550px;
+}
+
+.add-skill-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.add-skill-form .form-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.add-skill-form .form-row .input {
+  flex: 1;
+}
+
+.skills-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.skill-item {
+  border: 2px solid var(--gray-200);
+  padding: 0.75rem;
+}
+
+.skill-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.25rem;
+}
+
+.skill-name {
+  font-weight: 600;
+}
+
+.skill-price {
+  font-size: 0.85rem;
+  color: var(--green);
+  font-weight: 600;
+}
+
+.skill-meta {
+  display: flex;
+  gap: 0.75rem;
+  font-size: 0.75rem;
+  color: var(--gray-600);
+  margin-bottom: 0.25rem;
+}
+
+.skill-desc {
+  font-size: 0.85rem;
+  color: var(--gray-600);
+  margin-bottom: 0.5rem;
+}
+
+.skill-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* Analytics Dashboard */
+.analytics-dashboard {
+  max-width: 550px;
+}
+
+.analytics-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.analytics-card {
+  border: 2px solid var(--gray-200);
+  padding: 1rem;
+  text-align: center;
+}
+
+.analytics-card.positive {
+  border-color: var(--green);
+}
+
+.analytics-card.negative {
+  border-color: var(--red);
+}
+
+.analytics-value {
+  display: block;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.analytics-label {
+  font-size: 0.75rem;
+  color: var(--gray-600);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.breakdown-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.breakdown-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.5rem;
+  border: 1px solid var(--gray-200);
+}
+
+.positive { color: var(--green); }
+.negative { color: var(--red); }
+
+.transactions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.transaction-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.5rem;
+  border-bottom: 1px solid var(--gray-100);
+  font-size: 0.85rem;
+}
+
+.tx-amount {
+  font-weight: 600;
+}
+
+.tx-endpoint {
+  color: var(--gray-600);
+  font-size: 0.75rem;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  max-width: 200px;
+}
+
+.empty {
+  color: var(--gray-600);
+  font-style: italic;
+}
+
+/* Marketplace */
+.marketplace-section {
+  margin: 3rem 0;
+  padding: 2rem;
+  border: 3px solid var(--black);
+  background: var(--gray-100);
+}
+
+.marketplace-section .section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.marketplace-filters {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.marketplace-filters .input {
+  min-width: 150px;
+}
+
+.marketplace-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.marketplace-card {
+  background: var(--white);
+  border: 2px solid var(--gray-200);
+  padding: 1rem;
+}
+
+.marketplace-card:hover {
+  border-color: var(--black);
+}
+
+.marketplace-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.marketplace-meta {
+  display: flex;
+  gap: 0.75rem;
+  font-size: 0.75rem;
+  color: var(--gray-600);
+  margin-bottom: 0.75rem;
+}
+
+.skill-provider {
+  font-weight: 600;
+}
+
 /* Responsive */
 @media (max-width: 700px) {
   .container {

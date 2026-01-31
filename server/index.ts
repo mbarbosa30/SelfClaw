@@ -5,7 +5,7 @@ import { homedir } from "os";
 import { execSync, spawn } from "child_process";
 import { setupAuth, isAuthenticated, registerAuthRoutes } from "./replit_integrations/auth/index.js";
 import { db } from "./db.js";
-import { agents, payments, users, agentSecrets, type InsertAgent, type InsertPayment, type InsertAgentSecret } from "../shared/schema.js";
+import { agents, payments, users, agentSecrets, agentSkills, type InsertAgent, type InsertPayment, type InsertAgentSecret, type InsertAgentSkill } from "../shared/schema.js";
 import OpenAI from "openai";
 import { eq, desc, sql, and } from "drizzle-orm";
 import { createCeloWallet, getWalletBalance, CELO_CONFIG } from "../lib/wallet.js";
@@ -401,6 +401,305 @@ async function main() {
         .where(and(eq(agentSecrets.agentId, agent.id), eq(agentSecrets.serviceName, req.params.serviceName)));
 
       res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Skills CRUD endpoints
+  app.get("/api/agents/:id/skills", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const [agent] = await db.select().from(agents).where(eq(agents.id, req.params.id));
+
+      if (!agent || agent.userId !== userId) {
+        return res.status(404).json({ error: "Agent not found" });
+      }
+
+      const skills = await db.select().from(agentSkills)
+        .where(eq(agentSkills.agentId, agent.id))
+        .orderBy(desc(agentSkills.createdAt));
+
+      res.json(skills);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/agents/:id/skills", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { name, description, category, priceCredits, endpoint } = req.body;
+      const [agent] = await db.select().from(agents).where(eq(agents.id, req.params.id));
+
+      if (!agent || agent.userId !== userId) {
+        return res.status(404).json({ error: "Agent not found" });
+      }
+
+      if (!name) {
+        return res.status(400).json({ error: "Skill name is required" });
+      }
+
+      const [skill] = await db.insert(agentSkills).values({
+        agentId: agent.id,
+        name,
+        description,
+        category: category || "general",
+        priceCredits: priceCredits || "0.01",
+        endpoint
+      }).returning();
+
+      res.json(skill);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.put("/api/agents/:id/skills/:skillId", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { name, description, category, priceCredits, endpoint, isActive } = req.body;
+      const [agent] = await db.select().from(agents).where(eq(agents.id, req.params.id));
+
+      if (!agent || agent.userId !== userId) {
+        return res.status(404).json({ error: "Agent not found" });
+      }
+
+      const [skill] = await db.select().from(agentSkills)
+        .where(and(eq(agentSkills.id, req.params.skillId), eq(agentSkills.agentId, agent.id)));
+
+      if (!skill) {
+        return res.status(404).json({ error: "Skill not found" });
+      }
+
+      const [updated] = await db.update(agentSkills)
+        .set({ 
+          name: name ?? skill.name,
+          description: description ?? skill.description,
+          category: category ?? skill.category,
+          priceCredits: priceCredits ?? skill.priceCredits,
+          endpoint: endpoint ?? skill.endpoint,
+          isActive: isActive ?? skill.isActive,
+          updatedAt: new Date()
+        })
+        .where(eq(agentSkills.id, req.params.skillId))
+        .returning();
+
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/agents/:id/skills/:skillId", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const [agent] = await db.select().from(agents).where(eq(agents.id, req.params.id));
+
+      if (!agent || agent.userId !== userId) {
+        return res.status(404).json({ error: "Agent not found" });
+      }
+
+      await db.delete(agentSkills)
+        .where(and(eq(agentSkills.id, req.params.skillId), eq(agentSkills.agentId, agent.id)));
+
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Public skills marketplace discovery
+  app.get("/api/marketplace/skills", async (req: Request, res: Response) => {
+    try {
+      const { category, search } = req.query;
+      
+      let query = db.select({
+        id: agentSkills.id,
+        name: agentSkills.name,
+        description: agentSkills.description,
+        category: agentSkills.category,
+        priceCredits: agentSkills.priceCredits,
+        usageCount: agentSkills.usageCount,
+        agentId: agentSkills.agentId,
+        agentName: agents.name,
+        agentWallet: agents.tbaAddress
+      })
+      .from(agentSkills)
+      .innerJoin(agents, eq(agentSkills.agentId, agents.id))
+      .where(eq(agentSkills.isActive, true));
+
+      const skills = await query.orderBy(desc(agentSkills.usageCount));
+      
+      let filtered = skills;
+      if (category && category !== "all") {
+        filtered = filtered.filter(s => s.category === category);
+      }
+      if (search) {
+        const term = (search as string).toLowerCase();
+        filtered = filtered.filter(s => 
+          s.name.toLowerCase().includes(term) || 
+          (s.description?.toLowerCase().includes(term))
+        );
+      }
+
+      res.json(filtered);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Execute a skill (pay and invoke)
+  app.post("/api/marketplace/skills/:skillId/execute", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { agentId, input } = req.body;
+      
+      // Get the calling agent
+      const [callingAgent] = await db.select().from(agents).where(eq(agents.id, agentId));
+      if (!callingAgent || callingAgent.userId !== userId) {
+        return res.status(404).json({ error: "Your agent not found" });
+      }
+
+      // Get the skill
+      const [skill] = await db.select().from(agentSkills).where(eq(agentSkills.id, req.params.skillId));
+      if (!skill || !skill.isActive) {
+        return res.status(404).json({ error: "Skill not found or inactive" });
+      }
+
+      // Get the target agent
+      const [targetAgent] = await db.select().from(agents).where(eq(agents.id, skill.agentId));
+      if (!targetAgent) {
+        return res.status(404).json({ error: "Skill provider agent not found" });
+      }
+
+      // Check credits
+      const price = parseFloat(skill.priceCredits || "0.01");
+      const callerCredits = parseFloat(callingAgent.credits || "0");
+      
+      if (callerCredits < price) {
+        return res.status(402).json({ 
+          error: "Insufficient credits",
+          required: price,
+          available: callerCredits
+        });
+      }
+
+      // Deduct from caller, add to target (minus platform fee)
+      const platformFee = price * (PLATFORM_FEE_PERCENT / 100);
+      const targetEarns = price - platformFee;
+
+      await db.update(agents)
+        .set({ credits: (callerCredits - price).toFixed(6), updatedAt: new Date() })
+        .where(eq(agents.id, callingAgent.id));
+
+      const targetCredits = parseFloat(targetAgent.credits || "0");
+      await db.update(agents)
+        .set({ credits: (targetCredits + targetEarns).toFixed(6), updatedAt: new Date() })
+        .where(eq(agents.id, targetAgent.id));
+
+      // Record payments
+      await db.insert(payments).values({
+        agentId: callingAgent.id,
+        direction: "outbound",
+        amount: price.toString(),
+        token: "CREDITS",
+        network: "platform",
+        status: "confirmed",
+        endpoint: `/api/marketplace/skills/${skill.id}`
+      });
+
+      await db.insert(payments).values({
+        agentId: targetAgent.id,
+        direction: "inbound",
+        amount: targetEarns.toString(),
+        token: "CREDITS",
+        network: "platform",
+        status: "confirmed",
+        endpoint: `/api/marketplace/skills/${skill.id}`
+      });
+
+      // Update skill usage stats
+      await db.update(agentSkills)
+        .set({ 
+          usageCount: (skill.usageCount || 0) + 1,
+          totalEarned: (parseFloat(skill.totalEarned || "0") + targetEarns).toFixed(6),
+          updatedAt: new Date()
+        })
+        .where(eq(agentSkills.id, skill.id));
+
+      res.json({
+        success: true,
+        skill: skill.name,
+        paid: price,
+        platformFee,
+        message: `Skill "${skill.name}" executed. Provider earned ${targetEarns} credits.`
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Agent analytics endpoint
+  app.get("/api/agents/:id/analytics", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const [agent] = await db.select().from(agents).where(eq(agents.id, req.params.id));
+
+      if (!agent || agent.userId !== userId) {
+        return res.status(404).json({ error: "Agent not found" });
+      }
+
+      // Get all payments
+      const agentPayments = await db.select().from(payments)
+        .where(eq(payments.agentId, agent.id))
+        .orderBy(desc(payments.createdAt));
+
+      // Calculate totals
+      let totalSpent = 0;
+      let totalEarned = 0;
+      let aiCosts = 0;
+      let skillEarnings = 0;
+
+      agentPayments.forEach(p => {
+        const amount = parseFloat(p.amount || "0");
+        if (p.direction === "outbound") {
+          totalSpent += amount;
+          if (p.endpoint?.includes("/ai/chat")) {
+            aiCosts += amount;
+          }
+        } else if (p.direction === "inbound") {
+          totalEarned += amount;
+          if (p.endpoint?.includes("/marketplace/skills")) {
+            skillEarnings += amount;
+          }
+        }
+      });
+
+      // Get skills stats
+      const skills = await db.select().from(agentSkills)
+        .where(eq(agentSkills.agentId, agent.id));
+
+      const skillsStats = {
+        total: skills.length,
+        active: skills.filter(s => s.isActive).length,
+        totalUsage: skills.reduce((sum, s) => sum + (s.usageCount || 0), 0)
+      };
+
+      res.json({
+        currentCredits: parseFloat(agent.credits || "0"),
+        totals: {
+          spent: totalSpent.toFixed(4),
+          earned: totalEarned.toFixed(4),
+          profit: (totalEarned - totalSpent).toFixed(4)
+        },
+        breakdown: {
+          aiCosts: aiCosts.toFixed(4),
+          skillEarnings: skillEarnings.toFixed(4)
+        },
+        skills: skillsStats,
+        recentPayments: agentPayments.slice(0, 10)
+      });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
