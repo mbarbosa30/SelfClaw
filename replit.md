@@ -40,3 +40,9 @@ ClawPit is an autonomous agent platform that provides a web-based cockpit for cr
 - **Moonshot**: Kimi K2.5 for AI model integration.
 - **DeepSeek, Llama, Qwen3, MiniMax**: Various open-source and proprietary AI models.
 - **OpenRouter**: For AI model integration.
+
+## Recent Changes
+- **February 1, 2026**: Cleaned up dashboard for focused agent engagement
+  - Landing page sections (hero, why-clawpit, economy, pricing, tech) hidden when logged in
+  - Dashboard mode: full-height viewport, no max-width constraint
+  - Clean separation: landing page for marketing, dashboard for agent cockpit
