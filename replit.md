@@ -41,6 +41,10 @@ ClawPit is an autonomous agent platform that provides a web-based cockpit for cr
 - **DeepSeek, Llama, Qwen3, MiniMax**: Various open-source and proprietary AI models.
 - **OpenRouter**: For AI model integration.
 
+## Pending Integrations
+- **Gmail**: User dismissed the Replit Gmail integration. If user wants email access for agents in the future, re-propose the Gmail connector or add manual OAuth credentials to agent secrets system.
+- **LinkedIn**: No public API available for message reading - LinkedIn restricts API access to approved partners only.
+
 ## Recent Changes
 - **February 1, 2026**: Added per-agent conversation persistence
   - Conversations are now saved individually per agent in the database
