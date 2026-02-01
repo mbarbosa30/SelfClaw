@@ -42,6 +42,11 @@ ClawPit is an autonomous agent platform that provides a web-based cockpit for cr
 - **OpenRouter**: For AI model integration.
 
 ## Recent Changes
+- **February 1, 2026**: Added per-agent conversation persistence
+  - Conversations are now saved individually per agent in the database
+  - Chat history survives page refreshes and browser sessions
+  - Conversations linked via agentId in conversations table
+  - API endpoints: GET/POST/DELETE /api/agents/:id/conversation
 - **February 1, 2026**: Cleaned up dashboard for focused agent engagement
   - Landing page sections (hero, why-clawpit, economy, pricing, tech) hidden when logged in
   - Dashboard mode: full-height viewport, no max-width constraint

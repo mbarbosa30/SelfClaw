@@ -5,7 +5,7 @@ import { homedir } from "os";
 import { execSync, spawn } from "child_process";
 import { setupAuth, isAuthenticated, registerAuthRoutes } from "./replit_integrations/auth/index.js";
 import { db } from "./db.js";
-import { agents, payments, users, agentSecrets, agentSkills, agentGoals, agentScheduledTasks, agentMemory, agentToolExecutions, type InsertAgent, type InsertPayment, type InsertAgentSecret, type InsertAgentSkill, type InsertAgentGoal, type InsertAgentScheduledTask } from "../shared/schema.js";
+import { agents, payments, users, agentSecrets, agentSkills, agentGoals, agentScheduledTasks, agentMemory, agentToolExecutions, conversations, messages, type InsertAgent, type InsertPayment, type InsertAgentSecret, type InsertAgentSkill, type InsertAgentGoal, type InsertAgentScheduledTask } from "../shared/schema.js";
 import { runAgentTurn, buildAgentContext, AVAILABLE_TOOLS } from "./agent-runtime.js";
 import { startScheduler } from "./scheduler.js";
 import OpenAI from "openai";
@@ -801,10 +801,111 @@ async function main() {
     }
   });
 
+  // Get agent conversation history
+  app.get("/api/agents/:id/conversation", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const agentId = req.params.id;
+      
+      const [agent] = await db.select().from(agents).where(eq(agents.id, agentId));
+      if (!agent || agent.userId !== userId) {
+        return res.status(404).json({ error: "Agent not found" });
+      }
+
+      // Get or create conversation for this agent
+      let [conversation] = await db.select().from(conversations).where(eq(conversations.agentId, agentId)).limit(1);
+      
+      if (!conversation) {
+        const [newConversation] = await db.insert(conversations).values({
+          agentId,
+          title: `Chat with ${agent.name}`
+        }).returning();
+        conversation = newConversation;
+      }
+
+      // Get messages for this conversation
+      const conversationMessages = await db.select().from(messages)
+        .where(eq(messages.conversationId, conversation.id))
+        .orderBy(messages.createdAt);
+
+      res.json({
+        conversationId: conversation.id,
+        messages: conversationMessages.map(m => ({
+          role: m.role,
+          content: m.content,
+          createdAt: m.createdAt
+        }))
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Add message to agent conversation
+  app.post("/api/agents/:id/conversation/message", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const agentId = req.params.id;
+      const { role, content } = req.body;
+
+      const [agent] = await db.select().from(agents).where(eq(agents.id, agentId));
+      if (!agent || agent.userId !== userId) {
+        return res.status(404).json({ error: "Agent not found" });
+      }
+
+      // Get or create conversation
+      let [conversation] = await db.select().from(conversations).where(eq(conversations.agentId, agentId)).limit(1);
+      
+      if (!conversation) {
+        const [newConversation] = await db.insert(conversations).values({
+          agentId,
+          title: `Chat with ${agent.name}`
+        }).returning();
+        conversation = newConversation;
+      }
+
+      // Add message
+      const [message] = await db.insert(messages).values({
+        conversationId: conversation.id,
+        role,
+        content
+      }).returning();
+
+      res.json({
+        id: message.id,
+        role: message.role,
+        content: message.content,
+        createdAt: message.createdAt
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Clear agent conversation history
+  app.delete("/api/agents/:id/conversation", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const agentId = req.params.id;
+
+      const [agent] = await db.select().from(agents).where(eq(agents.id, agentId));
+      if (!agent || agent.userId !== userId) {
+        return res.status(404).json({ error: "Agent not found" });
+      }
+
+      // Delete conversation (messages cascade)
+      await db.delete(conversations).where(eq(conversations.agentId, agentId));
+
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.post("/api/agents/:id/ai/chat", isAuthenticated, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
-      const { messages, model } = req.body;
+      const { messages: chatMessages, model } = req.body;
       const [agent] = await db.select().from(agents).where(eq(agents.id, req.params.id));
 
       if (!agent || agent.userId !== userId) {
@@ -840,16 +941,16 @@ async function main() {
         }
       }
 
-      const enhancedMessages = messages.map((m: any, i: number) => {
+      const enhancedMessages = chatMessages.map((m: any, i: number) => {
         if (i === 0 && m.role === 'system' && userContext) {
           return { ...m, content: m.content + userContext };
         }
         return m;
       });
       
-      const hasSystemMessage = messages.length > 0 && messages[0].role === 'system';
+      const hasSystemMessage = chatMessages.length > 0 && chatMessages[0].role === 'system';
       const finalMessages = hasSystemMessage ? enhancedMessages : 
-        userContext ? [{ role: 'system', content: `You are a helpful AI assistant.${userContext}` }, ...messages] : messages;
+        userContext ? [{ role: 'system', content: `You are a helpful AI assistant.${userContext}` }, ...chatMessages] : chatMessages;
 
       let response;
       let provider = "unknown";

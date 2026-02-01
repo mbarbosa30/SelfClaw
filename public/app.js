@@ -261,6 +261,17 @@ async function selectAgent(agentId) {
 
     currentAgent = agent;
     chatHistory = [];
+    
+    // Load conversation history from server
+    try {
+      const convRes = await fetch(`/api/agents/${agentId}/conversation`);
+      if (convRes.ok) {
+        const convData = await convRes.json();
+        chatHistory = convData.messages.map(m => ({ role: m.role, content: m.content }));
+      }
+    } catch (e) {
+      console.log('Could not load conversation history');
+    }
 
     document.querySelectorAll('.nav-agent').forEach(el => {
       el.classList.toggle('active', el.dataset.agentId === agentId);
@@ -339,6 +350,12 @@ function loadConsole() {
         <p>Start a conversation with <strong>${escapeHtml(currentAgent.name)}</strong></p>
       </div>
     `;
+  } else {
+    // Render saved conversation history
+    messagesEl.innerHTML = chatHistory.map(m => 
+      `<div class="chat-msg ${m.role}">${escapeHtml(m.content)}</div>`
+    ).join('');
+    messagesEl.scrollTop = messagesEl.scrollHeight;
   }
 }
 
@@ -358,6 +375,13 @@ async function sendChatMessage() {
   chatHistory.push({ role: 'user', content: text });
   messagesEl.innerHTML += `<div class="chat-msg user">${escapeHtml(text)}</div>`;
   input.value = '';
+  
+  // Persist user message to server
+  fetch(`/api/agents/${currentAgent.id}/conversation/message`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ role: 'user', content: text })
+  }).catch(e => console.log('Failed to persist user message'));
   
   messagesEl.innerHTML += `<div class="chat-msg assistant loading">Thinking...</div>`;
   messagesEl.scrollTop = messagesEl.scrollHeight;
@@ -403,6 +427,13 @@ async function sendChatMessage() {
     messagesEl.innerHTML += `<div class="chat-msg assistant">${escapeHtml(responseText)}</div>`;
     messagesEl.innerHTML += `<div class="chat-cost">-${result.creditsUsed} credits (${result.creditsRemaining} remaining)</div>`;
     messagesEl.scrollTop = messagesEl.scrollHeight;
+
+    // Persist assistant message to server
+    fetch(`/api/agents/${currentAgent.id}/conversation/message`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ role: 'assistant', content: responseText })
+    }).catch(e => console.log('Failed to persist assistant message'));
 
     document.getElementById('cockpit-credits').textContent = parseFloat(result.creditsRemaining).toFixed(2);
   } catch (error) {
