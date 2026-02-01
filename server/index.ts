@@ -243,7 +243,7 @@ async function main() {
   app.post("/api/agents", isAuthenticated, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
-      const { name, description } = req.body;
+      const { name, description, model, systemPrompt } = req.body;
 
       const tempId = crypto.randomUUID();
       let walletAddress: string | null = null;
@@ -261,8 +261,9 @@ async function main() {
         tbaAddress: walletAddress,
         credits: "10.00",
         configJson: {
-          provider: "anthropic",
-          model: "claude-sonnet-4-20250514",
+          provider: model?.includes("claude") ? "anthropic" : "openai",
+          model: model || "gpt-4o",
+          systemPrompt: systemPrompt || "",
         },
       };
 
@@ -283,6 +284,41 @@ async function main() {
       }
 
       res.json(agent);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.put("/api/agents/:id", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { name, description, systemPrompt, model } = req.body;
+      
+      const [agent] = await db.select().from(agents).where(eq(agents.id, req.params.id));
+
+      if (!agent || agent.userId !== userId) {
+        return res.status(404).json({ error: "Agent not found" });
+      }
+
+      const existingConfig = (agent.configJson as any) || {};
+      const updatedConfig = {
+        ...existingConfig,
+        model: model || existingConfig.model || "gpt-4o",
+        systemPrompt: systemPrompt !== undefined ? systemPrompt : existingConfig.systemPrompt,
+        provider: model?.includes("claude") ? "anthropic" : "openai",
+      };
+
+      const [updatedAgent] = await db.update(agents)
+        .set({
+          name: name || agent.name,
+          description: description !== undefined ? description : agent.description,
+          configJson: updatedConfig,
+          updatedAt: new Date(),
+        })
+        .where(eq(agents.id, req.params.id))
+        .returning();
+
+      res.json(updatedAgent);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }

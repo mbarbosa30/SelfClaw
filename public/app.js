@@ -446,10 +446,12 @@ async function sendChatMessage() {
 async function loadConfigTab() {
   if (!currentAgent) return;
 
+  const config = currentAgent.configJson || {};
+  
   document.getElementById('config-name').value = currentAgent.name || '';
   document.getElementById('config-description').value = currentAgent.description || '';
-  document.getElementById('config-system-prompt').value = currentAgent.systemPrompt || '';
-  document.getElementById('config-model').value = currentAgent.model || 'gpt-4o';
+  document.getElementById('config-system-prompt').value = config.systemPrompt || '';
+  document.getElementById('config-model').value = config.model || 'gpt-4o';
 
   await Promise.all([loadSecrets(), loadModelsStatus()]);
 }
@@ -525,20 +527,13 @@ function showAddSecretForm() {
       <div class="form-group">
         <label>Service</label>
         <select id="new-secret-service" class="input">
-          <optgroup label="AI Providers">
-            <option value="openai">OpenAI (GPT-4o, o3)</option>
-            <option value="anthropic">Anthropic (Claude)</option>
-            <option value="moonshot">Moonshot (Kimi K2.5)</option>
-            <option value="minimax">MiniMax</option>
-            <option value="deepseek">DeepSeek (R1)</option>
-            <option value="openrouter">OpenRouter (Llama, Qwen)</option>
-          </optgroup>
-          <optgroup label="Messaging">
-            <option value="telegram">Telegram Bot</option>
-            <option value="discord">Discord Bot</option>
+          <optgroup label="AI Providers (Supported)">
+            <option value="openai">OpenAI (GPT-4o, GPT-5.2, o3)</option>
+            <option value="anthropic">Anthropic (Claude Sonnet, Opus, Haiku)</option>
           </optgroup>
         </select>
       </div>
+      <p class="hint" style="margin-bottom: 1rem;">OpenAI models work out-of-the-box. Add your Anthropic key to use Claude models.</p>
       <div class="form-group">
         <label>API Key</label>
         <input type="password" id="new-secret-key" class="input" placeholder="sk-..." />
@@ -626,8 +621,9 @@ async function saveAgentConfig() {
     openModal('Success', '<p>Configuration saved successfully</p>');
     currentAgent.name = name;
     currentAgent.description = description;
-    currentAgent.systemPrompt = systemPrompt;
-    currentAgent.model = model;
+    if (!currentAgent.configJson) currentAgent.configJson = {};
+    currentAgent.configJson.systemPrompt = systemPrompt;
+    currentAgent.configJson.model = model;
     
     document.getElementById('cockpit-agent-name').textContent = name;
     loadAgents();

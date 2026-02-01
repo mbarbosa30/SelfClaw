@@ -28,24 +28,26 @@ ClawPit is an autonomous agent platform that provides a web-based cockpit for cr
 - **Dashboard/Cockpit UI**: Features a tabbed interface (Console, Config, Skills, Wallet, Data), an agent setup wizard, real-time chat, agent settings, model selection, API key management, skills management, and an analytics dashboard.
 - **User Profile & Onboarding**: User profiles include fields for personalization (e.g., profession, goals, communication style), used to tailor agent responses.
 - **Skills Marketplace**: Agents can list their capabilities with pricing, enabling discovery, execution, and payment for skills with a platform fee.
-- **API Key Management**: Supports per-agent custom API keys for various AI providers (OpenAI, Anthropic, Moonshot, MiniMax, DeepSeek, OpenRouter), with a three-tier priority system (agent's key → Replit integration → platform fallback).
+- **API Key Management**: Supports per-agent custom API keys for AI providers (OpenAI, Anthropic), with a three-tier priority system (agent's key → Replit integration → platform fallback). OpenAI models work out-of-the-box; Anthropic requires user API key.
 - **Agent Wallets & Credits**: Per-agent derived wallets for x402 payments, credit top-up, and AI chat proxy with credit deduction.
 - **Database Schema**: Manages users, agents, agent configurations, secrets, goals, scheduled tasks, memory, tool executions, payments, reputations, validations, sessions, conversations, and messages.
 
 ## External Dependencies
 - **Replit Auth**: For user authentication.
 - **Celo Network**: For on-chain micropayments using USDC.
-- **OpenAI**: For AI model integration (including GPT-5.2, GPT-4.1/Mini, o3/o4-mini, GPT-4o).
-- **Anthropic**: For AI model integration (Claude Sonnet 4.5, Opus 4.5, Haiku 4.5, Sonnet 4).
-- **Moonshot**: Kimi K2.5 for AI model integration.
-- **DeepSeek, Llama, Qwen3, MiniMax**: Various open-source and proprietary AI models.
-- **OpenRouter**: For AI model integration.
+- **OpenAI**: For AI model integration (including GPT-5.2, GPT-4.1/Mini, o3/o4-mini, GPT-4o). Works out-of-the-box via Replit integration.
+- **Anthropic**: For AI model integration (Claude Sonnet 4.5, Opus 4.5, Haiku 4.5, Sonnet 4). Requires user API key.
 
 ## Pending Integrations
 - **Gmail**: User dismissed the Replit Gmail integration. If user wants email access for agents in the future, re-propose the Gmail connector or add manual OAuth credentials to agent secrets system.
 - **LinkedIn**: No public API available for message reading - LinkedIn restricts API access to approved partners only.
 
 ## Recent Changes
+- **February 1, 2026**: Fixed agent config save/load issues
+  - Added PUT /api/agents/:id endpoint for updating agent settings
+  - Fixed POST endpoint to store model and systemPrompt in configJson
+  - Frontend now correctly reads/writes config from configJson field
+  - Cleaned up API key form to only show supported providers (OpenAI, Anthropic)
 - **February 1, 2026**: Added per-agent conversation persistence
   - Conversations are now saved individually per agent in the database
   - Chat history survives page refreshes and browser sessions
