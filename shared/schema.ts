@@ -208,4 +208,18 @@ export const agentToolExecutions = pgTable("agent_tool_executions", {
 export type AgentToolExecution = typeof agentToolExecutions.$inferSelect;
 export type InsertAgentToolExecution = typeof agentToolExecutions.$inferInsert;
 
+export const activityFeed = pgTable("activity_feed", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  agentId: varchar("agent_id").references(() => agents.id),
+  activityType: varchar("activity_type").notNull(),
+  title: varchar("title").notNull(),
+  description: text("description"),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export type ActivityFeedEntry = typeof activityFeed.$inferSelect;
+export type InsertActivityFeedEntry = typeof activityFeed.$inferInsert;
+
 export * from "./models/chat";

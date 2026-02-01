@@ -2,6 +2,103 @@ let currentUser = null;
 let currentAgent = null;
 let currentWizardStep = 1;
 let chatHistory = [];
+let selectedTemplate = 'blank';
+
+const AGENT_TEMPLATES = {
+  blank: {
+    name: "Blank Agent",
+    role: "Custom",
+    systemPrompt: "You are a helpful AI assistant. Follow the user's instructions and help them accomplish their goals.",
+    suggestedModel: "gpt-4o"
+  },
+  developer: {
+    name: "Developer Agent",
+    role: "Developer",
+    systemPrompt: `You are a skilled software developer agent. Your expertise includes:
+
+- Writing clean, maintainable code across multiple languages
+- Debugging and troubleshooting technical issues
+- Reviewing code and suggesting improvements
+- Explaining technical concepts clearly
+
+When helping with code:
+- Ask clarifying questions before diving in
+- Explain your reasoning and approach
+- Consider edge cases and error handling
+- Follow best practices for the language/framework`,
+    suggestedModel: "gpt-4o"
+  },
+  researcher: {
+    name: "Research Agent",
+    role: "Researcher",
+    systemPrompt: `You are a thorough research agent. Your approach:
+
+- Dig deep into topics, exploring multiple angles
+- Cite sources and provide evidence for claims
+- Distinguish between facts, opinions, and speculation
+- Organize findings clearly with actionable insights
+- Question assumptions and look for counter-evidence
+
+Be curious and skeptical. Good research means finding what's true, not just what confirms existing beliefs.`,
+    suggestedModel: "gpt-4o"
+  },
+  writer: {
+    name: "Content Writer",
+    role: "Writer",
+    systemPrompt: `You are a versatile content writer. Your strengths:
+
+- Adapting voice and tone to different audiences
+- Writing clear, engaging copy that drives action
+- Structuring content for readability and impact
+- Creating compelling headlines and hooks
+
+Style preferences:
+- Oxford comma: yes
+- Avoid jargon unless writing for experts
+- Show, don't tell when possible
+- End with clear next steps or takeaways`,
+    suggestedModel: "gpt-4o"
+  },
+  analyst: {
+    name: "Business Analyst",
+    role: "Analyst",
+    systemPrompt: `You are a sharp business analyst. Your focus:
+
+- Translating data into actionable insights
+- Identifying trends, patterns, and anomalies
+- Building frameworks for decision-making
+- Competitive analysis and market research
+
+Be specific with numbers and timeframes. Vague insights are less useful than concrete recommendations.`,
+    suggestedModel: "gpt-4o"
+  },
+  assistant: {
+    name: "Personal Assistant",
+    role: "Assistant",
+    systemPrompt: `You are a reliable personal assistant. Your priorities:
+
+- Managing schedules and reminders
+- Organizing information and tasks
+- Drafting emails and messages
+- Research and quick lookups
+
+Be proactive about follow-ups and deadlines. Confirm details before acting. Keep track of preferences and patterns.`,
+    suggestedModel: "gpt-4o"
+  },
+  "customer-support": {
+    name: "Customer Support Agent",
+    role: "Support",
+    systemPrompt: `You are a skilled customer support agent. Your approach:
+
+- Lead with empathy and understanding
+- Solve problems quickly and completely
+- Explain solutions clearly and patiently
+- Turn negative experiences into positive ones
+
+Tone: Warm, professional, and solution-oriented. Never defensive or dismissive.`,
+    suggestedModel: "gpt-4o"
+  }
+};
 
 document.addEventListener('DOMContentLoaded', () => {
   loadAuthState();
@@ -219,6 +316,61 @@ function skipProfile() {
   loadAgents();
 }
 
+async function loadActivityFeed() {
+  const feedEl = document.getElementById('activity-feed-sidebar');
+  if (!feedEl) return;
+  
+  try {
+    const res = await fetch('/api/activity?limit=10');
+    if (!res.ok) throw new Error('Failed to load activity');
+    const activities = await res.json();
+    
+    if (activities.length === 0) {
+      feedEl.innerHTML = '<div class="activity-empty">No activity yet</div>';
+      return;
+    }
+    
+    const activityIcons = {
+      agent_created: '&#x2B50;',
+      chat: '&#x1F4AC;',
+      tool_executed: '&#x1F527;',
+      skill_invoked: '&#x1F504;',
+      payment: '&#x1F4B8;',
+      goal_updated: '&#x1F3AF;',
+      default: '&#x25CF;'
+    };
+    
+    feedEl.innerHTML = activities.map(a => {
+      const icon = activityIcons[a.activityType] || activityIcons.default;
+      const time = formatRelativeTime(new Date(a.createdAt));
+      return `
+        <div class="activity-item-compact">
+          <div class="activity-title">${escapeHtml(a.title)}</div>
+          <div class="activity-meta">
+            <span>${a.agentName || 'System'}</span>
+            <span>${time}</span>
+          </div>
+        </div>
+      `;
+    }).join('');
+  } catch (error) {
+    feedEl.innerHTML = '<div class="activity-empty">Unable to load</div>';
+  }
+}
+
+function formatRelativeTime(date) {
+  const now = new Date();
+  const diff = now - date;
+  const mins = Math.floor(diff / 60000);
+  const hours = Math.floor(diff / 3600000);
+  const days = Math.floor(diff / 86400000);
+  
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  if (hours < 24) return `${hours}h ago`;
+  return `${days}d ago`;
+}
+
 async function loadAgents() {
   const navEl = document.getElementById('agents-nav');
   navEl.innerHTML = '<div class="loading">Loading...</div>';
@@ -227,6 +379,8 @@ async function loadAgents() {
     const res = await fetch('/api/agents');
     if (!res.ok) throw new Error('Failed to load agents');
     const agents = await res.json();
+    
+    loadActivityFeed();
 
     if (agents.length === 0) {
       navEl.innerHTML = `
@@ -1084,12 +1238,40 @@ function updateWizardStep() {
   }
 }
 
+function selectTemplate(templateId) {
+  selectedTemplate = templateId;
+  document.querySelectorAll('.template-card').forEach(card => {
+    card.classList.toggle('selected', card.dataset.template === templateId);
+  });
+  
+  const template = AGENT_TEMPLATES[templateId];
+  if (template) {
+    if (templateId === 'blank') {
+      document.getElementById('wizard-name').value = '';
+      document.getElementById('wizard-prompt').value = '';
+      document.getElementById('wizard-model').value = 'gpt-4o';
+    } else {
+      document.getElementById('wizard-name').value = template.name;
+      document.getElementById('wizard-prompt').value = template.systemPrompt;
+      document.getElementById('wizard-model').value = template.suggestedModel;
+    }
+  }
+}
+
 function wizardNext() {
   if (currentWizardStep === 1) {
     const name = document.getElementById('wizard-name').value.trim();
     if (!name) {
       document.getElementById('wizard-name').focus();
       return;
+    }
+    
+    const template = AGENT_TEMPLATES[selectedTemplate];
+    if (template && !document.getElementById('wizard-prompt').value.trim()) {
+      document.getElementById('wizard-prompt').value = template.systemPrompt;
+    }
+    if (template && document.getElementById('wizard-model').value === 'gpt-4o') {
+      document.getElementById('wizard-model').value = template.suggestedModel;
     }
   }
 

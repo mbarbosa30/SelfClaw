@@ -5,7 +5,7 @@ import { homedir } from "os";
 import { execSync, spawn } from "child_process";
 import { setupAuth, isAuthenticated, registerAuthRoutes } from "./replit_integrations/auth/index.js";
 import { db } from "./db.js";
-import { agents, payments, users, agentSecrets, agentSkills, agentGoals, agentScheduledTasks, agentMemory, agentToolExecutions, conversations, messages, type InsertAgent, type InsertPayment, type InsertAgentSecret, type InsertAgentSkill, type InsertAgentGoal, type InsertAgentScheduledTask } from "../shared/schema.js";
+import { agents, payments, users, agentSecrets, agentSkills, agentGoals, agentScheduledTasks, agentMemory, agentToolExecutions, conversations, messages, activityFeed, type InsertAgent, type InsertPayment, type InsertAgentSecret, type InsertAgentSkill, type InsertAgentGoal, type InsertAgentScheduledTask, type InsertActivityFeedEntry } from "../shared/schema.js";
 import { runAgentTurn, buildAgentContext, AVAILABLE_TOOLS } from "./agent-runtime.js";
 import { startScheduler } from "./scheduler.js";
 import OpenAI from "openai";
@@ -28,6 +28,28 @@ const CONFIG_PATH = join(OPENCLAW_DIR, "openclaw.json");
 const SKILLS_DIR = join(OPENCLAW_DIR, "workspace", "skills");
 
 let gatewayProcess: ReturnType<typeof spawn> | null = null;
+
+async function logActivity(
+  userId: string,
+  activityType: string,
+  title: string,
+  description?: string,
+  agentId?: string,
+  metadata?: Record<string, any>
+) {
+  try {
+    await db.insert(activityFeed).values({
+      userId,
+      agentId,
+      activityType,
+      title,
+      description,
+      metadata: metadata || {},
+    });
+  } catch (e) {
+    console.error("Failed to log activity:", e);
+  }
+}
 let globalWallet: ReturnType<typeof createCeloWallet> | null = null;
 
 function initializeWallet() {
@@ -272,6 +294,16 @@ async function main() {
       };
 
       const [agent] = await db.insert(agents).values(newAgent).returning();
+      
+      await logActivity(
+        userId,
+        "agent_created",
+        `Created agent "${name}"`,
+        description || undefined,
+        agent.id,
+        { model: model || "gpt-4o" }
+      );
+      
       res.json(agent);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -1447,6 +1479,33 @@ async function main() {
         ...context,
         availableTools: AVAILABLE_TOOLS.map(t => ({ name: t.name, description: t.description }))
       });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/activity", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const limit = Math.min(parseInt(req.query.limit) || 50, 100);
+      
+      const activities = await db.select({
+        id: activityFeed.id,
+        agentId: activityFeed.agentId,
+        activityType: activityFeed.activityType,
+        title: activityFeed.title,
+        description: activityFeed.description,
+        metadata: activityFeed.metadata,
+        createdAt: activityFeed.createdAt,
+        agentName: agents.name
+      })
+        .from(activityFeed)
+        .leftJoin(agents, eq(activityFeed.agentId, agents.id))
+        .where(eq(activityFeed.userId, userId))
+        .orderBy(desc(activityFeed.createdAt))
+        .limit(limit);
+      
+      res.json(activities);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }

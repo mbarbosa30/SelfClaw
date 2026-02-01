@@ -2300,3 +2300,151 @@ body.dashboard-mode .cockpit-main {
 .status-text.connected {
   color: var(--green);
 }
+
+/* Template Grid */
+.template-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.template-card {
+  border: 2px solid var(--gray-200);
+  padding: 1rem 0.75rem;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.template-card:hover {
+  border-color: var(--gray-600);
+}
+
+.template-card.selected {
+  border-color: var(--black);
+  background: var(--gray-100);
+}
+
+.template-icon {
+  font-size: 1.75rem;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.template-card strong {
+  display: block;
+  font-size: 0.85rem;
+}
+
+.template-card p {
+  font-size: 0.75rem;
+  color: var(--gray-600);
+  margin-top: 0.25rem;
+}
+
+/* Activity Feed */
+.activity-feed {
+  max-height: 600px;
+  overflow-y: auto;
+}
+
+.activity-item {
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border-bottom: 1px solid var(--gray-200);
+}
+
+.activity-item:last-child {
+  border-bottom: none;
+}
+
+.activity-icon {
+  font-size: 1.25rem;
+  width: 2rem;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.activity-content {
+  flex: 1;
+}
+
+.activity-title {
+  font-weight: 500;
+}
+
+.activity-agent {
+  color: var(--gray-600);
+  font-size: 0.85rem;
+}
+
+.activity-time {
+  font-size: 0.75rem;
+  color: var(--gray-600);
+}
+
+.activity-description {
+  font-size: 0.85rem;
+  margin-top: 0.25rem;
+  color: var(--gray-800);
+}
+
+/* Sidebar sections */
+.sidebar-section {
+  margin-top: 1.5rem;
+  border-top: 1px solid var(--gray-200);
+  padding-top: 1rem;
+}
+
+.sidebar-section .sidebar-header {
+  margin-bottom: 0.5rem;
+}
+
+.sidebar-section .sidebar-header h3 {
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
+  color: var(--gray-600);
+}
+
+/* Compact activity feed for sidebar */
+.activity-feed-compact {
+  max-height: 250px;
+  overflow-y: auto;
+}
+
+.activity-item-compact {
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--gray-100);
+  font-size: 0.8rem;
+}
+
+.activity-item-compact:last-child {
+  border-bottom: none;
+}
+
+.activity-item-compact .activity-title {
+  font-weight: 500;
+  color: var(--black);
+  margin-bottom: 0.2rem;
+}
+
+.activity-item-compact .activity-meta {
+  display: flex;
+  gap: 0.5rem;
+  color: var(--gray-600);
+  font-size: 0.7rem;
+}
+
+.loading-small {
+  color: var(--gray-600);
+  font-size: 0.8rem;
+  padding: 0.5rem 0;
+}
+
+.activity-empty {
+  color: var(--gray-600);
+  font-size: 0.8rem;
+  padding: 0.5rem 0;
+}

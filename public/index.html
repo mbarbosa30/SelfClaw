@@ -136,6 +136,15 @@
             <button id="create-agent-btn" class="btn btn-sm">+ NEW</button>
           </div>
           <div id="agents-nav" class="agents-nav"></div>
+          
+          <div class="sidebar-section">
+            <div class="sidebar-header">
+              <h3>ACTIVITY</h3>
+            </div>
+            <div id="activity-feed-sidebar" class="activity-feed-compact">
+              <div class="loading-small">Loading...</div>
+            </div>
+          </div>
         </aside>
         
         <main class="cockpit-main">
@@ -438,15 +447,52 @@
             
             <div id="wizard-content" class="wizard-content">
               <div id="wizard-step-1" class="wizard-panel active">
-                <h3>Name Your Agent</h3>
-                <p>Give your agent a memorable name and description.</p>
-                <div class="form-group">
+                <h3>Choose a Template</h3>
+                <p>Start with a pre-configured role or create a custom agent.</p>
+                <div id="template-grid" class="template-grid">
+                  <div class="template-card selected" data-template="blank" onclick="selectTemplate('blank')">
+                    <span class="template-icon">&#x2B50;</span>
+                    <strong>Blank Agent</strong>
+                    <p>Start from scratch</p>
+                  </div>
+                  <div class="template-card" data-template="developer" onclick="selectTemplate('developer')">
+                    <span class="template-icon">&#x1F4BB;</span>
+                    <strong>Developer</strong>
+                    <p>Code &amp; debug</p>
+                  </div>
+                  <div class="template-card" data-template="researcher" onclick="selectTemplate('researcher')">
+                    <span class="template-icon">&#x1F50D;</span>
+                    <strong>Researcher</strong>
+                    <p>Deep research</p>
+                  </div>
+                  <div class="template-card" data-template="writer" onclick="selectTemplate('writer')">
+                    <span class="template-icon">&#x270D;</span>
+                    <strong>Writer</strong>
+                    <p>Content &amp; copy</p>
+                  </div>
+                  <div class="template-card" data-template="analyst" onclick="selectTemplate('analyst')">
+                    <span class="template-icon">&#x1F4CA;</span>
+                    <strong>Analyst</strong>
+                    <p>Data &amp; insights</p>
+                  </div>
+                  <div class="template-card" data-template="assistant" onclick="selectTemplate('assistant')">
+                    <span class="template-icon">&#x1F4CB;</span>
+                    <strong>Assistant</strong>
+                    <p>Personal help</p>
+                  </div>
+                  <div class="template-card" data-template="customer-support" onclick="selectTemplate('customer-support')">
+                    <span class="template-icon">&#x1F4AC;</span>
+                    <strong>Support</strong>
+                    <p>Customer care</p>
+                  </div>
+                </div>
+                <div class="form-group" style="margin-top: 1.5rem;">
                   <label>Agent Name *</label>
                   <input type="text" id="wizard-name" class="input" placeholder="e.g., Research Assistant, Content Writer" />
                 </div>
                 <div class="form-group">
                   <label>Description</label>
-                  <textarea id="wizard-description" class="input" rows="3" placeholder="What does this agent do?"></textarea>
+                  <textarea id="wizard-description" class="input" rows="2" placeholder="What does this agent do?"></textarea>
                 </div>
                 <div class="wizard-actions">
                   <button class="btn" onclick="wizardNext()">CONTINUE</button>

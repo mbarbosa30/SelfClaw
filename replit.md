@@ -43,6 +43,13 @@ ClawPit is an autonomous agent platform that provides a web-based cockpit for cr
 - **LinkedIn**: No public API available for message reading - LinkedIn restricts API access to approved partners only.
 
 ## Recent Changes
+- **February 1, 2026**: Added agent role templates and activity feed
+  - Seven pre-built agent templates: Blank, Developer, Researcher, Writer, Analyst, Assistant, Customer Support
+  - Templates auto-fill system prompt and suggested model during agent creation
+  - Template selection UI in wizard step 1 with visual grid layout
+  - Activity feed in sidebar showing recent cross-agent events
+  - Activity logging for agent creation (extensible to other actions)
+  - GET /api/activity endpoint for fetching user's activity timeline
 - **February 1, 2026**: Added per-user Gmail OAuth integration
   - Users can connect their own Gmail accounts to agents via Config tab
   - OAuth flow stores tokens in agent secrets table
