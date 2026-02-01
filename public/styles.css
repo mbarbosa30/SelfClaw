@@ -246,6 +246,35 @@ h2 {
   line-height: 1.5;
 }
 
+/* Dashboard Mode - Full screen agent cockpit */
+body.dashboard-mode .container {
+  max-width: 100%;
+  padding: 1rem 2rem;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+body.dashboard-mode .header {
+  margin-bottom: 1rem;
+  flex-shrink: 0;
+}
+
+body.dashboard-mode .agents-section {
+  flex: 1;
+  margin-bottom: 0;
+  overflow: hidden;
+}
+
+body.dashboard-mode .dashboard-layout {
+  height: 100%;
+}
+
+body.dashboard-mode .cockpit-main {
+  height: 100%;
+  overflow-y: auto;
+}
+
 /* Agents Section */
 .agents-section {
   margin-bottom: 3rem;

@@ -80,6 +80,11 @@ async function loadAuthState() {
   const agentsSection = document.getElementById('agents-section');
   const onboardingSection = document.getElementById('onboarding-section');
   const heroSignin = document.getElementById('hero-signin');
+  
+  const landingSections = [
+    'landing-hero', 'landing-why', 'landing-economy', 
+    'landing-how', 'landing-pricing', 'landing-tech', 'landing-footer'
+  ];
 
   try {
     const res = await fetch('/api/auth/user');
@@ -88,7 +93,12 @@ async function loadAuthState() {
       loadingEl.style.display = 'none';
       loggedOutEl.style.display = 'none';
       loggedInEl.style.display = 'flex';
-      if (heroSignin) heroSignin.style.display = 'none';
+      
+      landingSections.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = 'none';
+      });
+      document.body.classList.add('dashboard-mode');
 
       document.getElementById('user-name').textContent = 
         currentUser.firstName || currentUser.email || 'User';
@@ -120,6 +130,12 @@ async function loadAuthState() {
       loggedInEl.style.display = 'none';
       agentsSection.style.display = 'none';
       onboardingSection.style.display = 'none';
+      
+      landingSections.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = '';
+      });
+      document.body.classList.remove('dashboard-mode');
     }
   } catch (error) {
     console.error('Auth check failed:', error);
@@ -128,6 +144,12 @@ async function loadAuthState() {
     loggedInEl.style.display = 'none';
     agentsSection.style.display = 'none';
     onboardingSection.style.display = 'none';
+    
+    landingSections.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = '';
+    });
+    document.body.classList.remove('dashboard-mode');
   }
 }
 
