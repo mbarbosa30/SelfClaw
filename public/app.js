@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
   loadStatus();
   loadEnvCheck();
   loadConfig();
+  handleGmailCallbackParams();
 
   document.getElementById('run-setup')?.addEventListener('click', runSetup);
   document.getElementById('install-openclaw')?.addEventListener('click', installOpenClaw);
@@ -61,6 +62,22 @@ function debounce(fn, delay) {
     clearTimeout(timeout);
     timeout = setTimeout(() => fn.apply(this, args), delay);
   };
+}
+
+function handleGmailCallbackParams() {
+  const params = new URLSearchParams(window.location.search);
+  
+  if (params.has('gmail_connected')) {
+    const email = params.get('gmail_connected');
+    setTimeout(() => openModal('Gmail Connected', `<p class="success">Successfully connected Gmail: <strong>${email}</strong></p><p>Your agent can now read your emails to learn about your communication style.</p>`), 500);
+    window.history.replaceState({}, document.title, window.location.pathname);
+  }
+  
+  if (params.has('gmail_error')) {
+    const error = params.get('gmail_error');
+    setTimeout(() => openModal('Gmail Connection Failed', `<p class="error">Failed to connect Gmail: ${error}</p><p>Please try again or check that the OAuth credentials are configured correctly.</p>`), 500);
+    window.history.replaceState({}, document.title, window.location.pathname);
+  }
 }
 
 function openModal(title, content) {
@@ -453,7 +470,55 @@ async function loadConfigTab() {
   document.getElementById('config-system-prompt').value = config.systemPrompt || '';
   document.getElementById('config-model').value = config.model || 'gpt-4o';
 
-  await Promise.all([loadSecrets(), loadModelsStatus()]);
+  await Promise.all([loadSecrets(), loadModelsStatus(), loadGmailStatus()]);
+}
+
+async function loadGmailStatus() {
+  if (!currentAgent) return;
+  
+  const statusEl = document.getElementById('gmail-status');
+  const btnEl = document.getElementById('gmail-connect-btn');
+  
+  if (!statusEl || !btnEl) return;
+  
+  try {
+    const res = await fetch(`/api/gmail/status/${currentAgent.id}`);
+    const data = await res.json();
+    
+    if (data.connected) {
+      statusEl.textContent = `Connected: ${data.email}`;
+      statusEl.classList.add('connected');
+      btnEl.textContent = 'Disconnect';
+      btnEl.onclick = disconnectGmail;
+    } else {
+      statusEl.textContent = 'Not connected';
+      statusEl.classList.remove('connected');
+      btnEl.textContent = 'Connect';
+      btnEl.onclick = connectGmail;
+    }
+  } catch (error) {
+    statusEl.textContent = 'Status unknown';
+  }
+}
+
+function connectGmail() {
+  if (!currentAgent) return;
+  window.location.href = `/api/gmail/authorize/${currentAgent.id}`;
+}
+
+async function disconnectGmail() {
+  if (!currentAgent) return;
+  
+  if (!confirm('Disconnect Gmail from this agent?')) return;
+  
+  try {
+    const res = await fetch(`/api/gmail/disconnect/${currentAgent.id}`, { method: 'DELETE' });
+    if (res.ok) {
+      loadGmailStatus();
+    }
+  } catch (error) {
+    console.error('Failed to disconnect Gmail:', error);
+  }
 }
 
 async function loadModelsStatus() {

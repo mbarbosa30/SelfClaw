@@ -2,6 +2,7 @@ import { db } from "./db.js";
 import { agents, agentGoals, agentMemory, agentScheduledTasks, agentToolExecutions, agentSecrets } from "../shared/schema.js";
 import { eq, desc, and } from "drizzle-orm";
 import OpenAI from "openai";
+import { readGmailMessages } from "./gmail-oauth.js";
 
 export interface AgentContext {
   agentId: string;
@@ -33,6 +34,7 @@ const TOOL_COSTS: Record<string, number> = {
   recall: 0.0001,
   invoke_skill: 0.001,
   code_execute: 0.005,
+  read_emails: 0.002,
 };
 
 export const AVAILABLE_TOOLS: ToolDefinition[] = [
@@ -94,6 +96,18 @@ export const AVAILABLE_TOOLS: ToolDefinition[] = [
         completed: { type: "boolean", description: "Mark goal as completed" },
       },
       required: ["goalId", "progress"],
+    },
+  },
+  {
+    name: "read_emails",
+    description: "Read the user's recent emails from their connected Gmail account. Use this to learn about the user's communication style, priorities, and current activities.",
+    parameters: {
+      type: "object",
+      properties: {
+        maxResults: { type: "number", description: "Number of emails to fetch (max 10)" },
+        query: { type: "string", description: "Optional Gmail search query (e.g., 'is:unread', 'from:boss@company.com')" },
+      },
+      required: [],
     },
   },
 ];
@@ -217,6 +231,9 @@ export async function executeTool(
         break;
       case "invoke_skill":
         result = await toolInvokeSkill(agentId, input.skillId, input.input);
+        break;
+      case "read_emails":
+        result = await toolReadEmails(agentId, input.maxResults, input.query);
         break;
       default:
         return { success: false, output: null, error: `Unknown tool: ${toolName}`, creditsCost: 0 };
@@ -362,6 +379,28 @@ async function toolInvokeSkill(
     skillName: skill.name,
     message: `Skill "${skill.name}" invoked successfully. Cost: ${price} credits.`,
   };
+}
+
+async function toolReadEmails(
+  agentId: string,
+  maxResults?: number,
+  query?: string
+): Promise<{ emails: any[]; message: string }> {
+  try {
+    const emails = await readGmailMessages(agentId, maxResults || 5, query);
+    return {
+      emails,
+      message: `Retrieved ${emails.length} emails from user's Gmail.`
+    };
+  } catch (error: any) {
+    if (error.message.includes("not connected")) {
+      return {
+        emails: [],
+        message: "Gmail is not connected for this agent. The user needs to connect their Gmail account in the Config tab."
+      };
+    }
+    throw error;
+  }
 }
 
 export async function getAgentOpenAIClient(agentId: string): Promise<OpenAI | null> {

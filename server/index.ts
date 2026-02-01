@@ -15,6 +15,7 @@ import { deriveAgentWalletAddress, getAgentWalletBalance, PLATFORM_FEE_PERCENT, 
 import { createAgentX402Client } from "../lib/agent-x402-client.js";
 import { createAgentPaymentMiddleware, getAgentReceivedPayments, getAgentTotalReceived } from "../lib/agent-x402-middleware.js";
 import { seedMarketplace } from "./seed-marketplace.js";
+import gmailRouter from "./gmail-oauth.js";
 
 const app = express();
 const PORT = 5000;
@@ -71,6 +72,9 @@ async function main() {
   app.get("/api/status", (req: Request, res: Response) => {
     res.json(getSystemStatus());
   });
+
+  app.get("/api/gmail/callback", gmailRouter);
+  app.use("/api/gmail", isAuthenticated, gmailRouter);
 
   app.get("/api/env-check", (req: Request, res: Response) => {
     res.json({

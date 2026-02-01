@@ -308,7 +308,20 @@
                     <p class="hint">OpenAI models work immediately. Add API keys below for other providers.</p>
                   </div>
                   <div id="models-status" class="models-status" style="margin-top: 0.5rem;"></div>
-                  <h4>API Keys</h4>
+                  <h4>Connected Services</h4>
+                  <p class="note">Connect your accounts to give your agent more capabilities</p>
+                  <div id="gmail-connection" class="service-connection">
+                    <div class="service-info">
+                      <span class="service-icon">&#x2709;</span>
+                      <div>
+                        <strong>Gmail</strong>
+                        <span id="gmail-status" class="status-text">Not connected</span>
+                      </div>
+                    </div>
+                    <button id="gmail-connect-btn" class="btn btn-sm" onclick="connectGmail()">Connect</button>
+                  </div>
+
+                  <h4 style="margin-top: 1.5rem;">API Keys</h4>
                   <p class="note">Add your own API keys to enable additional models</p>
                   <div id="config-secrets" class="secrets-list"></div>
                   <button id="add-secret-btn" class="btn btn-sm btn-outline">+ Add API Key</button>

@@ -39,10 +39,16 @@ ClawPit is an autonomous agent platform that provides a web-based cockpit for cr
 - **Anthropic**: For AI model integration (Claude Sonnet 4.5, Opus 4.5, Haiku 4.5, Sonnet 4). Requires user API key.
 
 ## Pending Integrations
-- **Gmail**: User dismissed the Replit Gmail integration. If user wants email access for agents in the future, re-propose the Gmail connector or add manual OAuth credentials to agent secrets system.
+- **Gmail OAuth**: Per-user Gmail OAuth implemented. Users can connect their own Gmail accounts to agents. Requires GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET environment variables. OAuth flow: `/api/gmail/authorize/:agentId` → Google consent → `/api/gmail/callback`. Agents can read emails via `read_emails` tool.
 - **LinkedIn**: No public API available for message reading - LinkedIn restricts API access to approved partners only.
 
 ## Recent Changes
+- **February 1, 2026**: Added per-user Gmail OAuth integration
+  - Users can connect their own Gmail accounts to agents via Config tab
+  - OAuth flow stores tokens in agent secrets table
+  - Added `read_emails` tool to agent runtime for reading user's inbox
+  - Server routes: authorize, callback, status, disconnect
+  - Requires GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET secrets
 - **February 1, 2026**: Fixed agent config save/load issues
   - Added PUT /api/agents/:id endpoint for updating agent settings
   - Fixed POST endpoint to store model and systemPrompt in configJson
