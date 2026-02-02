@@ -16,12 +16,25 @@ import { createAgentX402Client } from "../lib/agent-x402-client.js";
 import { createAgentPaymentMiddleware, getAgentReceivedPayments, getAgentTotalReceived } from "../lib/agent-x402-middleware.js";
 import { seedMarketplace } from "./seed-marketplace.js";
 import gmailRouter from "./gmail-oauth.js";
+import selfmoltRouter from "./selfmolt.js";
 
 const app = express();
 const PORT = 5000;
 
 app.use(express.json());
 app.use(express.static("public"));
+
+app.get("/cockpit", (req: Request, res: Response) => {
+  res.sendFile("index.html", { root: "public" });
+});
+
+app.get("/skill.md", (req: Request, res: Response) => {
+  res.sendFile("skill.md", { root: "public" });
+});
+
+app.get("/llms.txt", (req: Request, res: Response) => {
+  res.sendFile("llms.txt", { root: "public" });
+});
 
 const OPENCLAW_DIR = join(homedir(), ".openclaw");
 const CONFIG_PATH = join(OPENCLAW_DIR, "openclaw.json");
@@ -97,6 +110,7 @@ async function main() {
 
   app.get("/api/gmail/callback", gmailRouter);
   app.use("/api/gmail", isAuthenticated, gmailRouter);
+  app.use("/api/selfmolt", selfmoltRouter);
 
   app.get("/api/env-check", (req: Request, res: Response) => {
     res.json({

@@ -121,6 +121,9 @@ document.addEventListener('DOMContentLoaded', () => {
   
   document.getElementById('save-profile')?.addEventListener('click', saveProfile);
   document.getElementById('skip-profile')?.addEventListener('click', skipProfile);
+  
+  document.getElementById('check-verification')?.addEventListener('click', checkBotVerification);
+  document.getElementById('start-verification')?.addEventListener('click', startBotVerification);
 
   document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', () => switchTab(btn.dataset.tab));
@@ -194,6 +197,9 @@ async function loadAuthState() {
   const agentsSection = document.getElementById('agents-section');
   const onboardingSection = document.getElementById('onboarding-section');
   const heroSignin = document.getElementById('hero-signin');
+  const cockpitLink = document.getElementById('cockpit-link');
+  
+  const isCockpitPage = window.location.pathname === '/cockpit';
   
   const landingSections = [
     'landing-hero', 'landing-why', 'landing-economy', 
@@ -208,11 +214,24 @@ async function loadAuthState() {
       loggedOutEl.style.display = 'none';
       loggedInEl.style.display = 'flex';
       
-      landingSections.forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.style.display = 'none';
-      });
-      document.body.classList.add('dashboard-mode');
+      if (cockpitLink) cockpitLink.style.display = 'inline-block';
+      
+      if (isCockpitPage) {
+        landingSections.forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.style.display = 'none';
+        });
+        document.body.classList.add('dashboard-mode');
+        
+        const selfmoltSections = ['verify', 'check', 'why-section'];
+        selfmoltSections.forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.style.display = 'none';
+        });
+        document.querySelectorAll('.api-section, .selfmolt-footer').forEach(el => {
+          el.style.display = 'none';
+        });
+      }
 
       document.getElementById('user-name').textContent = 
         currentUser.firstName || currentUser.email || 'User';
@@ -1738,4 +1757,74 @@ function escapeHtml(text) {
   const div = document.createElement('div');
   div.textContent = text;
   return div.innerHTML;
+}
+
+async function checkBotVerification() {
+  const pubkey = document.getElementById('check-pubkey').value.trim();
+  const resultEl = document.getElementById('check-result');
+  
+  if (!pubkey) {
+    resultEl.style.display = 'block';
+    resultEl.className = 'check-result not-verified';
+    resultEl.innerHTML = '<h4 class="not-verified-badge">Enter a public key or device ID</h4>';
+    return;
+  }
+  
+  try {
+    const res = await fetch(`/api/selfmolt/v1/bot/${encodeURIComponent(pubkey)}`);
+    const data = await res.json();
+    
+    resultEl.style.display = 'block';
+    
+    if (data.verified) {
+      resultEl.className = 'check-result verified';
+      resultEl.innerHTML = `
+        <h4 class="verified-badge">VERIFIED</h4>
+        <div class="result-details">
+          <p><strong>Public Key:</strong> ${escapeHtml(data.publicKey?.substring(0, 30))}...</p>
+          ${data.deviceId ? `<p><strong>Device ID:</strong> ${escapeHtml(data.deviceId)}</p>` : ''}
+          ${data.humanId ? `<p><strong>Human ID:</strong> ${escapeHtml(data.humanId)}</p>` : ''}
+          <p><strong>Verification Level:</strong> ${data.selfxyz?.verificationLevel || 'passport'}</p>
+          <p><strong>Registered:</strong> ${new Date(data.selfxyz?.registeredAt).toLocaleDateString()}</p>
+        </div>
+      `;
+    } else {
+      resultEl.className = 'check-result not-verified';
+      resultEl.innerHTML = `
+        <h4 class="not-verified-badge">NOT VERIFIED</h4>
+        <p>${data.message || 'This bot is not registered in the SelfMolt registry.'}</p>
+      `;
+    }
+  } catch (error) {
+    resultEl.style.display = 'block';
+    resultEl.className = 'check-result not-verified';
+    resultEl.innerHTML = `<h4 class="not-verified-badge">Error checking verification</h4><p>${error.message}</p>`;
+  }
+}
+
+async function startBotVerification() {
+  const pubkey = document.getElementById('verify-pubkey').value.trim();
+  const deviceId = document.getElementById('verify-device-id').value.trim();
+  const qrContainer = document.getElementById('qr-container');
+  const qrEl = document.getElementById('selfxyz-qr');
+  
+  if (!pubkey) {
+    alert('Please enter your bot\'s public key');
+    return;
+  }
+  
+  qrContainer.style.display = 'block';
+  qrEl.innerHTML = `
+    <div style="padding: 2rem; background: #f5f5f5; border: 2px dashed #ccc; text-align: center;">
+      <p style="margin-bottom: 1rem;"><strong>Self.xyz Integration Coming Soon</strong></p>
+      <p style="font-size: 0.85rem; color: #666;">
+        For now, verified bots can be registered via the API:<br/>
+        <code>POST /api/selfmolt/v1/verify</code>
+      </p>
+      <p style="font-size: 0.75rem; color: #999; margin-top: 1rem;">
+        Public Key: ${escapeHtml(pubkey.substring(0, 20))}...
+        ${deviceId ? `<br/>Device ID: ${escapeHtml(deviceId)}` : ''}
+      </p>
+    </div>
+  `;
 }

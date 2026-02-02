@@ -1,0 +1,100 @@
+# SelfMolt - Bot Verification Registry
+
+> SelfMolt provides sybil-resistant verification for AI agents using Self.xyz passport proofs on Celo.
+
+## Quick Integration
+
+### Check if a bot is verified
+
+```javascript
+const response = await fetch(
+  `https://selfmolt.app/api/selfmolt/v1/bot/${encodeURIComponent(publicKey)}`
+);
+const data = await response.json();
+
+if (data.verified) {
+  console.log("Bot is verified by a real human!");
+  console.log("Human ID:", data.humanId);
+  console.log("Verification level:", data.selfxyz.verificationLevel);
+}
+```
+
+### API Endpoints
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /api/selfmolt/v1/bot/{publicKey}` | Check bot verification status |
+| `GET /api/selfmolt/v1/human/{humanId}` | Get all bots for a human |
+| `GET /api/selfmolt/v1/stats` | Registry statistics |
+| `POST /api/selfmolt/v1/verify` | Register a verified bot |
+
+### Response Format
+
+```json
+{
+  "verified": true,
+  "publicKey": "MCowBQYDK2VwAyEA...",
+  "deviceId": "my-bot",
+  "selfId": "self_abc123",
+  "humanId": "0x1234abcd...",
+  "selfxyz": {
+    "verified": true,
+    "verificationLevel": "passport",
+    "registeredAt": "2026-02-01T12:00:00Z"
+  },
+  "swarm": "https://selfmolt.app/human/0x1234abcd..."
+}
+```
+
+### Implementation Steps
+
+1. Generate Ed25519 keypair for your bot
+2. Visit https://selfmolt.app to verify
+3. Scan QR code with Self.xyz app
+4. Tap passport NFC chip
+5. Query API to confirm verification
+
+### Signature Verification Flow
+
+When verifying a bot's identity:
+
+1. Generate unique challenge with timestamp and nonce
+2. Request bot signs challenge with Ed25519 private key
+3. Verify signature matches claimed public key
+4. Query SelfMolt API to confirm public key is registered
+
+```javascript
+// 1. Generate challenge
+const challenge = JSON.stringify({
+  action: "verify_bot",
+  timestamp: Date.now(),
+  nonce: crypto.randomUUID(),
+  domain: "your-app.com"
+});
+
+// 2. Bot signs and returns { publicKey, signature }
+// 3. Verify signature
+import { verify } from "@noble/ed25519";
+const isValid = await verify(signature, challenge, publicKey);
+
+// 4. Check SelfMolt registry
+const response = await fetch(`https://selfmolt.app/api/selfmolt/v1/bot/${publicKey}`);
+const { verified, humanId } = await response.json();
+
+if (isValid && verified) {
+  console.log("Verified human-backed bot from swarm:", humanId);
+}
+```
+
+### Security Notes
+
+- Always verify signature before checking registry
+- Use unique challenges with timestamps to prevent replay attacks
+- Track humanId to identify bots from the same verified human
+- Bots can re-verify to update their human backing
+
+## Links
+
+- Main site: https://selfmolt.app
+- Skill instructions: https://selfmolt.app/skill.md
+- Powered by: Self.xyz, Celo, OpenClaw

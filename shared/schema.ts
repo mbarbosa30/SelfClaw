@@ -222,4 +222,19 @@ export const activityFeed = pgTable("activity_feed", {
 export type ActivityFeedEntry = typeof activityFeed.$inferSelect;
 export type InsertActivityFeedEntry = typeof activityFeed.$inferInsert;
 
+export const verifiedBots = pgTable("verified_bots", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  publicKey: text("public_key").notNull().unique(),
+  deviceId: varchar("device_id"),
+  selfId: varchar("self_id"),
+  humanId: varchar("human_id"),
+  verificationLevel: varchar("verification_level"),
+  metadata: jsonb("metadata"),
+  verifiedAt: timestamp("verified_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export type VerifiedBot = typeof verifiedBots.$inferSelect;
+export type InsertVerifiedBot = typeof verifiedBots.$inferInsert;
+
 export * from "./models/chat";
