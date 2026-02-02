@@ -1,6 +1,9 @@
 :root {
   --black: #000;
   --white: #fff;
+  --text-primary: #E8E8E8;
+  --text-secondary: #AAAAAA;
+  --text-muted: #777777;
   --cream: #FDFBF7;
   --gray-50: #fafafa;
   --gray-100: #f5f5f5;
@@ -42,7 +45,7 @@
 body {
   font-family: var(--font-sans);
   background: var(--black);
-  color: var(--white);
+  color: var(--text-primary);
   line-height: 1.6;
   font-size: 15px;
 }
@@ -74,10 +77,11 @@ body {
 
 .header h1 {
   font-size: 2rem;
-  font-weight: 700;
-  letter-spacing: 0.05em;
+  font-weight: 600;
+  letter-spacing: 0.08em;
   line-height: 1;
   color: var(--white);
+  font-family: var(--font-mono);
 }
 
 .tag {
@@ -194,8 +198,13 @@ body {
   font-size: 0.95rem;
   font-family: var(--font-mono);
   background: var(--gray-800);
-  color: var(--white);
+  color: var(--text-primary);
   transition: all 0.2s ease;
+}
+
+.input::placeholder {
+  color: var(--text-muted);
+  opacity: 1;
 }
 
 .input:focus {
@@ -262,18 +271,19 @@ h2 {
 
 .hero-headline {
   font-size: 3rem;
-  font-weight: 800;
+  font-weight: 700;
   margin-bottom: 1.25rem;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.02em;
   border-bottom: none;
   padding-bottom: 0;
   line-height: 1.15;
   color: var(--white);
+  font-family: var(--font-sans);
 }
 
 .hero-subline {
   font-size: 1.15rem;
-  color: var(--gray-400);
+  color: var(--text-secondary);
   max-width: 550px;
   margin: 0 auto 2rem;
   line-height: 1.7;
@@ -323,12 +333,12 @@ h2 {
   font-weight: 700;
   letter-spacing: -0.01em;
   margin-bottom: 0.75rem;
-  color: var(--white);
+  color: var(--text-primary);
 }
 
 .pillar p {
   font-size: 0.9rem;
-  color: var(--gray-400);
+  color: var(--text-secondary);
   line-height: 1.6;
 }
 
@@ -1286,6 +1296,7 @@ body.dashboard-mode .cockpit-main {
   font-size: 0.85rem;
   font-weight: 600;
   margin-bottom: 0.25rem;
+  color: var(--text-primary);
 }
 
 .form-row {
@@ -2596,8 +2607,9 @@ body.dashboard-mode .cockpit-main {
   font-size: 3.25rem;
   line-height: 1.15;
   text-transform: none;
-  font-family: var(--font-serif);
-  font-weight: 500;
+  font-family: var(--font-sans);
+  font-weight: 700;
+  color: var(--white);
 }
 
 .pillar-icon-green,
@@ -2628,11 +2640,11 @@ body.dashboard-mode .cockpit-main {
   margin-bottom: 0.5rem;
   letter-spacing: -0.02em;
   border-bottom: none;
-  color: var(--white);
+  color: var(--text-primary);
 }
 
 .section-intro {
-  color: var(--gray-400);
+  color: var(--text-secondary);
   margin-bottom: 2rem;
   font-size: 1rem;
 }
@@ -2671,12 +2683,12 @@ body.dashboard-mode .cockpit-main {
   font-size: 0.9rem;
   font-weight: 700;
   margin-bottom: 0.25rem;
-  color: var(--white);
+  color: var(--text-primary);
 }
 
 .step-content p {
   font-size: 0.85rem;
-  color: var(--gray-600);
+  color: var(--text-secondary);
   line-height: 1.5;
 }
 
@@ -2736,7 +2748,7 @@ body.dashboard-mode .cockpit-main {
   font-size: 1rem;
   margin-bottom: 0.5rem;
   font-weight: 700;
-  color: var(--white);
+  color: var(--text-primary);
 }
 
 .check-result .verified-badge {
@@ -2801,7 +2813,7 @@ body.dashboard-mode .cockpit-main {
   margin-bottom: 2rem;
   letter-spacing: -0.02em;
   border-bottom: none;
-  color: var(--white);
+  color: var(--text-primary);
 }
 
 .why-grid {
@@ -2833,7 +2845,7 @@ body.dashboard-mode .cockpit-main {
 
 .why-card p {
   font-size: 0.9rem;
-  color: var(--gray-400);
+  color: var(--text-secondary);
   line-height: 1.6;
 }
 
