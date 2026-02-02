@@ -1,0 +1,131 @@
+{
+  "colorScheme": "light",
+  "fonts": [
+    {
+      "family": "Inter",
+      "role": "body"
+    },
+    {
+      "family": "GT Alpina Thin",
+      "role": "heading"
+    }
+  ],
+  "colors": {
+    "primary": "#FCFF52",
+    "accent": "#FCFF52",
+    "background": "#FCF6F1",
+    "textPrimary": "#000000",
+    "link": "#0000EE"
+  },
+  "typography": {
+    "fontFamilies": {
+      "primary": "Inter",
+      "heading": "GT Alpina Thin"
+    },
+    "fontStacks": {
+      "heading": [
+        "sans-serif"
+      ],
+      "body": [
+        "sans-serif"
+      ],
+      "paragraph": [
+        "Inter",
+        "sans-serif"
+      ]
+    },
+    "fontSizes": {
+      "h1": "12px",
+      "h2": "64px",
+      "body": "14px"
+    }
+  },
+  "spacing": {
+    "baseUnit": 10,
+    "borderRadius": "0px"
+  },
+  "components": {
+    "buttonPrimary": {
+      "background": "#FCFF52",
+      "textColor": "#0000EE",
+      "borderRadius": "100px",
+      "borderRadiusCorners": {
+        "topLeft": "100px",
+        "topRight": "100px",
+        "bottomRight": "100px",
+        "bottomLeft": "100px"
+      },
+      "shadow": "none"
+    },
+    "buttonSecondary": {
+      "background": "#000000",
+      "textColor": "#FFFFFF",
+      "borderRadius": "20px",
+      "borderRadiusCorners": {
+        "topLeft": "20px",
+        "topRight": "20px",
+        "bottomRight": "20px",
+        "bottomLeft": "20px"
+      },
+      "shadow": "none"
+    }
+  },
+  "images": {
+    "logo": "File saved at: attached_assets/logo.svg",
+    "favicon": "File saved at: attached_assets/favicon.png",
+    "ogImage": "File saved at: attached_assets/ogImage.png",
+    "logoHref": "File saved at: attached_assets/logoHref.html"
+  },
+  "__framework_hints": [
+    "Framer 3f381e3"
+  ],
+  "__llm_logo_reasoning": {
+    "selectedIndex": 0,
+    "reasoning": "Selected #0 because it is visible, located in the header, and links to the homepage, matching the brand 'Celo'.",
+    "confidence": 0.9,
+    "source": "llm"
+  },
+  "__llm_button_reasoning": {
+    "primary": {
+      "index": 2,
+      "text": "Mini Apps on Celo",
+      "reasoning": "Button #2 ('Mini Apps on Celo') uses the vibrant brand color #FCFF52, making it stand out as the primary call-to-action."
+    },
+    "secondary": {
+      "index": 10,
+      "text": "Accept",
+      "reasoning": "Button #10 ('Accept') has a contrasting dark background (#000000), making it a suitable secondary CTA."
+    },
+    "confidence": 0.95
+  },
+  "personality": {
+    "tone": "modern",
+    "energy": "high",
+    "targetAudience": "tech-savvy individuals and developers"
+  },
+  "designSystem": {
+    "framework": "custom",
+    "componentLibrary": ""
+  },
+  "confidence": {
+    "buttons": 0.95,
+    "colors": 0.9,
+    "overall": 0.925
+  },
+  "__llm_metadata": {
+    "logoSelection": {
+      "llmCalled": true,
+      "llmSucceeded": true,
+      "finalSource": "llm",
+      "rawLogoSelection": {
+        "selectedLogoIndex": 0,
+        "selectedLogoReasoning": "Selected #0 because it is visible, located in the header, and links to the homepage, matching the brand 'Celo'.",
+        "confidence": 0.9
+      }
+    },
+    "buttonClassification": {
+      "llmCalled": true,
+      "llmSucceeded": true
+    }
+  }
+}
