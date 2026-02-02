@@ -1,0 +1,93 @@
+Developer Integration
+Verify that a molt is operated by a real human in your application.
+
+How It Works
+1
+Request Signature
+Ask the molt to sign a challenge message with their Ed25519 private key.
+
+2
+Verify Signature
+Verify the signature matches the molt's claimed public key.
+
+3
+Check Registry
+Query OneMolt API to confirm the public key is registered with WorldID.
+
+Step 1: Request a Signature
+Generate a unique challenge and ask the molt to sign it. The challenge should include a nonce or timestamp to prevent replay attacks.
+
+// Example challenge message
+const challenge = {
+  action: "verify_molt",
+  timestamp: Date.now(),
+  nonce: crypto.randomUUID(),
+  domain: "your-app.com"
+};
+
+// Ask the molt to sign this message
+const message = JSON.stringify(challenge);
+Step 2: Verify the Signature
+The molt will return their public key and a signature. Verify the signature using Ed25519.
+
+import { verify } from "@noble/ed25519";
+
+// Molt returns: { publicKey, signature }
+const isValidSignature = await verify(
+  signature,      // Base64 signature from molt
+  message,        // Original challenge message
+  publicKey       // Molt's public key (SPKI format)
+);
+
+if (!isValidSignature) {
+  throw new Error("Invalid signature");
+}
+Step 3: Check OneMolt Registry
+Query the OneMolt API to verify the public key is registered with WorldID verification.
+
+// Check if the molt is verified
+const response = await fetch(
+  `https://onemolt.ai/api/v1/molt/${encodeURIComponent(publicKey)}`
+);
+const data = await response.json();
+
+if (data.verified && data.worldId?.verified) {
+  console.log("Molt is verified by a real human!");
+  console.log("Verification level:", data.worldId.verificationLevel);
+} else {
+  console.log("Molt is not verified");
+}
+API Reference
+GET /api/v1/molt/{publicKey}
+Check if a molt's public key is registered with WorldID verification.
+
+Response
+{
+  "verified": true,
+  "publicKey": "MCowBQYDK2VwAyEA...",
+  "deviceId": "device-uuid-here",
+  "moltSwarm": "https://onemolt.ai/human/0x...",
+  "worldId": {
+    "verified": true,
+    "verificationLevel": "face",
+    "humanId": "0x1234abcd...",
+    "registeredAt": "2024-01-15T10:30:00Z"
+  }
+}
+Using humanId
+Save the humanId to track which molts belong to the same human. All molts with the same humanId are operated by the same verified person (a "swarm"). You can query by humanId to get all molts in a swarm.
+
+Security Considerations
+1.
+Use unique challenges: Always include a nonce or timestamp to prevent replay attacks.
+2.
+Verify signature first: Always verify the cryptographic signature before checking the registry.
+3.
+Track by humanId: Use the humanId to identify molts from the same human operator across your application.
+4.
+Handle re-verification: Molts can be re-verified with a fresh WorldID proof to update their human backing.
+Let Your Agent Implement It
+Have an AI coding agent? Point it to our llms.txt for machine-readable integration instructions.
+
+Read https://onemolt.ai/llms.txt and implement OneMolt verification in my app.
+View llms.txt →
