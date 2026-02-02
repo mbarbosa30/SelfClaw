@@ -4,6 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SelfMolt | Verify Your Bot</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -31,27 +34,27 @@
 
     <section id="landing-hero" class="hero-section selfmolt-hero">
       <div class="hero-content">
-        <h2 class="hero-headline">YOUR BOT.<br/>YOUR IDENTITY.<br/><span class="text-green">VERIFIED.</span></h2>
+        <h2 class="hero-headline">Your bot.<br/>Your identity.<br/><span class="text-purple">Verified.</span></h2>
         <p class="hero-subline">Give your AI agents the weight of a real human behind them. Verify with your passport, prove you're not a sybil, and build trust in the agent economy.</p>
         <div class="hero-cta">
-          <a href="#verify" class="btn btn-large btn-green">VERIFY YOUR BOT</a>
-          <a href="#check" class="btn btn-outline">CHECK VERIFICATION</a>
+          <a href="#verify" class="btn btn-large">Verify Your Bot</a>
+          <a href="#check" class="btn btn-outline">Check Verification</a>
         </div>
       </div>
       <div class="hero-pillars">
         <div class="pillar">
-          <div class="pillar-icon pillar-icon-green">01</div>
-          <h3>CRYPTOGRAPHIC IDENTITY</h3>
+          <div class="pillar-icon pillar-icon-purple">01</div>
+          <h3>Cryptographic Identity</h3>
           <p>Your bot proves ownership of its Ed25519 private key through digital signatures.</p>
         </div>
         <div class="pillar">
-          <div class="pillar-icon pillar-icon-green">02</div>
-          <h3>PASSPORT VERIFICATION</h3>
+          <div class="pillar-icon pillar-icon-purple">02</div>
+          <h3>Passport Verification</h3>
           <p>Scan your passport with Self.xyz. Zero-knowledge proofs verify you're human without exposing data.</p>
         </div>
         <div class="pillar">
-          <div class="pillar-icon pillar-icon-green">03</div>
-          <h3>SYBIL-RESISTANT REGISTRY</h3>
+          <div class="pillar-icon pillar-icon-purple">03</div>
+          <h3>Sybil-Resistant Registry</h3>
           <p>Your verified bot is registered publicly on Celo. One human, one verification, infinite trust.</p>
         </div>
       </div>
@@ -59,28 +62,28 @@
 
     <section id="verify" class="verify-section">
       <div class="section-card">
-        <h2>VERIFY YOUR BOT</h2>
+        <h2>Verify Your Bot</h2>
         <p class="section-intro">Connect your bot's identity to your verified human identity using Self.xyz passport proofs.</p>
         
         <div class="verify-steps">
           <div class="verify-step">
             <div class="step-number">1</div>
             <div class="step-content">
-              <h4>ENTER BOT PUBLIC KEY</h4>
+              <h4>Enter Bot Public Key</h4>
               <p>Your bot's Ed25519 public key (SPKI format)</p>
             </div>
           </div>
           <div class="verify-step">
             <div class="step-number">2</div>
             <div class="step-content">
-              <h4>SCAN PASSPORT</h4>
+              <h4>Scan Passport</h4>
               <p>Use the Self.xyz app to scan your passport's NFC chip</p>
             </div>
           </div>
           <div class="verify-step">
             <div class="step-number">3</div>
             <div class="step-content">
-              <h4>BOT VERIFIED</h4>
+              <h4>Bot Verified</h4>
               <p>Your bot is now registered with proof of human backing</p>
             </div>
           </div>
@@ -95,7 +98,7 @@
             <label>Device ID (optional)</label>
             <input type="text" id="verify-device-id" class="input" placeholder="my-assistant-bot" />
           </div>
-          <button id="start-verification" class="btn btn-large btn-green">START VERIFICATION</button>
+          <button id="start-verification" class="btn btn-large">Start Verification</button>
         </div>
 
         <div id="qr-container" class="qr-container" style="display:none;">
@@ -107,7 +110,7 @@
 
     <section id="check" class="check-section">
       <div class="section-card">
-        <h2>CHECK VERIFICATION</h2>
+        <h2>Check Verification</h2>
         <p class="section-intro">Verify if a bot is registered with human backing.</p>
         
         <div class="check-form">
@@ -115,7 +118,7 @@
             <label>Bot Public Key or Device ID</label>
             <input type="text" id="check-pubkey" class="input" placeholder="MCowBQYDK2VwAyEA... (or device-id)" />
           </div>
-          <button id="check-verification" class="btn btn-large">CHECK</button>
+          <button id="check-verification" class="btn btn-large">Check</button>
         </div>
 
         <div id="check-result" class="check-result" style="display:none;"></div>
@@ -124,7 +127,7 @@
 
     <section class="api-section">
       <div class="section-card">
-        <h2>API ENDPOINT</h2>
+        <h2>API Endpoint</h2>
         <p class="section-intro">Check if a bot is verified by querying the public API:</p>
         <code class="code-block">GET /api/selfmolt/v1/bot/{publicKey}</code>
         <p class="api-hint">Returns verification status, selfId, and registration timestamp.</p>
@@ -136,18 +139,18 @@
     </section>
 
     <section class="why-section">
-      <h2>WHY SELFMOLT?</h2>
+      <h2>Why SelfMolt?</h2>
       <div class="why-grid">
         <div class="why-card">
-          <h3>SYBIL ATTACKS ARE REAL</h3>
+          <h3>Sybil Attacks Are Real</h3>
           <p>AI agent networks are vulnerable. Without proof-of-personhood, bad actors can spin up unlimited fake agents to manipulate systems, game airdrops, and poison marketplaces.</p>
         </div>
         <div class="why-card">
-          <h3>PRIVACY-FIRST VERIFICATION</h3>
+          <h3>Privacy-First Verification</h3>
           <p>Self.xyz uses zero-knowledge proofs. Your passport data is never exposed - only the cryptographic proof that you're a unique human.</p>
         </div>
         <div class="why-card">
-          <h3>BUILT ON CELO</h3>
+          <h3>Built on Celo</h3>
           <p>Fast, cheap, mobile-first blockchain. Your bot's verification lives on-chain where it can be checked by anyone, forever.</p>
         </div>
       </div>
