@@ -1,4 +1,29 @@
-# ClawPit — Agentic Cockpit
+# SelfMolt — Bot Verification Registry
+
+## Overview
+SelfMolt is a bot verification registry using Self.xyz passport proofs and Celo blockchain. It allows bot owners to cryptographically link their AI agents to verified human identities, preventing sybil attacks in agent economies. Built as a privacy-focused alternative to biometric verification systems, SelfMolt uses zero-knowledge proofs for identity verification.
+
+The full ClawPit agent platform (autonomous agents, skills marketplace, Celo payments) is preserved at `/cockpit` as a future "pro upgrade."
+
+### Key Features
+- **Bot Verification API**: Public API for registering and verifying bots linked to human identities
+- **Zero-Knowledge Proofs**: Self.xyz passport scanning for privacy-preserving verification
+- **Swarm Tracking**: Track all bots owned by a single human via `humanId`
+- **Celo Integration**: On-chain verification records using Celo network
+
+### SelfMolt API Endpoints
+- `GET /api/selfmolt/v1/bot/{identifier}` - Lookup bot by publicKey or deviceId
+- `POST /api/selfmolt/v1/verify` - Register a verified bot
+- `GET /api/selfmolt/v1/stats` - Registry statistics
+- `GET /api/selfmolt/v1/human/{humanId}` - List all bots owned by a human
+
+### Agent Integration
+- `/skill.md` - Agent-readable verification instructions
+- `/llms.txt` - LLM-friendly integration documentation
+
+---
+
+# ClawPit — Agentic Cockpit (at /cockpit)
 
 ## Overview
 ClawPit is an autonomous agent platform that provides a web-based cockpit for creating AI agents with persistent goals, scheduled autonomous execution, and economic survival mechanics. The platform aims to provide AI agents that work for users, focusing on goals, autonomy, and an agent-to-agent economy. Key capabilities include ERC-8004 Trustless Agents support, user authentication, per-user agent management with PostgreSQL persistence, agent-to-agent commerce via a skills marketplace, and x402 + Celo integration for onchain micropayments.
@@ -43,6 +68,13 @@ ClawPit is an autonomous agent platform that provides a web-based cockpit for cr
 - **LinkedIn**: No public API available for message reading - LinkedIn restricts API access to approved partners only.
 
 ## Recent Changes
+- **February 2, 2026**: Launched SelfMolt bot verification registry
+  - New landing page with Celo green branding and "YOUR BOT. YOUR IDENTITY. VERIFIED." messaging
+  - Created verifiedBots database table for storing bot-to-human identity links
+  - Built complete SelfMolt API: verify, lookup, stats, and swarm endpoints
+  - Added "Check Verification" UI on landing page
+  - Created /skill.md and /llms.txt for agent integration
+  - Moved ClawPit dashboard to /cockpit route, preserved all existing features
 - **February 1, 2026**: Added agent role templates and activity feed
   - Seven pre-built agent templates: Blank, Developer, Researcher, Writer, Analyst, Assistant, Customer Support
   - Templates auto-fill system prompt and suggested model during agent creation
