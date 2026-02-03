@@ -23,6 +23,8 @@
   ],
   "license": "MIT",
   "dependencies": {
+    "@selfxyz/core": "^1.1.0-beta.7",
+    "@selfxyz/qrcode": "^1.0.18",
     "@types/connect-pg-simple": "^7.0.3",
     "@types/express": "^5.0.6",
     "@types/express-session": "^1.18.2",
