@@ -2997,17 +2997,12 @@ body.dashboard-mode .cockpit-main {
   background: linear-gradient(90deg, transparent, var(--gray-600), transparent);
 }
 
-.divider-icon {
-  color: var(--green);
-  opacity: 0.6;
+.divider-emoji {
+  font-size: 1.75rem;
+  opacity: 0.8;
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-.divider-icon svg {
-  width: 28px;
-  height: 28px;
 }
 
 @media (max-width: 600px) {
