@@ -37,3 +37,8 @@ externalPort = 80
 [deployment]
 deploymentTarget = "autoscale"
 run = ["npx", "tsx", "server/index.ts"]
+
+[userenv]
+
+[userenv.production]
+SELFCLAW_CALLBACK_URL = "https://selfclaw.app/api/selfclaw/v1/callback"
