@@ -309,14 +309,8 @@ h2 {
 }
 
 .hero-integration {
-  margin-top: 2.5rem;
-  margin-bottom: 1rem;
-  max-width: 720px;
-  width: 100%;
-  position: relative;
-  z-index: 1;
-  margin-left: auto;
-  margin-right: auto;
+  margin-top: 3rem;
+  padding-top: 2.5rem;
 }
 
 .hero-integration .section-card {
@@ -2652,14 +2646,7 @@ body.dashboard-mode .cockpit-main {
 }
 
 /* Verify Section */
-.verify-section {
-  margin-top: 1rem;
-  padding-top: 0;
-  max-width: 720px;
-  margin-left: auto;
-  margin-right: auto;
-}
-
+.verify-section,
 .check-section,
 .api-section,
 .claw-section,
