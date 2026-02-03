@@ -1,7 +1,8 @@
 import { Router, Request, Response } from "express";
+import rateLimit from "express-rate-limit";
 import { db } from "./db.js";
-import { verifiedBots, type InsertVerifiedBot } from "../shared/schema.js";
-import { eq } from "drizzle-orm";
+import { verifiedBots, verificationSessions, type InsertVerifiedBot, type InsertVerificationSession } from "../shared/schema.js";
+import { eq, and, gt } from "drizzle-orm";
 import { SelfBackendVerifier, AllIds, DefaultConfigStore } from "@selfxyz/core";
 import crypto from "crypto";
 import * as ed from "@noble/ed25519";
@@ -26,17 +27,21 @@ const selfBackendVerifier = new SelfBackendVerifier(
   "uuid"
 );
 
-interface PendingVerification {
-  agentPublicKey: string;
-  agentName: string;
-  agentKeyHash: string;
-  challenge: string;
-  challengeExpiry: Date;
-  signatureVerified: boolean;
-  createdAt: Date;
-}
+const publicApiLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 60,
+  message: { error: "Too many requests, please try again later" },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
-const pendingVerifications = new Map<string, PendingVerification>();
+const verificationLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  message: { error: "Too many verification attempts, please try again later" },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 function generateChallenge(sessionId: string, agentKeyHash: string): string {
   const timestamp = Date.now();
@@ -78,7 +83,7 @@ router.get("/v1/config", (_req: Request, res: Response) => {
   });
 });
 
-router.post("/v1/start-verification", async (req: Request, res: Response) => {
+router.post("/v1/start-verification", verificationLimiter, async (req: Request, res: Response) => {
   try {
     const { agentPublicKey, agentName, signature } = req.body;
     
@@ -103,17 +108,18 @@ router.post("/v1/start-verification", async (req: Request, res: Response) => {
       }
     }
     
-    pendingVerifications.set(sessionId, {
+    const newSession: InsertVerificationSession = {
+      id: sessionId,
       agentPublicKey,
-      agentName: agentName || "",
+      agentName: agentName || null,
       agentKeyHash,
       challenge,
       challengeExpiry,
       signatureVerified,
-      createdAt: new Date()
-    });
+      status: "pending"
+    };
     
-    setTimeout(() => pendingVerifications.delete(sessionId), 10 * 60 * 1000);
+    await db.insert(verificationSessions).values(newSession);
     
     res.json({
       success: true,
@@ -130,11 +136,12 @@ router.post("/v1/start-verification", async (req: Request, res: Response) => {
       }
     });
   } catch (error: any) {
+    console.error("[selfclaw] start-verification error:", error);
     res.status(500).json({ error: error.message });
   }
 });
 
-router.post("/v1/sign-challenge", async (req: Request, res: Response) => {
+router.post("/v1/sign-challenge", verificationLimiter, async (req: Request, res: Response) => {
   try {
     const { sessionId, signature } = req.body;
     
@@ -152,17 +159,27 @@ router.post("/v1/sign-challenge", async (req: Request, res: Response) => {
       });
     }
     
-    const pending = pendingVerifications.get(sessionId);
-    if (!pending) {
+    const sessions = await db.select()
+      .from(verificationSessions)
+      .where(and(
+        eq(verificationSessions.id, sessionId),
+        eq(verificationSessions.status, "pending")
+      ))
+      .limit(1);
+    
+    const session = sessions[0];
+    if (!session) {
       return res.status(400).json({ error: "Invalid or expired session" });
     }
     
-    if (new Date() > pending.challengeExpiry) {
-      pendingVerifications.delete(sessionId);
+    if (new Date() > session.challengeExpiry) {
+      await db.update(verificationSessions)
+        .set({ status: "expired" })
+        .where(eq(verificationSessions.id, sessionId));
       return res.status(400).json({ error: "Challenge has expired" });
     }
     
-    const isValid = await verifyEd25519Signature(pending.agentPublicKey, signature, pending.challenge);
+    const isValid = await verifyEd25519Signature(session.agentPublicKey, signature, session.challenge);
     if (!isValid) {
       return res.status(400).json({ 
         error: "Invalid signature",
@@ -170,14 +187,16 @@ router.post("/v1/sign-challenge", async (req: Request, res: Response) => {
       });
     }
     
-    pending.signatureVerified = true;
-    pendingVerifications.set(sessionId, pending);
+    await db.update(verificationSessions)
+      .set({ signatureVerified: true })
+      .where(eq(verificationSessions.id, sessionId));
     
     res.json({
       success: true,
       message: "Signature verified. You can now proceed with passport verification."
     });
   } catch (error: any) {
+    console.error("[selfclaw] sign-challenge error:", error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -210,8 +229,16 @@ router.post("/v1/callback", async (req: Request, res: Response) => {
       return res.status(400).json({ error: "Missing session ID in proof" });
     }
     
-    const pending = pendingVerifications.get(sessionId);
-    if (!pending) {
+    const sessions = await db.select()
+      .from(verificationSessions)
+      .where(and(
+        eq(verificationSessions.id, sessionId),
+        eq(verificationSessions.status, "pending")
+      ))
+      .limit(1);
+    
+    const session = sessions[0];
+    if (!session) {
       console.log("[selfclaw] Session not found:", sessionId);
       return res.status(400).json({ error: "Invalid or expired verification session" });
     }
@@ -221,8 +248,8 @@ router.post("/v1/callback", async (req: Request, res: Response) => {
       console.log("[selfclaw] Missing agentKeyHash in proof userDefinedData");
       return res.status(400).json({ error: "Agent key binding required - proof must include agentKeyHash in userDefinedData" });
     }
-    if (proofAgentKeyHash !== pending.agentKeyHash) {
-      console.log("[selfclaw] Agent key hash mismatch:", proofAgentKeyHash, "vs", pending.agentKeyHash);
+    if (proofAgentKeyHash !== session.agentKeyHash) {
+      console.log("[selfclaw] Agent key hash mismatch:", proofAgentKeyHash, "vs", session.agentKeyHash);
       return res.status(400).json({ error: "Agent key binding mismatch - proof does not match agent" });
     }
     
@@ -235,13 +262,13 @@ router.post("/v1/callback", async (req: Request, res: Response) => {
     
     const existing = await db.select()
       .from(verifiedBots)
-      .where(eq(verifiedBots.publicKey, pending.agentPublicKey))
+      .where(eq(verifiedBots.publicKey, session.agentPublicKey))
       .limit(1);
 
     const metadata = { 
       nationality, 
       verifiedVia: "selfxyz", 
-      signatureVerified: pending.signatureVerified || false,
+      signatureVerified: session.signatureVerified || false,
       lastUpdated: new Date().toISOString() 
     };
 
@@ -250,53 +277,56 @@ router.post("/v1/callback", async (req: Request, res: Response) => {
         .set({
           humanId,
           metadata,
-          verificationLevel: pending.signatureVerified ? "passport+signature" : "passport",
+          verificationLevel: session.signatureVerified ? "passport+signature" : "passport",
           verifiedAt: new Date()
         })
-        .where(eq(verifiedBots.publicKey, pending.agentPublicKey));
+        .where(eq(verifiedBots.publicKey, session.agentPublicKey));
     } else {
       const newBot: InsertVerifiedBot = {
-        publicKey: pending.agentPublicKey,
-        deviceId: pending.agentName || null,
+        publicKey: session.agentPublicKey,
+        deviceId: session.agentName || null,
         selfId: null,
         humanId,
-        verificationLevel: pending.signatureVerified ? "passport+signature" : "passport",
+        verificationLevel: session.signatureVerified ? "passport+signature" : "passport",
         metadata
       };
       await db.insert(verifiedBots).values(newBot);
     }
 
-    pendingVerifications.delete(sessionId);
+    await db.update(verificationSessions)
+      .set({ status: "completed" })
+      .where(eq(verificationSessions.id, sessionId));
 
     res.json({
       success: true,
       message: "Agent verified and registered",
-      publicKey: pending.agentPublicKey,
-      agentName: pending.agentName,
+      publicKey: session.agentPublicKey,
+      agentName: session.agentName,
       humanId
     });
   } catch (error: any) {
+    console.error("[selfclaw] callback error:", error);
     res.status(500).json({ error: error.message });
   }
 });
 
-router.get("/v1/agent/:identifier", async (req: Request, res: Response) => {
+router.get("/v1/agent/:identifier", publicApiLimiter, async (req: Request, res: Response) => {
   try {
     const { identifier } = req.params;
     
-    let agent = await db.select()
+    let agents = await db.select()
       .from(verifiedBots)
       .where(eq(verifiedBots.publicKey, identifier))
       .limit(1);
     
-    if (agent.length === 0) {
-      agent = await db.select()
+    if (agents.length === 0) {
+      agents = await db.select()
         .from(verifiedBots)
         .where(eq(verifiedBots.deviceId, identifier))
         .limit(1);
     }
     
-    const foundAgent = agent[0];
+    const foundAgent = agents[0];
 
     if (!foundAgent) {
       return res.json({
@@ -319,15 +349,16 @@ router.get("/v1/agent/:identifier", async (req: Request, res: Response) => {
       metadata: foundAgent.metadata
     });
   } catch (error: any) {
+    console.error("[selfclaw] agent lookup error:", error);
     res.status(500).json({ error: error.message });
   }
 });
 
 router.get("/v1/bot/:identifier", async (req: Request, res: Response) => {
-  res.redirect(301, `/api/selfmolt/v1/agent/${req.params.identifier}`);
+  res.redirect(301, `/api/selfclaw/v1/agent/${req.params.identifier}`);
 });
 
-router.get("/v1/human/:humanId", async (req: Request, res: Response) => {
+router.get("/v1/human/:humanId", publicApiLimiter, async (req: Request, res: Response) => {
   try {
     const { humanId } = req.params;
     
@@ -345,6 +376,7 @@ router.get("/v1/human/:humanId", async (req: Request, res: Response) => {
       }))
     });
   } catch (error: any) {
+    console.error("[selfclaw] human lookup error:", error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -357,7 +389,7 @@ router.post("/v1/verify", async (_req: Request, res: Response) => {
   });
 });
 
-router.get("/v1/stats", async (_req: Request, res: Response) => {
+router.get("/v1/stats", publicApiLimiter, async (_req: Request, res: Response) => {
   try {
     const allAgents = await db.select().from(verifiedBots);
     const uniqueHumans = new Set(allAgents.map(a => a.humanId).filter(Boolean));
@@ -370,6 +402,7 @@ router.get("/v1/stats", async (_req: Request, res: Response) => {
         : null
     });
   } catch (error: any) {
+    console.error("[selfclaw] stats error:", error);
     res.status(500).json({ error: error.message });
   }
 });

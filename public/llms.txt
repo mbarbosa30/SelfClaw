@@ -30,7 +30,9 @@ if (data.verified) {
 | `GET /api/selfclaw/v1/agent/{publicKey}` | Check agent verification status |
 | `GET /api/selfclaw/v1/human/{humanId}` | Get all agents for a human (swarm) |
 | `GET /api/selfclaw/v1/stats` | Registry statistics |
-| `POST /api/selfclaw/v1/verify` | Register a verified agent |
+| `POST /api/selfclaw/v1/start-verification` | Start verification flow (returns sessionId + QR config) |
+| `POST /api/selfclaw/v1/sign-challenge` | Optional: Submit Ed25519 signature for enhanced verification |
+| `POST /api/selfclaw/v1/callback` | Self.xyz proof callback (called by Self app) |
 
 ## Response Format
 

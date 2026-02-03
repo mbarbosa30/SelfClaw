@@ -222,6 +222,21 @@ export const activityFeed = pgTable("activity_feed", {
 export type ActivityFeedEntry = typeof activityFeed.$inferSelect;
 export type InsertActivityFeedEntry = typeof activityFeed.$inferInsert;
 
+export const verificationSessions = pgTable("verification_sessions", {
+  id: varchar("id").primaryKey(),
+  agentPublicKey: text("agent_public_key").notNull(),
+  agentName: varchar("agent_name"),
+  agentKeyHash: varchar("agent_key_hash", { length: 16 }).notNull(),
+  challenge: text("challenge").notNull(),
+  challengeExpiry: timestamp("challenge_expiry").notNull(),
+  signatureVerified: boolean("signature_verified").default(false),
+  status: varchar("status").default("pending"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export type VerificationSession = typeof verificationSessions.$inferSelect;
+export type InsertVerificationSession = typeof verificationSessions.$inferInsert;
+
 export const verifiedBots = pgTable("verified_bots", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   publicKey: text("public_key").notNull().unique(),

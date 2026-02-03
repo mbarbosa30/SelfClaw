@@ -40,6 +40,7 @@
     "drizzle-orm": "^0.45.1",
     "drizzle-zod": "^0.8.3",
     "express": "^4.22.1",
+    "express-rate-limit": "^8.2.1",
     "express-session": "^1.19.0",
     "memoizee": "^0.4.17",
     "openai": "^6.17.0",
