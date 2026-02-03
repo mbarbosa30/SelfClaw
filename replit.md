@@ -82,6 +82,15 @@ ClawPit is an autonomous agent platform that provides a web-based cockpit for cr
 - **LinkedIn**: No public API available for message reading - LinkedIn restricts API access to approved partners only.
 
 ## Recent Changes
+- **February 3, 2026**: SEO and branding improvements
+  - Added comprehensive SEO meta tags: description, keywords, author
+  - Open Graph tags for social sharing (og:title, og:description, og:image)
+  - Twitter Card tags with @mbarrbosa handle
+  - Canonical URL pointing to selfclaw.app
+  - Added favicon and OG image to public folder
+  - Added "Donate" link in header opening donation modal
+  - Donation modal with mission statement and wallet address (0xfe37ffb4e167a405d9f0df9f7dc242dd727cb14c)
+  - Footer credit: "built with <3 by Marco Barbosa" linking to x.com/mbarrbosa
 - **February 3, 2026**: Production hardening for SelfClaw
   - Migrated pending verifications from in-memory Map to PostgreSQL (verification_sessions table)
   - Added rate limiting: 60 req/min for public APIs, 10 req/min for verification endpoints
