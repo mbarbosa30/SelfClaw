@@ -275,13 +275,28 @@ async function handleCallback(req: Request, res: Response) {
     }
     
     console.log("[selfclaw] All required fields present, verifying proof...");
-    const result = await selfBackendVerifier.verify(
-      attestationId,
-      proof,
-      publicSignals,
-      userContextData
-    );
-    console.log("[selfclaw] Verification result:", JSON.stringify(result.isValidDetails));
+    console.log("[selfclaw] attestationId:", attestationId);
+    console.log("[selfclaw] publicSignals length:", publicSignals?.length || 0);
+    console.log("[selfclaw] userContextData:", JSON.stringify(userContextData || {}).substring(0, 200));
+    
+    let result;
+    try {
+      result = await selfBackendVerifier.verify(
+        attestationId,
+        proof,
+        publicSignals,
+        userContextData
+      );
+      console.log("[selfclaw] Verification result:", JSON.stringify(result.isValidDetails));
+    } catch (verifyError: any) {
+      console.error("[selfclaw] SDK verify() threw error:", verifyError.message);
+      console.error("[selfclaw] Error stack:", verifyError.stack);
+      return res.status(200).json({ 
+        status: "error", 
+        result: false, 
+        reason: "Proof verification error: " + verifyError.message 
+      });
+    }
     
     if (!result.isValidDetails.isValid) {
       console.log("[selfclaw] Proof invalid:", result.isValidDetails);
