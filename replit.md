@@ -82,6 +82,14 @@ ClawPit is an autonomous agent platform that provides a web-based cockpit for cr
 - **LinkedIn**: No public API available for message reading - LinkedIn restricts API access to approved partners only.
 
 ## Recent Changes
+- **February 3, 2026**: Documentation and OpenClaw standard additions
+  - Added query param endpoint: GET /api/selfclaw/v1/agent?publicKey=... (recommended for URL safety)
+  - Added OpenClaw section to developers page explaining open verification standard
+  - Updated all API examples to use query params with Buffer.from() decoding
+  - Added proof-to-key binding documentation (ZK proof bound to agentKeyHash)
+  - Clarified SelfClaw as "API registry" with optional on-chain Celo anchoring planned
+  - Updated privacy wording: "Raw passport data stays on-device; only the ZK proof (and any optional disclosures) are shared"
+  - Fixed card spacing consistency (1rem margins around divider)
 - **February 3, 2026**: Landing page and developers page refinements
   - Removed "Not using an agent? Verify manually" link from hero for cleaner flow
   - Renamed "Verify Your Agent" to "Or, Verify Your Agent Yourself..." 
