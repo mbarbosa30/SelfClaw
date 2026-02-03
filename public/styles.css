@@ -3256,7 +3256,7 @@ body.dashboard-mode .cockpit-main {
 }
 
 .pricing-card li {
-  color: var(--gray-300);
+  color: #e0e0e0;
   padding: 0.25rem 0;
   font-size: 0.9rem;
 }
@@ -3266,8 +3266,12 @@ body.dashboard-mode .cockpit-main {
   color: var(--green);
 }
 
+.pricing-card p, .tech-item p {
+  color: #ccc;
+}
+
 .pricing-note {
-  color: var(--gray-400);
+  color: #aaa;
   font-size: 0.85rem;
   text-align: center;
 }
