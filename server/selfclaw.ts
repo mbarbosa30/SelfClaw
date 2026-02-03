@@ -478,13 +478,29 @@ async function handleCallback(req: Request, res: Response) {
     }
     
     // Debug: extract and compare agent key hash
+    // Self.xyz SDK hex-encodes the userDefinedData, so we need to decode it
     const rawUserDefinedData = result.userData?.userDefinedData || "";
     console.log("[selfclaw] Raw userDefinedData length:", rawUserDefinedData.length);
-    console.log("[selfclaw] Raw userDefinedData first 32 chars:", rawUserDefinedData.substring(0, 32));
+    console.log("[selfclaw] Raw userDefinedData first 64 chars:", rawUserDefinedData.substring(0, 64));
     console.log("[selfclaw] Session agentKeyHash:", session.agentKeyHash);
     
-    const proofAgentKeyHash = rawUserDefinedData.substring(0, 16) || "";
-    console.log("[selfclaw] Extracted proofAgentKeyHash:", proofAgentKeyHash);
+    // Decode hex-encoded ASCII: each 2 hex chars = 1 ASCII char
+    // We need 16 chars of agentKeyHash, so take first 32 hex chars
+    let proofAgentKeyHash = "";
+    const hexPortion = rawUserDefinedData.substring(0, 32);
+    try {
+      for (let i = 0; i < hexPortion.length; i += 2) {
+        const hexByte = hexPortion.substring(i, i + 2);
+        const charCode = parseInt(hexByte, 16);
+        if (!isNaN(charCode) && charCode > 0) {
+          proofAgentKeyHash += String.fromCharCode(charCode);
+        }
+      }
+    } catch (e) {
+      console.log("[selfclaw] Failed to decode hex userDefinedData:", e);
+    }
+    
+    console.log("[selfclaw] Decoded proofAgentKeyHash:", proofAgentKeyHash);
     console.log("[selfclaw] Comparison: '", proofAgentKeyHash, "' === '", session.agentKeyHash, "':", proofAgentKeyHash === session.agentKeyHash);
     
     if (!proofAgentKeyHash) {
