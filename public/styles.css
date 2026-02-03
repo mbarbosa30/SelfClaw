@@ -536,6 +536,142 @@ body.dashboard-mode .cockpit-main {
   overflow-x: auto;
 }
 
+/* Celo DeFi Section */
+.celo-defi-section {
+  margin-bottom: 3rem;
+  padding: 2rem 0;
+  border-top: 1px solid var(--gray-200);
+}
+
+.celo-defi-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.celo-defi-header h2 {
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: var(--text-secondary);
+  margin-bottom: 0;
+}
+
+.celo-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.75rem;
+  background: rgba(252, 255, 82, 0.1);
+  border: 1px solid rgba(252, 255, 82, 0.3);
+  border-radius: 100px;
+  font-size: 0.75rem;
+  color: #FCFF52;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.celo-badge:hover {
+  background: rgba(252, 255, 82, 0.2);
+  border-color: #FCFF52;
+}
+
+.defi-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.25rem;
+  margin-top: 1.5rem;
+}
+
+.defi-card {
+  padding: 1.5rem;
+  background: rgba(252, 255, 82, 0.03);
+  border: 1px solid rgba(252, 255, 82, 0.15);
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.defi-card:hover {
+  background: rgba(252, 255, 82, 0.06);
+  border-color: rgba(252, 255, 82, 0.4);
+  transform: translateY(-2px);
+}
+
+.defi-icon {
+  margin-bottom: 1rem;
+  opacity: 0.9;
+}
+
+.defi-card h4 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--white);
+  margin-bottom: 0.5rem;
+}
+
+.defi-card p {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.stablecoin-intel {
+  margin-top: 1.5rem;
+  padding: 1.25rem;
+  background: linear-gradient(135deg, rgba(252, 255, 82, 0.05) 0%, rgba(0, 255, 182, 0.05) 100%);
+  border: 1px solid rgba(252, 255, 82, 0.2);
+  border-radius: 8px;
+}
+
+.stablecoin-intel h4 {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #FCFF52;
+  margin-bottom: 0.5rem;
+}
+
+.stablecoin-intel p {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.mento-badge {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  background: rgba(0, 255, 182, 0.15);
+  border: 1px solid rgba(0, 255, 182, 0.4);
+  border-radius: 4px;
+  font-size: 0.75rem;
+  color: #00FFB6;
+  font-weight: 500;
+}
+
+.bridged-badge {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  background: rgba(255, 107, 74, 0.15);
+  border: 1px solid rgba(255, 107, 74, 0.4);
+  border-radius: 4px;
+  font-size: 0.75rem;
+  color: #FF6B4A;
+  font-weight: 500;
+}
+
+@media (max-width: 600px) {
+  .defi-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .celo-defi-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
 /* How It Works */
 .how-it-works {
   margin-bottom: 3rem;
