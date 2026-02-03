@@ -123,7 +123,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('skip-profile')?.addEventListener('click', skipProfile);
   
   document.getElementById('check-verification')?.addEventListener('click', checkBotVerification);
-  document.getElementById('start-verification')?.addEventListener('click', startBotVerification);
+  document.getElementById('start-verification')?.addEventListener('click', startAgentVerification);
 
   document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', () => switchTab(btn.dataset.tab));
@@ -1802,29 +1802,32 @@ async function checkBotVerification() {
   }
 }
 
-async function startBotVerification() {
+async function startAgentVerification() {
   const pubkey = document.getElementById('verify-pubkey').value.trim();
-  const deviceId = document.getElementById('verify-device-id').value.trim();
+  const agentName = document.getElementById('verify-device-id').value.trim();
   const qrContainer = document.getElementById('qr-container');
   const qrEl = document.getElementById('selfxyz-qr');
   
   if (!pubkey) {
-    alert('Please enter your bot\'s public key');
+    alert('Please enter your agent\'s public key');
     return;
   }
   
   qrContainer.style.display = 'block';
   qrEl.innerHTML = `
-    <div style="padding: 2rem; background: #f5f5f5; border: 2px dashed #ccc; text-align: center;">
-      <p style="margin-bottom: 1rem;"><strong>Self.xyz Integration Coming Soon</strong></p>
-      <p style="font-size: 0.85rem; color: #666;">
-        For now, verified bots can be registered via the API:<br/>
-        <code>POST /api/selfmolt/v1/verify</code>
+    <div style="padding: 2rem; background: #0d0d0d; border: 2px dashed #00FFB6; border-radius: 12px; text-align: center;">
+      <p style="margin-bottom: 1rem; color: #00FFB6; font-weight: 600;"><strong>Self.xyz SDK Integration</strong></p>
+      <p style="font-size: 0.9rem; color: #e0e0e0; margin-bottom: 1rem;">
+        Production integration requires <code style="background: #1a1a1a; padding: 0.2rem 0.4rem; border-radius: 4px;">@selfxyz/qrcode</code> SDK.<br/>
+        For testing, register agents via the API:
       </p>
-      <p style="font-size: 0.75rem; color: #999; margin-top: 1rem;">
+      <code style="display: block; background: #1a1a1a; padding: 1rem; border-radius: 8px; font-size: 0.85rem; color: #00FFB6;">POST /api/selfmolt/v1/verify</code>
+      <p style="font-size: 0.75rem; color: #888; margin-top: 1rem;">
         Public Key: ${escapeHtml(pubkey.substring(0, 20))}...
-        ${deviceId ? `<br/>Device ID: ${escapeHtml(deviceId)}` : ''}
+        ${agentName ? `<br/>Agent Name: ${escapeHtml(agentName)}` : ''}
       </p>
     </div>
   `;
 }
+
+const startBotVerification = startAgentVerification;

@@ -1,26 +1,38 @@
-# SelfMolt — Bot Verification Registry
+# SelfMolt — Agent Verification Registry
 
 ## Overview
-SelfMolt is a bot verification registry using Self.xyz passport proofs and Celo blockchain. It allows bot owners to cryptographically link their AI agents to verified human identities, preventing sybil attacks in agent economies. Built as a privacy-focused alternative to biometric verification systems, SelfMolt uses zero-knowledge proofs for identity verification.
+SelfMolt is a privacy-first agent verification registry using Self.xyz passport proofs and Celo blockchain. It allows AI agent owners to cryptographically link their agents to verified human identities, preventing sybil attacks in agent economies. Unlike biometric verification systems that scan your iris or face, SelfMolt uses zero-knowledge proofs from your passport's NFC chip — no orbs, no cameras, just cryptography.
+
+**Target domain:** selfmolt.openclaw.ai
 
 The full ClawPit agent platform (autonomous agents, skills marketplace, Celo payments) is preserved at `/cockpit` as a future "pro upgrade."
 
 ### Key Features
-- **Bot Verification API**: Public API for registering and verifying bots linked to human identities
-- **Zero-Knowledge Proofs**: Self.xyz passport scanning for privacy-preserving verification
-- **Swarm Tracking**: Track all bots owned by a single human via `humanId`
+- **Agent Verification API**: Public API for registering and verifying agents linked to human identities
+- **Zero-Knowledge Proofs**: Self.xyz passport NFC tap for privacy-preserving verification (no biometrics!)
+- **Swarm Tracking**: Track all agents owned by a single human via `humanId`
 - **Celo Integration**: On-chain verification records using Celo network
 
 ### SelfMolt API Endpoints
-- `GET /api/selfmolt/v1/bot/{identifier}` - Lookup bot by publicKey or deviceId
-- `POST /api/selfmolt/v1/verify` - Register a verified bot
+- `GET /api/selfmolt/v1/agent/{identifier}` - Lookup agent by publicKey or agentName
+- `POST /api/selfmolt/v1/verify` - Register a verified agent
 - `GET /api/selfmolt/v1/stats` - Registry statistics
-- `GET /api/selfmolt/v1/human/{humanId}` - List all bots owned by a human
+- `GET /api/selfmolt/v1/human/{humanId}` - List all agents owned by a human (swarm)
+- `GET /api/selfmolt/v1/bot/{identifier}` - (Legacy redirect to /agent/)
 
 ### Agent Integration
 - `/skill.md` - Agent-readable verification instructions
 - `/llms.txt` - LLM-friendly integration documentation
 - `/developers` - Developer documentation page with integration guide
+
+### Self.xyz SDK Integration (Production)
+**For production verification flow:**
+1. Install: `npm install @selfxyz/qrcode @selfxyz/core`
+2. Frontend: Use `SelfQRCodeWrapper` to display QR code for passport scanning
+3. Backend: Use `SelfBackendVerifier` to validate proofs
+4. See: https://docs.self.xyz/use-self/quickstart
+
+**Current status:** API endpoints ready, placeholder QR flow awaiting SDK integration
 
 ---
 
@@ -69,9 +81,16 @@ ClawPit is an autonomous agent platform that provides a web-based cockpit for cr
 - **LinkedIn**: No public API available for message reading - LinkedIn restricts API access to approved partners only.
 
 ## Recent Changes
-- **February 2, 2026**: Launched SelfMolt bot verification registry
-  - New landing page with Celo green branding and "YOUR BOT. YOUR IDENTITY. VERIFIED." messaging
-  - Created verifiedBots database table for storing bot-to-human identity links
+- **February 3, 2026**: Rebranded SelfMolt with privacy-first messaging
+  - Changed all terminology from "bot" to "agent" across codebase
+  - New API endpoint: `/v1/agent/` (with backward-compatible `/v1/bot/` redirect)
+  - Updated messaging: "No orbs. No cameras. Just your passport." positioning vs biometric systems
+  - Rewrote developers page with comparison table (SelfMolt vs orb-based systems)
+  - Updated domain references from selfmolt.app to selfmolt.openclaw.ai
+  - Documented Self.xyz SDK requirements for production verification flow
+- **February 2, 2026**: Launched SelfMolt agent verification registry
+  - New landing page with Celo green branding and "YOUR AGENT. YOUR IDENTITY. VERIFIED." messaging
+  - Created verifiedBots database table for storing agent-to-human identity links
   - Built complete SelfMolt API: verify, lookup, stats, and swarm endpoints
   - Added "Check Verification" UI on landing page
   - Created /skill.md and /llms.txt for agent integration
