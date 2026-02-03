@@ -226,7 +226,7 @@ router.post("/v1/callback", async (req: Request, res: Response) => {
     const { attestationId, proof, publicSignals, userContextData } = req.body;
     
     if (!proof || !publicSignals || !attestationId || !userContextData) {
-      return res.status(400).json({ error: "Missing required verification data" });
+      return res.status(200).json({ status: "error", result: false, reason: "Missing required verification data" });
     }
     
     const result = await selfBackendVerifier.verify(
@@ -237,16 +237,16 @@ router.post("/v1/callback", async (req: Request, res: Response) => {
     );
     
     if (!result.isValidDetails.isValid) {
-      return res.status(400).json({ 
-        verified: false, 
-        error: "Proof verification failed",
-        details: result.isValidDetails
+      return res.status(200).json({ 
+        status: "error",
+        result: false,
+        reason: "Proof verification failed"
       });
     }
     
     const sessionId = result.userData?.userIdentifier;
     if (!sessionId) {
-      return res.status(400).json({ error: "Missing session ID in proof" });
+      return res.status(200).json({ status: "error", result: false, reason: "Missing session ID in proof" });
     }
     
     const sessions = await db.select()
@@ -267,17 +267,17 @@ router.post("/v1/callback", async (req: Request, res: Response) => {
           eq(verificationSessions.id, sessionId),
           eq(verificationSessions.status, "pending")
         ));
-      return res.status(400).json({ error: "Invalid or expired verification session" });
+      return res.status(200).json({ status: "error", result: false, reason: "Invalid or expired verification session" });
     }
     
     const proofAgentKeyHash = result.userData?.userDefinedData?.substring(0, 16) || "";
     if (!proofAgentKeyHash) {
       console.log("[selfclaw] Missing agentKeyHash in proof userDefinedData");
-      return res.status(400).json({ error: "Agent key binding required - proof must include agentKeyHash in userDefinedData" });
+      return res.status(200).json({ status: "error", result: false, reason: "Agent key binding required" });
     }
     if (proofAgentKeyHash !== session.agentKeyHash) {
       console.log("[selfclaw] Agent key hash mismatch:", proofAgentKeyHash, "vs", session.agentKeyHash);
-      return res.status(400).json({ error: "Agent key binding mismatch - proof does not match agent" });
+      return res.status(200).json({ status: "error", result: false, reason: "Agent key binding mismatch" });
     }
     
     const humanId = crypto.createHash("sha256")
@@ -324,16 +324,13 @@ router.post("/v1/callback", async (req: Request, res: Response) => {
       .set({ status: "completed" })
       .where(eq(verificationSessions.id, sessionId));
 
-    res.json({
-      success: true,
-      message: "Agent verified and registered",
-      publicKey: session.agentPublicKey,
-      agentName: session.agentName,
-      humanId
+    res.status(200).json({
+      status: "success",
+      result: true
     });
   } catch (error: any) {
     console.error("[selfclaw] callback error:", error);
-    res.status(500).json({ error: error.message });
+    res.status(200).json({ status: "error", result: false, reason: error.message || "Unknown error" });
   }
 });
 
