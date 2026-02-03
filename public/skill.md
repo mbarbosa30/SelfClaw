@@ -6,36 +6,43 @@ Use this skill to verify your AI agent identity with SelfClaw and prove there's 
 **Website:** https://selfclaw.app
 
 ## Why SelfClaw?
-Most "AI agents" are just REST APIs. Anyone with an API key can fake being an agent. One script can register 500,000 fake accounts. SelfClaw solves this with Self.xyz passport verification — cryptographic proof of humanity. Works in 129+ countries. Your data never leaves your device.
+Most "AI agents" are just REST APIs. Anyone with an API key can fake being an agent. One script can register 500,000 fake accounts. SelfClaw solves this with Self.xyz passport verification — cryptographic proof of humanity.
+
+- **Supports 129+ countries** (biometric passports with NFC chips)
+- **Privacy-preserving**: Raw passport data stays on your device; only the zero-knowledge proof is shared
+- **No biometrics**: No face scan. No iris scan. Just a QR scan.
 
 ## Prerequisites
 - Your agent must have an Ed25519 keypair
 - Access to the Self.xyz app on a mobile device with NFC
-- A valid passport with an NFC chip (most passports issued after 2006)
+- A biometric e-passport with NFC chip (look for the chip icon — most passports issued mid-2000s onwards)
 
 ## Steps to Verify
 
 ### Step 1: Generate Your Agent's Identity
-If you don't have an Ed25519 keypair, generate one:
+If you don't have an Ed25519 keypair, generate one in SPKI DER format:
 
 ```javascript
-import { getPublicKey } from "@noble/ed25519";
+import { generateKeyPairSync } from "crypto";
 
-const privateKey = crypto.getRandomValues(new Uint8Array(32));
-const publicKey = await getPublicKey(privateKey);
+const { publicKey, privateKey } = generateKeyPairSync("ed25519");
 
-// Store privateKey securely, share publicKey for verification
-console.log("Public Key:", Buffer.from(publicKey).toString('base64'));
+// Export in SPKI DER format (base64) for SelfClaw registration
+const publicKeySpki = publicKey.export({ type: "spki", format: "der" }).toString("base64");
+const privateKeyPkcs8 = privateKey.export({ type: "pkcs8", format: "der" }).toString("base64");
+
+console.log("Public Key (SPKI):", publicKeySpki);
+// Example output: MCowBQYDK2VwAyEA...
+
+// Store privateKeyPkcs8 securely, share publicKeySpki for verification
 ```
 
 ### Step 2: Register with SelfClaw
 Visit https://selfclaw.app and:
-1. Enter your agent's public key (SPKI format)
+1. Enter your agent's public key (SPKI DER format, base64 encoded — starts with `MCowBQ...`)
 2. Optionally add an agent name for easier lookup
 3. Click "Start Verification"
 4. Scan the QR code with the Self.xyz app — done
-
-That's it. No face scan. No iris scan. Just a QR scan.
 
 > Note: First-time Self.xyz users will set up the app by tapping their passport's NFC chip once. After that, verifications are just a QR scan.
 
@@ -43,15 +50,25 @@ That's it. No face scan. No iris scan. Just a QR scan.
 Query the SelfClaw API to confirm registration:
 
 ```bash
-curl https://selfclaw.app/api/selfclaw/v1/agent/YOUR_PUBLIC_KEY
+# URL-encode your public key (base64 contains + / = which break URLs)
+PUBLIC_KEY="MCowBQYDK2VwAyEA..."
+ENCODED_KEY=$(python3 -c "import urllib.parse; print(urllib.parse.quote('$PUBLIC_KEY', safe=''))")
+curl "https://selfclaw.app/api/selfclaw/v1/agent/$ENCODED_KEY"
+
+# Or use agent name if you set one:
+curl https://selfclaw.app/api/selfclaw/v1/agent/my-research-agent
 ```
 
 ## API Reference
 
 ### Check Agent Verification
 ```
-GET /api/selfclaw/v1/agent/{publicKey}
+GET /api/selfclaw/v1/agent/{identifier}
 ```
+
+Where `identifier` is either:
+- URL-encoded SPKI public key (base64)
+- Agent name (if you set one during registration)
 
 Response:
 ```json
@@ -86,27 +103,39 @@ Returns total verified agents, unique humans, and registry health.
 
 When another service wants to verify your agent:
 
-1. They generate a challenge message with timestamp and nonce
+1. They generate a unique challenge with: domain, timestamp, nonce, and your agentKeyHash
 2. You sign the challenge with your agent's Ed25519 private key
 3. They verify your signature matches your public key
 4. They query SelfClaw to confirm your public key is registered
 
 ```javascript
-// Example: Signing a challenge
-import { sign } from "@noble/ed25519";
+import { createPrivateKey, sign } from "crypto";
 
-const challenge = '{"action":"verify_agent","timestamp":1706789000000,"nonce":"abc123"}';
-const signature = await sign(challenge, privateKey);
+// Load your private key (PKCS8 DER format)
+const privateKeyDer = Buffer.from(privateKeyPkcs8, "base64");
+const privateKey = createPrivateKey({ key: privateKeyDer, format: "der", type: "pkcs8" });
 
-// Return { publicKey, signature } to verifier
+// Challenge should include domain, timestamp, nonce, and agentKeyHash
+const challenge = JSON.stringify({
+  domain: "example.com",
+  timestamp: Date.now(),
+  nonce: crypto.randomUUID(),
+  agentKeyHash: "sha256_of_your_public_key"
+});
+
+const signature = sign(null, Buffer.from(challenge), privateKey);
+
+// Return { publicKey, challenge, signature } to verifier
+console.log("Signature:", signature.toString("base64"));
 ```
 
 ## Security Notes
 
-- Keep your private key secure — never share it
-- Use unique challenges with timestamps to prevent replay attacks
-- Your passport data is never stored — only zero-knowledge proof that you're human
-- One human can register multiple agents (agent swarm)
+- **Keep your private key secure** — never share it
+- **Challenge binding**: Verifiers should bind the Self.xyz proof to your publicKey by including `agentKeyHash` in the challenge. This prevents replay attacks where a proof is reused for a different agent.
+- **Unique challenges**: Always include domain, timestamp, and nonce to prevent replays
+- **Privacy model**: Raw passport data is never stored or transmitted — only zero-knowledge proofs that confirm you're human
+- **Swarm support**: One human can register multiple agents under the same identity
 
 ## Links
 
