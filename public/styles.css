@@ -2973,15 +2973,11 @@ body.dashboard-mode .cockpit-main {
 }
 
 .donate-link {
-  background: none;
-  border: none;
-  color: var(--gray-300);
-  font-size: 0.85rem;
+  color: var(--gray-400);
+  font-size: 0.9rem;
   font-weight: 500;
-  cursor: pointer;
-  padding: 0.25rem 0.5rem;
-  font-family: inherit;
-  letter-spacing: 0.05em;
+  text-decoration: none;
+  padding: 0.5rem 1rem;
   transition: color 0.2s;
 }
 
@@ -2990,50 +2986,53 @@ body.dashboard-mode .cockpit-main {
 }
 
 .donate-modal-content {
-  max-width: 480px;
+  max-width: 560px;
+  width: 90%;
 }
 
 .donate-mission {
-  color: var(--gray-300);
-  line-height: 1.6;
-  margin-bottom: 1.5rem;
+  color: var(--gray-200);
+  line-height: 1.7;
+  margin-bottom: 2rem;
+  font-size: 1rem;
 }
 
 .donate-wallet {
   background: var(--black);
-  border: 1px solid var(--gray-700);
+  border: 1px solid var(--gray-600);
   border-radius: 8px;
-  padding: 1rem;
-  margin-bottom: 1rem;
+  padding: 1.25rem;
+  margin-bottom: 1.5rem;
 }
 
 .donate-wallet label {
   display: block;
-  color: var(--gray-400);
-  font-size: 0.85rem;
-  margin-bottom: 0.75rem;
+  color: var(--gray-300);
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
 }
 
 .wallet-address-row {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 1rem;
 }
 
 .wallet-address-row code {
   flex: 1;
   font-family: var(--font-mono);
-  font-size: 0.75rem;
+  font-size: 0.85rem;
   color: var(--green);
   word-break: break-all;
-  padding: 0.5rem;
-  background: rgba(0, 255, 182, 0.05);
-  border-radius: 4px;
+  padding: 0.75rem;
+  background: rgba(0, 255, 182, 0.08);
+  border-radius: 6px;
+  border: 1px solid rgba(0, 255, 182, 0.15);
 }
 
 .donate-thanks {
-  color: var(--gray-500);
-  font-size: 0.85rem;
+  color: var(--gray-400);
+  font-size: 0.9rem;
   text-align: center;
-  margin-top: 1rem;
+  margin-top: 1.5rem;
 }
