@@ -12,16 +12,16 @@
   --gray-400: #888;
   --gray-600: #aaa;
   --gray-800: #1a1a1a;
-  --green: #00FFB6;
-  --green-light: rgba(0, 255, 182, 0.15);
-  --green-dark: #00cc92;
+  --green: #FF6B4A;
+  --green-light: rgba(255, 107, 74, 0.15);
+  --green-dark: #E85D3D;
   --coral: #FF8352;
   --coral-light: rgba(255, 131, 82, 0.15);
-  --celo-green: #00FFB6;
+  --celo-green: #FF6B4A;
   --celo-dark: #0a0a0a;
-  --purple: #00FFB6;
-  --purple-dark: #00cc92;
-  --purple-light: rgba(0, 255, 182, 0.15);
+  --purple: #FF6B4A;
+  --purple-dark: #E85D3D;
+  --purple-light: rgba(255, 107, 74, 0.15);
   --yellow: #eab308;
   --red: #ef4444;
   --red-light: rgba(239, 68, 68, 0.15);
@@ -143,14 +143,14 @@ body {
   text-decoration: none;
   cursor: pointer;
   transition: all 0.2s ease;
-  box-shadow: 0 0 20px rgba(0, 255, 182, 0.3);
+  box-shadow: 0 0 20px rgba(255, 107, 74, 0.3);
   line-height: 1;
 }
 
 .btn:hover {
   background: var(--white);
   transform: translateY(-1px);
-  box-shadow: 0 0 30px rgba(0, 255, 182, 0.5);
+  box-shadow: 0 0 30px rgba(255, 107, 74, 0.5);
 }
 
 .btn-outline {
@@ -163,7 +163,7 @@ body {
 .btn-outline:hover {
   background: var(--green);
   color: var(--black);
-  box-shadow: 0 0 20px rgba(0, 255, 182, 0.3);
+  box-shadow: 0 0 20px rgba(255, 107, 74, 0.3);
 }
 
 .btn-coral {
@@ -252,7 +252,7 @@ h2 {
   right: -20%;
   width: 500px;
   height: 500px;
-  background: radial-gradient(circle, rgba(0, 255, 182, 0.1) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(255, 107, 74, 0.1) 0%, transparent 70%);
   border-radius: 50%;
 }
 
@@ -555,7 +555,7 @@ body.dashboard-mode .cockpit-main {
 .step-card:hover {
   transform: translateY(-4px);
   border-color: var(--green);
-  box-shadow: 0 8px 24px rgba(0, 255, 182, 0.15);
+  box-shadow: 0 8px 24px rgba(255, 107, 74, 0.15);
 }
 
 .step-card .step-num {
@@ -654,7 +654,7 @@ body.dashboard-mode .cockpit-main {
 .value-block:hover {
   transform: translateY(-4px);
   border-color: var(--green);
-  box-shadow: 0 8px 24px rgba(0, 255, 182, 0.15);
+  box-shadow: 0 8px 24px rgba(255, 107, 74, 0.15);
 }
 
 .value-block h3 {
@@ -695,7 +695,7 @@ body.dashboard-mode .cockpit-main {
 .economy-item:hover {
   transform: translateY(-4px);
   border-color: var(--green);
-  box-shadow: 0 8px 24px rgba(0, 255, 182, 0.15);
+  box-shadow: 0 8px 24px rgba(255, 107, 74, 0.15);
 }
 
 .economy-item h4 {
@@ -2911,7 +2911,7 @@ body.dashboard-mode .cockpit-main {
 
 .check-result.verified {
   border-color: var(--green);
-  background: rgba(0, 255, 182, 0.1);
+  background: rgba(255, 107, 74, 0.1);
 }
 
 .check-result.not-verified {
@@ -3333,9 +3333,9 @@ body.dashboard-mode .cockpit-main {
   color: var(--green);
   word-break: break-all;
   padding: 0.75rem;
-  background: rgba(0, 255, 182, 0.08);
+  background: rgba(255, 107, 74, 0.08);
   border-radius: 6px;
-  border: 1px solid rgba(0, 255, 182, 0.15);
+  border: 1px solid rgba(255, 107, 74, 0.15);
 }
 
 .donate-thanks {
@@ -3401,8 +3401,8 @@ body.dashboard-mode .cockpit-main {
   display: flex;
   align-items: center;
   gap: 1rem;
-  background: rgba(0, 255, 182, 0.08);
-  border: 1px solid rgba(0, 255, 182, 0.2);
+  background: rgba(255, 107, 74, 0.08);
+  border: 1px solid rgba(255, 107, 74, 0.2);
   border-radius: 8px;
   padding: 1rem 1.25rem;
 }

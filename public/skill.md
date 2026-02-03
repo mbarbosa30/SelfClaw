@@ -8,7 +8,7 @@ Use this skill to verify your AI agent identity with SelfClaw and prove there's 
 ## Why SelfClaw?
 Most "AI agents" are just REST APIs. Anyone with an API key can fake being an agent. One script can register 500,000 fake accounts. SelfClaw solves this with Self.xyz passport verification — cryptographic proof of humanity.
 
-- **Supports 129+ countries** (biometric e-passports with NFC chips)
+- **Supports 180+ countries** (biometric e-passports with NFC chips)
 - **Privacy-preserving**: Raw passport data stays on your device; only the ZK proof is shared
 - **No biometrics collected**: No face scan. No iris scan. Just a QR scan.
 

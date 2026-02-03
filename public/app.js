@@ -1913,13 +1913,13 @@ function connectToSelfRelayer(sessionId, selfAppConfig, onSuccess, onError) {
     const statusEl = document.getElementById('verification-status');
     
     if (data.status === 'mobile_connected') {
-      if (statusEl) statusEl.innerHTML = '<span style="color: #00FFB6;">Phone connected! Generating proof...</span>';
+      if (statusEl) statusEl.innerHTML = '<span style="color: #FF6B4A;">Phone connected! Generating proof...</span>';
     } else if (data.status === 'proof_generation_started') {
-      if (statusEl) statusEl.innerHTML = '<span style="color: #00FFB6;">Generating zero-knowledge proof...</span>';
+      if (statusEl) statusEl.innerHTML = '<span style="color: #FF6B4A;">Generating zero-knowledge proof...</span>';
     } else if (data.status === 'proof_generated') {
-      if (statusEl) statusEl.innerHTML = '<span style="color: #00FFB6;">Proof generated! Verifying...</span>';
+      if (statusEl) statusEl.innerHTML = '<span style="color: #FF6B4A;">Proof generated! Verifying...</span>';
     } else if (data.status === 'proof_verified' || data.status === 'done') {
-      if (statusEl) statusEl.innerHTML = '<span style="color: #00FFB6;">Verified successfully!</span>';
+      if (statusEl) statusEl.innerHTML = '<span style="color: #FF6B4A;">Verified successfully!</span>';
       if (onSuccess) onSuccess(data);
     } else if (data.status === 'error') {
       if (statusEl) statusEl.innerHTML = `<span style="color: #ff4444;">Error: ${data.message || 'Verification failed'}</span>`;
@@ -1994,7 +1994,7 @@ async function startAgentVerification() {
     console.log('[SelfClaw] Universal Link:', selfUniversalLink);
     
     const signatureStatus = data.signatureVerified 
-      ? '<span style="color: #00FFB6;">Agent key ownership verified</span>'
+      ? '<span style="color: #FF6B4A;">Agent key ownership verified</span>'
       : '<span style="color: #888;">Optional: Sign challenge to prove key ownership</span>';
     
     qrContainer.style.display = 'block';
@@ -2154,7 +2154,7 @@ async function submitAgentSignature(sessionId) {
     if (data.success) {
       const statusEl = signatureInput.parentElement.querySelector('p');
       if (statusEl) {
-        statusEl.innerHTML = '<span style="color: #00FFB6;">Agent key ownership verified</span>';
+        statusEl.innerHTML = '<span style="color: #FF6B4A;">Agent key ownership verified</span>';
       }
       signatureInput.style.display = 'none';
       signatureInput.nextElementSibling.style.display = 'none';
