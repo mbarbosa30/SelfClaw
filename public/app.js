@@ -316,23 +316,27 @@ async function loadAuthState() {
         document.getElementById('user-avatar').style.display = 'block';
       }
 
+      const cockpitLanding = document.getElementById('cockpit-landing');
+      if (cockpitLanding) cockpitLanding.style.display = 'none';
+      
       const profileRes = await fetch('/api/profile');
       if (profileRes.ok) {
         const profile = await profileRes.json();
-        if (!profile.profileComplete) {
+        if (!profile.profileComplete && onboardingSection) {
           onboardingSection.style.display = 'block';
-          agentsSection.style.display = 'none';
+          if (agentsSection) agentsSection.style.display = 'none';
           loadProfileForm(profile);
         } else {
           if (onboardingSection) onboardingSection.style.display = 'none';
           if (agentsSection) agentsSection.style.display = 'block';
-          const cockpitLanding = document.getElementById('cockpit-landing');
-          if (cockpitLanding) cockpitLanding.style.display = 'none';
           loadAgents();
         }
-      } else {
+      } else if (onboardingSection) {
         onboardingSection.style.display = 'block';
-        agentsSection.style.display = 'none';
+        if (agentsSection) agentsSection.style.display = 'none';
+      } else if (agentsSection) {
+        agentsSection.style.display = 'block';
+        loadAgents();
       }
     } else {
       currentUser = null;

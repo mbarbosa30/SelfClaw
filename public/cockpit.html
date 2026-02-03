@@ -740,10 +740,6 @@
       
       if (typeof loadAuthState === 'function') {
         await loadAuthState();
-        const dashboard = document.getElementById('dashboard');
-        if (dashboard && dashboard.style.display === 'block') {
-          document.getElementById('cockpit-landing').style.display = 'none';
-        }
       } else {
         document.getElementById('auth-logged-out').style.display = 'flex';
       }
