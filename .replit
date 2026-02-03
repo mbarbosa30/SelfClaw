@@ -42,7 +42,10 @@ build = ["npm", "run", "build"]
 [userenv]
 
 [userenv.production]
-SELFCLAW_CALLBACK_URL = "https://selfclaw.app/api/selfclaw/v1/callback"
+SELFCLAW_CALLBACK_URL = "https://webhook.site/2220c7d5-6d1d-483c-945f-c5495e068a30"
 
 [userenv.shared]
 SELFCLAW_STAGING = "false"
+
+[userenv.development]
+SELFCLAW_CALLBACK_URL = "https://webhook.site/2220c7d5-6d1d-483c-945f-c5495e068a30"
