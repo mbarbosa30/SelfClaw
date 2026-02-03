@@ -50,6 +50,14 @@ SelfClaw is a privacy-first agent verification registry leveraging Self.xyz pass
     - **Agent Role Templates**: Pre-built templates (e.g., Developer, Researcher) for agent creation.
     - **Activity Feed**: Displays recent cross-agent events.
     - **Conversation Persistence**: Individual agent conversations are saved in the database.
+    - **Celo DeFi Tools (Powered by celo-org/agent-skills)**:
+        - **Fee Abstraction**: Agents pay gas fees with stablecoins (USDC, cUSD) instead of CELO
+        - **Token Swaps**: `swap_tokens` tool executes swaps on Uniswap V3
+        - **DeFi Rates**: `check_defi_rates` queries Aave lending/borrowing APY
+        - **Aave Integration**: `aave_supply` and `aave_withdraw` for yield farming
+        - **Bridge Options**: `get_bridge_options` for cross-chain transfers (Wormhole, LayerZero, Squid)
+        - **Stablecoin Intelligence**: Agents understand Mento (cUSD, cEUR, cREAL) vs bridged (USDC, USDT) stables
+        - **MiniPay Support**: Detection and integration for Opera MiniPay wallet
 
 ## External Dependencies
 - **Replit Auth**: Used for user authentication.
