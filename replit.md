@@ -81,10 +81,16 @@ ClawPit is an autonomous agent platform that provides a web-based cockpit for cr
 - **LinkedIn**: No public API available for message reading - LinkedIn restricts API access to approved partners only.
 
 ## Recent Changes
+- **February 3, 2026**: Implemented real Self.xyz verification flow
+  - Integrated @selfxyz/core SDK with SelfBackendVerifier for ZK proof validation
+  - Backend: /v1/start-verification creates session, /v1/callback validates proofs and stores to DB
+  - Frontend: Generates QR code with Self.xyz universal link, polls for verification completion
+  - Secure flow: sessionId tied to ZK proof, stored directly in callback (no forgery possible)
+  - Removed Claw references (package name TBD)
+  - Shortened hero headlines to be punchier (6 rotating variants)
 - **February 3, 2026**: Added rotating hero headlines and refined branding
   - 6 rotating headlines that randomize on page load (fake agents, sybils, REST APIs, etc.)
   - Clarified positioning: SelfMolt bridges Self.xyz and OpenClaw (independent project)
-  - Fixed Claw install command: `claw install andy-t-wang/self-molt`
   - Updated developers page subtitle and footer
   - Enhanced "Why SelfMolt" section explaining the fake agent problem
 - **February 3, 2026**: Rebranded SelfMolt with positive Self.xyz messaging

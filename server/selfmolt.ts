@@ -25,7 +25,7 @@ const selfBackendVerifier = new SelfBackendVerifier(
   "uuid"
 );
 
-const pendingVerifications = new Map<string, { agentPublicKey: string; agentName: string; createdAt: Date }>();
+const pendingVerifications = new Map<string, { agentPublicKey: string; agentName: string; agentKeyHash: string; createdAt: Date }>();
 
 router.get("/v1/config", (_req: Request, res: Response) => {
   res.json({
@@ -45,9 +45,12 @@ router.post("/v1/start-verification", (req: Request, res: Response) => {
     }
     
     const sessionId = crypto.randomUUID();
+    const agentKeyHash = crypto.createHash("sha256").update(agentPublicKey).digest("hex").substring(0, 16);
+    
     pendingVerifications.set(sessionId, {
       agentPublicKey,
       agentName: agentName || "",
+      agentKeyHash,
       createdAt: new Date()
     });
     
@@ -56,6 +59,7 @@ router.post("/v1/start-verification", (req: Request, res: Response) => {
     res.json({
       success: true,
       sessionId,
+      agentKeyHash,
       config: {
         scope: SELFMOLT_SCOPE,
         endpoint: SELFMOLT_ENDPOINT,
@@ -83,7 +87,7 @@ router.post("/v1/callback", async (req: Request, res: Response) => {
       userContextData
     );
     
-    if (!result.isValid) {
+    if (!result.isValidDetails.isValid) {
       return res.status(400).json({ 
         verified: false, 
         error: "Proof verification failed",
@@ -91,33 +95,29 @@ router.post("/v1/callback", async (req: Request, res: Response) => {
       });
     }
     
-    const humanId = result.userId || crypto.createHash("sha256")
+    const sessionId = result.userData?.userIdentifier;
+    if (!sessionId) {
+      return res.status(400).json({ error: "Missing session ID in proof" });
+    }
+    
+    const pending = pendingVerifications.get(sessionId);
+    if (!pending) {
+      console.log("[selfmolt] Session not found:", sessionId);
+      return res.status(400).json({ error: "Invalid or expired verification session" });
+    }
+    
+    const proofAgentKeyHash = result.userData?.userDefinedData?.substring(0, 16) || "";
+    if (proofAgentKeyHash && proofAgentKeyHash !== pending.agentKeyHash) {
+      console.log("[selfmolt] Agent key hash mismatch:", proofAgentKeyHash, "vs", pending.agentKeyHash);
+      return res.status(400).json({ error: "Agent key binding mismatch - proof does not match agent" });
+    }
+    
+    const humanId = crypto.createHash("sha256")
       .update(JSON.stringify(publicSignals))
       .digest("hex")
       .substring(0, 16);
     
-    res.json({
-      verified: true,
-      humanId,
-      nationality: result.discloseOutput?.nationality,
-      message: "Passport verified successfully"
-    });
-  } catch (error: any) {
-    console.error("[selfmolt] Callback error:", error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-router.post("/v1/complete-verification", async (req: Request, res: Response) => {
-  try {
-    const { sessionId, humanId, nationality } = req.body;
-    
-    const pending = pendingVerifications.get(sessionId);
-    if (!pending) {
-      return res.status(400).json({ error: "Invalid or expired session" });
-    }
-    
-    pendingVerifications.delete(sessionId);
+    const nationality = result.discloseOutput?.nationality;
     
     const existing = await db.select()
       .from(verifiedBots)
@@ -143,6 +143,8 @@ router.post("/v1/complete-verification", async (req: Request, res: Response) => 
       };
       await db.insert(verifiedBots).values(newBot);
     }
+
+    pendingVerifications.delete(sessionId);
 
     res.json({
       success: true,
@@ -225,57 +227,12 @@ router.get("/v1/human/:humanId", async (req: Request, res: Response) => {
   }
 });
 
-router.post("/v1/verify", async (req: Request, res: Response) => {
-  try {
-    const { publicKey, deviceId, selfId, humanId, verificationLevel, attestation, proof, publicSignals } = req.body;
-
-    if (!publicKey) {
-      return res.status(400).json({ error: "publicKey is required" });
-    }
-
-    const existing = await db.select()
-      .from(verifiedBots)
-      .where(eq(verifiedBots.publicKey, publicKey))
-      .limit(1);
-
-    if (existing.length > 0) {
-      await db.update(verifiedBots)
-        .set({
-          selfId,
-          humanId,
-          verificationLevel,
-          metadata: { attestation, lastUpdated: new Date().toISOString() },
-          verifiedAt: new Date()
-        })
-        .where(eq(verifiedBots.publicKey, publicKey));
-      
-      return res.json({
-        success: true,
-        message: "Verification updated",
-        publicKey
-      });
-    }
-
-    const newBot: InsertVerifiedBot = {
-      publicKey,
-      deviceId: deviceId || null,
-      selfId: selfId || null,
-      humanId: humanId || null,
-      verificationLevel: verificationLevel || "passport",
-      metadata: { attestation }
-    };
-
-    await db.insert(verifiedBots).values(newBot);
-
-    res.json({
-      success: true,
-      message: "Agent verified and registered",
-      publicKey,
-      agentName: deviceId
-    });
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
-  }
+router.post("/v1/verify", async (_req: Request, res: Response) => {
+  res.status(410).json({
+    error: "This endpoint is deprecated",
+    message: "Use the Self.xyz verification flow instead: POST /api/selfmolt/v1/start-verification",
+    docs: "https://selfmolt.openclaw.ai/developers"
+  });
 });
 
 router.get("/v1/stats", async (_req: Request, res: Response) => {

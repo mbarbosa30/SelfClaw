@@ -1,10 +1,10 @@
 const SELFMOLT_HEADLINES = [
-  { text: "Anyone can fake an agent.", highlight: "Prove yours is real." },
-  { text: "Your agent.", highlight: "Cryptographically backed by you." },
-  { text: "In a world of fake agents,", highlight: "prove yours has a human." },
-  { text: "Stop the sybils.", highlight: "Verify your agent." },
-  { text: "REST APIs can lie.", highlight: "Passports don't." },
-  { text: "500,000 fake accounts in one script.", highlight: "Not with SelfMolt." }
+  { text: "Fake agents everywhere.", highlight: "Prove yours is real." },
+  { text: "Your agent.", highlight: "Cryptographically human." },
+  { text: "Stop sybils.", highlight: "Verify your agent." },
+  { text: "APIs lie.", highlight: "Passports don't." },
+  { text: "500K fake accounts.", highlight: "Not anymore." },
+  { text: "One human.", highlight: "Many verified agents." }
 ];
 
 function initRotatingHeadline() {
@@ -1821,32 +1821,143 @@ async function checkAgentVerification() {
   }
 }
 
+let currentVerificationSession = null;
+let verificationPollInterval = null;
+
 async function startAgentVerification() {
   const pubkey = document.getElementById('verify-pubkey').value.trim();
   const agentName = document.getElementById('verify-device-id').value.trim();
   const qrContainer = document.getElementById('qr-container');
   const qrEl = document.getElementById('selfxyz-qr');
+  const startBtn = document.getElementById('start-verification');
   
   if (!pubkey) {
     alert('Please enter your agent\'s public key');
     return;
   }
   
-  qrContainer.style.display = 'block';
-  qrEl.innerHTML = `
-    <div style="padding: 2rem; background: #0d0d0d; border: 2px dashed #00FFB6; border-radius: 12px; text-align: center;">
-      <p style="margin-bottom: 1rem; color: #00FFB6; font-weight: 600;"><strong>Self.xyz SDK Integration</strong></p>
-      <p style="font-size: 0.9rem; color: #e0e0e0; margin-bottom: 1rem;">
-        Production integration requires <code style="background: #1a1a1a; padding: 0.2rem 0.4rem; border-radius: 4px;">@selfxyz/qrcode</code> SDK.<br/>
-        For testing, register agents via the API:
-      </p>
-      <code style="display: block; background: #1a1a1a; padding: 1rem; border-radius: 8px; font-size: 0.85rem; color: #00FFB6;">POST /api/selfmolt/v1/verify</code>
-      <p style="font-size: 0.75rem; color: #888; margin-top: 1rem;">
-        Public Key: ${escapeHtml(pubkey.substring(0, 20))}...
-        ${agentName ? `<br/>Agent Name: ${escapeHtml(agentName)}` : ''}
-      </p>
-    </div>
-  `;
+  startBtn.disabled = true;
+  startBtn.textContent = 'Starting...';
+  
+  try {
+    const response = await fetch('/api/selfmolt/v1/start-verification', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ agentPublicKey: pubkey, agentName })
+    });
+    
+    const data = await response.json();
+    if (!data.success) {
+      throw new Error(data.error || 'Failed to start verification');
+    }
+    
+    currentVerificationSession = {
+      sessionId: data.sessionId,
+      agentPublicKey: pubkey,
+      agentName
+    };
+    
+    const agentKeyHash = data.agentKeyHash || '';
+    const userDefinedData = agentKeyHash.padEnd(128, '0');
+    
+    const selfAppConfig = {
+      version: 2,
+      appName: "SelfMolt",
+      scope: data.config.scope,
+      endpoint: data.config.endpoint,
+      userId: data.sessionId,
+      userIdType: "uuid",
+      userDefinedData: userDefinedData,
+      disclosures: {
+        nationality: true
+      }
+    };
+    
+    const configBase64 = btoa(JSON.stringify(selfAppConfig));
+    const selfUniversalLink = `https://self.xyz/verify?config=${configBase64}`;
+    
+    qrContainer.style.display = 'block';
+    qrEl.innerHTML = `
+      <div style="padding: 1.5rem; background: #0d0d0d; border: 2px solid #00FFB6; border-radius: 12px; text-align: center;">
+        <p style="margin-bottom: 1rem; color: #00FFB6; font-weight: 600;">Scan with Self.xyz App</p>
+        <div id="qr-code-img" style="background: white; padding: 1rem; border-radius: 8px; display: inline-block; margin-bottom: 1rem;"></div>
+        <p style="font-size: 0.85rem; color: #e0e0e0; margin-bottom: 0.5rem;">
+          1. Open Self.xyz app on your phone<br/>
+          2. Scan this QR code<br/>
+          3. Tap your passport's NFC chip
+        </p>
+        <p style="font-size: 0.75rem; color: #888; margin-top: 0.5rem;">
+          Agent: ${escapeHtml(pubkey.substring(0, 16))}...
+        </p>
+        <a href="${selfUniversalLink}" target="_blank" class="btn btn-outline btn-sm" style="margin-top: 1rem;">
+          Open in Self.xyz App
+        </a>
+        <div id="verification-status" style="margin-top: 1rem; padding: 0.5rem; border-radius: 8px; background: #1a1a1a;">
+          <span style="color: #888;">Waiting for passport verification...</span>
+        </div>
+      </div>
+    `;
+    
+    if (typeof QRCode !== 'undefined') {
+      new QRCode(document.getElementById('qr-code-img'), {
+        text: selfUniversalLink,
+        width: 180,
+        height: 180,
+        colorDark: '#000000',
+        colorLight: '#ffffff'
+      });
+    } else {
+      document.getElementById('qr-code-img').innerHTML = `
+        <img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(selfUniversalLink)}" alt="QR Code" />
+      `;
+    }
+    
+    startVerificationPolling(data.sessionId, pubkey, agentName);
+    
+  } catch (error) {
+    alert('Error starting verification: ' + error.message);
+  } finally {
+    startBtn.disabled = false;
+    startBtn.textContent = 'Start Verification';
+  }
+}
+
+function startVerificationPolling(sessionId, pubkey, agentName) {
+  if (verificationPollInterval) {
+    clearInterval(verificationPollInterval);
+  }
+  
+  let attempts = 0;
+  const maxAttempts = 60;
+  
+  verificationPollInterval = setInterval(async () => {
+    attempts++;
+    
+    if (attempts > maxAttempts) {
+      clearInterval(verificationPollInterval);
+      document.getElementById('verification-status').innerHTML = `
+        <span style="color: #ff6b6b;">Verification timed out. Please try again.</span>
+      `;
+      return;
+    }
+    
+    try {
+      const response = await fetch(`/api/selfmolt/v1/agent/${encodeURIComponent(pubkey)}`);
+      const data = await response.json();
+      
+      if (data.verified && data.humanId) {
+        clearInterval(verificationPollInterval);
+        document.getElementById('verification-status').innerHTML = `
+          <span style="color: #00FFB6; font-weight: 600;">Verified!</span>
+          <p style="margin-top: 0.5rem; font-size: 0.85rem; color: #e0e0e0;">
+            Your agent is now linked to humanId: ${escapeHtml(data.humanId.substring(0, 8))}...
+          </p>
+        `;
+        document.getElementById('qr-code-img').style.opacity = '0.5';
+      }
+    } catch (e) {
+    }
+  }, 5000);
 }
 
 const checkBotVerification = checkAgentVerification;
