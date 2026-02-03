@@ -25,7 +25,7 @@ app.use(express.json());
 app.use(express.static("public"));
 
 app.get("/cockpit", (req: Request, res: Response) => {
-  res.sendFile("index.html", { root: "public" });
+  res.sendFile("cockpit.html", { root: "public" });
 });
 
 app.get("/skill.md", (req: Request, res: Response) => {
