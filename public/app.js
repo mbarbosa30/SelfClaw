@@ -1922,6 +1922,7 @@ async function startAgentVerification() {
     const selfAppConfig = {
       version: 2,
       appName: "SelfClaw",
+      logoBase64: "https://selfclaw.app/favicon.png",
       scope: data.config.scope,
       endpoint: data.config.endpoint,
       endpointType: "https",
