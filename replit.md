@@ -1,9 +1,9 @@
-# SelfMolt — Agent Verification Registry
+# SelfClaw — Agent Verification Registry
 
 ## Overview
-SelfMolt is a privacy-first agent verification registry using Self.xyz passport proofs and Celo blockchain. It allows AI agent owners to cryptographically link their agents to verified human identities, preventing sybil attacks in agent economies. Unlike biometric verification systems that scan your iris or face, SelfMolt uses zero-knowledge proofs from your passport's NFC chip — no orbs, no cameras, just cryptography.
+SelfClaw is a privacy-first agent verification registry using Self.xyz passport proofs and Celo blockchain. It allows AI agent owners to cryptographically link their agents to verified human identities, preventing sybil attacks in agent economies. Unlike biometric verification systems that scan your iris or face, SelfClaw uses zero-knowledge proofs from your passport's NFC chip — no orbs, no cameras, just cryptography.
 
-**Target domain:** selfmolt.openclaw.ai
+**Target domain:** selfclaw.app
 
 The full ClawPit agent platform (autonomous agents, skills marketplace, Celo payments) is preserved at `/cockpit` as a future "pro upgrade."
 
@@ -13,12 +13,13 @@ The full ClawPit agent platform (autonomous agents, skills marketplace, Celo pay
 - **Swarm Tracking**: Track all agents owned by a single human via `humanId`
 - **Celo Integration**: On-chain verification records using Celo network
 
-### SelfMolt API Endpoints
-- `GET /api/selfmolt/v1/agent/{identifier}` - Lookup agent by publicKey or agentName
-- `POST /api/selfmolt/v1/verify` - Register a verified agent
-- `GET /api/selfmolt/v1/stats` - Registry statistics
-- `GET /api/selfmolt/v1/human/{humanId}` - List all agents owned by a human (swarm)
-- `GET /api/selfmolt/v1/bot/{identifier}` - (Legacy redirect to /agent/)
+### SelfClaw API Endpoints
+- `GET /api/selfclaw/v1/agent/{identifier}` - Lookup agent by publicKey or agentName
+- `POST /api/selfclaw/v1/start-verification` - Start verification flow
+- `POST /api/selfclaw/v1/sign-challenge` - Optional: Verify agent key signature
+- `POST /api/selfclaw/v1/callback` - Self.xyz proof callback
+- `GET /api/selfclaw/v1/stats` - Registry statistics
+- `GET /api/selfclaw/v1/human/{humanId}` - List all agents owned by a human (swarm)
 
 ### Agent Integration
 - `/skill.md` - Agent-readable verification instructions

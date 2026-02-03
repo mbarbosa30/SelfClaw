@@ -8,14 +8,14 @@ import * as ed from "@noble/ed25519";
 
 const router = Router();
 
-const SELFMOLT_SCOPE = "selfmolt-verify";
-const SELFMOLT_ENDPOINT = process.env.REPLIT_DOMAINS 
-  ? `https://${process.env.REPLIT_DOMAINS}/api/selfmolt/v1/callback`
-  : "http://localhost:5000/api/selfmolt/v1/callback";
+const SELFCLAW_SCOPE = "selfclaw-verify";
+const SELFCLAW_ENDPOINT = process.env.REPLIT_DOMAINS 
+  ? `https://${process.env.REPLIT_DOMAINS}/api/selfclaw/v1/callback`
+  : "http://localhost:5000/api/selfclaw/v1/callback";
 
 const selfBackendVerifier = new SelfBackendVerifier(
-  SELFMOLT_SCOPE,
-  SELFMOLT_ENDPOINT,
+  SELFCLAW_SCOPE,
+  SELFCLAW_ENDPOINT,
   false,
   AllIds,
   new DefaultConfigStore({
@@ -42,7 +42,7 @@ function generateChallenge(sessionId: string, agentKeyHash: string): string {
   const timestamp = Date.now();
   const nonce = crypto.randomBytes(16).toString("hex");
   return JSON.stringify({
-    domain: "selfmolt.openclaw.ai",
+    domain: "selfclaw.app",
     action: "verify-agent",
     sessionId,
     agentKeyHash,
@@ -64,7 +64,7 @@ async function verifyEd25519Signature(
     
     return await ed.verifyAsync(signatureBytes, messageBytes, publicKeyBytes);
   } catch (error) {
-    console.error("[selfmolt] Signature verification error:", error);
+    console.error("[selfclaw] Signature verification error:", error);
     return false;
   }
 }
@@ -212,17 +212,17 @@ router.post("/v1/callback", async (req: Request, res: Response) => {
     
     const pending = pendingVerifications.get(sessionId);
     if (!pending) {
-      console.log("[selfmolt] Session not found:", sessionId);
+      console.log("[selfclaw] Session not found:", sessionId);
       return res.status(400).json({ error: "Invalid or expired verification session" });
     }
     
     const proofAgentKeyHash = result.userData?.userDefinedData?.substring(0, 16) || "";
     if (!proofAgentKeyHash) {
-      console.log("[selfmolt] Missing agentKeyHash in proof userDefinedData");
+      console.log("[selfclaw] Missing agentKeyHash in proof userDefinedData");
       return res.status(400).json({ error: "Agent key binding required - proof must include agentKeyHash in userDefinedData" });
     }
     if (proofAgentKeyHash !== pending.agentKeyHash) {
-      console.log("[selfmolt] Agent key hash mismatch:", proofAgentKeyHash, "vs", pending.agentKeyHash);
+      console.log("[selfclaw] Agent key hash mismatch:", proofAgentKeyHash, "vs", pending.agentKeyHash);
       return res.status(400).json({ error: "Agent key binding mismatch - proof does not match agent" });
     }
     
@@ -315,7 +315,7 @@ router.get("/v1/agent/:identifier", async (req: Request, res: Response) => {
         verified: true,
         registeredAt: foundAgent.verifiedAt
       },
-      swarm: foundAgent.humanId ? `https://selfmolt.openclaw.ai/human/${foundAgent.humanId}` : null,
+      swarm: foundAgent.humanId ? `https://selfclaw.app/human/${foundAgent.humanId}` : null,
       metadata: foundAgent.metadata
     });
   } catch (error: any) {
@@ -352,8 +352,8 @@ router.get("/v1/human/:humanId", async (req: Request, res: Response) => {
 router.post("/v1/verify", async (_req: Request, res: Response) => {
   res.status(410).json({
     error: "This endpoint is deprecated",
-    message: "Use the Self.xyz verification flow instead: POST /api/selfmolt/v1/start-verification",
-    docs: "https://selfmolt.openclaw.ai/developers"
+    message: "Use the Self.xyz verification flow instead: POST /api/selfclaw/v1/start-verification",
+    docs: "https://selfclaw.app/developers"
   });
 });
 

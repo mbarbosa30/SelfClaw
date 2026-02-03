@@ -16,7 +16,7 @@ import { createAgentX402Client } from "../lib/agent-x402-client.js";
 import { createAgentPaymentMiddleware, getAgentReceivedPayments, getAgentTotalReceived } from "../lib/agent-x402-middleware.js";
 import { seedMarketplace } from "./seed-marketplace.js";
 import gmailRouter from "./gmail-oauth.js";
-import selfmoltRouter from "./selfmolt.js";
+import selfclawRouter from "./selfclaw.js";
 
 const app = express();
 const PORT = 5000;
@@ -114,7 +114,8 @@ async function main() {
 
   app.get("/api/gmail/callback", gmailRouter);
   app.use("/api/gmail", isAuthenticated, gmailRouter);
-  app.use("/api/selfmolt", selfmoltRouter);
+  app.use("/api/selfclaw", selfclawRouter);
+  app.use("/api/selfmolt", selfclawRouter); // Legacy redirect support
 
   app.get("/api/env-check", (req: Request, res: Response) => {
     res.json({

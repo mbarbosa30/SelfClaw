@@ -242,12 +242,12 @@ async function loadAuthState() {
         });
         document.body.classList.add('dashboard-mode');
         
-        const selfmoltSections = ['verify', 'check', 'why-section'];
-        selfmoltSections.forEach(id => {
+        const selfclawSections = ['verify', 'check', 'why-section'];
+        selfclawSections.forEach(id => {
           const el = document.getElementById(id);
           if (el) el.style.display = 'none';
         });
-        document.querySelectorAll('.api-section, .selfmolt-footer').forEach(el => {
+        document.querySelectorAll('.api-section, .selfclaw-footer').forEach(el => {
           el.style.display = 'none';
         });
       }
@@ -1790,7 +1790,7 @@ async function checkAgentVerification() {
   }
   
   try {
-    const res = await fetch(`/api/selfmolt/v1/agent/${encodeURIComponent(pubkey)}`);
+    const res = await fetch(`/api/selfclaw/v1/agent/${encodeURIComponent(pubkey)}`);
     const data = await res.json();
     
     resultEl.style.display = 'block';
@@ -1840,7 +1840,7 @@ async function startAgentVerification() {
   startBtn.textContent = 'Starting...';
   
   try {
-    const response = await fetch('/api/selfmolt/v1/start-verification', {
+    const response = await fetch('/api/selfclaw/v1/start-verification', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ agentPublicKey: pubkey, agentName })
@@ -1961,7 +1961,7 @@ function startVerificationPolling(sessionId, pubkey, agentName) {
     }
     
     try {
-      const response = await fetch(`/api/selfmolt/v1/agent/${encodeURIComponent(pubkey)}`);
+      const response = await fetch(`/api/selfclaw/v1/agent/${encodeURIComponent(pubkey)}`);
       const data = await response.json();
       
       if (data.verified && data.humanId) {
@@ -1989,7 +1989,7 @@ async function submitAgentSignature(sessionId) {
   }
   
   try {
-    const response = await fetch('/api/selfmolt/v1/sign-challenge', {
+    const response = await fetch('/api/selfclaw/v1/sign-challenge', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ sessionId, signature })

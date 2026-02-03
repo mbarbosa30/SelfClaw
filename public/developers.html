@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SelfMolt Developers | API Documentation</title>
+  <title>SelfClaw Developers | API Documentation</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -442,7 +442,7 @@
   <div class="container">
     <header class="header">
       <div class="header-title">
-        <h1>SELFMOLT</h1>
+        <h1>SELFCLAW</h1>
         <span class="tag tag-green">PROOF OF HUMAN</span>
       </div>
       <nav class="header-nav-links">
@@ -451,15 +451,15 @@
     </header>
     
     <div class="docs-container">
-      <a href="/" class="back-link">← Back to SelfMolt</a>
+      <a href="/" class="back-link">← Back to SelfClaw</a>
       
       <div class="docs-header">
         <h1 class="docs-title">Developer Integration</h1>
-        <p class="docs-subtitle">Most "AI agents" are just REST APIs. Anyone with an API key can fake being an agent. SelfMolt provides cryptographic proof of humanity using Self.xyz passport verification.</p>
+        <p class="docs-subtitle">Most "AI agents" are just REST APIs. Anyone with an API key can fake being an agent. SelfClaw provides cryptographic proof of humanity using Self.xyz passport verification.</p>
       </div>
       
       <div class="highlight-box">
-        <h4>Why SelfMolt?</h4>
+        <h4>Why SelfClaw?</h4>
         <p>Passport-first verification with Self.xyz zero-knowledge proofs. Works in 129+ countries with any NFC-enabled passport. Your data never leaves your device — privacy by mathematics.</p>
       </div>
       
@@ -473,13 +473,13 @@
       </nav>
       
       <section id="comparison" class="docs-section">
-        <h2>Self.xyz + SelfMolt</h2>
-        <p>SelfMolt uses Self.xyz for passport-based identity verification with zero-knowledge proofs. Here's what makes this approach special:</p>
+        <h2>Self.xyz + SelfClaw</h2>
+        <p>SelfClaw uses Self.xyz for passport-based identity verification with zero-knowledge proofs. Here's what makes this approach special:</p>
         
         <table class="comparison-table">
           <tr>
             <th>Feature</th>
-            <th class="highlight">SelfMolt + Self.xyz</th>
+            <th class="highlight">SelfClaw + Self.xyz</th>
           </tr>
           <tr>
             <td>Verification Method</td>
@@ -506,7 +506,7 @@
       
       <section id="how-it-works" class="docs-section">
         <h2>How It Works</h2>
-        <p>SelfMolt uses Self.xyz's zero-knowledge proof system to verify passport ownership without exposing personal data. Here's the flow:</p>
+        <p>SelfClaw uses Self.xyz's zero-knowledge proof system to verify passport ownership without exposing personal data. Here's the flow:</p>
         
         <div class="step-flow">
           <div class="step-card">
@@ -522,7 +522,7 @@
           <div class="step-card">
             <div class="step-number">3</div>
             <h4>Check Registry</h4>
-            <p>Query SelfMolt API to confirm the key is registered with passport verification.</p>
+            <p>Query SelfClaw API to confirm the key is registered with passport verification.</p>
           </div>
         </div>
       </section>
@@ -576,8 +576,8 @@
           </div>
         </div>
         
-        <h3>Step 3: Check SelfMolt Registry</h3>
-        <p>Query the SelfMolt API to verify the public key is registered with passport verification.</p>
+        <h3>Step 3: Check SelfClaw Registry</h3>
+        <p>Query the SelfClaw API to verify the public key is registered with passport verification.</p>
         
         <div class="code-block">
           <div class="code-header">
@@ -587,7 +587,7 @@
           <div class="code-content">
 <pre><span class="comment">// Check if the agent is verified</span>
 <span class="keyword">const</span> response = <span class="keyword">await</span> <span class="function">fetch</span>(
-  <span class="string">`https://selfmolt.openclaw.ai/api/selfmolt/v1/agent/${<span class="function">encodeURIComponent</span>(publicKey)}`</span>
+  <span class="string">`https://selfclaw.app/api/selfclaw/v1/agent/${<span class="function">encodeURIComponent</span>(publicKey)}`</span>
 );
 <span class="keyword">const</span> data = <span class="keyword">await</span> response.<span class="function">json</span>();
 
@@ -607,7 +607,7 @@
         
         <div class="api-endpoint">
           <span class="api-method">GET</span>
-          <span class="api-path">/api/selfmolt/v1/agent/{identifier}</span>
+          <span class="api-path">/api/selfclaw/v1/agent/{identifier}</span>
           <p class="api-desc">Check if an agent's public key or name is registered with passport verification.</p>
         </div>
         
@@ -653,7 +653,7 @@
   <span class="string">"publicKey"</span>: <span class="string">"MCowBQYDK2VwAyEA..."</span>,
   <span class="string">"agentName"</span>: <span class="string">"my-research-agent"</span>,
   <span class="string">"humanId"</span>: <span class="string">"0x1234abcd..."</span>,
-  <span class="string">"swarm"</span>: <span class="string">"https://selfmolt.openclaw.ai/human/0x1234abcd"</span>,
+  <span class="string">"swarm"</span>: <span class="string">"https://selfclaw.app/human/0x1234abcd"</span>,
   <span class="string">"selfxyz"</span>: {
     <span class="string">"verified"</span>: <span class="keyword">true</span>,
     <span class="string">"registeredAt"</span>: <span class="string">"2026-02-03T10:30:00Z"</span>
@@ -666,19 +666,19 @@
         
         <div class="api-endpoint">
           <span class="api-method post">POST</span>
-          <span class="api-path">/api/selfmolt/v1/verify</span>
+          <span class="api-path">/api/selfclaw/v1/verify</span>
           <p class="api-desc">Register a new agent with Self.xyz passport proof verification.</p>
         </div>
         
         <div class="api-endpoint">
           <span class="api-method">GET</span>
-          <span class="api-path">/api/selfmolt/v1/human/{humanId}</span>
+          <span class="api-path">/api/selfclaw/v1/human/{humanId}</span>
           <p class="api-desc">Get all agents (swarm) owned by a specific human.</p>
         </div>
         
         <div class="api-endpoint">
           <span class="api-method">GET</span>
-          <span class="api-path">/api/selfmolt/v1/stats</span>
+          <span class="api-path">/api/selfclaw/v1/stats</span>
           <p class="api-desc">Get registry statistics including total verified agents and unique humans.</p>
         </div>
       </section>
@@ -717,8 +717,8 @@
         
         <div class="llms-box">
           <h4>Let Your Agent Implement It</h4>
-          <p>Copy this prompt to have your AI agent implement SelfMolt verification:</p>
-          <code>Read https://selfmolt.openclaw.ai/llms.txt and implement SelfMolt agent verification in my app.</code>
+          <p>Copy this prompt to have your AI agent implement SelfClaw verification:</p>
+          <code>Read https://selfclaw.app/llms.txt and implement SelfClaw agent verification in my app.</code>
           <a href="/llms.txt" target="_blank">View llms.txt →</a>
         </div>
         
@@ -738,14 +738,14 @@
           </li>
           <li>
             <span class="security-num">•</span>
-            <span class="security-content">Why SelfMolt is the privacy-first choice</span>
+            <span class="security-content">Why SelfClaw is the privacy-first choice</span>
           </li>
         </ul>
       </section>
       
-      <footer class="selfmolt-footer" style="margin-top: 4rem; padding-top: 2rem; border-top: 1px solid var(--gray-300); text-align: center;">
+      <footer class="selfclaw-footer" style="margin-top: 4rem; padding-top: 2rem; border-top: 1px solid var(--gray-300); text-align: center;">
         <p style="color: var(--text-muted); font-size: 0.85rem;">
-          SelfMolt bridges <a href="https://self.xyz" style="color: var(--green); text-decoration: none;">Self.xyz</a> and 
+          SelfClaw bridges <a href="https://self.xyz" style="color: var(--green); text-decoration: none;">Self.xyz</a> and 
           <a href="https://openclaw.ai" style="color: var(--green); text-decoration: none;">OpenClaw</a>
         </p>
         <p style="color: var(--text-muted); font-size: 0.75rem; margin-top: 0.5rem;">

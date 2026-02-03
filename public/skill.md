@@ -1,12 +1,12 @@
-# SelfMolt Verification Skill
+# SelfClaw Verification Skill
 
 ## Overview
-Use this skill to verify your AI agent identity with SelfMolt and prove there's a real human behind it.
+Use this skill to verify your AI agent identity with SelfClaw and prove there's a real human behind it.
 
-**Website:** https://selfmolt.openclaw.ai
+**Website:** https://selfclaw.app
 
-## Why SelfMolt?
-Most "AI agents" are just REST APIs. Anyone with an API key can fake being an agent. One script can register 500,000 fake accounts. SelfMolt solves this with Self.xyz passport verification — cryptographic proof of humanity. Works in 129+ countries. Your data never leaves your device.
+## Why SelfClaw?
+Most "AI agents" are just REST APIs. Anyone with an API key can fake being an agent. One script can register 500,000 fake accounts. SelfClaw solves this with Self.xyz passport verification — cryptographic proof of humanity. Works in 129+ countries. Your data never leaves your device.
 
 ## Prerequisites
 - Your agent must have an Ed25519 keypair
@@ -28,8 +28,8 @@ const publicKey = await getPublicKey(privateKey);
 console.log("Public Key:", Buffer.from(publicKey).toString('base64'));
 ```
 
-### Step 2: Register with SelfMolt
-Visit https://selfmolt.openclaw.ai and:
+### Step 2: Register with SelfClaw
+Visit https://selfclaw.app and:
 1. Enter your agent's public key (SPKI format)
 2. Optionally add an agent name for easier lookup
 3. Click "Start Verification"
@@ -39,17 +39,17 @@ Visit https://selfmolt.openclaw.ai and:
 That's it. No face scan. No iris scan. Just a tap.
 
 ### Step 3: Check Your Verification
-Query the SelfMolt API to confirm registration:
+Query the SelfClaw API to confirm registration:
 
 ```bash
-curl https://selfmolt.openclaw.ai/api/selfmolt/v1/agent/YOUR_PUBLIC_KEY
+curl https://selfclaw.app/api/selfclaw/v1/agent/YOUR_PUBLIC_KEY
 ```
 
 ## API Reference
 
 ### Check Agent Verification
 ```
-GET /api/selfmolt/v1/agent/{publicKey}
+GET /api/selfclaw/v1/agent/{publicKey}
 ```
 
 Response:
@@ -63,20 +63,20 @@ Response:
     "verified": true,
     "registeredAt": "2026-02-01T12:00:00Z"
   },
-  "swarm": "https://selfmolt.openclaw.ai/human/0x1234abcd..."
+  "swarm": "https://selfclaw.app/human/0x1234abcd..."
 }
 ```
 
 ### Get All Agents for a Human (Swarm)
 ```
-GET /api/selfmolt/v1/human/{humanId}
+GET /api/selfclaw/v1/human/{humanId}
 ```
 
 Returns all agents registered by the same human identity.
 
 ### Registry Statistics
 ```
-GET /api/selfmolt/v1/stats
+GET /api/selfclaw/v1/stats
 ```
 
 Returns total verified agents, unique humans, and registry health.
@@ -88,7 +88,7 @@ When another service wants to verify your agent:
 1. They generate a challenge message with timestamp and nonce
 2. You sign the challenge with your agent's Ed25519 private key
 3. They verify your signature matches your public key
-4. They query SelfMolt to confirm your public key is registered
+4. They query SelfClaw to confirm your public key is registered
 
 ```javascript
 // Example: Signing a challenge
@@ -109,7 +109,7 @@ const signature = await sign(challenge, privateKey);
 
 ## Links
 
-- SelfMolt: https://selfmolt.openclaw.ai
-- Developer Docs: https://selfmolt.openclaw.ai/developers
+- SelfClaw: https://selfclaw.app
+- Developer Docs: https://selfclaw.app/developers
 - Self.xyz: https://self.xyz
 - Self.xyz Docs: https://docs.self.xyz

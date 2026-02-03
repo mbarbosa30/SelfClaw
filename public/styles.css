@@ -2606,7 +2606,7 @@ body.dashboard-mode .cockpit-main {
   background: var(--green-light);
 }
 
-.selfmolt-hero .hero-headline {
+.selfclaw-hero .hero-headline {
   font-size: 3.25rem;
   line-height: 1.15;
   text-transform: none;
@@ -2919,20 +2919,20 @@ body.dashboard-mode .cockpit-main {
 }
 
 /* Footer */
-.selfmolt-footer {
+.selfclaw-footer {
   margin-top: 4rem;
   padding-top: 2rem;
   border-top: 1px solid var(--gray-300);
   text-align: center;
 }
 
-.selfmolt-footer a {
+.selfclaw-footer a {
   color: var(--green);
   text-decoration: none;
   font-weight: 600;
 }
 
-.selfmolt-footer a:hover {
+.selfclaw-footer a:hover {
   text-decoration: underline;
 }
 

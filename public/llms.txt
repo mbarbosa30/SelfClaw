@@ -1,10 +1,10 @@
-# SelfMolt - Agent Verification Registry
+# SelfClaw - Agent Verification Registry
 
-> Fake agents everywhere. Prove yours is real.
+> Verified agent keys, backed by Self.
 
-SelfMolt provides sybil-resistant verification for AI agents using Self.xyz passport proofs on Celo blockchain. Most "AI agents" are just REST APIs — anyone with an API key can post as an agent. SelfMolt solves this with cryptographic proof of humanity.
+SelfClaw provides sybil-resistant verification for AI agents using Self.xyz passport proofs on Celo blockchain. Most "AI agents" are just REST APIs — anyone with an API key can post as an agent. SelfClaw solves this with cryptographic proof of humanity.
 
-**Website:** https://selfmolt.openclaw.ai
+**Website:** https://selfclaw.app
 
 ## Quick Integration
 
@@ -12,7 +12,7 @@ SelfMolt provides sybil-resistant verification for AI agents using Self.xyz pass
 
 ```javascript
 const response = await fetch(
-  `https://selfmolt.openclaw.ai/api/selfmolt/v1/agent/${encodeURIComponent(publicKey)}`
+  `https://selfclaw.app/api/selfclaw/v1/agent/${encodeURIComponent(publicKey)}`
 );
 const data = await response.json();
 
@@ -27,10 +27,10 @@ if (data.verified) {
 
 | Endpoint | Description |
 |----------|-------------|
-| `GET /api/selfmolt/v1/agent/{publicKey}` | Check agent verification status |
-| `GET /api/selfmolt/v1/human/{humanId}` | Get all agents for a human (swarm) |
-| `GET /api/selfmolt/v1/stats` | Registry statistics |
-| `POST /api/selfmolt/v1/verify` | Register a verified agent |
+| `GET /api/selfclaw/v1/agent/{publicKey}` | Check agent verification status |
+| `GET /api/selfclaw/v1/human/{humanId}` | Get all agents for a human (swarm) |
+| `GET /api/selfclaw/v1/stats` | Registry statistics |
+| `POST /api/selfclaw/v1/verify` | Register a verified agent |
 
 ## Response Format
 
@@ -44,11 +44,11 @@ if (data.verified) {
     "verified": true,
     "registeredAt": "2026-02-01T12:00:00Z"
   },
-  "swarm": "https://selfmolt.openclaw.ai/human/0x1234abcd..."
+  "swarm": "https://selfclaw.app/human/0x1234abcd..."
 }
 ```
 
-## Why SelfMolt?
+## Why SelfClaw?
 
 1. **Passport-First** - Self.xyz uses your passport's NFC chip for verification. Works anywhere with a phone.
 2. **Zero-Knowledge Proofs** - Your passport data never leaves your device. Privacy by mathematics.
@@ -59,7 +59,7 @@ if (data.verified) {
 ## Implementation Steps
 
 1. Generate Ed25519 keypair for your agent
-2. Visit https://selfmolt.openclaw.ai to verify
+2. Visit https://selfclaw.app to verify
 3. Enter your agent's public key
 4. Scan QR code with Self.xyz mobile app
 5. Tap your passport's NFC chip — done
@@ -72,7 +72,7 @@ When verifying an agent's identity in your application:
 1. Generate unique challenge with timestamp and nonce
 2. Request agent signs challenge with Ed25519 private key
 3. Verify signature matches claimed public key
-4. Query SelfMolt API to confirm public key is registered
+4. Query SelfClaw API to confirm public key is registered
 
 ```javascript
 // 1. Generate challenge
@@ -88,10 +88,10 @@ const challenge = JSON.stringify({
 import { verify } from "@noble/ed25519";
 const isValid = await verify(signature, challenge, publicKey);
 
-// 4. Check SelfMolt registry
+// 4. Check SelfClaw registry
 if (isValid) {
   const res = await fetch(
-    `https://selfmolt.openclaw.ai/api/selfmolt/v1/agent/${publicKey}`
+    `https://selfclaw.app/api/selfclaw/v1/agent/${publicKey}`
   );
   const data = await res.json();
   if (data.verified) {
@@ -115,6 +115,6 @@ if (isValid) {
 
 ## Links
 
-- Landing Page: https://selfmolt.openclaw.ai
-- Developer Docs: https://selfmolt.openclaw.ai/developers
+- Landing Page: https://selfclaw.app
+- Developer Docs: https://selfclaw.app/developers
 - Self.xyz Docs: https://docs.self.xyz
