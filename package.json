@@ -7,6 +7,7 @@
   "scripts": {
     "start": "tsx server/index.ts",
     "dev": "tsx watch server/index.ts",
+    "build": "echo 'No build step required - using tsx runtime'",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "setup": "node scripts/setup.js",
