@@ -77,11 +77,11 @@ body {
 
 .header h1 {
   font-size: 2rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
+  font-weight: 500;
+  letter-spacing: 0.12em;
   line-height: 1;
   color: var(--white);
-  font-family: var(--font-mono);
+  font-family: 'IBM Plex Mono', 'Courier New', monospace;
 }
 
 .tag {
@@ -129,7 +129,9 @@ body {
 
 /* Buttons */
 .btn {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   padding: 0.75rem 1.75rem;
   background: var(--green);
   color: var(--black);
@@ -142,6 +144,7 @@ body {
   cursor: pointer;
   transition: all 0.2s ease;
   box-shadow: 0 0 20px rgba(0, 255, 182, 0.3);
+  line-height: 1;
 }
 
 .btn:hover {
