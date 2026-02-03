@@ -122,7 +122,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('save-profile')?.addEventListener('click', saveProfile);
   document.getElementById('skip-profile')?.addEventListener('click', skipProfile);
   
-  document.getElementById('check-verification')?.addEventListener('click', checkBotVerification);
+  document.getElementById('check-verification')?.addEventListener('click', checkAgentVerification);
   document.getElementById('start-verification')?.addEventListener('click', startAgentVerification);
 
   document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -1759,14 +1759,14 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 
-async function checkBotVerification() {
+async function checkAgentVerification() {
   const pubkey = document.getElementById('check-pubkey').value.trim();
   const resultEl = document.getElementById('check-result');
   
   if (!pubkey) {
     resultEl.style.display = 'block';
     resultEl.className = 'check-result not-verified';
-    resultEl.innerHTML = '<h4 class="not-verified-badge">Enter a public key or device ID</h4>';
+    resultEl.innerHTML = '<h4 class="not-verified-badge">Enter a public key or agent name</h4>';
     return;
   }
   
@@ -1830,4 +1830,5 @@ async function startAgentVerification() {
   `;
 }
 
+const checkBotVerification = checkAgentVerification;
 const startBotVerification = startAgentVerification;
