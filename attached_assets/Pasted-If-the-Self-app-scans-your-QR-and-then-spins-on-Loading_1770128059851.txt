@@ -1,0 +1,136 @@
+If the Self app scans your QR and then spins on **“Loading…”** forever *and your HTTPS endpoint never receives a POST*, the important reframing is:
+
+**In the backend (HTTPS) verification flow, the Self mobile app is supposed to POST the proof to *your* endpoint.** Your endpoint is the verifier. So if there’s no inbound request, it’s almost never “relayers didn’t call it”, it’s “the app couldn’t reach the endpoint you encoded in the QR (or got blocked before your origin)”. ([docs.self.xyz][1])
+
+Here are the most common causes, in the order that matches your symptom (QR reads fine → spinner → no server logs).
+
+---
+
+## 1) You’re not actually using the exact endpoint the QR contains
+
+Even with “config matches”, I always verify by **decoding the QR payload**:
+
+* Scan the QR with a normal camera/QR app and copy the resulting link.
+* Confirm it contains:
+
+  * `endpointType=https`
+  * `endpoint=https://selfclaw.app/api/selfclaw/v1/callback` (exact, no typo, no hidden staging env)
+  * `scope=selfclaw-verify`
+
+This catches “frontend env var still points to old domain/path” instantly.
+
+---
+
+## 2) IPv6/DNS mismatch (very common on mobile networks)
+
+Phones (especially on cellular) often prefer **IPv6**. Your laptop `curl` may be hitting IPv4 and working, while the phone tries IPv6 and stalls.
+
+Run these from anywhere you can:
+
+```bash
+dig A selfclaw.app
+dig AAAA selfclaw.app
+curl -4 -v https://selfclaw.app/api/selfclaw/v1/callback
+curl -6 -v https://selfclaw.app/api/selfclaw/v1/callback
+```
+
+If `curl -6` hangs/fails but `curl -4` works, you’ve found your “Loading…” ghost.
+
+**Fix:** make IPv6 work for the domain, or temporarily remove/break the AAAA record until it does.
+
+---
+
+## 3) Cloudflare/WAF or bot protection blocking non-browser POSTs
+
+If `selfclaw.app` is behind Cloudflare (or similar), you can get this exact behavior:
+
+* curl from your machine works
+* Self app request never reaches your origin logs
+* Self app doesn’t show a useful error, just “Loading…”
+
+Because the request is blocked at the edge (managed challenge, bot fight mode, rate limiting, firewall rules), not at your server.
+
+**What to check:**
+
+* Cloudflare **Firewall Events / Security Events** for blocked requests to `/api/selfclaw/v1/callback`
+* Disable “Bot Fight Mode” or any “JS challenge” for that route
+* Ensure the route doesn’t require cookies, headers, or browser-like behavior
+
+(Self’s backend flow expects your endpoint to be publicly reachable and callable by the app.) ([docs.self.xyz][2])
+
+---
+
+## 4) Redirects or method mismatch (308/301 traps)
+
+Mobile HTTP clients sometimes won’t follow redirects the way you expect.
+
+Check:
+
+```bash
+curl -I https://selfclaw.app/api/selfclaw/v1/callback
+curl -v -X POST https://selfclaw.app/api/selfclaw/v1/callback -H "content-type: application/json" -d '{}'
+```
+
+You want:
+
+* **no redirect** (no 301/302/307/308)
+* endpoint accepts **POST** exactly at that URL
+
+A very typical bug is `/callback` redirects to `/callback/` (or vice versa). Your curl might look “fine” unless you explicitly check for redirects.
+
+---
+
+## 5) Replit specifics: cold starts + body size + edge routing
+
+Replit-hosted endpoints can fail in ways that look like “nothing hit my server” if:
+
+* the app is asleep and cold start is long, and the Self client times out
+* a proxy rejects large POST bodies (proof payloads can be big)
+* traffic is blocked at the domain proxy layer before it reaches your repl (again: you’ll see nothing in app logs)
+
+**Fast isolation test:**
+Temporarily set the Self endpoint to a dumb “always 200” handler that logs immediately (before parsing JSON) and returns instantly. If even that never logs, you’re back to (2) or (3).
+
+---
+
+## 6) Version skew between packages (less likely to cause “no POST”, but still worth fixing)
+
+You’re using:
+
+* `@selfxyz/core ^1.1.0-beta.7`
+* `@selfxyz/qrcode ^1.0.18`
+
+Self docs emphasize staying on `@selfxyz/core >= 1.1.0-beta.1` for correct network behavior. ([docs.self.xyz][3])
+But beta/stable skew can still create weird QR payload differences. If you can, align to the versions recommended in the current docs (or use the workshop repo versions) and retest. ([docs.self.xyz][1])
+
+---
+
+## The two quickest “pin it down” tests
+
+### Test A: Change endpoint to a request catcher
+
+Point `endpoint` to something like a temporary webhook capture service. If the Self app POST shows up there, your Self config is fine and your infra (DNS/IPv6/WAF) is the blocker.
+
+### Test B: Use cellular + phone browser
+
+On the same phone that’s scanning:
+
+* open the callback URL in Safari/Chrome on **cellular data**
+* if it doesn’t load consistently, it’s almost certainly IPv6/DNS or WAF.
+
+---
+
+## Answering your direct question
+
+> Why might Self.xyz relayers not call my callback?
+
+In the HTTPS backend flow, the expected design is that **your API endpoint receives the proof and verifies it**. ([docs.self.xyz][1])
+So if you see *no inbound request*, it’s most likely **connectivity or blocking**, not a relayer scheduling issue.
+
+---
+
+If you paste (1) the exact universal link that your QR decodes to (you can redact obvious branding), and (2) whether you’re behind Cloudflare + whether the domain has AAAA records, I can tell you which of the top 3 causes it is with very high confidence.
+
+[1]: https://docs.self.xyz/use-self/quickstart "Quickstart | Self Docs"
+[2]: https://docs.self.xyz/use-self/quickstart?utm_source=chatgpt.com "Quickstart | Self Docs"
+[3]: https://docs.self.xyz/backend-integration/basic-integration "Basic Integration | Self Docs"
