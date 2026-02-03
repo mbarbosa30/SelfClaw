@@ -82,6 +82,14 @@ ClawPit is an autonomous agent platform that provides a web-based cockpit for cr
 - **LinkedIn**: No public API available for message reading - LinkedIn restricts API access to approved partners only.
 
 ## Recent Changes
+- **February 3, 2026**: Agent Integration section and documentation fixes
+  - Added "For Your Agent" section with Manual/Via Claw tabbed interface
+  - Manual tab: `Read https://selfclaw.app/skill.md and follow the instructions to verify.`
+  - Via Claw tab: `claw install mbarrbosa/selfclaw`
+  - 3-step visual guide: Send to agent → Verify with Self → Verified owner
+  - Updated llms.txt and skill.md to clarify NFC tap is one-time Self setup, not per-verification
+  - Fixed app.js QR popup to say "Approve the verification" instead of "Tap your passport's NFC chip"
+  - Scoped cockpit tab handlers to prevent conflicts with landing page tabs
 - **February 3, 2026**: SEO and branding improvements
   - Added comprehensive SEO meta tags: description, keywords, author
   - Open Graph tags for social sharing (og:title, og:description, og:image)
