@@ -404,16 +404,34 @@ router.get("/v1/agent/:identifier", publicApiLimiter, async (req: Request, res: 
   try {
     const { identifier } = req.params;
     
-    let agents = await db.select()
-      .from(verifiedBots)
-      .where(sql`${verifiedBots.publicKey} = ${identifier}`)
-      .limit(1);
+    if (!identifier || identifier.length < 2) {
+      return res.json({
+        verified: false,
+        publicKey: identifier || "",
+        message: "Invalid identifier"
+      });
+    }
     
-    if (agents.length === 0) {
+    let agents: any[] = [];
+    
+    try {
       agents = await db.select()
         .from(verifiedBots)
-        .where(sql`${verifiedBots.deviceId} = ${identifier}`)
+        .where(sql`${verifiedBots.publicKey} = ${identifier}`)
         .limit(1);
+    } catch (dbError) {
+      console.error("[selfclaw] DB error on publicKey lookup:", dbError);
+    }
+    
+    if (agents.length === 0) {
+      try {
+        agents = await db.select()
+          .from(verifiedBots)
+          .where(sql`${verifiedBots.deviceId} = ${identifier}`)
+          .limit(1);
+      } catch (dbError) {
+        console.error("[selfclaw] DB error on deviceId lookup:", dbError);
+      }
     }
     
     const foundAgent = agents[0];
@@ -440,7 +458,11 @@ router.get("/v1/agent/:identifier", publicApiLimiter, async (req: Request, res: 
     });
   } catch (error: any) {
     console.error("[selfclaw] agent lookup error:", error);
-    res.status(500).json({ error: error.message });
+    return res.json({
+      verified: false,
+      publicKey: req.params.identifier || "",
+      message: "Lookup failed"
+    });
   }
 });
 
