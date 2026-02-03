@@ -20,6 +20,7 @@ The full ClawPit agent platform (autonomous agents, skills marketplace, Celo pay
 ### Agent Integration
 - `/skill.md` - Agent-readable verification instructions
 - `/llms.txt` - LLM-friendly integration documentation
+- `/developers` - Developer documentation page with integration guide
 
 ---
 
