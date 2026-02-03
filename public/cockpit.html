@@ -198,7 +198,447 @@
       </footer>
     </div>
 
-    <section id="dashboard" class="dashboard-section" style="display:none;">
+    <section id="dashboard" class="dashboard-section agents-section" style="display:none;">
+      <div class="dashboard-layout">
+        <aside class="agents-sidebar">
+          <div class="sidebar-header">
+            <h3>AGENTS</h3>
+            <button id="create-agent-btn" class="btn btn-sm">+ NEW</button>
+          </div>
+          <div id="agents-nav" class="agents-nav"></div>
+          
+          <div class="sidebar-section">
+            <div class="sidebar-header">
+              <h3>ACTIVITY</h3>
+            </div>
+            <div id="activity-feed-sidebar" class="activity-feed-compact">
+              <div class="loading-small">Loading...</div>
+            </div>
+          </div>
+        </aside>
+        
+        <main class="cockpit-main">
+          <div id="cockpit-empty" class="cockpit-empty">
+            <div class="empty-content">
+              <h2>Welcome to Your Cockpit</h2>
+              <p>Select an agent from the sidebar or create a new one to get started.</p>
+              <button class="btn btn-large" onclick="showCreateWizard()">CREATE YOUR FIRST AGENT</button>
+            </div>
+          </div>
+          
+          <div id="cockpit-view" class="cockpit-view" style="display:none;">
+            <div class="cockpit-header">
+              <div class="agent-identity">
+                <h2 id="cockpit-agent-name">Agent Name</h2>
+                <span id="cockpit-agent-status" class="agent-status">active</span>
+              </div>
+              <div class="cockpit-stats">
+                <div class="cockpit-stat">
+                  <span id="cockpit-credits" class="stat-value">0.00</span>
+                  <span class="stat-label">credits</span>
+                </div>
+                <div class="cockpit-stat">
+                  <span id="cockpit-wallet" class="stat-value wallet-addr">---</span>
+                  <span class="stat-label">wallet</span>
+                </div>
+              </div>
+            </div>
+            
+            <nav class="cockpit-tabs">
+              <button class="tab-btn active" data-tab="console">Console</button>
+              <button class="tab-btn" data-tab="goals">Goals</button>
+              <button class="tab-btn" data-tab="tasks">Tasks</button>
+              <button class="tab-btn" data-tab="config">Config</button>
+              <button class="tab-btn" data-tab="skills">Skills</button>
+              <button class="tab-btn" data-tab="wallet">Wallet</button>
+              <button class="tab-btn" data-tab="data">Data</button>
+            </nav>
+            
+            <div class="cockpit-content">
+              <div id="tab-console" class="tab-panel active">
+                <div class="console-container">
+                  <div id="chat-messages" class="chat-messages"></div>
+                  <div class="chat-input-area">
+                    <textarea id="chat-input" class="input chat-input" placeholder="Send a message to your agent..." rows="2"></textarea>
+                    <button id="send-chat" class="btn">SEND</button>
+                  </div>
+                </div>
+              </div>
+              
+              <div id="tab-goals" class="tab-panel">
+                <div class="goals-panel">
+                  <div class="section-header">
+                    <h4>Agent Goals</h4>
+                    <button id="add-goal-btn" class="btn btn-sm">+ ADD GOAL</button>
+                  </div>
+                  <p class="note">Goals persist across sessions. Your agent remembers its objectives and works toward them autonomously.</p>
+                  <div id="goals-list" class="goals-list"></div>
+                  
+                  <div id="add-goal-form" class="add-form" style="display:none;">
+                    <h5>New Goal</h5>
+                    <div class="form-group">
+                      <label>Goal</label>
+                      <textarea id="new-goal-text" class="input" rows="3" placeholder="Describe what your agent should accomplish..."></textarea>
+                    </div>
+                    <div class="form-group">
+                      <label>Priority (1-10)</label>
+                      <input type="number" id="new-goal-priority" class="input" value="5" min="1" max="10" />
+                    </div>
+                    <div class="form-actions">
+                      <button id="save-goal-btn" class="btn btn-sm">Save Goal</button>
+                      <button id="cancel-goal-btn" class="btn btn-sm btn-outline">Cancel</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div id="tab-tasks" class="tab-panel">
+                <div class="tasks-panel">
+                  <div class="section-header">
+                    <h4>Scheduled Tasks</h4>
+                    <button id="add-task-btn" class="btn btn-sm">+ ADD TASK</button>
+                  </div>
+                  <p class="note">Schedule autonomous actions. Your agent runs these tasks on its own without prompting.</p>
+                  <div id="tasks-list" class="tasks-list"></div>
+                  
+                  <div id="add-task-form" class="add-form" style="display:none;">
+                    <h5>New Scheduled Task</h5>
+                    <div class="form-group">
+                      <label>Task Name</label>
+                      <input type="text" id="new-task-name" class="input" placeholder="e.g., Daily Research" />
+                    </div>
+                    <div class="form-group">
+                      <label>Description</label>
+                      <textarea id="new-task-description" class="input" rows="2" placeholder="What should the agent do?"></textarea>
+                    </div>
+                    <div class="form-group">
+                      <label>Schedule (Cron)</label>
+                      <select id="new-task-cron" class="input">
+                        <option value="0 * * * *">Every hour</option>
+                        <option value="0 */6 * * *">Every 6 hours</option>
+                        <option value="0 9 * * *">Daily at 9 AM</option>
+                        <option value="0 9 * * 1">Weekly (Mondays)</option>
+                        <option value="*/30 * * * *">Every 30 minutes</option>
+                      </select>
+                    </div>
+                    <div class="form-group">
+                      <label>Task Type</label>
+                      <select id="new-task-type" class="input">
+                        <option value="goal_check">Goal Progress Check</option>
+                        <option value="web_research">Web Research</option>
+                        <option value="skill_execution">Execute Skill</option>
+                        <option value="custom">Custom Prompt</option>
+                      </select>
+                    </div>
+                    <div class="form-actions">
+                      <button id="save-task-btn" class="btn btn-sm">Save Task</button>
+                      <button id="cancel-task-btn" class="btn btn-sm btn-outline">Cancel</button>
+                    </div>
+                  </div>
+                  
+                  <div class="tool-executions-section" style="margin-top: 2rem;">
+                    <h4>RECENT TOOL EXECUTIONS</h4>
+                    <div id="tool-executions-list" class="tool-executions-list">
+                      <p class="note">Tool calls will appear here as your agent runs.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div id="tab-config" class="tab-panel">
+                <div class="config-panel">
+                  <div class="form-group">
+                    <label>Agent Name</label>
+                    <input type="text" id="config-name" class="input" />
+                  </div>
+                  <div class="form-group">
+                    <label>Description</label>
+                    <textarea id="config-description" class="input" rows="2"></textarea>
+                  </div>
+                  <div class="form-group">
+                    <label>System Prompt</label>
+                    <textarea id="config-system-prompt" class="input" rows="4" placeholder="Define your agent's personality and instructions..."></textarea>
+                  </div>
+                  <div class="form-group">
+                    <label>Model</label>
+                    <select id="config-model" class="input">
+                      <optgroup label="OpenAI (Ready to use)">
+                        <option value="gpt-4o">GPT-4o (Recommended)</option>
+                        <option value="gpt-5.2">GPT-5.2 (Latest)</option>
+                        <option value="gpt-4.1">GPT-4.1 (Coding)</option>
+                        <option value="gpt-4.1-mini">GPT-4.1 Mini</option>
+                        <option value="o3">o3 (Reasoning)</option>
+                        <option value="o4-mini">o4-mini (Fast Reasoning)</option>
+                      </optgroup>
+                      <optgroup label="Anthropic (API key required)">
+                        <option value="claude-sonnet-4-5">Claude Sonnet 4.5</option>
+                        <option value="claude-opus-4-5">Claude Opus 4.5</option>
+                        <option value="claude-haiku-4-5">Claude Haiku 4.5</option>
+                        <option value="claude-sonnet-4">Claude Sonnet 4</option>
+                      </optgroup>
+                      <optgroup label="Other providers (API key required)">
+                        <option value="moonshotai/Kimi-K2.5">Kimi K2.5 (Moonshot)</option>
+                        <option value="minimax-01">MiniMax-01</option>
+                        <option value="deepseek-r1">DeepSeek R1</option>
+                        <option value="llama-4-maverick">Llama 4 Maverick (OpenRouter)</option>
+                        <option value="qwen3-235b">Qwen3 235B (OpenRouter)</option>
+                      </optgroup>
+                    </select>
+                    <p class="hint">OpenAI models work immediately. Add API keys below for other providers.</p>
+                  </div>
+                  <div id="models-status" class="models-status" style="margin-top: 0.5rem;"></div>
+                  <h4>Connected Services</h4>
+                  <p class="note">Connect your accounts to give your agent more capabilities</p>
+                  <div id="gmail-connection" class="service-connection">
+                    <div class="service-info">
+                      <span class="service-icon">&#x2709;</span>
+                      <div>
+                        <strong>Gmail</strong>
+                        <span id="gmail-status" class="status-text">Not connected</span>
+                      </div>
+                    </div>
+                    <button id="gmail-connect-btn" class="btn btn-sm" onclick="connectGmail()">Connect</button>
+                  </div>
+
+                  <h4 style="margin-top: 1.5rem;">API Keys</h4>
+                  <p class="note">Add your own API keys to enable additional models</p>
+                  <div id="config-secrets" class="secrets-list"></div>
+                  <button id="add-secret-btn" class="btn btn-sm btn-outline">+ Add API Key</button>
+                  <div class="form-actions" style="margin-top: 1.5rem;">
+                    <button id="save-config-btn" class="btn">SAVE CONFIGURATION</button>
+                  </div>
+                </div>
+              </div>
+              
+              <div id="tab-skills" class="tab-panel">
+                <div class="skills-panel">
+                  <div class="section-header">
+                    <h4>Agent Skills</h4>
+                    <button id="add-skill-btn" class="btn btn-sm">+ NEW SKILL</button>
+                  </div>
+                  <p class="note">Skills are capabilities your agent can offer to others in the marketplace.</p>
+                  <div id="agent-skills-list" class="skills-list"></div>
+                  
+                  <div class="skills-marketplace-preview" style="margin-top: 2rem;">
+                    <h4>MARKETPLACE</h4>
+                    <div class="marketplace-filters">
+                      <select id="category-filter" class="input">
+                        <option value="all">All Categories</option>
+                        <option value="research">Research</option>
+                        <option value="analysis">Analysis</option>
+                        <option value="automation">Automation</option>
+                        <option value="creative">Creative</option>
+                        <option value="general">General</option>
+                      </select>
+                      <input type="text" id="search-filter" class="input" placeholder="Search..." />
+                    </div>
+                    <div id="marketplace-list" class="marketplace-list"></div>
+                  </div>
+                </div>
+              </div>
+              
+              <div id="tab-wallet" class="tab-panel">
+                <div class="wallet-panel">
+                  <div class="wallet-balance-card">
+                    <h4>WALLET BALANCE</h4>
+                    <div class="balance-grid">
+                      <div class="balance-item">
+                        <span id="wallet-credits" class="balance-value">0.00</span>
+                        <span class="balance-label">Platform Credits</span>
+                      </div>
+                      <div class="balance-item">
+                        <span id="wallet-usdc" class="balance-value">$0.00</span>
+                        <span class="balance-label">USDC (Celo)</span>
+                      </div>
+                    </div>
+                    <div class="wallet-address">
+                      <label>Wallet Address</label>
+                      <code id="wallet-full-address">---</code>
+                    </div>
+                  </div>
+                  
+                  <div class="credits-section">
+                    <h4>ADD CREDITS</h4>
+                    <div class="credits-options">
+                      <button class="credit-option" data-amount="10">$10 = 100 credits</button>
+                      <button class="credit-option" data-amount="40">$40 = 500 credits</button>
+                    </div>
+                  </div>
+                  
+                  <div class="transactions-section">
+                    <h4>RECENT TRANSACTIONS</h4>
+                    <div id="wallet-transactions" class="transactions-list">
+                      <p class="note">No transactions yet</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div id="tab-data" class="tab-panel">
+                <div class="data-panel">
+                  <h4>ANALYTICS</h4>
+                  <div id="analytics-stats" class="analytics-grid"></div>
+                  
+                  <h4 style="margin-top: 2rem;">ACTIVITY LOG</h4>
+                  <div id="activity-log" class="activity-log">
+                    <p class="note">Activity will appear here as your agent is used.</p>
+                  </div>
+                  
+                  <h4 style="margin-top: 2rem;">IDENTITY</h4>
+                  <div class="identity-section">
+                    <p>ERC-8004 Registration</p>
+                    <button id="download-registration" class="btn btn-sm btn-outline">Download Registration File</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div id="create-wizard" class="create-wizard" style="display:none;">
+            <div class="wizard-header">
+              <h2>CREATE NEW AGENT</h2>
+              <button class="btn btn-sm btn-outline" onclick="hideCreateWizard()">Cancel</button>
+            </div>
+            
+            <div class="wizard-steps">
+              <div class="wizard-step active" data-step="1">
+                <span class="step-num">1</span>
+                <span class="step-label">Identity</span>
+              </div>
+              <div class="wizard-step" data-step="2">
+                <span class="step-num">2</span>
+                <span class="step-label">Personality</span>
+              </div>
+              <div class="wizard-step" data-step="3">
+                <span class="step-num">3</span>
+                <span class="step-label">Review</span>
+              </div>
+            </div>
+            
+            <div id="wizard-content" class="wizard-content">
+              <div id="wizard-step-1" class="wizard-panel active">
+                <h3>Choose a Template</h3>
+                <p>Start with a pre-configured role or create a custom agent.</p>
+                <div id="template-grid" class="template-grid">
+                  <div class="template-card selected" data-template="blank" onclick="selectTemplate('blank')">
+                    <span class="template-icon">&#x2B50;</span>
+                    <strong>Blank Agent</strong>
+                    <p>Start from scratch</p>
+                  </div>
+                  <div class="template-card" data-template="developer" onclick="selectTemplate('developer')">
+                    <span class="template-icon">&#x1F4BB;</span>
+                    <strong>Developer</strong>
+                    <p>Code &amp; debug</p>
+                  </div>
+                  <div class="template-card" data-template="researcher" onclick="selectTemplate('researcher')">
+                    <span class="template-icon">&#x1F50D;</span>
+                    <strong>Researcher</strong>
+                    <p>Deep research</p>
+                  </div>
+                  <div class="template-card" data-template="writer" onclick="selectTemplate('writer')">
+                    <span class="template-icon">&#x270D;</span>
+                    <strong>Writer</strong>
+                    <p>Content &amp; copy</p>
+                  </div>
+                  <div class="template-card" data-template="analyst" onclick="selectTemplate('analyst')">
+                    <span class="template-icon">&#x1F4CA;</span>
+                    <strong>Analyst</strong>
+                    <p>Data &amp; insights</p>
+                  </div>
+                  <div class="template-card" data-template="assistant" onclick="selectTemplate('assistant')">
+                    <span class="template-icon">&#x1F4CB;</span>
+                    <strong>Assistant</strong>
+                    <p>Personal help</p>
+                  </div>
+                  <div class="template-card" data-template="customer-support" onclick="selectTemplate('customer-support')">
+                    <span class="template-icon">&#x1F4AC;</span>
+                    <strong>Support</strong>
+                    <p>Customer care</p>
+                  </div>
+                </div>
+                <div class="form-group" style="margin-top: 1.5rem;">
+                  <label>Agent Name *</label>
+                  <input type="text" id="wizard-name" class="input" placeholder="e.g., Research Assistant, Content Writer" />
+                </div>
+                <div class="form-group">
+                  <label>Description</label>
+                  <textarea id="wizard-description" class="input" rows="2" placeholder="What does this agent do?"></textarea>
+                </div>
+                <div class="wizard-actions">
+                  <button class="btn" onclick="wizardNext()">CONTINUE</button>
+                </div>
+              </div>
+              
+              <div id="wizard-step-2" class="wizard-panel">
+                <h3>Define Personality</h3>
+                <p>Set how your agent should behave and communicate.</p>
+                <div class="form-group">
+                  <label>System Prompt</label>
+                  <textarea id="wizard-prompt" class="input" rows="5" placeholder="You are a helpful assistant that..."></textarea>
+                  <p class="hint">This defines your agent's personality and behavior. Leave blank for a general-purpose assistant.</p>
+                </div>
+                <div class="form-group">
+                  <label>AI Model</label>
+                  <select id="wizard-model" class="input">
+                    <optgroup label="OpenAI (Ready to use)">
+                      <option value="gpt-4o">GPT-4o (Recommended)</option>
+                      <option value="gpt-5.2">GPT-5.2 (Latest)</option>
+                      <option value="gpt-4.1">GPT-4.1 (Coding)</option>
+                      <option value="gpt-4.1-mini">GPT-4.1 Mini</option>
+                      <option value="o3">o3 (Reasoning)</option>
+                      <option value="o4-mini">o4-mini (Fast Reasoning)</option>
+                    </optgroup>
+                    <optgroup label="Anthropic (API key required)">
+                      <option value="claude-sonnet-4-5">Claude Sonnet 4.5</option>
+                      <option value="claude-opus-4-5">Claude Opus 4.5</option>
+                      <option value="claude-haiku-4-5">Claude Haiku 4.5</option>
+                      <option value="claude-sonnet-4">Claude Sonnet 4</option>
+                    </optgroup>
+                    <optgroup label="Other providers (API key required)">
+                      <option value="moonshotai/Kimi-K2.5">Kimi K2.5 (Moonshot)</option>
+                      <option value="minimax-01">MiniMax-01</option>
+                      <option value="deepseek-r1">DeepSeek R1</option>
+                      <option value="llama-4-maverick">Llama 4 Maverick (OpenRouter)</option>
+                      <option value="qwen3-235b">Qwen3 235B (OpenRouter)</option>
+                    </optgroup>
+                  </select>
+                  <p class="hint">OpenAI models work immediately. Other providers require adding your API key in Config after creation.</p>
+                </div>
+                <div class="wizard-actions">
+                  <button class="btn btn-outline" onclick="wizardPrev()">BACK</button>
+                  <button class="btn" onclick="wizardNext()">CONTINUE</button>
+                </div>
+              </div>
+              
+              <div id="wizard-step-3" class="wizard-panel">
+                <h3>Review & Create</h3>
+                <div class="review-summary">
+                  <div class="review-item">
+                    <span class="review-label">Name:</span>
+                    <span id="review-name" class="review-value">-</span>
+                  </div>
+                  <div class="review-item">
+                    <span class="review-label">Description:</span>
+                    <span id="review-description" class="review-value">-</span>
+                  </div>
+                  <div class="review-item">
+                    <span class="review-label">Model:</span>
+                    <span id="review-model" class="review-value">-</span>
+                  </div>
+                </div>
+                <div class="free-credits-note">
+                  <strong>Your agent will receive 10 free credits</strong>
+                  <p>That's 1,000 AI requests to start experimenting.</p>
+                </div>
+                <div class="wizard-actions">
+                  <button class="btn btn-outline" onclick="wizardPrev()">BACK</button>
+                  <button class="btn btn-large" onclick="createAgentFromWizard()">CREATE AGENT</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
     </section>
   </div>
 
@@ -298,32 +738,13 @@
         }, 3000);
       }
       
-      try {
-        const response = await fetch('/api/auth/user');
-        if (response.ok) {
-          const user = await response.json();
-          if (user && user.id) {
-            document.getElementById('auth-logged-in').style.display = 'flex';
-            document.getElementById('auth-logged-out').style.display = 'none';
-            document.getElementById('user-name').textContent = user.firstName || user.email || 'User';
-            if (user.profileImageUrl) {
-              document.getElementById('user-avatar').src = user.profileImageUrl;
-            }
-            document.getElementById('cockpit-landing').style.display = 'none';
-            document.getElementById('dashboard').style.display = 'block';
-            if (typeof initDashboard === 'function') {
-              initDashboard();
-            }
-          } else {
-            document.getElementById('auth-logged-in').style.display = 'none';
-            document.getElementById('auth-logged-out').style.display = 'flex';
-          }
-        } else {
-          document.getElementById('auth-logged-in').style.display = 'none';
-          document.getElementById('auth-logged-out').style.display = 'flex';
+      if (typeof loadAuthState === 'function') {
+        await loadAuthState();
+        const dashboard = document.getElementById('dashboard');
+        if (dashboard && dashboard.style.display === 'block') {
+          document.getElementById('cockpit-landing').style.display = 'none';
         }
-      } catch (e) {
-        document.getElementById('auth-logged-in').style.display = 'none';
+      } else {
         document.getElementById('auth-logged-out').style.display = 'flex';
       }
     });

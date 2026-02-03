@@ -270,7 +270,7 @@ async function loadAuthState() {
   const loadingEl = document.getElementById('auth-loading');
   const loggedOutEl = document.getElementById('auth-logged-out');
   const loggedInEl = document.getElementById('auth-logged-in');
-  const agentsSection = document.getElementById('agents-section');
+  const agentsSection = document.getElementById('agents-section') || document.getElementById('dashboard');
   const onboardingSection = document.getElementById('onboarding-section');
   const heroSignin = document.getElementById('hero-signin');
   const cockpitLink = document.getElementById('cockpit-link');
@@ -324,8 +324,10 @@ async function loadAuthState() {
           agentsSection.style.display = 'none';
           loadProfileForm(profile);
         } else {
-          onboardingSection.style.display = 'none';
-          agentsSection.style.display = 'block';
+          if (onboardingSection) onboardingSection.style.display = 'none';
+          if (agentsSection) agentsSection.style.display = 'block';
+          const cockpitLanding = document.getElementById('cockpit-landing');
+          if (cockpitLanding) cockpitLanding.style.display = 'none';
           loadAgents();
         }
       } else {
@@ -394,7 +396,8 @@ async function saveProfile() {
     
     if (res.ok) {
       document.getElementById('onboarding-section').style.display = 'none';
-      document.getElementById('agents-section').style.display = 'block';
+      const agentsEl = document.getElementById('agents-section') || document.getElementById('dashboard');
+      if (agentsEl) agentsEl.style.display = 'block';
       loadAgents();
     } else {
       const err = await res.json();
@@ -407,7 +410,8 @@ async function saveProfile() {
 
 function skipProfile() {
   document.getElementById('onboarding-section').style.display = 'none';
-  document.getElementById('agents-section').style.display = 'block';
+  const agentsEl = document.getElementById('agents-section') || document.getElementById('dashboard');
+  if (agentsEl) agentsEl.style.display = 'block';
   loadAgents();
 }
 
