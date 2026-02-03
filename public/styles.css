@@ -2990,6 +2990,10 @@ body.dashboard-mode .cockpit-main {
   width: 90%;
 }
 
+.donate-title {
+  color: var(--gray-500);
+}
+
 .donate-mission {
   color: var(--gray-200);
   line-height: 1.7;
@@ -3007,7 +3011,7 @@ body.dashboard-mode .cockpit-main {
 
 .donate-wallet label {
   display: block;
-  color: var(--gray-300);
+  color: var(--gray-500);
   font-size: 0.9rem;
   margin-bottom: 1rem;
 }
