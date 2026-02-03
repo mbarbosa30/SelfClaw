@@ -49,3 +49,4 @@ SELFCLAW_STAGING = "false"
 
 [userenv.development]
 SELFCLAW_STAGING = "false"
+SELFCLAW_CALLBACK_URL = "https://selfclaw.app/api/selfclaw/v1/callback"
