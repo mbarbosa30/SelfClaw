@@ -1,3 +1,22 @@
+const SELFMOLT_HEADLINES = [
+  { text: "Anyone can fake an agent.", highlight: "Prove yours is real." },
+  { text: "Your agent.", highlight: "Cryptographically backed by you." },
+  { text: "In a world of fake agents,", highlight: "prove yours has a human." },
+  { text: "Stop the sybils.", highlight: "Verify your agent." },
+  { text: "REST APIs can lie.", highlight: "Passports don't." },
+  { text: "500,000 fake accounts in one script.", highlight: "Not with SelfMolt." }
+];
+
+function initRotatingHeadline() {
+  const headlineEl = document.getElementById('rotating-headline');
+  if (!headlineEl) return;
+  
+  const headline = SELFMOLT_HEADLINES[Math.floor(Math.random() * SELFMOLT_HEADLINES.length)];
+  headlineEl.innerHTML = `${headline.text}<br/><span class="text-green">${headline.highlight}</span>`;
+}
+
+document.addEventListener('DOMContentLoaded', initRotatingHeadline);
+
 let currentUser = null;
 let currentAgent = null;
 let currentWizardStep = 1;

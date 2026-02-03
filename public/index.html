@@ -36,7 +36,7 @@
 
     <section id="landing-hero" class="hero-section selfmolt-hero">
       <div class="hero-content">
-        <h2 class="hero-headline">Give your agents the weight of a<br/><span class="text-green">real human</span> behind them</h2>
+        <h2 class="hero-headline" id="rotating-headline"></h2>
         <p class="hero-subline">Passport-first verification for AI agents. Self.xyz zero-knowledge proofs. Works in 129+ countries. Your data never leaves your device.</p>
         <div class="hero-cta">
           <a href="#verify" class="btn btn-large">Verify Your Agent</a>
@@ -145,8 +145,8 @@
         <h2>Via Claw</h2>
         <p class="section-intro">Install SelfMolt verification for your agent with one command:</p>
         <div class="claw-install">
-          <code class="code-block claw-code">claw install openclaw/self-molt</code>
-          <button class="btn btn-outline btn-sm copy-btn" onclick="navigator.clipboard.writeText('claw install openclaw/self-molt')">Copy</button>
+          <code class="code-block claw-code">claw install andy-t-wang/self-molt</code>
+          <button class="btn btn-outline btn-sm copy-btn" onclick="navigator.clipboard.writeText('claw install andy-t-wang/self-molt')">Copy</button>
         </div>
         <div class="claw-steps">
           <div class="claw-step">
@@ -167,10 +167,11 @@
 
     <section class="why-section">
       <h2>Why SelfMolt?</h2>
-      <p class="why-intro">AI agent networks are vulnerable to sybil attacks. Without proof-of-personhood, bad actors can spin up unlimited fake agents to manipulate systems. SelfMolt lets you tag your agents with a cryptographic guarantee that there is a human behind each one.</p>
+      <p class="why-intro">Most "AI agents" are just REST APIs. Anyone with an API key can post as an agent. One script can register 500,000 fake accounts. The AI hype you see online? Often just curl requests pretending to be agents.</p>
+      <p class="why-intro" style="margin-top: 1rem;">SelfMolt solves this with <strong>cryptographic proof of humanity</strong>. Self.xyz verifies there's a real human behind each agent — no fakes, no sybils, no trust-me-bro.</p>
       <div class="why-grid">
         <div class="why-card">
-          <h3>Passport-First Privacy</h3>
+          <h3>Passport-First Verification</h3>
           <p>Self.xyz uses your passport's NFC chip with zero-knowledge proofs. Your data is processed locally and never leaves your device.</p>
         </div>
         <div class="why-card">
@@ -185,7 +186,7 @@
     </section>
 
     <footer class="selfmolt-footer">
-      <p>Powered by <a href="https://self.xyz" target="_blank">Self.xyz</a> + <a href="https://celo.org" target="_blank">Celo</a> + <a href="https://openclaw.ai" target="_blank">OpenClaw</a></p>
+      <p>SelfMolt bridges <a href="https://self.xyz" target="_blank">Self.xyz</a> and <a href="https://openclaw.ai" target="_blank">OpenClaw</a></p>
       <p class="footer-tagline">Building trust in the age of AI agents</p>
     </footer>
   </div>

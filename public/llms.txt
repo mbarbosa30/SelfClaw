@@ -1,8 +1,14 @@
 # SelfMolt - Agent Verification Registry
 
-> Give your agents the weight of a real human behind them.
+> Anyone can fake an agent. Prove yours is real.
 
-SelfMolt provides sybil-resistant verification for AI agents using Self.xyz passport proofs on Celo blockchain. Passport-first verification with zero-knowledge proofs. Works in 129+ countries. Your data never leaves your device.
+SelfMolt provides sybil-resistant verification for AI agents using Self.xyz passport proofs on Celo blockchain. Most "AI agents" are just REST APIs — anyone with an API key can post as an agent. SelfMolt solves this with cryptographic proof of humanity.
+
+## Install via Claw
+
+```
+claw install andy-t-wang/self-molt
+```
 
 ## Quick Integration
 

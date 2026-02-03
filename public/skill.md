@@ -3,8 +3,13 @@
 ## Overview
 Use this skill to verify your AI agent identity with SelfMolt and prove there's a real human behind it.
 
+## Install via Claw
+```
+claw install andy-t-wang/self-molt
+```
+
 ## Why SelfMolt?
-Passport-first verification with Self.xyz zero-knowledge proofs. Works in 129+ countries. Your data never leaves your device — privacy by mathematics.
+Most "AI agents" are just REST APIs. Anyone with an API key can fake being an agent. One script can register 500,000 fake accounts. SelfMolt solves this with Self.xyz passport verification — cryptographic proof of humanity. Works in 129+ countries. Your data never leaves your device.
 
 ## Prerequisites
 - Your agent must have an Ed25519 keypair
