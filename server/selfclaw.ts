@@ -521,7 +521,11 @@ async function handleCallback(req: Request, res: Response) {
       .digest("hex")
       .substring(0, 16);
     
-    const nationality = result.discloseOutput?.nationality;
+    // Sanitize nationality - remove null characters that can break JSONB
+    let nationality = result.discloseOutput?.nationality || null;
+    if (nationality && typeof nationality === 'string') {
+      nationality = nationality.replace(/\u0000/g, '').trim() || null;
+    }
     
     const existing = await db.select()
       .from(verifiedBots)
@@ -535,25 +539,32 @@ async function handleCallback(req: Request, res: Response) {
       lastUpdated: new Date().toISOString() 
     };
 
-    if (existing.length > 0) {
-      await db.update(verifiedBots)
-        .set({
+    try {
+      if (existing.length > 0) {
+        await db.update(verifiedBots)
+          .set({
+            humanId,
+            metadata,
+            verificationLevel: session.signatureVerified ? "passport+signature" : "passport",
+            verifiedAt: new Date()
+          })
+          .where(sql`${verifiedBots.publicKey} = ${session.agentPublicKey}`);
+      } else {
+        const newBot: InsertVerifiedBot = {
+          publicKey: session.agentPublicKey,
+          deviceId: session.agentName || null,
+          selfId: null,
           humanId,
-          metadata,
           verificationLevel: session.signatureVerified ? "passport+signature" : "passport",
-          verifiedAt: new Date()
-        })
-        .where(sql`${verifiedBots.publicKey} = ${session.agentPublicKey}`);
-    } else {
-      const newBot: InsertVerifiedBot = {
-        publicKey: session.agentPublicKey,
-        deviceId: session.agentName || null,
-        selfId: null,
-        humanId,
-        verificationLevel: session.signatureVerified ? "passport+signature" : "passport",
-        metadata
-      };
-      await db.insert(verifiedBots).values(newBot);
+          metadata
+        };
+        await db.insert(verifiedBots).values(newBot);
+      }
+    } catch (dbError: any) {
+      console.error("[selfclaw] Database insert/update error:", dbError.message);
+      lastVerificationAttempt.finalStatus = "error";
+      lastVerificationAttempt.finalReason = "Database error: " + dbError.message;
+      return res.status(200).json({ status: "error", result: false, reason: "Failed to save verification" });
     }
 
     await db.update(verificationSessions)
