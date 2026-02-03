@@ -1924,6 +1924,7 @@ async function startAgentVerification() {
       appName: "SelfClaw",
       scope: data.config.scope,
       endpoint: data.config.endpoint,
+      endpointType: "https",
       userId: data.sessionId,
       userIdType: "uuid",
       userDefinedData: userDefinedData,
