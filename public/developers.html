@@ -380,6 +380,47 @@
       text-decoration: underline;
     }
     
+    .check-result {
+      margin-top: 1.5rem;
+      padding: 1.25rem;
+      border-radius: 12px;
+      background: var(--gray-800);
+      border: 1px solid var(--gray-300);
+    }
+    
+    .result-verified {
+      border-left: 4px solid var(--green);
+      padding-left: 1rem;
+    }
+    
+    .result-verified h4 {
+      color: var(--green);
+      margin-bottom: 0.75rem;
+    }
+    
+    .result-verified p {
+      margin: 0.5rem 0;
+      font-size: 0.9rem;
+    }
+    
+    .result-verified a {
+      color: var(--green);
+    }
+    
+    .result-unverified {
+      border-left: 4px solid var(--coral);
+      padding-left: 1rem;
+    }
+    
+    .result-unverified h4 {
+      color: var(--coral);
+      margin-bottom: 0.75rem;
+    }
+    
+    .result-error {
+      color: var(--coral);
+    }
+    
     .security-list {
       list-style: none;
       padding: 0;
@@ -467,6 +508,7 @@
         <a href="#comparison" class="active">Why Different</a>
         <a href="#how-it-works">How It Works</a>
         <a href="#implementation">Implementation</a>
+        <a href="#check-verification">Check Agent</a>
         <a href="#api-reference">API Reference</a>
         <a href="#security">Security</a>
         <a href="#llms">For AI Agents</a>
@@ -600,6 +642,23 @@
 }</pre>
           </div>
         </div>
+      </section>
+      
+      <section id="check-verification" class="docs-section">
+        <h2>Check Verification</h2>
+        <p>Verify if an agent is backed by a real human — instantly.</p>
+        
+        <div class="check-form" style="margin: 1.5rem 0;">
+          <div class="form-group">
+            <label>Agent Public Key or Name</label>
+            <div class="input-button-row" style="display: flex; gap: 0.75rem;">
+              <input type="text" id="check-pubkey" class="input" placeholder="MCowBQYDK2VwAyEA... (or agent-name)" style="flex: 1;" />
+              <button id="check-verification-btn" class="btn btn-large">Check</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="check-result" class="check-result" style="display:none;"></div>
       </section>
       
       <section id="api-reference" class="docs-section">
@@ -766,6 +825,64 @@
         }, 2000);
       });
     }
+    
+    document.getElementById('check-verification-btn')?.addEventListener('click', async () => {
+      const input = document.getElementById('check-pubkey').value.trim();
+      const resultDiv = document.getElementById('check-result');
+      const btn = document.getElementById('check-verification-btn');
+      
+      if (!input) {
+        resultDiv.style.display = 'block';
+        resultDiv.innerHTML = '<p class="result-error">Please enter an agent public key or name.</p>';
+        return;
+      }
+      
+      resultDiv.style.display = 'block';
+      resultDiv.innerHTML = '<p>Checking...</p>';
+      btn.disabled = true;
+      
+      try {
+        const response = await fetch(`/api/selfclaw/v1/agent/${encodeURIComponent(input)}`);
+        
+        if (!response.ok) {
+          resultDiv.innerHTML = `
+            <div class="result-unverified">
+              <h4>✗ Not Found</h4>
+              <p>This agent is not registered in the SelfClaw registry.</p>
+            </div>
+          `;
+          return;
+        }
+        
+        const data = await response.json();
+        
+        if (data.verified) {
+          const registeredDate = data.selfxyz?.registeredAt 
+            ? new Date(data.selfxyz.registeredAt).toLocaleDateString() 
+            : 'Unknown';
+          resultDiv.innerHTML = `
+            <div class="result-verified">
+              <h4>✓ Verified Agent</h4>
+              <p><strong>Agent:</strong> ${data.agentName || data.publicKey}</p>
+              <p><strong>Human ID:</strong> ${data.humanId}</p>
+              <p><strong>Registered:</strong> ${registeredDate}</p>
+              <p><a href="${data.swarm}" target="_blank">View all agents by this human →</a></p>
+            </div>
+          `;
+        } else {
+          resultDiv.innerHTML = `
+            <div class="result-unverified">
+              <h4>✗ Not Verified</h4>
+              <p>This agent is not registered in the SelfClaw registry.</p>
+            </div>
+          `;
+        }
+      } catch (error) {
+        resultDiv.innerHTML = '<p class="result-error">Error checking verification status. Please try again.</p>';
+      } finally {
+        btn.disabled = false;
+      }
+    });
   </script>
 </body>
 </html>

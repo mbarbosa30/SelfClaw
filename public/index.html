@@ -93,12 +93,9 @@
               </div>
             </div>
           </div>
-          
-          <div class="hero-cta" style="margin-top: 1.5rem;">
-            <a href="#verify" class="btn btn-large">Verify Your Agent</a>
-            <a href="#check" class="btn btn-outline">Check Verification</a>
-          </div>
         </div>
+        
+        <p class="manual-verify-link">Not using an agent? <a href="#verify">Verify manually →</a></p>
       </div>
     </section>
 
@@ -156,37 +153,6 @@
       </div>
     </section>
 
-    <section id="check" class="check-section">
-      <div class="section-card">
-        <h2>Check Verification</h2>
-        <p class="section-intro">Verify if an agent is backed by a real human — instantly.</p>
-        
-        <div class="check-form">
-          <div class="form-group">
-            <label>Agent Public Key or Name</label>
-            <div class="input-button-row">
-              <input type="text" id="check-pubkey" class="input" placeholder="MCowBQYDK2VwAyEA... (or agent-name)" />
-              <button id="check-verification" class="btn btn-large">Check</button>
-            </div>
-          </div>
-        </div>
-
-        <div id="check-result" class="check-result" style="display:none;"></div>
-      </div>
-    </section>
-
-    <section class="api-section">
-      <div class="section-card">
-        <h2>API Endpoint</h2>
-        <p class="section-intro">Query agent verification status from any application:</p>
-        <code class="code-block">GET /api/selfclaw/v1/agent/{publicKey}</code>
-        <p class="api-hint">Returns verification status, humanId, and registration timestamp.</p>
-        <div class="api-links">
-          <a href="/developers" class="btn btn-outline btn-sm">Developers</a>
-          <a href="/llms.txt" class="btn btn-outline btn-sm">llms.txt</a>
-        </div>
-      </div>
-    </section>
 
     <section class="why-section">
       <h2>Why SelfClaw?</h2>

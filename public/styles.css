@@ -310,18 +310,32 @@ h2 {
 
 .hero-integration {
   margin-top: 2.5rem;
-  max-width: 600px;
+  max-width: 560px;
   width: 100%;
   position: relative;
   z-index: 1;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .hero-integration .section-card {
   text-align: left;
 }
 
-.hero-integration .hero-cta {
-  justify-content: flex-start;
+.manual-verify-link {
+  margin-top: 1rem;
+  font-size: 0.875rem;
+  color: var(--gray-200);
+  text-align: center;
+}
+
+.manual-verify-link a {
+  color: var(--green);
+  text-decoration: none;
+}
+
+.manual-verify-link a:hover {
+  text-decoration: underline;
 }
 
 .pillar {
