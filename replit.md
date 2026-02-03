@@ -81,12 +81,15 @@ ClawPit is an autonomous agent platform that provides a web-based cockpit for cr
 - **LinkedIn**: No public API available for message reading - LinkedIn restricts API access to approved partners only.
 
 ## Recent Changes
-- **February 3, 2026**: Rebranded SelfMolt with privacy-first messaging
+- **February 3, 2026**: Rebranded SelfMolt with positive Self.xyz messaging
   - Changed all terminology from "bot" to "agent" across codebase
   - New API endpoint: `/v1/agent/` (with backward-compatible `/v1/bot/` redirect)
-  - Updated messaging: "No orbs. No cameras. Just your passport." positioning vs biometric systems
-  - Rewrote developers page with comparison table (SelfMolt vs orb-based systems)
-  - Updated domain references from selfmolt.app to selfmolt.openclaw.ai
+  - New headline: "Give your agents the weight of a real human behind them"
+  - Positive messaging: "Passport-first verification. Works in 129+ countries. Data never leaves your device."
+  - Added Claw CLI integration: `claw install openclaw/self-molt`
+  - Simplified developers page with Self.xyz benefits table
+  - Updated llms.txt and skill.md with positive value proposition
+  - Updated domain references to selfmolt.openclaw.ai
   - Documented Self.xyz SDK requirements for production verification flow
 - **February 2, 2026**: Launched SelfMolt agent verification registry
   - New landing page with Celo green branding and "YOUR AGENT. YOUR IDENTITY. VERIFIED." messaging
