@@ -439,10 +439,18 @@ async function handleCallback(req: Request, res: Response) {
     }
     console.log("[selfclaw] Proof verified successfully!");
     
+    // Debug: log full userData to understand sessionId/userId mapping
+    console.log("[selfclaw] Full userData:", JSON.stringify(result.userData || {}, null, 2));
+    console.log("[selfclaw] userIdentifier:", result.userData?.userIdentifier);
+    console.log("[selfclaw] userDefinedData:", result.userData?.userDefinedData);
+    console.log("[selfclaw] userDefinedData type:", typeof result.userData?.userDefinedData);
+    
     const sessionId = result.userData?.userIdentifier;
     console.log("[selfclaw] Session ID from proof:", sessionId);
     if (!sessionId) {
       console.log("[selfclaw] No session ID in proof userData");
+      lastVerificationAttempt.finalStatus = "error";
+      lastVerificationAttempt.finalReason = "Missing session ID in proof userData";
       return res.status(200).json({ status: "error", result: false, reason: "Missing session ID in proof" });
     }
     
@@ -469,13 +477,26 @@ async function handleCallback(req: Request, res: Response) {
       return res.status(200).json({ status: "error", result: false, reason: "Invalid or expired verification session" });
     }
     
-    const proofAgentKeyHash = result.userData?.userDefinedData?.substring(0, 16) || "";
+    // Debug: extract and compare agent key hash
+    const rawUserDefinedData = result.userData?.userDefinedData || "";
+    console.log("[selfclaw] Raw userDefinedData length:", rawUserDefinedData.length);
+    console.log("[selfclaw] Raw userDefinedData first 32 chars:", rawUserDefinedData.substring(0, 32));
+    console.log("[selfclaw] Session agentKeyHash:", session.agentKeyHash);
+    
+    const proofAgentKeyHash = rawUserDefinedData.substring(0, 16) || "";
+    console.log("[selfclaw] Extracted proofAgentKeyHash:", proofAgentKeyHash);
+    console.log("[selfclaw] Comparison: '", proofAgentKeyHash, "' === '", session.agentKeyHash, "':", proofAgentKeyHash === session.agentKeyHash);
+    
     if (!proofAgentKeyHash) {
       console.log("[selfclaw] Missing agentKeyHash in proof userDefinedData");
+      lastVerificationAttempt.finalStatus = "error";
+      lastVerificationAttempt.finalReason = "Missing agentKeyHash in userDefinedData";
       return res.status(200).json({ status: "error", result: false, reason: "Agent key binding required" });
     }
     if (proofAgentKeyHash !== session.agentKeyHash) {
       console.log("[selfclaw] Agent key hash mismatch:", proofAgentKeyHash, "vs", session.agentKeyHash);
+      lastVerificationAttempt.finalStatus = "error";
+      lastVerificationAttempt.finalReason = `Agent key mismatch: proof='${proofAgentKeyHash}' vs session='${session.agentKeyHash}'`;
       return res.status(200).json({ status: "error", result: false, reason: "Agent key binding mismatch" });
     }
     
