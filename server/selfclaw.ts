@@ -224,13 +224,23 @@ router.post("/v1/sign-challenge", verificationLimiter, async (req: Request, res:
   }
 });
 
+router.get("/v1/callback", (req: Request, res: Response) => {
+  res.status(200).json({ 
+    status: "ok", 
+    message: "SelfClaw callback endpoint. Use POST to submit verification proofs.",
+    method: "GET not supported for verification"
+  });
+});
+
 router.post("/v1/callback", async (req: Request, res: Response) => {
-  console.log("[selfclaw] Callback received:", JSON.stringify(req.body).substring(0, 500));
   try {
-    const { attestationId, proof, publicSignals, userContextData } = req.body;
+    const body = req.body || {};
+    console.log("[selfclaw] Callback received:", JSON.stringify(body).substring(0, 500));
+    
+    const { attestationId, proof, publicSignals, userContextData } = body;
     
     if (!proof || !publicSignals || !attestationId || !userContextData) {
-      console.log("[selfclaw] Missing fields - received keys:", Object.keys(req.body));
+      console.log("[selfclaw] Missing fields - received keys:", Object.keys(body));
       return res.status(200).json({ status: "error", result: false, reason: "Missing required verification data" });
     }
     
