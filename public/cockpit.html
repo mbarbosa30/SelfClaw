@@ -28,7 +28,7 @@
       <div id="auth-section" class="auth-section">
         <div id="auth-loading" class="auth-loading" style="display:none;"></div>
         <div id="auth-logged-out" class="auth-logged-out" style="display:none;">
-          <a href="/api/login" class="btn btn-primary">SIGN IN</a>
+          <a href="/api/login?returnTo=/cockpit" class="btn btn-primary">SIGN IN</a>
         </div>
         <div id="auth-logged-in" class="auth-logged-in" style="display:none;">
           <img id="user-avatar" class="user-avatar" src="" alt="" />
@@ -44,7 +44,7 @@
           <h2 class="hero-headline"><span class="headline-white">Your agents.</span> <span class="headline-green" id="cockpit-rotating-headline">Always working.</span></h2>
           <p class="hero-subline">Autonomous AI agents with persistent goals, scheduled execution, and a skills marketplace. The cockpit for your AI workforce.</p>
           <div class="hero-cta" style="margin-top: 1.5rem;">
-            <a href="/api/login" class="btn btn-primary">Get Started Free</a>
+            <a href="/api/login?returnTo=/cockpit" class="btn btn-primary">Get Started Free</a>
           </div>
         </div>
       </section>
@@ -109,44 +109,52 @@
         
         <div class="defi-grid">
           <div class="defi-card">
-            <div class="defi-icon">
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#FCFF52" stroke-width="2">
-                <path d="M12 2v20M2 12h20"/>
-                <circle cx="12" cy="12" r="3"/>
-              </svg>
+            <div class="defi-card-header">
+              <div class="defi-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#FCFF52" stroke-width="2">
+                  <path d="M12 2v20M2 12h20"/>
+                  <circle cx="12" cy="12" r="3"/>
+                </svg>
+              </div>
+              <h4>Fee Abstraction</h4>
             </div>
-            <h4>Fee Abstraction</h4>
             <p>Agents pay gas fees in USDC, cUSD, or cEUR - never need native CELO tokens. Transactions just work.</p>
           </div>
           
           <div class="defi-card">
-            <div class="defi-icon">
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#FCFF52" stroke-width="2">
-                <path d="M7 16V4m0 0L3 8m4-4l4 4M17 8v12m0 0l4-4m-4 4l-4-4"/>
-              </svg>
+            <div class="defi-card-header">
+              <div class="defi-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#FCFF52" stroke-width="2">
+                  <path d="M7 16V4m0 0L3 8m4-4l4 4M17 8v12m0 0l4-4m-4 4l-4-4"/>
+                </svg>
+              </div>
+              <h4>Token Swaps</h4>
             </div>
-            <h4>Token Swaps</h4>
             <p>Swap any token via Uniswap V3 on Celo. Your agent can rebalance portfolios or acquire needed tokens autonomously.</p>
           </div>
           
           <div class="defi-card">
-            <div class="defi-icon">
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#FCFF52" stroke-width="2">
-                <path d="M12 8v8m-4-4h8"/>
-                <rect x="3" y="3" width="18" height="18" rx="2"/>
-              </svg>
+            <div class="defi-card-header">
+              <div class="defi-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#FCFF52" stroke-width="2">
+                  <path d="M12 8v8m-4-4h8"/>
+                  <rect x="3" y="3" width="18" height="18" rx="2"/>
+                </svg>
+              </div>
+              <h4>Aave Yields</h4>
             </div>
-            <h4>Aave Yields</h4>
             <p>Supply assets to Aave, earn yield, withdraw when needed. Agents can grow their treasury while idle.</p>
           </div>
           
           <div class="defi-card">
-            <div class="defi-icon">
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#FCFF52" stroke-width="2">
-                <path d="M4 12h16M4 12l4-4m-4 4l4 4m12-4l-4-4m4 4l-4 4"/>
-              </svg>
+            <div class="defi-card-header">
+              <div class="defi-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#FCFF52" stroke-width="2">
+                  <path d="M4 12h16M4 12l4-4m-4 4l4 4m12-4l-4-4m4 4l-4 4"/>
+                </svg>
+              </div>
+              <h4>Cross-Chain Bridges</h4>
             </div>
-            <h4>Cross-Chain Bridges</h4>
             <p>Get bridge options via Wormhole, LayerZero, and Squid. Move assets between chains programmatically.</p>
           </div>
         </div>
@@ -297,9 +305,9 @@
           if (user && user.id) {
             document.getElementById('auth-logged-in').style.display = 'flex';
             document.getElementById('auth-logged-out').style.display = 'none';
-            document.getElementById('user-name').textContent = user.username || user.email || 'User';
-            if (user.profileImage) {
-              document.getElementById('user-avatar').src = user.profileImage;
+            document.getElementById('user-name').textContent = user.firstName || user.email || 'User';
+            if (user.profileImageUrl) {
+              document.getElementById('user-avatar').src = user.profileImageUrl;
             }
             document.getElementById('cockpit-landing').style.display = 'none';
             document.getElementById('dashboard').style.display = 'block';
