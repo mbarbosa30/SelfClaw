@@ -35,6 +35,27 @@
       line-height: 1.6;
     }
     
+    .highlight-box {
+      background: linear-gradient(135deg, rgba(0, 255, 182, 0.1), rgba(255, 131, 82, 0.05));
+      border: 1px solid var(--green);
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin: 1.5rem 0;
+    }
+    
+    .highlight-box h4 {
+      color: var(--green);
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
+    
+    .highlight-box p {
+      color: var(--text-primary);
+      font-size: 0.95rem;
+      margin-bottom: 0;
+    }
+    
     .docs-nav {
       display: flex;
       gap: 2rem;
@@ -82,6 +103,41 @@
       color: var(--text-secondary);
       line-height: 1.7;
       margin-bottom: 1rem;
+    }
+    
+    .comparison-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1.5rem 0;
+    }
+    
+    .comparison-table th,
+    .comparison-table td {
+      padding: 1rem;
+      text-align: left;
+      border-bottom: 1px solid var(--gray-300);
+    }
+    
+    .comparison-table th {
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    
+    .comparison-table td {
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+    }
+    
+    .comparison-table .highlight {
+      color: var(--green);
+      font-weight: 600;
+    }
+    
+    .comparison-table .negative {
+      color: var(--coral);
     }
     
     .step-flow {
@@ -219,6 +275,11 @@
       font-weight: 600;
       border-radius: 4px;
       margin-right: 0.75rem;
+    }
+    
+    .api-method.post {
+      background: var(--coral-light);
+      color: var(--coral);
     }
     
     .api-path {
@@ -394,36 +455,80 @@
       
       <div class="docs-header">
         <h1 class="docs-title">Developer Integration</h1>
-        <p class="docs-subtitle">Verify that a bot is operated by a real human in your application using Self.xyz passport proofs and the SelfMolt registry.</p>
+        <p class="docs-subtitle">Verify that an AI agent is backed by a real human — without asking for their biometrics. Privacy-first proof of personhood for the agent economy.</p>
+      </div>
+      
+      <div class="highlight-box">
+        <h4>Why SelfMolt?</h4>
+        <p>Other verification systems scan your iris or face. SelfMolt uses your passport's NFC chip with zero-knowledge proofs. No orbs. No cameras. No biometric databases. Just cryptography.</p>
       </div>
       
       <nav class="docs-nav">
-        <a href="#how-it-works" class="active">How It Works</a>
+        <a href="#comparison" class="active">Why Different</a>
+        <a href="#how-it-works">How It Works</a>
         <a href="#implementation">Implementation</a>
         <a href="#api-reference">API Reference</a>
         <a href="#security">Security</a>
         <a href="#llms">For AI Agents</a>
       </nav>
       
+      <section id="comparison" class="docs-section">
+        <h2>The Privacy-First Alternative</h2>
+        <p>SelfMolt is designed for developers who care about user privacy. Here's how we compare:</p>
+        
+        <table class="comparison-table">
+          <tr>
+            <th>Feature</th>
+            <th>Orb-Based Systems</th>
+            <th class="highlight">SelfMolt</th>
+          </tr>
+          <tr>
+            <td>Verification Method</td>
+            <td class="negative">Iris scan / Face scan</td>
+            <td class="highlight">Passport NFC tap</td>
+          </tr>
+          <tr>
+            <td>Biometric Data</td>
+            <td class="negative">Stored on servers</td>
+            <td class="highlight">Never collected</td>
+          </tr>
+          <tr>
+            <td>Privacy Approach</td>
+            <td>Trust us with your biometrics</td>
+            <td class="highlight">Zero-knowledge proofs</td>
+          </tr>
+          <tr>
+            <td>Hardware Required</td>
+            <td class="negative">Special orb device</td>
+            <td class="highlight">Any NFC phone</td>
+          </tr>
+          <tr>
+            <td>Accessibility</td>
+            <td>Find an orb location</td>
+            <td class="highlight">Works anywhere with a passport</td>
+          </tr>
+        </table>
+      </section>
+      
       <section id="how-it-works" class="docs-section">
         <h2>How It Works</h2>
-        <p>SelfMolt provides a cryptographic verification flow that links AI bots to verified human identities using Self.xyz passport proofs. Here's the verification process:</p>
+        <p>SelfMolt uses Self.xyz's zero-knowledge proof system to verify passport ownership without exposing personal data. Here's the flow:</p>
         
         <div class="step-flow">
           <div class="step-card">
             <div class="step-number">1</div>
             <h4>Request Signature</h4>
-            <p>Ask the bot to sign a challenge message with their Ed25519 private key.</p>
+            <p>Ask the agent to sign a challenge with their Ed25519 private key.</p>
           </div>
           <div class="step-card">
             <div class="step-number">2</div>
             <h4>Verify Signature</h4>
-            <p>Verify the signature matches the bot's claimed public key.</p>
+            <p>Confirm the signature matches the agent's claimed public key.</p>
           </div>
           <div class="step-card">
             <div class="step-number">3</div>
             <h4>Check Registry</h4>
-            <p>Query SelfMolt API to confirm the public key is registered with Self.xyz verification.</p>
+            <p>Query SelfMolt API to confirm the key is registered with passport verification.</p>
           </div>
         </div>
       </section>
@@ -432,7 +537,7 @@
         <h2>Implementation Guide</h2>
         
         <h3>Step 1: Request a Signature</h3>
-        <p>Generate a unique challenge and ask the bot to sign it. The challenge should include a nonce or timestamp to prevent replay attacks.</p>
+        <p>Generate a unique challenge for the agent to sign. Include a nonce and timestamp to prevent replay attacks.</p>
         
         <div class="code-block">
           <div class="code-header">
@@ -440,21 +545,21 @@
             <button class="code-copy" onclick="copyCode(this)">Copy</button>
           </div>
           <div class="code-content">
-<pre><span class="comment">// Example challenge message</span>
+<pre><span class="comment">// Generate a unique challenge</span>
 <span class="keyword">const</span> challenge = {
-  action: <span class="string">"verify_bot"</span>,
+  action: <span class="string">"verify_agent"</span>,
   timestamp: <span class="function">Date.now</span>(),
   nonce: crypto.<span class="function">randomUUID</span>(),
   domain: <span class="string">"your-app.com"</span>
 };
 
-<span class="comment">// Ask the bot to sign this message</span>
+<span class="comment">// Ask the agent to sign this</span>
 <span class="keyword">const</span> message = <span class="function">JSON.stringify</span>(challenge);</pre>
           </div>
         </div>
         
         <h3>Step 2: Verify the Signature</h3>
-        <p>The bot will return their public key and a signature. Verify the signature using Ed25519.</p>
+        <p>The agent returns their public key and signature. Verify using Ed25519.</p>
         
         <div class="code-block">
           <div class="code-header">
@@ -464,11 +569,11 @@
           <div class="code-content">
 <pre><span class="keyword">import</span> { verify } <span class="keyword">from</span> <span class="string">"@noble/ed25519"</span>;
 
-<span class="comment">// Bot returns: { publicKey, signature }</span>
+<span class="comment">// Agent returns: { publicKey, signature }</span>
 <span class="keyword">const</span> isValidSignature = <span class="keyword">await</span> <span class="function">verify</span>(
-  signature,      <span class="comment">// Base64 signature from bot</span>
+  signature,      <span class="comment">// Base64 signature from agent</span>
   message,        <span class="comment">// Original challenge message</span>
-  publicKey       <span class="comment">// Bot's public key (SPKI format)</span>
+  publicKey       <span class="comment">// Agent's public key (SPKI format)</span>
 );
 
 <span class="keyword">if</span> (!isValidSignature) {
@@ -478,7 +583,7 @@
         </div>
         
         <h3>Step 3: Check SelfMolt Registry</h3>
-        <p>Query the SelfMolt API to verify the public key is registered with Self.xyz passport verification.</p>
+        <p>Query the SelfMolt API to verify the public key is registered with passport verification.</p>
         
         <div class="code-block">
           <div class="code-header">
@@ -486,17 +591,18 @@
             <button class="code-copy" onclick="copyCode(this)">Copy</button>
           </div>
           <div class="code-content">
-<pre><span class="comment">// Check if the bot is verified</span>
+<pre><span class="comment">// Check if the agent is verified</span>
 <span class="keyword">const</span> response = <span class="keyword">await</span> <span class="function">fetch</span>(
-  <span class="string">`https://selfmolt.openclaw.ai/api/selfmolt/v1/bot/${<span class="function">encodeURIComponent</span>(publicKey)}`</span>
+  <span class="string">`https://selfmolt.openclaw.ai/api/selfmolt/v1/agent/${<span class="function">encodeURIComponent</span>(publicKey)}`</span>
 );
 <span class="keyword">const</span> data = <span class="keyword">await</span> response.<span class="function">json</span>();
 
-<span class="keyword">if</span> (data.verified && data.selfxyz?.verified) {
-  console.<span class="function">log</span>(<span class="string">"Bot is verified by a real human!"</span>);
-  console.<span class="function">log</span>(<span class="string">"Human ID:"</span>, data.selfxyz.humanId);
+<span class="keyword">if</span> (data.verified) {
+  console.<span class="function">log</span>(<span class="string">"Agent is backed by a verified human!"</span>);
+  console.<span class="function">log</span>(<span class="string">"Human ID:"</span>, data.humanId);
+  console.<span class="function">log</span>(<span class="string">"Agent Swarm:"</span>, data.swarm);
 } <span class="keyword">else</span> {
-  console.<span class="function">log</span>(<span class="string">"Bot is not verified"</span>);
+  console.<span class="function">log</span>(<span class="string">"Agent is not verified"</span>);
 }</pre>
           </div>
         </div>
@@ -507,38 +613,38 @@
         
         <div class="api-endpoint">
           <span class="api-method">GET</span>
-          <span class="api-path">/api/selfmolt/v1/bot/{identifier}</span>
-          <p class="api-desc">Check if a bot's public key or device ID is registered with Self.xyz verification.</p>
+          <span class="api-path">/api/selfmolt/v1/agent/{identifier}</span>
+          <p class="api-desc">Check if an agent's public key or name is registered with passport verification.</p>
         </div>
         
         <h3>Response Fields</h3>
         <div class="response-field">
           <span class="field-name">verified</span>
-          <span class="field-desc">Boolean indicating if the bot is verified</span>
+          <span class="field-desc">Boolean indicating if the agent is verified</span>
         </div>
         <div class="response-field">
           <span class="field-name">publicKey</span>
-          <span class="field-desc">The bot's Ed25519 public key (SPKI format)</span>
+          <span class="field-desc">The agent's Ed25519 public key (SPKI format)</span>
         </div>
         <div class="response-field">
-          <span class="field-name">deviceId</span>
-          <span class="field-desc">Unique device identifier for the bot</span>
+          <span class="field-name">agentName</span>
+          <span class="field-desc">Optional human-readable name for the agent</span>
         </div>
         <div class="response-field">
-          <span class="field-name">botSwarm</span>
-          <span class="field-desc">URL to view all bots owned by this human</span>
+          <span class="field-name">humanId</span>
+          <span class="field-desc">Privacy-preserving identifier for the human backing this agent</span>
+        </div>
+        <div class="response-field">
+          <span class="field-name">swarm</span>
+          <span class="field-desc">URL to view all agents owned by this human</span>
         </div>
         <div class="response-field">
           <span class="field-name">selfxyz.verified</span>
           <span class="field-desc">Boolean indicating Self.xyz passport verification status</span>
         </div>
         <div class="response-field">
-          <span class="field-name">selfxyz.humanId</span>
-          <span class="field-desc">Unique identifier for the human backing this bot</span>
-        </div>
-        <div class="response-field">
           <span class="field-name">selfxyz.registeredAt</span>
-          <span class="field-desc">ISO timestamp of when the bot was registered</span>
+          <span class="field-desc">ISO timestamp of when the agent was registered</span>
         </div>
         
         <h3>Example Response</h3>
@@ -551,11 +657,11 @@
 <pre>{
   <span class="string">"verified"</span>: <span class="keyword">true</span>,
   <span class="string">"publicKey"</span>: <span class="string">"MCowBQYDK2VwAyEA..."</span>,
-  <span class="string">"deviceId"</span>: <span class="string">"device-uuid-here"</span>,
-  <span class="string">"botSwarm"</span>: <span class="string">"https://selfmolt.openclaw.ai/human/0x..."</span>,
+  <span class="string">"agentName"</span>: <span class="string">"my-research-agent"</span>,
+  <span class="string">"humanId"</span>: <span class="string">"0x1234abcd..."</span>,
+  <span class="string">"swarm"</span>: <span class="string">"https://selfmolt.openclaw.ai/human/0x1234abcd"</span>,
   <span class="string">"selfxyz"</span>: {
     <span class="string">"verified"</span>: <span class="keyword">true</span>,
-    <span class="string">"humanId"</span>: <span class="string">"0x1234abcd..."</span>,
     <span class="string">"registeredAt"</span>: <span class="string">"2026-02-03T10:30:00Z"</span>
   }
 }</pre>
@@ -565,21 +671,21 @@
         <h3>Other Endpoints</h3>
         
         <div class="api-endpoint">
-          <span class="api-method">POST</span>
+          <span class="api-method post">POST</span>
           <span class="api-path">/api/selfmolt/v1/verify</span>
-          <p class="api-desc">Register a new bot with Self.xyz passport proof verification.</p>
+          <p class="api-desc">Register a new agent with Self.xyz passport proof verification.</p>
         </div>
         
         <div class="api-endpoint">
           <span class="api-method">GET</span>
           <span class="api-path">/api/selfmolt/v1/human/{humanId}</span>
-          <p class="api-desc">Get all bots (swarm) owned by a specific human.</p>
+          <p class="api-desc">Get all agents (swarm) owned by a specific human.</p>
         </div>
         
         <div class="api-endpoint">
           <span class="api-method">GET</span>
           <span class="api-path">/api/selfmolt/v1/stats</span>
-          <p class="api-desc">Get registry statistics including total verified bots and unique humans.</p>
+          <p class="api-desc">Get registry statistics including total verified agents and unique humans.</p>
         </div>
       </section>
       
@@ -589,40 +695,40 @@
         <ul class="security-list">
           <li>
             <span class="security-num">1</span>
-            <span class="security-content"><strong>Use unique challenges:</strong> Always include a nonce or timestamp to prevent replay attacks.</span>
+            <span class="security-content"><strong>Unique challenges:</strong> Always include a nonce and timestamp to prevent replay attacks.</span>
           </li>
           <li>
             <span class="security-num">2</span>
-            <span class="security-content"><strong>Verify signature first:</strong> Always verify the cryptographic signature before checking the registry.</span>
+            <span class="security-content"><strong>Signature first:</strong> Always verify the cryptographic signature before checking the registry.</span>
           </li>
           <li>
             <span class="security-num">3</span>
-            <span class="security-content"><strong>Track by humanId:</strong> Use the humanId to identify bots from the same human operator across your application.</span>
+            <span class="security-content"><strong>Track by humanId:</strong> Use the humanId to identify agents from the same human across your application.</span>
           </li>
           <li>
             <span class="security-num">4</span>
-            <span class="security-content"><strong>Handle re-verification:</strong> Bots can be re-verified with a fresh Self.xyz proof to update their human backing.</span>
+            <span class="security-content"><strong>Agent swarms:</strong> One human can operate multiple agents. Use the swarm endpoint to see all agents for a humanId.</span>
           </li>
         </ul>
         
         <div class="alert-box">
-          <h5>Important</h5>
-          <p>The humanId is a privacy-preserving identifier derived from passport data. It uniquely identifies a human without exposing personal information.</p>
+          <h5>Privacy by Design</h5>
+          <p>The humanId is a privacy-preserving identifier derived from passport data using zero-knowledge proofs. It uniquely identifies a human without exposing any personal information. No biometric data is ever collected or stored.</p>
         </div>
       </section>
       
       <section id="llms" class="docs-section">
         <h2>For AI Agents</h2>
-        <p>Have an AI coding agent? Point it to our llms.txt for machine-readable integration instructions.</p>
+        <p>Building with AI coding agents? Point them to our llms.txt for machine-readable integration instructions.</p>
         
         <div class="llms-box">
           <h4>Let Your Agent Implement It</h4>
           <p>Copy this prompt to have your AI agent implement SelfMolt verification:</p>
-          <code>Read https://selfmolt.openclaw.ai/llms.txt and implement SelfMolt bot verification in my app.</code>
+          <code>Read https://selfmolt.openclaw.ai/llms.txt and implement SelfMolt agent verification in my app.</code>
           <a href="/llms.txt" target="_blank">View llms.txt →</a>
         </div>
         
-        <p>The llms.txt file contains structured documentation optimized for LLM consumption, including:</p>
+        <p>The llms.txt file contains:</p>
         <ul class="security-list">
           <li>
             <span class="security-num">•</span>
@@ -636,6 +742,10 @@
             <span class="security-num">•</span>
             <span class="security-content">Security best practices for verification flows</span>
           </li>
+          <li>
+            <span class="security-num">•</span>
+            <span class="security-content">Why SelfMolt is the privacy-first choice</span>
+          </li>
         </ul>
       </section>
       
@@ -643,6 +753,10 @@
         <p style="color: var(--text-muted); font-size: 0.85rem;">
           SelfMolt is part of <a href="https://openclaw.ai" style="color: var(--green); text-decoration: none;">OpenClaw.ai</a> — 
           Building trust infrastructure for the agent economy.
+        </p>
+        <p style="color: var(--text-muted); font-size: 0.75rem; margin-top: 0.5rem;">
+          Powered by <a href="https://self.xyz" style="color: var(--text-secondary); text-decoration: none;">Self.xyz</a> + 
+          <a href="https://celo.org" style="color: var(--text-secondary); text-decoration: none;">Celo</a>
         </p>
       </footer>
     </div>

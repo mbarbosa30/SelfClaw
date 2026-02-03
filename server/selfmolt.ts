@@ -5,66 +5,68 @@ import { eq } from "drizzle-orm";
 
 const router = Router();
 
-router.get("/v1/bot/:identifier", async (req: Request, res: Response) => {
+router.get("/v1/agent/:identifier", async (req: Request, res: Response) => {
   try {
     const { identifier } = req.params;
     
-    let bot = await db.select()
+    let agent = await db.select()
       .from(verifiedBots)
       .where(eq(verifiedBots.publicKey, identifier))
       .limit(1);
     
-    if (bot.length === 0) {
-      bot = await db.select()
+    if (agent.length === 0) {
+      agent = await db.select()
         .from(verifiedBots)
         .where(eq(verifiedBots.deviceId, identifier))
         .limit(1);
     }
     
-    const foundBot = bot[0];
+    const foundAgent = agent[0];
 
-    if (!foundBot) {
+    if (!foundAgent) {
       return res.json({
         verified: false,
         publicKey: identifier,
-        message: "Bot not found in registry"
+        message: "Agent not found in registry"
       });
     }
 
     res.json({
       verified: true,
-      publicKey: foundBot.publicKey,
-      deviceId: foundBot.deviceId,
-      selfId: foundBot.selfId,
-      humanId: foundBot.humanId,
+      publicKey: foundAgent.publicKey,
+      agentName: foundAgent.deviceId,
+      humanId: foundAgent.humanId,
       selfxyz: {
         verified: true,
-        verificationLevel: foundBot.verificationLevel || "passport",
-        registeredAt: foundBot.verifiedAt
+        registeredAt: foundAgent.verifiedAt
       },
-      swarm: foundBot.humanId ? `https://selfmolt.app/human/${foundBot.humanId}` : null,
-      metadata: foundBot.metadata
+      swarm: foundAgent.humanId ? `https://selfmolt.openclaw.ai/human/${foundAgent.humanId}` : null,
+      metadata: foundAgent.metadata
     });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
 });
 
+router.get("/v1/bot/:identifier", async (req: Request, res: Response) => {
+  res.redirect(301, `/api/selfmolt/v1/agent/${req.params.identifier}`);
+});
+
 router.get("/v1/human/:humanId", async (req: Request, res: Response) => {
   try {
     const { humanId } = req.params;
     
-    const bots = await db.select()
+    const agents = await db.select()
       .from(verifiedBots)
       .where(eq(verifiedBots.humanId, humanId));
 
     res.json({
       humanId,
-      botCount: bots.length,
-      bots: bots.map(bot => ({
-        publicKey: bot.publicKey,
-        deviceId: bot.deviceId,
-        verifiedAt: bot.verifiedAt
+      agentCount: agents.length,
+      agents: agents.map(agent => ({
+        publicKey: agent.publicKey,
+        agentName: agent.deviceId,
+        verifiedAt: agent.verifiedAt
       }))
     });
   } catch (error: any) {
@@ -116,9 +118,9 @@ router.post("/v1/verify", async (req: Request, res: Response) => {
 
     res.json({
       success: true,
-      message: "Bot verified and registered",
+      message: "Agent verified and registered",
       publicKey,
-      deviceId
+      agentName: deviceId
     });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -127,14 +129,14 @@ router.post("/v1/verify", async (req: Request, res: Response) => {
 
 router.get("/v1/stats", async (_req: Request, res: Response) => {
   try {
-    const allBots = await db.select().from(verifiedBots);
-    const uniqueHumans = new Set(allBots.map(b => b.humanId).filter(Boolean));
+    const allAgents = await db.select().from(verifiedBots);
+    const uniqueHumans = new Set(allAgents.map(a => a.humanId).filter(Boolean));
     
     res.json({
-      totalVerifiedBots: allBots.length,
+      totalVerifiedAgents: allAgents.length,
       uniqueHumans: uniqueHumans.size,
-      latestVerification: allBots.length > 0 
-        ? allBots.sort((a, b) => new Date(b.verifiedAt!).getTime() - new Date(a.verifiedAt!).getTime())[0].verifiedAt
+      latestVerification: allAgents.length > 0 
+        ? allAgents.sort((a, b) => new Date(b.verifiedAt!).getTime() - new Date(a.verifiedAt!).getTime())[0].verifiedAt
         : null
     });
   } catch (error: any) {

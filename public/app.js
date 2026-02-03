@@ -1771,7 +1771,7 @@ async function checkBotVerification() {
   }
   
   try {
-    const res = await fetch(`/api/selfmolt/v1/bot/${encodeURIComponent(pubkey)}`);
+    const res = await fetch(`/api/selfmolt/v1/agent/${encodeURIComponent(pubkey)}`);
     const data = await res.json();
     
     resultEl.style.display = 'block';
@@ -1782,9 +1782,9 @@ async function checkBotVerification() {
         <h4 class="verified-badge">VERIFIED</h4>
         <div class="result-details">
           <p><strong>Public Key:</strong> ${escapeHtml(data.publicKey?.substring(0, 30))}...</p>
-          ${data.deviceId ? `<p><strong>Device ID:</strong> ${escapeHtml(data.deviceId)}</p>` : ''}
+          ${data.agentName ? `<p><strong>Agent Name:</strong> ${escapeHtml(data.agentName)}</p>` : ''}
           ${data.humanId ? `<p><strong>Human ID:</strong> ${escapeHtml(data.humanId)}</p>` : ''}
-          <p><strong>Verification Level:</strong> ${data.selfxyz?.verificationLevel || 'passport'}</p>
+          <p><strong>Verification:</strong> Passport (Zero-Knowledge Proof)</p>
           <p><strong>Registered:</strong> ${new Date(data.selfxyz?.registeredAt).toLocaleDateString()}</p>
         </div>
       `;
@@ -1792,7 +1792,7 @@ async function checkBotVerification() {
       resultEl.className = 'check-result not-verified';
       resultEl.innerHTML = `
         <h4 class="not-verified-badge">NOT VERIFIED</h4>
-        <p>${data.message || 'This bot is not registered in the SelfMolt registry.'}</p>
+        <p>${data.message || 'This agent is not registered in the SelfMolt registry.'}</p>
       `;
     }
   } catch (error) {

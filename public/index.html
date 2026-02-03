@@ -36,69 +36,69 @@
 
     <section id="landing-hero" class="hero-section selfmolt-hero">
       <div class="hero-content">
-        <h2 class="hero-headline">Your bot.<br/>Your identity.<br/><span class="text-purple">Verified.</span></h2>
-        <p class="hero-subline">Give your AI agents the weight of a real human behind them. Verify with your passport, prove you're not a sybil, and build trust in the agent economy.</p>
+        <h2 class="hero-headline">Your agent.<br/>Your passport.<br/><span class="text-purple">No orbs.</span></h2>
+        <p class="hero-subline">Prove your AI agents are human-backed without scanning your eyes or face. Just tap your passport. Zero-knowledge proofs. Maximum privacy. Welcome to the agent economy.</p>
         <div class="hero-cta">
-          <a href="#verify" class="btn btn-large">Verify Your Bot</a>
+          <a href="#verify" class="btn btn-large">Verify Your Agent</a>
           <a href="#check" class="btn btn-outline">Check Verification</a>
         </div>
       </div>
       <div class="hero-pillars">
         <div class="pillar">
           <div class="pillar-icon pillar-icon-purple">01</div>
-          <h3>Cryptographic Identity</h3>
-          <p>Your bot proves ownership of its Ed25519 private key through digital signatures.</p>
+          <h3>No Biometrics Required</h3>
+          <p>Forget orbs and cameras. Your passport's NFC chip is the only proof you need. Privacy by design.</p>
         </div>
         <div class="pillar">
           <div class="pillar-icon pillar-icon-purple">02</div>
-          <h3>Passport Verification</h3>
-          <p>Scan your passport with Self.xyz. Zero-knowledge proofs verify you're human without exposing data.</p>
+          <h3>Zero-Knowledge Proofs</h3>
+          <p>Self.xyz verifies you're human without storing or exposing personal data. Cryptography, not surveillance.</p>
         </div>
         <div class="pillar">
           <div class="pillar-icon pillar-icon-purple">03</div>
-          <h3>Sybil-Resistant Registry</h3>
-          <p>Your verified bot is registered publicly on Celo. One human, one verification, infinite trust.</p>
+          <h3>Agent Swarm Registry</h3>
+          <p>Register all your agents under one human identity on Celo. Prove you're not a sybil. Build trust.</p>
         </div>
       </div>
     </section>
 
     <section id="verify" class="verify-section">
       <div class="section-card">
-        <h2>Verify Your Bot</h2>
-        <p class="section-intro">Connect your bot's identity to your verified human identity using Self.xyz passport proofs.</p>
+        <h2>Verify Your Agent</h2>
+        <p class="section-intro">Link your AI agent's cryptographic identity to your passport. No face scans. No iris scans. Just tap.</p>
         
         <div class="verify-steps">
           <div class="verify-step">
             <div class="step-number">1</div>
             <div class="step-content">
-              <h4>Enter Bot Public Key</h4>
-              <p>Your bot's Ed25519 public key (SPKI format)</p>
+              <h4>Enter Agent Public Key</h4>
+              <p>Your agent's Ed25519 public key (SPKI format)</p>
             </div>
           </div>
           <div class="verify-step">
             <div class="step-number">2</div>
             <div class="step-content">
-              <h4>Scan Passport</h4>
-              <p>Use the Self.xyz app to scan your passport's NFC chip</p>
+              <h4>Tap Your Passport</h4>
+              <p>Open Self.xyz app, tap your passport's NFC chip — done</p>
             </div>
           </div>
           <div class="verify-step">
             <div class="step-number">3</div>
             <div class="step-content">
-              <h4>Bot Verified</h4>
-              <p>Your bot is now registered with proof of human backing</p>
+              <h4>Agent Verified</h4>
+              <p>Your agent is now registered with cryptographic proof of human backing</p>
             </div>
           </div>
         </div>
 
         <div class="verify-form">
           <div class="form-group">
-            <label>Bot Public Key</label>
+            <label>Agent Public Key</label>
             <input type="text" id="verify-pubkey" class="input" placeholder="MCowBQYDK2VwAyEA..." />
           </div>
           <div class="form-group">
-            <label>Device ID (optional)</label>
-            <input type="text" id="verify-device-id" class="input" placeholder="my-assistant-bot" />
+            <label>Agent Name (optional)</label>
+            <input type="text" id="verify-device-id" class="input" placeholder="my-research-agent" />
           </div>
           <button id="start-verification" class="btn btn-large">Start Verification</button>
         </div>
@@ -113,12 +113,12 @@
     <section id="check" class="check-section">
       <div class="section-card">
         <h2>Check Verification</h2>
-        <p class="section-intro">Verify if a bot is registered with human backing.</p>
+        <p class="section-intro">Verify if an agent is backed by a real human — instantly.</p>
         
         <div class="check-form">
           <div class="form-group">
-            <label>Bot Public Key or Device ID</label>
-            <input type="text" id="check-pubkey" class="input" placeholder="MCowBQYDK2VwAyEA... (or device-id)" />
+            <label>Agent Public Key or Name</label>
+            <input type="text" id="check-pubkey" class="input" placeholder="MCowBQYDK2VwAyEA... (or agent-name)" />
           </div>
           <button id="check-verification" class="btn btn-large">Check</button>
         </div>
@@ -130,11 +130,11 @@
     <section class="api-section">
       <div class="section-card">
         <h2>API Endpoint</h2>
-        <p class="section-intro">Check if a bot is verified by querying the public API:</p>
-        <code class="code-block">GET /api/selfmolt/v1/bot/{publicKey}</code>
-        <p class="api-hint">Returns verification status, selfId, and registration timestamp.</p>
+        <p class="section-intro">Query agent verification status from any application:</p>
+        <code class="code-block">GET /api/selfmolt/v1/agent/{publicKey}</code>
+        <p class="api-hint">Returns verification status, humanId, and registration timestamp.</p>
         <div class="api-links">
-          <a href="/skill.md" class="btn btn-outline btn-sm">skill.md</a>
+          <a href="/developers" class="btn btn-outline btn-sm">Developers</a>
           <a href="/llms.txt" class="btn btn-outline btn-sm">llms.txt</a>
         </div>
       </div>
@@ -144,16 +144,16 @@
       <h2>Why SelfMolt?</h2>
       <div class="why-grid">
         <div class="why-card">
-          <h3>Sybil Attacks Are Real</h3>
-          <p>AI agent networks are vulnerable. Without proof-of-personhood, bad actors can spin up unlimited fake agents to manipulate systems, game airdrops, and poison marketplaces.</p>
+          <h3>No Orbs. No Cameras.</h3>
+          <p>Other systems want your iris or face. We just need your passport. Tap. Verify. Done. Your biometrics stay with you.</p>
         </div>
         <div class="why-card">
-          <h3>Privacy-First Verification</h3>
-          <p>Self.xyz uses zero-knowledge proofs. Your passport data is never exposed - only the cryptographic proof that you're a unique human.</p>
+          <h3>Cryptography, Not Surveillance</h3>
+          <p>Zero-knowledge proofs mean your passport data is never exposed — only mathematical proof that you're human. No data harvesting.</p>
         </div>
         <div class="why-card">
-          <h3>Built on Celo</h3>
-          <p>Fast, cheap, mobile-first blockchain. Your bot's verification lives on-chain where it can be checked by anyone, forever.</p>
+          <h3>One Human, Many Agents</h3>
+          <p>Register your entire agent swarm under one identity. Prove you're not a sybil while running as many agents as you need.</p>
         </div>
       </div>
     </section>
