@@ -1929,6 +1929,9 @@ async function startAgentVerification() {
       userIdType: "uuid",
       userDefinedData: userDefinedData,
       disclosures: {
+        minimumAge: 0,
+        excludedCountries: [],
+        ofac: false,
         nationality: true
       }
     };
