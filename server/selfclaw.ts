@@ -27,9 +27,16 @@ setInterval(cleanupExpiredSessions, 5 * 60 * 1000);
 cleanupExpiredSessions();
 
 const SELFCLAW_SCOPE = "selfclaw-verify";
-const SELFCLAW_ENDPOINT = process.env.REPLIT_DOMAINS 
-  ? `https://${process.env.REPLIT_DOMAINS}/api/selfclaw/v1/callback`
-  : "http://localhost:5000/api/selfclaw/v1/callback";
+const PRODUCTION_DOMAIN = "selfclaw.app";
+const isProduction = process.env.REPLIT_DEPLOYMENT === '1' || 
+  (process.env.REPLIT_DOMAINS && !process.env.REPLIT_DOMAINS.includes('.replit.dev'));
+const SELFCLAW_ENDPOINT = isProduction
+  ? `https://${PRODUCTION_DOMAIN}/api/selfclaw/v1/callback`
+  : process.env.REPLIT_DOMAINS 
+    ? `https://${process.env.REPLIT_DOMAINS}/api/selfclaw/v1/callback`
+    : "http://localhost:5000/api/selfclaw/v1/callback";
+
+console.log(`[selfclaw] Callback endpoint: ${SELFCLAW_ENDPOINT}`);
 
 const selfBackendVerifier = new SelfBackendVerifier(
   SELFCLAW_SCOPE,

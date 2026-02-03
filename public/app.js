@@ -1941,37 +1941,35 @@ async function startAgentVerification() {
     
     qrContainer.style.display = 'block';
     qrEl.innerHTML = `
-      <div style="padding: 1.5rem; background: #0d0d0d; border: 2px solid #00FFB6; border-radius: 12px; text-align: center;">
-        <p style="margin-bottom: 1rem; color: #00FFB6; font-weight: 600;">Scan with Self.xyz App</p>
-        <div id="qr-code-img" style="background: white; padding: 1rem; border-radius: 8px; display: inline-block; margin-bottom: 1rem;"></div>
-        <p style="font-size: 0.85rem; color: #e0e0e0; margin-bottom: 0.5rem;">
-          1. Open Self.xyz app on your phone<br/>
-          2. Scan this QR code<br/>
-          3. Approve the verification
-        </p>
-        <p style="font-size: 0.75rem; color: #888; margin-top: 0.5rem;">
-          Agent: ${escapeHtml(pubkey.substring(0, 16))}...
-        </p>
-        <a href="${selfUniversalLink}" target="_blank" class="btn btn-outline btn-sm" style="margin-top: 1rem;">
-          Open in Self.xyz App
-        </a>
-        <div id="verification-status" style="margin-top: 1rem; padding: 0.5rem; border-radius: 8px; background: #1a1a1a;">
-          <span style="color: #888;">Waiting for verification...</span>
-        </div>
-        
-        <details style="margin-top: 1rem; text-align: left;">
-          <summary style="color: #888; cursor: pointer; font-size: 0.8rem;">Developer: Sign Challenge (Optional)</summary>
-          <div style="margin-top: 0.5rem; padding: 0.75rem; background: #1a1a1a; border-radius: 8px;">
-            <p style="font-size: 0.75rem; color: #888; margin-bottom: 0.5rem;">${signatureStatus}</p>
-            <p style="font-size: 0.7rem; color: #666; margin-bottom: 0.5rem;">Challenge to sign:</p>
-            <code style="display: block; background: #0d0d0d; padding: 0.5rem; border-radius: 4px; font-size: 0.65rem; color: #00FFB6; word-break: break-all; max-height: 80px; overflow-y: auto;">${escapeHtml(data.challenge)}</code>
-            ${!data.signatureVerified ? `
-            <input type="text" id="agent-signature" class="input" placeholder="Paste Ed25519 signature (hex)" style="margin-top: 0.5rem; font-size: 0.75rem;" />
-            <button onclick="submitAgentSignature('${data.sessionId}')" class="btn btn-outline btn-sm" style="margin-top: 0.5rem; width: 100%;">Verify Signature</button>
-            ` : ''}
-          </div>
-        </details>
+      <p style="margin-bottom: 1rem; color: #00FFB6; font-weight: 600; font-size: 1.1rem;">Scan with Self App</p>
+      <div id="qr-code-img" style="background: white; padding: 1rem; border-radius: 8px; display: inline-block; margin-bottom: 1rem;"></div>
+      <p style="font-size: 0.85rem; color: #e0e0e0; margin-bottom: 0.75rem; line-height: 1.6;">
+        1. Open Self app on your phone<br/>
+        2. Scan this QR code<br/>
+        3. Approve the verification
+      </p>
+      <p style="font-size: 0.75rem; color: #666; margin-bottom: 1rem;">
+        Agent: ${escapeHtml(pubkey.substring(0, 20))}...
+      </p>
+      <a href="${selfUniversalLink}" target="_blank" class="btn btn-outline" style="display: inline-block; margin-bottom: 1rem;">
+        Open in Self App
+      </a>
+      <div id="verification-status" style="padding: 0.75rem; border-radius: 8px; background: rgba(0,255,182,0.1); border: 1px solid rgba(0,255,182,0.3);">
+        <span style="color: #00FFB6;">Waiting for verification...</span>
       </div>
+      
+      <details style="margin-top: 1.5rem; text-align: left;">
+        <summary style="color: #666; cursor: pointer; font-size: 0.8rem;">Developer: Sign Challenge (Optional)</summary>
+        <div style="margin-top: 0.75rem; padding: 1rem; background: rgba(0,0,0,0.3); border-radius: 8px;">
+          <p style="font-size: 0.75rem; color: #888; margin-bottom: 0.5rem;">${signatureStatus}</p>
+          <p style="font-size: 0.7rem; color: #666; margin-bottom: 0.5rem;">Challenge to sign:</p>
+          <code style="display: block; background: #0a0a0a; padding: 0.5rem; border-radius: 4px; font-size: 0.65rem; color: #00FFB6; word-break: break-all; max-height: 80px; overflow-y: auto;">${escapeHtml(data.challenge)}</code>
+          ${!data.signatureVerified ? `
+          <input type="text" id="agent-signature" class="input" placeholder="Paste Ed25519 signature (hex)" style="margin-top: 0.5rem; font-size: 0.75rem;" />
+          <button onclick="submitAgentSignature('${data.sessionId}')" class="btn btn-outline btn-sm" style="margin-top: 0.5rem; width: 100%;">Verify Signature</button>
+          ` : ''}
+        </div>
+      </details>
     `;
     
     if (typeof QRCode !== 'undefined') {
