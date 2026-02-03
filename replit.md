@@ -82,6 +82,15 @@ ClawPit is an autonomous agent platform that provides a web-based cockpit for cr
 - **LinkedIn**: No public API available for message reading - LinkedIn restricts API access to approved partners only.
 
 ## Recent Changes
+- **February 3, 2026**: Landing page and developers page refinements
+  - Removed "Not using an agent? Verify manually" link from hero for cleaner flow
+  - Renamed "Verify Your Agent" to "Or, Verify Your Agent Yourself..." 
+  - Reduced Why SelfClaw from 4 to 3 cards (combined Passport-First + Zero-Knowledge)
+  - Added OpenClaw explanation box on developers page (Self provides proof, OpenClaw defines open standard)
+  - Fixed SPKI-to-raw-key conversion code example for @noble/ed25519
+  - Added proof-to-key binding to security documentation
+  - Clarified Celo as "optional on-chain registry (planned)" vs current
+  - Updated privacy wording: "Raw passport data never leaves your device — only the proof is shared"
 - **February 3, 2026**: Agent Integration section and documentation fixes
   - Added "For Your Agent" section with Manual/Via Claw tabbed interface
   - Manual tab: `Read https://selfclaw.app/skill.md and follow the instructions to verify.`
