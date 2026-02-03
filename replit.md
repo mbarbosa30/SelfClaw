@@ -33,7 +33,7 @@ The full ClawPit agent platform (autonomous agents, skills marketplace, Celo pay
 3. Backend: Use `SelfBackendVerifier` to validate proofs
 4. See: https://docs.self.xyz/use-self/quickstart
 
-**Current status:** API endpoints ready, placeholder QR flow awaiting SDK integration
+**Current status:** Production-ready with database-persisted sessions, rate limiting, and session cleanup
 
 ---
 
@@ -82,6 +82,13 @@ ClawPit is an autonomous agent platform that provides a web-based cockpit for cr
 - **LinkedIn**: No public API available for message reading - LinkedIn restricts API access to approved partners only.
 
 ## Recent Changes
+- **February 3, 2026**: Production hardening for SelfClaw
+  - Migrated pending verifications from in-memory Map to PostgreSQL (verification_sessions table)
+  - Added rate limiting: 60 req/min for public APIs, 10 req/min for verification endpoints
+  - Added session cleanup job running every 5 minutes to expire stale sessions
+  - Enforced challenge expiry in callback endpoint (rejects late proofs)
+  - Fixed all Drizzle TypeScript type errors using sql template literals
+  - Updated llms.txt with correct verification flow documentation
 - **February 3, 2026**: Added agent signature verification (Ed25519)
   - Agents can now prove key ownership by signing a challenge
   - Challenge includes domain, timestamp, nonce, and agentKeyHash
