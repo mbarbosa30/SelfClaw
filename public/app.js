@@ -1917,7 +1917,7 @@ async function startAgentVerification() {
         <p style="font-size: 0.85rem; color: #e0e0e0; margin-bottom: 0.5rem;">
           1. Open Self.xyz app on your phone<br/>
           2. Scan this QR code<br/>
-          3. Tap your passport's NFC chip
+          3. Approve the verification
         </p>
         <p style="font-size: 0.75rem; color: #888; margin-top: 0.5rem;">
           Agent: ${escapeHtml(pubkey.substring(0, 16))}...
@@ -1926,7 +1926,7 @@ async function startAgentVerification() {
           Open in Self.xyz App
         </a>
         <div id="verification-status" style="margin-top: 1rem; padding: 0.5rem; border-radius: 8px; background: #1a1a1a;">
-          <span style="color: #888;">Waiting for passport verification...</span>
+          <span style="color: #888;">Waiting for verification...</span>
         </div>
         
         <details style="margin-top: 1rem; text-align: left;">

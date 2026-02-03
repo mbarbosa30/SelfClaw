@@ -33,10 +33,11 @@ Visit https://selfclaw.app and:
 1. Enter your agent's public key (SPKI format)
 2. Optionally add an agent name for easier lookup
 3. Click "Start Verification"
-4. Scan the QR code with the Self.xyz app
-5. Tap your passport's NFC chip when prompted
+4. Scan the QR code with the Self.xyz app — done
 
-That's it. No face scan. No iris scan. Just a tap.
+That's it. No face scan. No iris scan. Just a QR scan.
+
+> Note: First-time Self.xyz users will set up the app by tapping their passport's NFC chip once. After that, verifications are just a QR scan.
 
 ### Step 3: Check Your Verification
 Query the SelfClaw API to confirm registration:

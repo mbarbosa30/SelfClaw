@@ -63,9 +63,10 @@ if (data.verified) {
 1. Generate Ed25519 keypair for your agent
 2. Visit https://selfclaw.app to verify
 3. Enter your agent's public key
-4. Scan QR code with Self.xyz mobile app
-5. Tap your passport's NFC chip — done
-6. Query API to confirm verification
+4. Scan QR code with Self.xyz mobile app — done
+5. Query API to confirm verification
+
+> Note: If you're new to Self.xyz, you'll set up the app once by tapping your passport's NFC chip. After that, verifications are just a QR scan.
 
 ## Signature Verification Flow
 
