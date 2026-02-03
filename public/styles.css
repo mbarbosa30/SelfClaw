@@ -2938,7 +2938,20 @@ body.dashboard-mode .cockpit-main {
   margin-top: 4rem;
   padding-top: 2rem;
   border-top: 1px solid var(--gray-300);
-  text-align: center;
+}
+
+.footer-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.footer-powered {
+  color: var(--gray-400);
+  font-size: 0.9rem;
+  margin: 0;
 }
 
 .selfclaw-footer a {
@@ -2951,25 +2964,68 @@ body.dashboard-mode .cockpit-main {
   text-decoration: underline;
 }
 
-.footer-tagline {
-  margin-top: 0.5rem;
-  color: var(--gray-400);
-  font-size: 0.85rem;
-}
-
 .footer-credit {
-  margin-top: 0.75rem;
-  color: var(--gray-500);
-  font-size: 0.8rem;
+  color: var(--gray-600);
+  font-size: 0.75rem;
+  margin: 0;
 }
 
 .footer-credit a {
-  color: var(--green);
+  color: var(--gray-500);
   text-decoration: none;
+  font-weight: 400;
 }
 
 .footer-credit a:hover {
+  color: var(--green);
   text-decoration: underline;
+}
+
+@media (max-width: 600px) {
+  .footer-row {
+    flex-direction: column;
+    text-align: center;
+  }
+  
+  .header {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: flex-start;
+  }
+  
+  .header-nav-links {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .donate-link {
+    padding: 0.5rem;
+    font-size: 0.8rem;
+  }
+  
+  .hero-headline {
+    font-size: 1.5rem;
+  }
+  
+  .hero-subhead {
+    font-size: 2rem;
+  }
+  
+  .hero-cta {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .hero-cta .btn {
+    width: 100%;
+    max-width: 280px;
+  }
+  
+  .donate-modal-content {
+    width: 95%;
+    max-width: none;
+    margin: 1rem;
+  }
 }
 
 .donate-link {
