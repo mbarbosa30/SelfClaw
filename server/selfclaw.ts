@@ -568,7 +568,7 @@ async function handleCallback(req: Request, res: Response) {
     }
 
     await db.update(verificationSessions)
-      .set({ status: "completed" })
+      .set({ status: "verified" })
       .where(eq(verificationSessions.id, sessionId));
 
     console.log("[selfclaw] === CALLBACK SUCCESS === Agent registered:", session.agentPublicKey || session.agentName);
