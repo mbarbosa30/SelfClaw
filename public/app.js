@@ -2006,9 +2006,9 @@ async function startAgentVerification() {
       }
     );
     
-    const selfUniversalLink = `${REDIRECT_URL}?sessionId=${wsSessionId}`;
+    const selfUniversalLink = `${REDIRECT_URL}?selfApp=${encodeURIComponent(JSON.stringify(selfAppConfig))}`;
     
-    console.log('[SelfClaw] Using WebSocket mode with sessionId:', wsSessionId);
+    console.log('[SelfClaw] Using deeplink mode with WebSocket for status updates');
     console.log('[SelfClaw] QR Config:', JSON.stringify(selfAppConfig, null, 2));
     console.log('[SelfClaw] Universal Link:', selfUniversalLink);
     
