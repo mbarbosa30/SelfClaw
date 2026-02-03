@@ -224,7 +224,26 @@ router.post("/v1/sign-challenge", verificationLimiter, async (req: Request, res:
   }
 });
 
+// Ping endpoint - ultra-minimal for connectivity testing
+router.all("/v1/ping", (req: Request, res: Response) => {
+  res.status(200).json({ pong: true, method: req.method, time: Date.now() });
+});
+
+// Health check for the API
+router.get("/v1/health", (req: Request, res: Response) => {
+  res.status(200).json({ status: "healthy", endpoint: SELFCLAW_ENDPOINT });
+});
+
 router.get("/v1/callback", (req: Request, res: Response) => {
+  res.status(200).json({ 
+    status: "ok", 
+    message: "SelfClaw callback endpoint. Use POST to submit verification proofs.",
+    method: "GET not supported for verification"
+  });
+});
+
+// Handle trailing slash variant to prevent redirects
+router.get("/v1/callback/", (req: Request, res: Response) => {
   res.status(200).json({ 
     status: "ok", 
     message: "SelfClaw callback endpoint. Use POST to submit verification proofs.",
@@ -239,7 +258,8 @@ router.post("/v1/callback-test", (req: Request, res: Response) => {
   res.status(200).json({ status: "success", result: true });
 });
 
-router.post("/v1/callback", async (req: Request, res: Response) => {
+// Shared callback handler function
+async function handleCallback(req: Request, res: Response) {
   console.log("[selfclaw] === CALLBACK START ===");
   console.log("[selfclaw] Headers:", JSON.stringify(req.headers).substring(0, 300));
   try {
@@ -366,7 +386,11 @@ router.post("/v1/callback", async (req: Request, res: Response) => {
     console.error("[selfclaw] === CALLBACK ERROR ===", error);
     res.status(200).json({ status: "error", result: false, reason: error.message || "Unknown error" });
   }
-});
+}
+
+// Register callback for both with and without trailing slash (avoid redirects which break Self.xyz app)
+router.post("/v1/callback", handleCallback);
+router.post("/v1/callback/", handleCallback);
 
 // Polling endpoint for frontend to check verification status
 router.get("/v1/status/:sessionId", publicApiLimiter, async (req: Request, res: Response) => {
