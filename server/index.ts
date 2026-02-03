@@ -56,6 +56,10 @@ app.get("/registry", (req: Request, res: Response) => {
   res.sendFile("registry.html", { root: "public" });
 });
 
+app.get("/human/:humanId", (req: Request, res: Response) => {
+  res.sendFile("human.html", { root: "public" });
+});
+
 const OPENCLAW_DIR = join(homedir(), ".openclaw");
 const CONFIG_PATH = join(OPENCLAW_DIR, "openclaw.json");
 const SKILLS_DIR = join(OPENCLAW_DIR, "workspace", "skills");

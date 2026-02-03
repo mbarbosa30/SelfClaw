@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Human's Agent Swarm | SelfClaw</title>
+  <meta name="description" content="View all verified AI agents belonging to a specific human identity.">
+  <link rel="icon" type="image/png" href="/favicon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+  <style>
+    .swarm-hero {
+      padding: 3rem 0 2rem;
+      text-align: center;
+      border-bottom: 1px solid #222;
+    }
+    
+    .swarm-hero h1 {
+      font-size: 1.5rem;
+      margin-bottom: 0.5rem;
+      color: #fff;
+    }
+    
+    .human-id {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.85rem;
+      color: #888;
+      background: #111;
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      display: inline-block;
+      margin-top: 0.5rem;
+    }
+    
+    .swarm-stats {
+      text-align: center;
+      padding: 1.5rem 0;
+      border-bottom: 1px solid #222;
+    }
+    
+    .agent-count {
+      font-size: 2rem;
+      font-weight: 600;
+      color: #fff;
+    }
+    
+    .agent-count-label {
+      font-size: 0.75rem;
+      color: #666;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    
+    .swarm-list {
+      max-width: 600px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+    }
+    
+    .swarm-item {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 1rem;
+      background: #111;
+      border: 1px solid #222;
+      border-radius: 8px;
+      margin-bottom: 0.75rem;
+    }
+    
+    .swarm-item:hover {
+      border-color: #333;
+    }
+    
+    .agent-icon {
+      width: 40px;
+      height: 40px;
+      background: #1a1a1a;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.25rem;
+    }
+    
+    .agent-info {
+      flex: 1;
+    }
+    
+    .agent-key {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.85rem;
+      color: #ccc;
+    }
+    
+    .agent-meta {
+      font-size: 0.7rem;
+      color: #666;
+      margin-top: 0.25rem;
+    }
+    
+    .swarm-empty {
+      text-align: center;
+      padding: 3rem;
+      color: #666;
+    }
+    
+    .swarm-loading {
+      text-align: center;
+      padding: 3rem;
+      color: #888;
+    }
+    
+    .back-link {
+      display: inline-block;
+      margin-top: 2rem;
+      color: #888;
+      text-decoration: none;
+      font-size: 0.85rem;
+    }
+    
+    .back-link:hover {
+      color: #fff;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <div class="header-title">
+        <a href="/" style="text-decoration: none; color: inherit;">
+          <h1>SELFCLAW</h1>
+        </a>
+        <span class="tag tag-green">SWARM</span>
+      </div>
+      <nav class="header-nav">
+        <a href="/" class="nav-link">HOME</a>
+        <a href="/registry" class="nav-link">REGISTRY</a>
+        <a href="/developers" class="nav-link">DOCS</a>
+      </nav>
+    </header>
+
+    <section class="swarm-hero">
+      <h1>Agent Swarm</h1>
+      <p style="color: #888;">All verified agents belonging to this human</p>
+      <div class="human-id" id="human-id-display">Loading...</div>
+    </section>
+
+    <div class="swarm-stats">
+      <div class="agent-count" id="agent-count">-</div>
+      <div class="agent-count-label">Verified Agents</div>
+    </div>
+
+    <div class="swarm-list" id="swarm-list">
+      <div class="swarm-loading">Loading agents...</div>
+    </div>
+
+    <div style="text-align: center;">
+      <a href="/registry" class="back-link">← Back to Registry</a>
+    </div>
+
+    <footer class="footer" style="margin-top: 3rem;">
+      <div class="footer-links">
+        <a href="/" class="footer-link">Home</a>
+        <span class="footer-divider">|</span>
+        <a href="/registry" class="footer-link">Registry</a>
+        <span class="footer-divider">|</span>
+        <a href="/developers" class="footer-link">Developers</a>
+      </div>
+    </footer>
+  </div>
+
+  <script>
+    async function loadSwarm() {
+      const pathParts = window.location.pathname.split('/');
+      const humanId = pathParts[pathParts.length - 1];
+      
+      if (!humanId) {
+        document.getElementById('swarm-list').innerHTML = '<div class="swarm-empty">No human ID provided</div>';
+        return;
+      }
+      
+      document.getElementById('human-id-display').textContent = humanId;
+      
+      try {
+        const response = await fetch(`/api/selfclaw/v1/human/${encodeURIComponent(humanId)}`);
+        const data = await response.json();
+        
+        document.getElementById('agent-count').textContent = data.agentCount || 0;
+        
+        const listEl = document.getElementById('swarm-list');
+        
+        if (!data.agents || data.agents.length === 0) {
+          listEl.innerHTML = '<div class="swarm-empty">No agents found for this human</div>';
+          return;
+        }
+        
+        listEl.innerHTML = data.agents.map(agent => `
+          <div class="swarm-item">
+            <div class="agent-icon">🤖</div>
+            <div class="agent-info">
+              <div class="agent-key">${escapeHtml(agent.publicKey.substring(0, 16))}...${escapeHtml(agent.publicKey.slice(-8))}</div>
+              <div class="agent-meta">${agent.agentName ? escapeHtml(agent.agentName) + ' · ' : ''}Verified ${formatTimeAgo(agent.verifiedAt)}</div>
+            </div>
+          </div>
+        `).join('');
+        
+      } catch (error) {
+        console.error('Failed to load swarm:', error);
+        document.getElementById('swarm-list').innerHTML = '<div class="swarm-empty">Failed to load agents</div>';
+      }
+    }
+    
+    function escapeHtml(text) {
+      if (!text) return '';
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+    
+    function formatTimeAgo(dateStr) {
+      if (!dateStr) return 'recently';
+      const date = new Date(dateStr);
+      const now = new Date();
+      const diffMs = now - date;
+      const diffMins = Math.floor(diffMs / 60000);
+      const diffHours = Math.floor(diffMs / 3600000);
+      const diffDays = Math.floor(diffMs / 86400000);
+      
+      if (diffMins < 1) return 'just now';
+      if (diffMins < 60) return `${diffMins}m ago`;
+      if (diffHours < 24) return `${diffHours}h ago`;
+      if (diffDays < 7) return `${diffDays}d ago`;
+      return date.toLocaleDateString();
+    }
+    
+    loadSwarm();
+  </script>
+</body>
+</html>

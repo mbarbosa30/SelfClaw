@@ -3205,11 +3205,20 @@ body.dashboard-mode .cockpit-main {
   max-height: 90vh;
   overflow-y: auto;
   position: relative;
+  color: #e0e0e0;
 }
 
 .donate-modal-content h2 {
-  color: var(--green);
+  color: #fff;
   margin-bottom: 1rem;
+}
+
+.donate-modal-content p {
+  color: #ccc;
+}
+
+.donate-modal-content ul, .donate-modal-content li {
+  color: #ddd;
 }
 
 .modal-close {
@@ -3218,7 +3227,7 @@ body.dashboard-mode .cockpit-main {
   right: 1rem;
   background: none;
   border: none;
-  color: var(--gray-400);
+  color: #aaa;
   font-size: 1.5rem;
   cursor: pointer;
   padding: 0.25rem 0.5rem;
@@ -3226,7 +3235,7 @@ body.dashboard-mode .cockpit-main {
 }
 
 .modal-close:hover {
-  color: var(--green);
+  color: #fff;
 }
 
 .pricing-grid, .tech-grid {
