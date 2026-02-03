@@ -516,6 +516,7 @@
         <a href="#check-verification">Check Agent</a>
         <a href="#api-reference">API Reference</a>
         <a href="#security">Security</a>
+        <a href="#openclaw">OpenClaw</a>
         <a href="#llms">For AI Agents</a>
       </nav>
       
@@ -640,9 +641,9 @@
             <button class="code-copy" onclick="copyCode(this)">Copy</button>
           </div>
           <div class="code-content">
-<pre><span class="comment">// Check if the agent is verified</span>
+<pre><span class="comment">// Check if the agent is verified (use query param for safety)</span>
 <span class="keyword">const</span> response = <span class="keyword">await</span> <span class="function">fetch</span>(
-  <span class="string">`https://selfclaw.app/api/selfclaw/v1/agent/${<span class="function">encodeURIComponent</span>(publicKey)}`</span>
+  <span class="string">`https://selfclaw.app/api/selfclaw/v1/agent?publicKey=${<span class="function">encodeURIComponent</span>(publicKey)}`</span>
 );
 <span class="keyword">const</span> data = <span class="keyword">await</span> response.<span class="function">json</span>();
 
@@ -679,8 +680,14 @@
         
         <div class="api-endpoint">
           <span class="api-method">GET</span>
+          <span class="api-path">/api/selfclaw/v1/agent?publicKey=...</span>
+          <p class="api-desc">Check agent verification (query param, recommended for URL safety).</p>
+        </div>
+        
+        <div class="api-endpoint">
+          <span class="api-method">GET</span>
           <span class="api-path">/api/selfclaw/v1/agent/{identifier}</span>
-          <p class="api-desc">Check if an agent's public key or name is registered with passport verification.</p>
+          <p class="api-desc">Check agent verification (path param, URL-encode base64 keys).</p>
         </div>
         
         <h3>Response Fields</h3>
@@ -783,8 +790,36 @@
         
         <div class="alert-box">
           <h5>Privacy by Design</h5>
-          <p>The humanId is a privacy-preserving identifier derived from passport data using zero-knowledge proofs. It uniquely identifies a human without exposing any personal information. No biometric data is ever collected or stored.</p>
+          <p>The humanId is a privacy-preserving identifier derived from passport data using zero-knowledge proofs. Raw passport data stays on your device — only the ZK proof (and any optional disclosures) are shared. No biometric data is ever collected.</p>
         </div>
+      </section>
+      
+      <section id="openclaw" class="docs-section">
+        <h2>OpenClaw Standard</h2>
+        <p>SelfClaw implements the OpenClaw verification standard — an open spec that anyone can validate without trusting our API.</p>
+        
+        <div class="highlight-box">
+          <h4>What is OpenClaw?</h4>
+          <p><strong>Self</strong> provides the zero-knowledge proof. <strong>OpenClaw</strong> defines the open verification standard with a canonical challenge format and proof-to-key binding rules. Anyone can verify results independently.</p>
+        </div>
+        
+        <h3>Challenge Format</h3>
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">JSON</span>
+          </div>
+          <div class="code-content">
+<pre>{
+  <span class="string">"domain"</span>: <span class="string">"your-app.com"</span>,
+  <span class="string">"timestamp"</span>: 1738540800000,
+  <span class="string">"nonce"</span>: <span class="string">"unique-random-string"</span>,
+  <span class="string">"agentKeyHash"</span>: <span class="string">"sha256-of-agent-public-key"</span>
+}</pre>
+          </div>
+        </div>
+        
+        <h3>Trust Model</h3>
+        <p>SelfClaw is an <strong>API registry</strong> storing verification records in PostgreSQL. This provides fast lookups without blockchain fees. Optional on-chain anchoring on Celo is planned for stronger decentralization guarantees.</p>
       </section>
       
       <section id="llms" class="docs-section">

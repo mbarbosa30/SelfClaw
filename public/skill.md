@@ -8,14 +8,14 @@ Use this skill to verify your AI agent identity with SelfClaw and prove there's 
 ## Why SelfClaw?
 Most "AI agents" are just REST APIs. Anyone with an API key can fake being an agent. One script can register 500,000 fake accounts. SelfClaw solves this with Self.xyz passport verification — cryptographic proof of humanity.
 
-- **Supports 129+ countries** (biometric passports with NFC chips)
-- **Privacy-preserving**: Raw passport data stays on your device; only the zero-knowledge proof is shared
-- **No biometrics**: No face scan. No iris scan. Just a QR scan.
+- **Supports 129+ countries** (biometric e-passports with NFC chips)
+- **Privacy-preserving**: Raw passport data stays on your device; only the ZK proof is shared
+- **No biometrics collected**: No face scan. No iris scan. Just a QR scan.
 
 ## Prerequisites
 - Your agent must have an Ed25519 keypair
 - Access to the Self.xyz app on a mobile device with NFC
-- A biometric e-passport with NFC chip (look for the chip icon — most passports issued mid-2000s onwards)
+- A biometric e-passport with NFC chip (look for the chip icon)
 
 ## Steps to Verify
 
@@ -32,7 +32,7 @@ const publicKeySpki = publicKey.export({ type: "spki", format: "der" }).toString
 const privateKeyPkcs8 = privateKey.export({ type: "pkcs8", format: "der" }).toString("base64");
 
 console.log("Public Key (SPKI):", publicKeySpki);
-// Example output: MCowBQYDK2VwAyEA...
+// Example output: MCowBQYDK2VwAyEA... (44 characters)
 
 // Store privateKeyPkcs8 securely, share publicKeySpki for verification
 ```
@@ -50,19 +50,23 @@ Visit https://selfclaw.app and:
 Query the SelfClaw API to confirm registration:
 
 ```bash
-# URL-encode your public key (base64 contains + / = which break URLs)
+# Use query param (recommended - avoids URL encoding issues)
+curl "https://selfclaw.app/api/selfclaw/v1/agent?publicKey=MCowBQYDK2VwAyEA..."
+
+# Or use agent name if you set one:
+curl "https://selfclaw.app/api/selfclaw/v1/agent/my-research-agent"
+
+# If using path param, URL-encode the key:
 PUBLIC_KEY="MCowBQYDK2VwAyEA..."
 ENCODED_KEY=$(python3 -c "import urllib.parse; print(urllib.parse.quote('$PUBLIC_KEY', safe=''))")
 curl "https://selfclaw.app/api/selfclaw/v1/agent/$ENCODED_KEY"
-
-# Or use agent name if you set one:
-curl https://selfclaw.app/api/selfclaw/v1/agent/my-research-agent
 ```
 
 ## API Reference
 
 ### Check Agent Verification
 ```
+GET /api/selfclaw/v1/agent?publicKey={publicKey}
 GET /api/selfclaw/v1/agent/{identifier}
 ```
 
@@ -115,11 +119,11 @@ import { createPrivateKey, sign } from "crypto";
 const privateKeyDer = Buffer.from(privateKeyPkcs8, "base64");
 const privateKey = createPrivateKey({ key: privateKeyDer, format: "der", type: "pkcs8" });
 
-// Challenge should include domain, timestamp, nonce, and agentKeyHash
+// Challenge from verifier (includes agentKeyHash to bind proof to your key)
 const challenge = JSON.stringify({
   domain: "example.com",
   timestamp: Date.now(),
-  nonce: crypto.randomUUID(),
+  nonce: "unique-random-string",
   agentKeyHash: "sha256_of_your_public_key"
 });
 
@@ -132,10 +136,15 @@ console.log("Signature:", signature.toString("base64"));
 ## Security Notes
 
 - **Keep your private key secure** — never share it
-- **Challenge binding**: Verifiers should bind the Self.xyz proof to your publicKey by including `agentKeyHash` in the challenge. This prevents replay attacks where a proof is reused for a different agent.
-- **Unique challenges**: Always include domain, timestamp, and nonce to prevent replays
-- **Privacy model**: Raw passport data is never stored or transmitted — only zero-knowledge proofs that confirm you're human
-- **Swarm support**: One human can register multiple agents under the same identity
+- **Proof-to-key binding**: During registration, the Self.xyz ZK proof is bound to your publicKey hash. This prevents replay attacks where a proof is reused for a different agent.
+- **Challenge binding**: Verifiers should include `agentKeyHash` in challenges to bind verification to your specific key.
+- **Unique challenges**: Always include domain, timestamp, and nonce to prevent replays.
+- **Privacy model**: Raw passport data stays on-device; only the ZK proof (and any optional disclosures) are shared.
+- **Swarm support**: One human can register multiple agents under the same identity.
+
+## Trust Model
+
+SelfClaw is an **API registry** storing verification records. This provides fast lookups without blockchain fees. Optional on-chain anchoring on Celo is planned for stronger decentralization guarantees.
 
 ## Links
 

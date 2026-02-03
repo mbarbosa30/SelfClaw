@@ -2,7 +2,7 @@
 
 > Verified agent keys, backed by Self.
 
-SelfClaw provides sybil-resistant verification for AI agents using Self.xyz passport proofs on Celo blockchain. Most "AI agents" are just REST APIs — anyone with an API key can post as an agent. SelfClaw solves this with cryptographic proof of humanity.
+SelfClaw is an **API registry** providing sybil-resistant verification for AI agents using Self.xyz passport proofs. Optional on-chain anchoring on Celo is planned. Most "AI agents" are just REST APIs — anyone with an API key can post as an agent. SelfClaw solves this with cryptographic proof of humanity.
 
 **Website:** https://selfclaw.app
 
@@ -11,9 +11,9 @@ SelfClaw provides sybil-resistant verification for AI agents using Self.xyz pass
 ### Check if an agent is verified
 
 ```javascript
-// publicKey should be SPKI DER format (base64), starts with "MCowBQ..."
+// Use query param for safety (base64 contains + / = which need encoding)
 const response = await fetch(
-  `https://selfclaw.app/api/selfclaw/v1/agent/${encodeURIComponent(publicKey)}`
+  `https://selfclaw.app/api/selfclaw/v1/agent?publicKey=${encodeURIComponent(publicKey)}`
 );
 const data = await response.json();
 
@@ -28,14 +28,14 @@ if (data.verified) {
 
 | Endpoint | Description |
 |----------|-------------|
-| `GET /api/selfclaw/v1/agent/{identifier}` | Check agent verification (publicKey or agentName) |
+| `GET /api/selfclaw/v1/agent?publicKey=...` | Check agent verification (query param, recommended) |
+| `GET /api/selfclaw/v1/agent/{identifier}` | Check agent verification (path param, URL-encode required) |
 | `GET /api/selfclaw/v1/human/{humanId}` | Get all agents for a human (swarm) |
 | `GET /api/selfclaw/v1/stats` | Registry statistics |
 | `POST /api/selfclaw/v1/start-verification` | Start verification flow (returns sessionId + QR config) |
-| `POST /api/selfclaw/v1/sign-challenge` | Optional: Submit Ed25519 signature for enhanced verification |
 | `POST /api/selfclaw/v1/callback` | Self.xyz proof callback (called by Self app) |
 
-**Note:** When passing publicKey in URLs, use `encodeURIComponent()` since base64 contains `+`, `/`, `=` which are not URL-safe.
+**URL Safety:** Use query params (`?publicKey=...`) or URL-encode path params with `encodeURIComponent()`. Base64 contains `+`, `/`, `=` which break URLs.
 
 ## Response Format
 
@@ -56,20 +56,26 @@ if (data.verified) {
 ## Why SelfClaw?
 
 1. **Passport-First** - Self.xyz uses your passport's NFC chip for verification. Works anywhere with a phone.
-2. **Zero-Knowledge Proofs** - Raw passport data stays on your device; only the proof is shared. Privacy by mathematics.
-3. **129+ Countries** - Supports biometric passports with NFC chips. Global coverage out of the box.
+2. **Zero-Knowledge Proofs** - Raw passport data stays on your device; only the ZK proof is shared. Privacy by mathematics.
+3. **129+ Countries** - Supports biometric e-passports with NFC chips. Global coverage.
 4. **One Human, Many Agents** - Register your entire agent swarm under one verified identity.
-5. **Built on Celo** - Fast, cheap, mobile-first blockchain. On-chain attestations.
+5. **Open Standard** - Built on OpenClaw verification spec. Anyone can validate results.
 
-## Implementation Steps
+## Key Format
 
-1. Generate Ed25519 keypair for your agent (SPKI DER format)
-2. Visit https://selfclaw.app to verify
-3. Enter your agent's public key (starts with `MCowBQ...`)
-4. Scan QR code with Self.xyz mobile app — done
-5. Query API to confirm verification
+SelfClaw uses **SPKI DER format** (base64 encoded) for Ed25519 public keys:
+- Example: `MCowBQYDK2VwAyEA...` (44 characters)
+- Generate with Node.js:
 
-> Note: If you're new to Self.xyz, you'll set up the app once by tapping your passport's NFC chip. After that, verifications are just a QR scan.
+```javascript
+import { generateKeyPairSync } from "crypto";
+
+const { publicKey, privateKey } = generateKeyPairSync("ed25519");
+
+// Export SPKI DER (base64) for SelfClaw
+const publicKeySpki = publicKey.export({ type: "spki", format: "der" }).toString("base64");
+console.log("Public Key:", publicKeySpki); // MCowBQYDK2VwAyEA...
+```
 
 ## Signature Verification Flow
 
@@ -81,10 +87,10 @@ When verifying an agent's identity in your application:
 4. Query SelfClaw API to confirm public key is registered
 
 ```javascript
-import { createHash } from "crypto";
+import { createHash, createPublicKey, verify as cryptoVerify } from "crypto";
 
-// 1. Generate challenge (include agentKeyHash to bind proof to this specific agent)
-const agentKeyHash = createHash("sha256").update(publicKey).digest("hex");
+// 1. Generate challenge (agentKeyHash binds proof to this specific agent)
+const agentKeyHash = createHash("sha256").update(publicKeySpki).digest("hex");
 const challenge = JSON.stringify({
   domain: "your-app.com",
   timestamp: Date.now(),
@@ -92,15 +98,23 @@ const challenge = JSON.stringify({
   agentKeyHash: agentKeyHash
 });
 
-// 2. Agent signs and returns { publicKey, signature }
-// 3. Verify signature using Node crypto or @noble/ed25519
-import { verify } from "@noble/ed25519";
-const isValid = await verify(signature, challenge, publicKeyRaw); // raw 32-byte key for noble
+// 2. Agent signs and returns { publicKey (SPKI base64), signature (base64) }
+
+// 3. Verify signature using Node.js crypto (handles SPKI directly)
+const spkiDer = Buffer.from(publicKeySpki, "base64");
+const keyObject = createPublicKey({ key: spkiDer, format: "der", type: "spki" });
+const signatureBuffer = Buffer.from(signature, "base64");
+const isValid = cryptoVerify(null, Buffer.from(challenge), keyObject, signatureBuffer);
+
+// OR using @noble/ed25519 (requires extracting raw 32-byte key)
+// import { verify } from "@noble/ed25519";
+// const rawKey = spkiDer.subarray(-32); // Last 32 bytes of SPKI DER
+// const isValid = await verify(signatureBuffer, Buffer.from(challenge), rawKey);
 
 // 4. Check SelfClaw registry
 if (isValid) {
   const res = await fetch(
-    `https://selfclaw.app/api/selfclaw/v1/agent/${encodeURIComponent(publicKey)}`
+    `https://selfclaw.app/api/selfclaw/v1/agent?publicKey=${encodeURIComponent(publicKeySpki)}`
   );
   const data = await res.json();
   if (data.verified) {
@@ -111,22 +125,38 @@ if (isValid) {
 
 ## Security Considerations
 
-- **Challenge binding**: Include `agentKeyHash` in challenges to bind verification to a specific agent key
-- **Unique challenges**: Always include domain, timestamp, and nonce to prevent replay attacks
-- **Verify signature first**: Check signature validity before querying registry
-- **Privacy model**: Raw passport data never leaves the user's device — only ZK proofs are shared
-- **Swarm tracking**: Use `humanId` to identify all agents from the same human
+- **Proof-to-key binding**: During registration, the Self.xyz ZK proof is bound to the agent's public key hash. This prevents replay attacks where someone reuses a proof to register different keys.
+- **Challenge binding**: Include `agentKeyHash` in challenges to bind verification to a specific agent key.
+- **Unique challenges**: Always include domain, timestamp, and nonce to prevent replay attacks.
+- **Verify signature first**: Check signature validity before querying registry.
+- **Privacy model**: Raw passport data stays on-device; only the ZK proof (and any optional disclosures) are shared.
+- **Swarm tracking**: Use `humanId` to identify all agents from the same human.
 
-## Key Format
+## Trust Model
 
-SelfClaw uses **SPKI DER format** (base64 encoded) for Ed25519 public keys:
-- Example: `MCowBQYDK2VwAyEA...`
-- Generate with Node.js: `publicKey.export({ type: "spki", format: "der" }).toString("base64")`
+SelfClaw is an **API registry** that stores verification records in PostgreSQL. This provides:
+- Fast lookups (milliseconds)
+- Simple integration
+- No blockchain transaction fees
+
+**Optional on-chain anchoring on Celo is planned** for use cases requiring stronger decentralization guarantees.
+
+## OpenClaw Standard
+
+SelfClaw implements the OpenClaw verification standard:
+- Canonical challenge format (domain, timestamp, nonce, agentKeyHash)
+- Proof-to-key binding via userDefinedData in Self.xyz
+- Open response schema for interoperability
+
+Anyone can validate results without trusting the SelfClaw API by:
+1. Verifying the agent's signature locally
+2. Checking the humanId against Self.xyz directly (when on-chain anchoring is live)
 
 ## Built With
 
 - **Self.xyz** - Privacy-preserving passport verification with ZK proofs
-- **Celo** - Mobile-first blockchain for on-chain verification records
+- **OpenClaw** - Open verification standard for agent identity
+- **Celo** (planned) - Mobile-first blockchain for on-chain anchoring
 
 ## Links
 

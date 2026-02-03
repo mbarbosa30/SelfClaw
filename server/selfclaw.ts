@@ -334,6 +334,57 @@ router.post("/v1/callback", async (req: Request, res: Response) => {
   }
 });
 
+router.get("/v1/agent", publicApiLimiter, async (req: Request, res: Response) => {
+  try {
+    const publicKey = req.query.publicKey as string;
+    const name = req.query.name as string;
+    
+    if (!publicKey && !name) {
+      return res.status(400).json({ error: "Missing publicKey or name query parameter" });
+    }
+    
+    const identifier = publicKey || name;
+    
+    let agents = await db.select()
+      .from(verifiedBots)
+      .where(sql`${verifiedBots.publicKey} = ${identifier}`)
+      .limit(1);
+    
+    if (agents.length === 0) {
+      agents = await db.select()
+        .from(verifiedBots)
+        .where(sql`${verifiedBots.deviceId} = ${identifier}`)
+        .limit(1);
+    }
+    
+    const foundAgent = agents[0];
+
+    if (!foundAgent) {
+      return res.json({
+        verified: false,
+        publicKey: identifier,
+        message: "Agent not found in registry"
+      });
+    }
+
+    res.json({
+      verified: true,
+      publicKey: foundAgent.publicKey,
+      agentName: foundAgent.deviceId,
+      humanId: foundAgent.humanId,
+      selfxyz: {
+        verified: true,
+        registeredAt: foundAgent.verifiedAt
+      },
+      swarm: foundAgent.humanId ? `https://selfclaw.app/human/${foundAgent.humanId}` : null,
+      metadata: foundAgent.metadata
+    });
+  } catch (error) {
+    console.error("Query param agent lookup error:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 router.get("/v1/agent/:identifier", publicApiLimiter, async (req: Request, res: Response) => {
   try {
     const { identifier } = req.params;
