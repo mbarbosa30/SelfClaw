@@ -1969,31 +1969,14 @@ async function startAgentVerification() {
       signatureVerified: data.signatureVerified
     };
     
-    const agentKeyHash = data.agentKeyHash || '';
-    const userDefinedData = agentKeyHash.padEnd(128, '0');
-    
-    const wsSessionId = crypto.randomUUID ? crypto.randomUUID() : 'sess-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
-    
-    const selfAppConfig = {
-      version: 2,
-      appName: "SelfClaw",
-      logoBase64: "https://selfclaw.app/favicon.png",
-      scope: data.config.scope,
-      endpoint: data.config.endpoint,
-      endpointType: data.config.staging ? "staging_https" : "https",
-      userId: data.sessionId,
-      userIdType: "uuid",
-      userDefinedData: userDefinedData,
-      disclosures: {
-        minimumAge: 18,
-        excludedCountries: [],
-        ofac: false
-      }
-    };
+    // Use the properly formatted selfApp config from backend (built with official SDK)
+    const selfAppConfig = data.selfApp;
     
     if (selfSocket) {
       selfSocket.disconnect();
     }
+    // Use the sessionId from the SDK-built config
+    const wsSessionId = selfAppConfig.sessionId;
     selfSocket = connectToSelfRelayer(wsSessionId, selfAppConfig, 
       () => {
         console.log('[SelfClaw] Verification successful via WebSocket!');

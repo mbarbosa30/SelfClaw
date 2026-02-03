@@ -4,6 +4,7 @@ import { db } from "./db.js";
 import { verifiedBots, verificationSessions, type InsertVerifiedBot, type InsertVerificationSession } from "../shared/schema.js";
 import { eq, and, gt, lt, sql } from "drizzle-orm";
 import { SelfBackendVerifier, AllIds, DefaultConfigStore } from "@selfxyz/core";
+import { SelfAppBuilder } from "@selfxyz/qrcode";
 import crypto from "crypto";
 import * as ed from "@noble/ed25519";
 
@@ -174,6 +175,25 @@ router.post("/v1/start-verification", verificationLimiter, async (req: Request, 
     
     await db.insert(verificationSessions).values(newSession);
     
+    // Build properly formatted Self app config using the official SDK
+    const userDefinedData = agentKeyHash.padEnd(128, '0');
+    const selfApp = new SelfAppBuilder({
+      version: 2,
+      appName: "SelfClaw",
+      logoBase64: "https://selfclaw.app/favicon.png",
+      scope: SELFCLAW_SCOPE,
+      endpoint: SELFCLAW_ENDPOINT,
+      endpointType: SELFCLAW_STAGING ? "staging_https" : "https",
+      userId: sessionId,
+      userIdType: "uuid",
+      userDefinedData: userDefinedData,
+      disclosures: {
+        minimumAge: 18,
+        excludedCountries: [],
+        ofac: false
+      }
+    }).build();
+    
     res.json({
       success: true,
       sessionId,
@@ -181,6 +201,7 @@ router.post("/v1/start-verification", verificationLimiter, async (req: Request, 
       challenge,
       signatureRequired: !signatureVerified,
       signatureVerified,
+      selfApp,
       config: {
         scope: SELFCLAW_SCOPE,
         endpoint: SELFCLAW_ENDPOINT,
