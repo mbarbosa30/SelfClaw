@@ -2624,9 +2624,75 @@ body.dashboard-mode .cockpit-main {
 .verify-section,
 .check-section,
 .api-section,
+.claw-section,
 .why-section {
   margin-top: 3rem;
   padding-top: 2.5rem;
+}
+
+/* Claw Section */
+.claw-install {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.claw-code {
+  flex: 1;
+  font-family: var(--font-mono);
+  font-size: 1rem;
+  padding: 1rem 1.5rem;
+  background: var(--black);
+  border: 1px solid var(--green);
+  border-radius: 8px;
+  color: var(--green);
+}
+
+.copy-btn {
+  white-space: nowrap;
+}
+
+.claw-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.claw-step {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 0;
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+}
+
+.claw-step .step-num {
+  width: 28px;
+  height: 28px;
+  background: var(--green);
+  color: var(--black);
+  font-weight: 700;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-family: var(--font-mono);
+  flex-shrink: 0;
+}
+
+.why-intro {
+  color: var(--text-secondary);
+  font-size: 1rem;
+  line-height: 1.7;
+  margin-bottom: 2rem;
+  max-width: 800px;
+}
+
+.text-green {
+  color: var(--green);
 }
 
 .section-card {

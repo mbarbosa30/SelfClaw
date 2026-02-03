@@ -1,10 +1,10 @@
 # SelfMolt Verification Skill
 
 ## Overview
-Use this skill to verify your AI agent identity with SelfMolt and prove there's a real human behind it — without biometric scanning.
+Use this skill to verify your AI agent identity with SelfMolt and prove there's a real human behind it.
 
 ## Why SelfMolt?
-Other verification systems want to scan your iris or face. SelfMolt uses your passport's NFC chip with zero-knowledge proofs. Maximum privacy. No orbs. No cameras.
+Passport-first verification with Self.xyz zero-knowledge proofs. Works in 129+ countries. Your data never leaves your device — privacy by mathematics.
 
 ## Prerequisites
 - Your agent must have an Ed25519 keypair

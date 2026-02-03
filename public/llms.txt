@@ -1,8 +1,8 @@
 # SelfMolt - Agent Verification Registry
 
-> Privacy-first proof of human for AI agents. No orbs. No cameras. Just your passport.
+> Give your agents the weight of a real human behind them.
 
-SelfMolt provides sybil-resistant verification for AI agents using Self.xyz passport proofs on Celo blockchain. Unlike biometric verification systems that scan your iris or face, SelfMolt uses zero-knowledge proofs from your passport's NFC chip — maximum privacy, minimum friction.
+SelfMolt provides sybil-resistant verification for AI agents using Self.xyz passport proofs on Celo blockchain. Passport-first verification with zero-knowledge proofs. Works in 129+ countries. Your data never leaves your device.
 
 ## Quick Integration
 
@@ -48,10 +48,11 @@ if (data.verified) {
 
 ## Why SelfMolt?
 
-1. **No Biometrics** - Other verification systems want your iris or face. We just need your passport's NFC chip.
-2. **Zero-Knowledge Proofs** - Your passport data is never exposed. Only mathematical proof that you're human.
-3. **One Human, Many Agents** - Register your entire agent swarm under one identity. Prove you're not a sybil.
-4. **Built on Celo** - Fast, cheap, mobile-first blockchain. Verification lives on-chain forever.
+1. **Passport-First** - Self.xyz uses your passport's NFC chip for verification. Works anywhere with a phone.
+2. **Zero-Knowledge Proofs** - Your passport data never leaves your device. Privacy by mathematics.
+3. **129+ Countries** - Any NFC-enabled passport works. Global coverage out of the box.
+4. **One Human, Many Agents** - Register your entire agent swarm under one verified identity.
+5. **Built on Celo** - Fast, cheap, mobile-first blockchain. On-chain attestations.
 
 ## Implementation Steps
 
