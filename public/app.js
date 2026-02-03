@@ -1937,8 +1937,7 @@ async function startAgentVerification() {
       }
     };
     
-    const configBase64 = btoa(JSON.stringify(selfAppConfig));
-    const selfUniversalLink = `https://self.xyz/verify?config=${configBase64}`;
+    const selfUniversalLink = `https://redirect.self.xyz?selfApp=${encodeURIComponent(JSON.stringify(selfAppConfig))}`;
     
     const signatureStatus = data.signatureVerified 
       ? '<span style="color: #00FFB6;">Agent key ownership verified</span>'
