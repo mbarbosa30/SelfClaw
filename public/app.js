@@ -176,12 +176,31 @@ Tone: Warm, professional, and solution-oriented. Never defensive or dismissive.`
   }
 };
 
+async function loadVerifiedCount() {
+  try {
+    const res = await fetch('/api/selfclaw/v1/stats');
+    if (res.ok) {
+      const stats = await res.json();
+      if (stats.totalAgents > 3) {
+        const countEl = document.getElementById('verified-count');
+        if (countEl) {
+          countEl.textContent = `${stats.totalAgents} agents verified`;
+          countEl.style.display = 'inline-flex';
+        }
+      }
+    }
+  } catch (e) {
+    console.log('Could not load verified count');
+  }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   loadAuthState();
   loadStatus();
   loadEnvCheck();
   loadConfig();
   handleGmailCallbackParams();
+  loadVerifiedCount();
 
   document.getElementById('run-setup')?.addEventListener('click', runSetup);
   document.getElementById('install-openclaw')?.addEventListener('click', installOpenClaw);

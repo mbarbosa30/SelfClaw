@@ -294,6 +294,25 @@ h2 {
   line-height: 1.7;
 }
 
+.verified-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: rgba(0, 255, 182, 0.1);
+  border: 1px solid var(--self-green);
+  border-radius: 2rem;
+  color: var(--self-green);
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-top: 1rem;
+}
+
+.verified-count::before {
+  content: "\u2713";
+  font-weight: bold;
+}
+
 .hero-cta {
   display: flex;
   gap: 1rem;
