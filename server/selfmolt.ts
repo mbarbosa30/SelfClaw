@@ -250,6 +250,7 @@ router.post("/v1/callback", async (req: Request, res: Response) => {
         .set({
           humanId,
           metadata,
+          verificationLevel: pending.signatureVerified ? "passport+signature" : "passport",
           verifiedAt: new Date()
         })
         .where(eq(verifiedBots.publicKey, pending.agentPublicKey));
