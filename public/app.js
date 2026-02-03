@@ -17,6 +17,33 @@ function initRotatingHeadline() {
 
 document.addEventListener('DOMContentLoaded', initRotatingHeadline);
 
+function openDonateModal() {
+  const modal = document.getElementById('donate-modal');
+  if (modal) modal.style.display = 'flex';
+}
+
+function closeDonateModal() {
+  const modal = document.getElementById('donate-modal');
+  if (modal) modal.style.display = 'none';
+}
+
+function copyDonateAddress(e) {
+  const address = document.getElementById('donate-address').textContent;
+  navigator.clipboard.writeText(address).then(() => {
+    const btn = e.target;
+    const originalText = btn.textContent;
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = originalText, 2000);
+  });
+}
+
+document.addEventListener('click', function(e) {
+  const donateModal = document.getElementById('donate-modal');
+  if (e.target === donateModal) {
+    closeDonateModal();
+  }
+});
+
 let currentUser = null;
 let currentAgent = null;
 let currentWizardStep = 1;

@@ -2956,3 +2956,84 @@ body.dashboard-mode .cockpit-main {
   color: var(--gray-400);
   font-size: 0.85rem;
 }
+
+.footer-credit {
+  margin-top: 0.75rem;
+  color: var(--gray-500);
+  font-size: 0.8rem;
+}
+
+.footer-credit a {
+  color: var(--green);
+  text-decoration: none;
+}
+
+.footer-credit a:hover {
+  text-decoration: underline;
+}
+
+.donate-link {
+  background: none;
+  border: none;
+  color: var(--gray-300);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  font-family: inherit;
+  letter-spacing: 0.05em;
+  transition: color 0.2s;
+}
+
+.donate-link:hover {
+  color: var(--green);
+}
+
+.donate-modal-content {
+  max-width: 480px;
+}
+
+.donate-mission {
+  color: var(--gray-300);
+  line-height: 1.6;
+  margin-bottom: 1.5rem;
+}
+
+.donate-wallet {
+  background: var(--black);
+  border: 1px solid var(--gray-700);
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.donate-wallet label {
+  display: block;
+  color: var(--gray-400);
+  font-size: 0.85rem;
+  margin-bottom: 0.75rem;
+}
+
+.wallet-address-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.wallet-address-row code {
+  flex: 1;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--green);
+  word-break: break-all;
+  padding: 0.5rem;
+  background: rgba(0, 255, 182, 0.05);
+  border-radius: 4px;
+}
+
+.donate-thanks {
+  color: var(--gray-500);
+  font-size: 0.85rem;
+  text-align: center;
+  margin-top: 1rem;
+}

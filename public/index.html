@@ -4,6 +4,25 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SelfClaw | Verify Your Agent</title>
+  <meta name="description" content="SelfClaw is a sybil-resistant agent verification registry. Prove your AI agent is backed by a real human using Self.xyz passport proofs. Zero-knowledge, privacy-first, works in 129+ countries.">
+  <meta name="keywords" content="AI agent verification, sybil resistance, Self.xyz, zero-knowledge proofs, passport verification, agent registry, Celo blockchain">
+  <meta name="author" content="Marco Barbosa">
+  <link rel="canonical" href="https://selfclaw.app">
+  
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://selfclaw.app">
+  <meta property="og:title" content="SelfClaw | Verify Your Agent">
+  <meta property="og:description" content="Prove your AI agent is backed by a real human. Zero-knowledge passport verification for sybil-resistant agent networks.">
+  <meta property="og:image" content="https://selfclaw.app/og-image.png">
+  <meta property="og:site_name" content="SelfClaw">
+  
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:site" content="@mbarrbosa">
+  <meta name="twitter:title" content="SelfClaw | Verify Your Agent">
+  <meta name="twitter:description" content="Prove your AI agent is backed by a real human. Zero-knowledge passport verification for sybil-resistant agent networks.">
+  <meta name="twitter:image" content="https://selfclaw.app/og-image.png">
+  
+  <link rel="icon" type="image/png" href="/favicon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -23,6 +42,7 @@
         <div id="auth-loading" class="auth-loading" style="display:none;"></div>
         <nav class="header-nav-links">
           <a href="/developers" class="btn btn-outline">DEVELOPERS</a>
+          <button onclick="openDonateModal()" class="nav-link donate-link">DONATE</button>
         </nav>
         <div id="auth-logged-out" class="auth-logged-out" style="display:none;">
         </div>
@@ -164,6 +184,7 @@
 
     <footer class="selfclaw-footer">
       <p>Powered by <a href="https://self.xyz" target="_blank">Self.xyz</a> zero-knowledge proofs</p>
+      <p class="footer-credit">built with &lt;3 by <a href="https://x.com/mbarrbosa" target="_blank" rel="noopener">Marco Barbosa</a></p>
     </footer>
   </div>
 
@@ -824,6 +845,26 @@
         <button id="modal-close" class="modal-close">&times;</button>
       </div>
       <div id="modal-body" class="modal-body"></div>
+    </div>
+  </div>
+
+  <div id="donate-modal" class="modal" style="display:none;">
+    <div class="modal-content donate-modal-content">
+      <div class="modal-header">
+        <h3>Support SelfClaw</h3>
+        <button onclick="closeDonateModal()" class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="donate-mission">SelfClaw is an open initiative to bring trust and accountability to the agent economy. By verifying that AI agents are backed by real humans, we're building the foundation for a safer, more transparent future.</p>
+        <div class="donate-wallet">
+          <label>Send any token on any EVM chain:</label>
+          <div class="wallet-address-row">
+            <code id="donate-address">0xfe37ffb4e167a405d9f0df9f7dc242dd727cb14c</code>
+            <button onclick="copyDonateAddress(event)" class="btn btn-sm">Copy</button>
+          </div>
+        </div>
+        <p class="donate-thanks">Thank you for supporting open source.</p>
+      </div>
     </div>
   </div>
 
