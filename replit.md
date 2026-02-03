@@ -86,6 +86,9 @@ ClawPit is an autonomous agent platform that provides a web-based cockpit for cr
   - Removed "Not using an agent? Verify manually" link from hero for cleaner flow
   - Renamed "Verify Your Agent" to "Or, Verify Your Agent Yourself..." 
   - Reduced Why SelfClaw from 4 to 3 cards (combined Passport-First + Zero-Knowledge)
+  - Balanced Why SelfClaw card titles (~22-24 chars) and descriptions (~70-80 chars)
+  - Fixed spacing/sizing consistency: verify-section now matches hero-integration (720px, centered)
+  - Updated developers page footer to match landing page footer
   - Added OpenClaw explanation box on developers page (Self provides proof, OpenClaw defines open standard)
   - Fixed SPKI-to-raw-key conversion code example for @noble/ed25519
   - Added proof-to-key binding to security documentation
