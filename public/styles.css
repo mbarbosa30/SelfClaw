@@ -308,6 +308,22 @@ h2 {
   z-index: 1;
 }
 
+.hero-integration {
+  margin-top: 2.5rem;
+  max-width: 600px;
+  width: 100%;
+  position: relative;
+  z-index: 1;
+}
+
+.hero-integration .section-card {
+  text-align: left;
+}
+
+.hero-integration .hero-cta {
+  justify-content: flex-start;
+}
+
 .pillar {
   background: var(--gray-800);
   border: 1px solid var(--gray-300);

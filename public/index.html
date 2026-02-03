@@ -58,61 +58,45 @@
       <div class="hero-content">
         <h2 class="hero-headline" id="rotating-headline"></h2>
         <p class="hero-subline">Verified agent keys, backed by Self. Zero-knowledge proofs. Works in 129+ countries. Your data never leaves your device.</p>
-        <div class="hero-cta">
-          <a href="#verify" class="btn btn-large">Verify Your Agent</a>
-          <a href="#check" class="btn btn-outline">Check Verification</a>
-        </div>
       </div>
-      <div class="hero-pillars">
-        <div class="pillar">
-          <div class="pillar-icon pillar-icon-green">01</div>
-          <h3>Passport-First Verification</h3>
-          <p>Your passport's NFC chip + Self.xyz app = cryptographic proof of humanity. Works anywhere with a phone.</p>
-        </div>
-        <div class="pillar">
-          <div class="pillar-icon pillar-icon-green">02</div>
-          <h3>Zero-Knowledge Proofs</h3>
-          <p>Self.xyz generates proofs locally. Your passport data never leaves your device. Privacy by mathematics.</p>
-        </div>
-        <div class="pillar">
-          <div class="pillar-icon pillar-icon-green">03</div>
-          <h3>Sybil-Resistant Registry</h3>
-          <p>One human, many agents. Register your swarm under one verified identity on Celo. Build real trust.</p>
-        </div>
-      </div>
-    </section>
-
-    <section id="agent-integration" class="agent-integration-section">
-      <div class="section-card">
-        <h2>For Your Agent</h2>
-        <p class="section-intro">Have your AI agent verify itself. Send this to your agent:</p>
-        
-        <div class="code-copy-block">
-          <code>Read https://selfclaw.app/skill.md and follow the instructions to verify.</code>
-          <button class="copy-btn" onclick="copyToClipboard('Read https://selfclaw.app/skill.md and follow the instructions to verify.', this)">Copy</button>
-        </div>
-        
-        <div class="integration-steps">
-          <div class="integration-step">
-            <div class="step-num">1</div>
-            <div class="step-text">
-              <strong>Send to your agent</strong>
-              <span>Copy the instruction above and paste it to your agent</span>
+      
+      <div id="agent-integration" class="hero-integration">
+        <div class="section-card">
+          <h2>For Your Agent</h2>
+          <p class="section-intro">Have your AI agent verify itself. Send this to your agent:</p>
+          
+          <div class="code-copy-block">
+            <code>Read https://selfclaw.app/skill.md and follow the instructions to verify.</code>
+            <button class="copy-btn" onclick="copyToClipboard('Read https://selfclaw.app/skill.md and follow the instructions to verify.', this)">Copy</button>
+          </div>
+          
+          <div class="integration-steps">
+            <div class="integration-step">
+              <div class="step-num">1</div>
+              <div class="step-text">
+                <strong>Send to your agent</strong>
+                <span>Copy the instruction above and paste it to your agent</span>
+              </div>
+            </div>
+            <div class="integration-step">
+              <div class="step-num">2</div>
+              <div class="step-text">
+                <strong>Verify with Self</strong>
+                <span>Your agent starts the flow and you scan with Self.xyz</span>
+              </div>
+            </div>
+            <div class="integration-step">
+              <div class="step-num">3</div>
+              <div class="step-text">
+                <strong>Verified owner</strong>
+                <span>Your agent now has a cryptographically verified human owner</span>
+              </div>
             </div>
           </div>
-          <div class="integration-step">
-            <div class="step-num">2</div>
-            <div class="step-text">
-              <strong>Verify with Self</strong>
-              <span>Your agent starts the flow and you scan with Self.xyz</span>
-            </div>
-          </div>
-          <div class="integration-step">
-            <div class="step-num">3</div>
-            <div class="step-text">
-              <strong>Verified owner</strong>
-              <span>Your agent now has a cryptographically verified human owner</span>
-            </div>
+          
+          <div class="hero-cta" style="margin-top: 1.5rem;">
+            <a href="#verify" class="btn btn-large">Verify Your Agent</a>
+            <a href="#check" class="btn btn-outline">Check Verification</a>
           </div>
         </div>
       </div>
@@ -211,11 +195,15 @@
       <div class="why-grid">
         <div class="why-card">
           <h3>Passport-First Verification</h3>
-          <p>Self.xyz uses your passport's NFC chip with zero-knowledge proofs. Your data is processed locally and never leaves your device.</p>
+          <p>Your passport's NFC chip + Self.xyz app = cryptographic proof of humanity. Works anywhere with a phone.</p>
+        </div>
+        <div class="why-card">
+          <h3>Zero-Knowledge Proofs</h3>
+          <p>Self.xyz generates proofs locally. Your passport data never leaves your device. Privacy by mathematics.</p>
         </div>
         <div class="why-card">
           <h3>Works in 129+ Countries</h3>
-          <p>Any NFC-enabled passport works. Just download the Self.xyz app, tap your passport, and you're verified globally.</p>
+          <p>Any NFC-enabled passport works. Just download the Self.xyz app, set up once, and you're verified globally.</p>
         </div>
         <div class="why-card">
           <h3>One Human, Many Agents</h3>
