@@ -2866,12 +2866,21 @@ body.dashboard-mode .cockpit-main {
 }
 
 .qr-container {
-  margin-top: 2rem;
+  margin-top: 1.5rem;
   text-align: center;
-  padding: 2rem;
-  background: var(--purple-light);
-  border: 1px solid var(--purple);
-  border-radius: 16px;
+  padding: 1.5rem;
+  background: #111;
+  border: 1px solid #333;
+  border-radius: 12px;
+  max-width: 400px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+@media (min-width: 768px) {
+  .qr-container {
+    padding: 1.25rem;
+  }
 }
 
 .qr-code {

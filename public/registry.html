@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Verified Agents Registry | SelfClaw</title>
+  <meta name="description" content="Browse recently verified AI agents backed by real human identities. SelfClaw prevents sybil attacks through passport-based verification.">
+  <link rel="icon" type="image/png" href="/favicon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .registry-hero {
+      padding: 3rem 0 2rem;
+      text-align: center;
+      border-bottom: 1px solid #222;
+    }
+    
+    .registry-hero h1 {
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+      color: #fff;
+    }
+    
+    .registry-hero p {
+      color: #888;
+      max-width: 500px;
+      margin: 0 auto;
+    }
+    
+    .registry-stats {
+      display: flex;
+      justify-content: center;
+      gap: 3rem;
+      padding: 1.5rem 0;
+      border-bottom: 1px solid #222;
+    }
+    
+    .stat-item {
+      text-align: center;
+    }
+    
+    .stat-value {
+      font-size: 1.75rem;
+      font-weight: 600;
+      color: #fff;
+    }
+    
+    .stat-label {
+      font-size: 0.75rem;
+      color: #666;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    
+    .registry-list {
+      max-width: 700px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+    }
+    
+    .registry-item {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 1rem;
+      background: #111;
+      border: 1px solid #222;
+      border-radius: 8px;
+      margin-bottom: 0.75rem;
+    }
+    
+    .registry-item:hover {
+      border-color: #333;
+    }
+    
+    .agent-icon {
+      width: 40px;
+      height: 40px;
+      background: #1a1a1a;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.25rem;
+    }
+    
+    .agent-info {
+      flex: 1;
+    }
+    
+    .agent-key {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.85rem;
+      color: #ccc;
+    }
+    
+    .agent-meta {
+      font-size: 0.7rem;
+      color: #555;
+      margin-top: 0.25rem;
+    }
+    
+    .agent-badge {
+      font-size: 0.65rem;
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      background: rgba(0,255,182,0.1);
+      color: var(--green);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    
+    .registry-empty {
+      text-align: center;
+      padding: 3rem;
+      color: #555;
+    }
+    
+    .registry-loading {
+      text-align: center;
+      padding: 3rem;
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <div class="header-title">
+        <a href="/" style="text-decoration: none; color: inherit;">
+          <h1>SELFCLAW</h1>
+        </a>
+        <span class="tag tag-green">REGISTRY</span>
+      </div>
+      <nav class="header-nav">
+        <a href="/" class="nav-link">HOME</a>
+        <a href="/technology" class="nav-link">TECHNOLOGY</a>
+        <a href="/developers" class="nav-link">DOCS</a>
+      </nav>
+    </header>
+
+    <section class="registry-hero">
+      <h1>Verified Agents</h1>
+      <p>Real AI agents backed by real humans. Each verification proves there's a passport-verified human behind the agent.</p>
+    </section>
+
+    <div class="registry-stats">
+      <div class="stat-item">
+        <div class="stat-value" id="total-agents">-</div>
+        <div class="stat-label">Verified Agents</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value" id="unique-humans">-</div>
+        <div class="stat-label">Unique Humans</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value" id="recent-count">-</div>
+        <div class="stat-label">Last 24h</div>
+      </div>
+    </div>
+
+    <div class="registry-list" id="registry-list">
+      <div class="registry-loading">Loading verified agents...</div>
+    </div>
+
+    <footer class="footer" style="margin-top: 3rem;">
+      <div class="footer-links">
+        <a href="/" class="footer-link">Home</a>
+        <span class="footer-divider">|</span>
+        <a href="/developers" class="footer-link">Developers</a>
+        <span class="footer-divider">|</span>
+        <a href="#" onclick="showDonateModal(); return false;" class="footer-link">Donate</a>
+      </div>
+      <span class="footer-credit">built with &lt;3 by <a href="https://x.com/mbarrbosa" target="_blank" class="footer-link">Marco Barbosa</a></span>
+    </footer>
+  </div>
+
+  <div id="donate-modal" class="donate-modal" style="display:none;">
+    <div class="donate-modal-content">
+      <button class="modal-close" onclick="closeDonateModal()">&times;</button>
+      <h2>Support SelfClaw</h2>
+      <p style="color: #aaa; margin-bottom: 1rem;">Help us build the trust layer for AI agents.</p>
+      <div style="background: #0a0a0a; padding: 1rem; border-radius: 8px; border: 1px solid #333;">
+        <p style="font-size: 0.75rem; color: #666; margin-bottom: 0.5rem;">USDC on Celo</p>
+        <code style="font-size: 0.8rem; color: #ccc; word-break: break-all;">0x742d35Cc6634C0532925a3b844Bc9e7595f1Db38</code>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    async function loadRegistry() {
+      try {
+        const [statsRes, agentsRes] = await Promise.all([
+          fetch('/api/selfclaw/v1/stats'),
+          fetch('/api/selfclaw/v1/recent')
+        ]);
+        
+        const stats = await statsRes.json();
+        const agents = await agentsRes.json();
+        
+        document.getElementById('total-agents').textContent = stats.totalAgents || 0;
+        document.getElementById('unique-humans').textContent = stats.uniqueHumans || 0;
+        document.getElementById('recent-count').textContent = stats.last24h || 0;
+        
+        const listEl = document.getElementById('registry-list');
+        
+        if (!agents.agents || agents.agents.length === 0) {
+          listEl.innerHTML = '<div class="registry-empty">No verified agents yet. Be the first!</div>';
+          return;
+        }
+        
+        listEl.innerHTML = agents.agents.map(agent => `
+          <div class="registry-item">
+            <div class="agent-icon">🤖</div>
+            <div class="agent-info">
+              <div class="agent-key">${escapeHtml(agent.publicKey.substring(0, 16))}...${escapeHtml(agent.publicKey.slice(-8))}</div>
+              <div class="agent-meta">${agent.deviceId ? escapeHtml(agent.deviceId) + ' · ' : ''}Verified ${formatTimeAgo(agent.verifiedAt)}</div>
+            </div>
+            <span class="agent-badge">${agent.verificationLevel || 'passport'}</span>
+          </div>
+        `).join('');
+        
+      } catch (error) {
+        console.error('Failed to load registry:', error);
+        document.getElementById('registry-list').innerHTML = '<div class="registry-empty">Failed to load registry</div>';
+      }
+    }
+    
+    function escapeHtml(text) {
+      if (!text) return '';
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+    
+    function formatTimeAgo(dateStr) {
+      if (!dateStr) return 'recently';
+      const date = new Date(dateStr);
+      const now = new Date();
+      const diffMs = now - date;
+      const diffMins = Math.floor(diffMs / 60000);
+      const diffHours = Math.floor(diffMs / 3600000);
+      const diffDays = Math.floor(diffMs / 86400000);
+      
+      if (diffMins < 1) return 'just now';
+      if (diffMins < 60) return `${diffMins}m ago`;
+      if (diffHours < 24) return `${diffHours}h ago`;
+      if (diffDays < 7) return `${diffDays}d ago`;
+      return date.toLocaleDateString();
+    }
+    
+    function showDonateModal() {
+      document.getElementById('donate-modal').style.display = 'flex';
+    }
+    
+    function closeDonateModal() {
+      document.getElementById('donate-modal').style.display = 'none';
+    }
+    
+    document.getElementById('donate-modal')?.addEventListener('click', function(e) {
+      if (e.target === this) closeDonateModal();
+    });
+    
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') closeDonateModal();
+    });
+    
+    loadRegistry();
+  </script>
+</body>
+</html>

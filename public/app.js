@@ -1999,31 +1999,31 @@ async function startAgentVerification() {
     
     qrContainer.style.display = 'block';
     qrEl.innerHTML = `
-      <p style="margin-bottom: 1rem; color: #00FFB6; font-weight: 600; font-size: 1.1rem;">Scan with Self App</p>
-      <div id="qr-code-img" style="background: white; padding: 1rem; border-radius: 8px; display: inline-block; margin-bottom: 1rem;"></div>
-      <p style="font-size: 0.85rem; color: #e0e0e0; margin-bottom: 0.75rem; line-height: 1.6;">
+      <p style="margin-bottom: 0.75rem; color: #fff; font-weight: 600; font-size: 1rem;">Scan with Self App</p>
+      <div id="qr-code-img" style="background: white; padding: 0.75rem; border-radius: 8px; display: inline-block; margin-bottom: 0.75rem;"></div>
+      <p style="font-size: 0.8rem; color: #aaa; margin-bottom: 0.5rem; line-height: 1.5;">
         1. Open Self app on your phone<br/>
         2. Scan this QR code<br/>
         3. Approve the verification
       </p>
-      <p style="font-size: 0.75rem; color: #666; margin-bottom: 1rem;">
-        Agent: ${escapeHtml(pubkey.substring(0, 20))}...
+      <p style="font-size: 0.7rem; color: #555; margin-bottom: 0.75rem;">
+        Agent: ${escapeHtml(pubkey.substring(0, 12))}...
       </p>
-      <a href="${selfUniversalLink}" target="_blank" class="btn btn-outline" style="display: inline-block; margin-bottom: 1rem;">
+      <a href="${selfUniversalLink}" target="_blank" class="btn btn-outline btn-sm" style="display: inline-block; margin-bottom: 0.75rem;">
         Open in Self App
       </a>
-      <div id="verification-status" style="padding: 0.75rem; border-radius: 8px; background: rgba(0,255,182,0.1); border: 1px solid rgba(0,255,182,0.3);">
-        <span style="color: #00FFB6;">Waiting for verification...</span>
+      <div id="verification-status" style="padding: 0.5rem 0.75rem; border-radius: 6px; background: rgba(255,255,255,0.05); border: 1px solid #333;">
+        <span style="color: #888; font-size: 0.85rem;">Waiting for verification...</span>
       </div>
       
-      <details style="margin-top: 1.5rem; text-align: left;">
-        <summary style="color: #666; cursor: pointer; font-size: 0.8rem;">Developer: Sign Challenge (Optional)</summary>
-        <div style="margin-top: 0.75rem; padding: 1rem; background: rgba(0,0,0,0.3); border-radius: 8px;">
-          <p style="font-size: 0.75rem; color: #888; margin-bottom: 0.5rem;">${signatureStatus}</p>
-          <p style="font-size: 0.7rem; color: #666; margin-bottom: 0.5rem;">Challenge to sign:</p>
-          <code style="display: block; background: #0a0a0a; padding: 0.5rem; border-radius: 4px; font-size: 0.65rem; color: #00FFB6; word-break: break-all; max-height: 80px; overflow-y: auto;">${escapeHtml(data.challenge)}</code>
+      <details style="margin-top: 1rem; text-align: left;">
+        <summary style="color: #555; cursor: pointer; font-size: 0.75rem;">Developer: Sign Challenge (Optional)</summary>
+        <div style="margin-top: 0.5rem; padding: 0.75rem; background: rgba(0,0,0,0.3); border-radius: 6px;">
+          <p style="font-size: 0.7rem; color: #777; margin-bottom: 0.5rem;">${signatureStatus}</p>
+          <p style="font-size: 0.65rem; color: #555; margin-bottom: 0.25rem;">Challenge to sign:</p>
+          <code style="display: block; background: #0a0a0a; padding: 0.4rem; border-radius: 4px; font-size: 0.6rem; color: #888; word-break: break-all; max-height: 60px; overflow-y: auto;">${escapeHtml(data.challenge)}</code>
           ${!data.signatureVerified ? `
-          <input type="text" id="agent-signature" class="input" placeholder="Paste Ed25519 signature (hex)" style="margin-top: 0.5rem; font-size: 0.75rem;" />
+          <input type="text" id="agent-signature" class="input" placeholder="Paste Ed25519 signature (hex)" style="margin-top: 0.5rem; font-size: 0.7rem;" />
           <button onclick="submitAgentSignature('${data.sessionId}')" class="btn btn-outline btn-sm" style="margin-top: 0.5rem; width: 100%;">Verify Signature</button>
           ` : ''}
         </div>
@@ -2058,14 +2058,26 @@ function handleVerificationSuccess(pubkey, agentName) {
   const statusEl = document.getElementById('verification-status');
   if (statusEl) {
     statusEl.innerHTML = `
-      <span style="color: #00FFB6; font-weight: 600;">Verified!</span>
-      <p style="margin-top: 0.5rem; font-size: 0.85rem; color: #e0e0e0;">
-        Your agent is now verified and linked to your human identity.
-      </p>
+      <div style="text-align: center;">
+        <span style="color: #fff; font-weight: 600; font-size: 1rem;">Verified</span>
+        <p style="margin-top: 0.5rem; font-size: 0.8rem; color: #aaa;">
+          Your agent is now linked to your human identity.
+        </p>
+        <div style="margin-top: 1rem; display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap;">
+          <a href="/developers" class="btn btn-primary btn-sm">Integrate in Your App</a>
+          <button onclick="showDonateModal()" class="btn btn-outline btn-sm">Support Project</button>
+        </div>
+        <p style="margin-top: 0.75rem; font-size: 0.7rem; color: #555;">
+          <a href="/registry" style="color: #888;">View all verified agents</a>
+        </p>
+      </div>
     `;
+    statusEl.style.background = 'rgba(255,255,255,0.03)';
+    statusEl.style.border = '1px solid #444';
+    statusEl.style.padding = '1rem';
   }
   const qrImg = document.getElementById('qr-code-img');
-  if (qrImg) qrImg.style.opacity = '0.5';
+  if (qrImg) qrImg.style.display = 'none';
   
   if (verificationPollInterval) {
     clearInterval(verificationPollInterval);
@@ -2103,15 +2115,7 @@ function startVerificationPolling(sessionId, pubkey, agentName) {
       
       if (data.status === 'verified' && data.agent) {
         clearInterval(verificationPollInterval);
-        const humanIdDisplay = data.agent.humanId ? data.agent.humanId.substring(0, 8) + '...' : 'verified';
-        document.getElementById('verification-status').innerHTML = `
-          <span style="color: #00FFB6; font-weight: 600;">Verified!</span>
-          <p style="margin-top: 0.5rem; font-size: 0.85rem; color: #e0e0e0;">
-            Your agent is now linked to humanId: ${escapeHtml(humanIdDisplay)}
-          </p>
-        `;
-        const qrImg = document.getElementById('qr-code-img');
-        if (qrImg) qrImg.style.opacity = '0.5';
+        handleVerificationSuccess(pubkey, agentName);
       } else if (data.status === 'expired') {
         clearInterval(verificationPollInterval);
         document.getElementById('verification-status').innerHTML = `

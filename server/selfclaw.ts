@@ -818,15 +818,38 @@ router.get("/v1/stats", publicApiLimiter, async (_req: Request, res: Response) =
     const allAgents = await db.select().from(verifiedBots);
     const uniqueHumans = new Set(allAgents.map(a => a.humanId).filter(Boolean));
     
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const last24h = allAgents.filter(a => a.verifiedAt && new Date(a.verifiedAt) > oneDayAgo).length;
+    
     res.json({
-      totalVerifiedAgents: allAgents.length,
+      totalAgents: allAgents.length,
       uniqueHumans: uniqueHumans.size,
+      last24h,
       latestVerification: allAgents.length > 0 
         ? allAgents.sort((a, b) => new Date(b.verifiedAt!).getTime() - new Date(a.verifiedAt!).getTime())[0].verifiedAt
         : null
     });
   } catch (error: any) {
     console.error("[selfclaw] stats error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get("/v1/recent", publicApiLimiter, async (_req: Request, res: Response) => {
+  try {
+    const recentAgents = await db.select({
+      publicKey: verifiedBots.publicKey,
+      deviceId: verifiedBots.deviceId,
+      verificationLevel: verifiedBots.verificationLevel,
+      verifiedAt: verifiedBots.verifiedAt
+    })
+    .from(verifiedBots)
+    .orderBy(sql`${verifiedBots.verifiedAt} DESC`)
+    .limit(50);
+    
+    res.json({ agents: recentAgents });
+  } catch (error: any) {
+    console.error("[selfclaw] recent error:", error);
     res.status(500).json({ error: error.message });
   }
 });
