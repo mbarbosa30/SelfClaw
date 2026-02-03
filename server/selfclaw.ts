@@ -67,6 +67,19 @@ interface DebugVerificationAttempt {
 
 let lastVerificationAttempt: DebugVerificationAttempt | null = null;
 
+// Store history of raw callback requests for debugging
+interface RawCallbackRequest {
+  timestamp: string;
+  method: string;
+  url: string;
+  headers: Record<string, string>;
+  bodyPreview: string;
+  contentType?: string;
+  contentLength?: string;
+  ip?: string;
+}
+const recentCallbackRequests: RawCallbackRequest[] = [];
+
 const publicApiLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 60,
@@ -302,12 +315,41 @@ router.post("/v1/debug-callback", (req: Request, res: Response) => {
 
 // Shared callback handler function
 async function handleCallback(req: Request, res: Response) {
-  console.log("[selfclaw] === CALLBACK START ===");
-  console.log("[selfclaw] Headers:", JSON.stringify(req.headers).substring(0, 300));
+  const rawTimestamp = new Date().toISOString();
+  
+  // Capture raw request immediately before any processing
+  const rawRequest: RawCallbackRequest = {
+    timestamp: rawTimestamp,
+    method: req.method,
+    url: req.originalUrl || req.url,
+    headers: Object.fromEntries(
+      Object.entries(req.headers)
+        .filter(([_, v]) => typeof v === 'string')
+        .map(([k, v]) => [k, String(v).substring(0, 200)])
+    ),
+    bodyPreview: JSON.stringify(req.body || {}).substring(0, 1000),
+    contentType: req.get('content-type'),
+    contentLength: req.get('content-length'),
+    ip: req.ip || req.get('x-forwarded-for') || 'unknown'
+  };
+  
+  // Store in recent requests (keep last 10)
+  recentCallbackRequests.unshift(rawRequest);
+  if (recentCallbackRequests.length > 10) {
+    recentCallbackRequests.pop();
+  }
+  
+  console.log("[selfclaw] === CALLBACK REQUEST RECEIVED ===");
+  console.log("[selfclaw] Time:", rawTimestamp);
+  console.log("[selfclaw] IP:", rawRequest.ip);
+  console.log("[selfclaw] Content-Type:", rawRequest.contentType);
+  console.log("[selfclaw] Content-Length:", rawRequest.contentLength);
+  console.log("[selfclaw] Headers:", JSON.stringify(rawRequest.headers).substring(0, 500));
+  console.log("[selfclaw] Body preview:", rawRequest.bodyPreview);
   
   // Initialize debug tracking
   lastVerificationAttempt = {
-    timestamp: new Date().toISOString(),
+    timestamp: rawTimestamp,
     hasProof: false,
     hasPublicSignals: false,
     finalStatus: "in_progress"
@@ -694,7 +736,11 @@ router.get("/v1/debug-status", (_req: Request, res: Response) => {
       scope: SELFCLAW_SCOPE,
       staging: SELFCLAW_STAGING
     },
-    lastVerificationAttempt: lastVerificationAttempt || { message: "No verification attempts yet" }
+    lastVerificationAttempt: lastVerificationAttempt || { message: "No verification attempts yet" },
+    recentCallbackRequests: recentCallbackRequests.length > 0 
+      ? recentCallbackRequests 
+      : [{ message: "No callback requests received yet" }],
+    callbackRequestCount: recentCallbackRequests.length
   });
 });
 
