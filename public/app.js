@@ -334,11 +334,11 @@ async function loadAuthState() {
       }
     } else {
       currentUser = null;
-      loadingEl.style.display = 'none';
-      loggedOutEl.style.display = 'block';
-      loggedInEl.style.display = 'none';
-      agentsSection.style.display = 'none';
-      onboardingSection.style.display = 'none';
+      if (loadingEl) loadingEl.style.display = 'none';
+      if (loggedOutEl) loggedOutEl.style.display = 'block';
+      if (loggedInEl) loggedInEl.style.display = 'none';
+      if (agentsSection) agentsSection.style.display = 'none';
+      if (onboardingSection) onboardingSection.style.display = 'none';
       
       landingSections.forEach(id => {
         const el = document.getElementById(id);
@@ -348,11 +348,11 @@ async function loadAuthState() {
     }
   } catch (error) {
     console.error('Auth check failed:', error);
-    loadingEl.style.display = 'none';
-    loggedOutEl.style.display = 'block';
-    loggedInEl.style.display = 'none';
-    agentsSection.style.display = 'none';
-    onboardingSection.style.display = 'none';
+    if (loadingEl) loadingEl.style.display = 'none';
+    if (loggedOutEl) loggedOutEl.style.display = 'block';
+    if (loggedInEl) loggedInEl.style.display = 'none';
+    if (agentsSection) agentsSection.style.display = 'none';
+    if (onboardingSection) onboardingSection.style.display = 'none';
     
     landingSections.forEach(id => {
       const el = document.getElementById(id);
