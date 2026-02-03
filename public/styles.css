@@ -310,6 +310,7 @@ h2 {
 
 .hero-integration {
   margin-top: 2.5rem;
+  margin-bottom: 0;
   max-width: 720px;
   width: 100%;
   position: relative;
@@ -2651,7 +2652,14 @@ body.dashboard-mode .cockpit-main {
 }
 
 /* Verify Section */
-.verify-section,
+.verify-section {
+  margin-top: 2.5rem;
+  padding-top: 0;
+  max-width: 720px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
 .check-section,
 .api-section,
 .claw-section,
