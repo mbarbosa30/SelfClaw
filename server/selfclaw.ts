@@ -232,6 +232,13 @@ router.get("/v1/callback", (req: Request, res: Response) => {
   });
 });
 
+// Test endpoint - minimal callback that just returns success to diagnose connectivity
+router.post("/v1/callback-test", (req: Request, res: Response) => {
+  console.log("[selfclaw] === TEST CALLBACK HIT ===");
+  console.log("[selfclaw] Test body:", JSON.stringify(req.body || {}).substring(0, 500));
+  res.status(200).json({ status: "success", result: true });
+});
+
 router.post("/v1/callback", async (req: Request, res: Response) => {
   console.log("[selfclaw] === CALLBACK START ===");
   console.log("[selfclaw] Headers:", JSON.stringify(req.headers).substring(0, 300));
