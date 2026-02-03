@@ -49,6 +49,24 @@ const selfBackendVerifier = new SelfBackendVerifier(
   "uuid"
 );
 
+// Debug: Store last verification attempt for debugging production issues
+interface DebugVerificationAttempt {
+  timestamp: string;
+  sessionId?: string;
+  userId?: string;
+  attestationId?: string;
+  hasProof: boolean;
+  hasPublicSignals: boolean;
+  publicSignalsLength?: number;
+  sdkError?: string;
+  sdkErrorStack?: string;
+  verifyResult?: any;
+  finalStatus: string;
+  finalReason?: string;
+}
+
+let lastVerificationAttempt: DebugVerificationAttempt | null = null;
+
 const publicApiLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 60,
@@ -286,6 +304,15 @@ router.post("/v1/debug-callback", (req: Request, res: Response) => {
 async function handleCallback(req: Request, res: Response) {
   console.log("[selfclaw] === CALLBACK START ===");
   console.log("[selfclaw] Headers:", JSON.stringify(req.headers).substring(0, 300));
+  
+  // Initialize debug tracking
+  lastVerificationAttempt = {
+    timestamp: new Date().toISOString(),
+    hasProof: false,
+    hasPublicSignals: false,
+    finalStatus: "in_progress"
+  };
+  
   try {
     const body = req.body || {};
     console.log("[selfclaw] Body keys:", Object.keys(body));
@@ -293,8 +320,18 @@ async function handleCallback(req: Request, res: Response) {
     
     const { attestationId, proof, publicSignals, userContextData } = body;
     
+    // Update debug info
+    lastVerificationAttempt.attestationId = attestationId;
+    lastVerificationAttempt.hasProof = !!proof;
+    lastVerificationAttempt.hasPublicSignals = !!publicSignals;
+    lastVerificationAttempt.publicSignalsLength = publicSignals?.length;
+    lastVerificationAttempt.userId = userContextData?.userIdentifier;
+    lastVerificationAttempt.sessionId = userContextData?.userIdentifier;
+    
     if (!proof || !publicSignals || !attestationId || !userContextData) {
       console.log("[selfclaw] Missing fields - attestationId:", !!attestationId, "proof:", !!proof, "publicSignals:", !!publicSignals, "userContextData:", !!userContextData);
+      lastVerificationAttempt.finalStatus = "error";
+      lastVerificationAttempt.finalReason = "Missing required verification data";
       return res.status(200).json({ status: "error", result: false, reason: "Missing required verification data" });
     }
     
@@ -312,9 +349,14 @@ async function handleCallback(req: Request, res: Response) {
         userContextData
       );
       console.log("[selfclaw] Verification result:", JSON.stringify(result.isValidDetails));
+      lastVerificationAttempt.verifyResult = result.isValidDetails;
     } catch (verifyError: any) {
       console.error("[selfclaw] SDK verify() threw error:", verifyError.message);
       console.error("[selfclaw] Error stack:", verifyError.stack);
+      lastVerificationAttempt.sdkError = verifyError.message;
+      lastVerificationAttempt.sdkErrorStack = verifyError.stack?.substring(0, 500);
+      lastVerificationAttempt.finalStatus = "error";
+      lastVerificationAttempt.finalReason = "SDK verify() threw: " + verifyError.message;
       return res.status(200).json({ 
         status: "error", 
         result: false, 
@@ -324,6 +366,8 @@ async function handleCallback(req: Request, res: Response) {
     
     if (!result.isValidDetails.isValid) {
       console.log("[selfclaw] Proof invalid:", result.isValidDetails);
+      lastVerificationAttempt.finalStatus = "error";
+      lastVerificationAttempt.finalReason = "Proof invalid: " + JSON.stringify(result.isValidDetails);
       return res.status(200).json({ 
         status: "error",
         result: false,
@@ -417,12 +461,16 @@ async function handleCallback(req: Request, res: Response) {
       .where(eq(verificationSessions.id, sessionId));
 
     console.log("[selfclaw] === CALLBACK SUCCESS === Agent registered:", session.agentPublicKey || session.agentName);
+    lastVerificationAttempt.finalStatus = "success";
+    lastVerificationAttempt.finalReason = "Agent verified and registered";
     res.status(200).json({
       status: "success",
       result: true
     });
   } catch (error: any) {
     console.error("[selfclaw] === CALLBACK ERROR ===", error);
+    lastVerificationAttempt.finalStatus = "error";
+    lastVerificationAttempt.finalReason = "Callback handler error: " + (error.message || "Unknown error");
     res.status(200).json({ status: "error", result: false, reason: error.message || "Unknown error" });
   }
 }
@@ -634,6 +682,19 @@ router.post("/v1/verify", async (_req: Request, res: Response) => {
     error: "This endpoint is deprecated",
     message: "Use the Self.xyz verification flow instead: POST /api/selfclaw/v1/start-verification",
     docs: "https://selfclaw.app/developers"
+  });
+});
+
+// Debug endpoint to see last verification attempt (for debugging production issues)
+router.get("/v1/debug-status", (_req: Request, res: Response) => {
+  res.json({
+    status: "ok",
+    config: {
+      endpoint: SELFCLAW_ENDPOINT,
+      scope: SELFCLAW_SCOPE,
+      staging: SELFCLAW_STAGING
+    },
+    lastVerificationAttempt: lastVerificationAttempt || { message: "No verification attempts yet" }
   });
 });
 
