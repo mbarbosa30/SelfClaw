@@ -15,6 +15,8 @@
   --green: #FF6B4A;
   --green-light: rgba(255, 107, 74, 0.15);
   --green-dark: #E85D3D;
+  --self-green: #00FFB6;
+  --self-green-light: rgba(0, 255, 182, 0.15);
   --coral: #FF8352;
   --coral-light: rgba(255, 131, 82, 0.15);
   --celo-green: #FF6B4A;
@@ -2626,8 +2628,8 @@ body.dashboard-mode .cockpit-main {
    ============================================ */
 
 .tag-green {
-  background: var(--green-light);
-  color: var(--green);
+  background: var(--self-green-light);
+  color: var(--self-green);
   border: none;
 }
 
