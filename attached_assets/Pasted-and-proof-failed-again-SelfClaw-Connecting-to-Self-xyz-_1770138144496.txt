@@ -1,0 +1,27 @@
+and proof failed again:
+
+[SelfClaw] Connecting to Self.xyz WebSocket relayer...
+app.js:2011 [SelfClaw] Using deeplink mode with WebSocket for status updates
+app.js:2012 [SelfClaw] QR Config: {
+  "version": 2,
+  "appName": "SelfClaw",
+  "logoBase64": "https://selfclaw.app/favicon.png",
+  "scope": "selfclaw-verify",
+  "endpoint": "https://selfclaw.app/api/selfclaw/v1/callback",
+  "endpointType": "https",
+  "userId": "e9a7afdb-cff2-4761-8876-6864863489a6",
+  "userIdType": "uuid",
+  "userDefinedData": "54a938ae44bab5750000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+  "sessionId": "5d05d149-f4dd-450f-a536-e5798dd28fa5",
+  "disclosures": {
+    "minimumAge": 0,
+    "excludedCountries": [],
+    "ofac": false,
+    "nationality": true
+  }
+}
+app.js:2013 [SelfClaw] Universal Link: https://redirect.self.xyz?selfApp=%7B%22version%22%3A2%2C%22appName%22%3A%22SelfClaw%22%2C%22logoBase64%22%3A%22https%3A%2F%2Fselfclaw.app%2Ffavicon.png%22%2C%22scope%22%3A%22selfclaw-verify%22%2C%22endpoint%22%3A%22https%3A%2F%2Fselfclaw.app%2Fapi%2Fselfclaw%2Fv1%2Fcallback%22%2C%22endpointType%22%3A%22https%22%2C%22userId%22%3A%22e9a7afdb-cff2-4761-8876-6864863489a6%22%2C%22userIdType%22%3A%22uuid%22%2C%22userDefinedData%22%3A%2254a938ae44bab5750000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000%22%2C%22sessionId%22%3A%225d05d149-f4dd-450f-a536-e5798dd28fa5%22%2C%22disclosures%22%3A%7B%22minimumAge%22%3A0%2C%22excludedCountries%22%3A%5B%5D%2C%22ofac%22%3Afalse%2C%22nationality%22%3Atrue%7D%7D
+app.js:1899 [SelfClaw] WebSocket connected! Transport: websocket
+app.js:1904 [SelfClaw] Session registered with relayer
+
+{"status":"ok","config":{"endpoint":"https://selfclaw.app/api/selfclaw/v1/callback","scope":"selfclaw-verify","staging":false},"lastVerificationAttempt":{"message":"No verification attempts yet"},"recentCallbackRequests":[{"message":"No callback requests received yet"}],"callbackRequestCount":0}

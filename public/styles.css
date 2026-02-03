@@ -693,6 +693,7 @@ body.dashboard-mode .cockpit-main {
 .economy-item h4 {
   font-size: 0.9rem;
   margin-bottom: 0.5rem;
+  color: var(--text-primary);
 }
 
 .economy-item p {
