@@ -1984,7 +1984,6 @@ async function startAgentVerification() {
       userId: data.sessionId,
       userIdType: "uuid",
       userDefinedData: userDefinedData,
-      sessionId: wsSessionId,
       disclosures: {
         minimumAge: 0,
         excludedCountries: [],
