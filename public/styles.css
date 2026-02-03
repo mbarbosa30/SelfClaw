@@ -3172,9 +3172,104 @@ body.dashboard-mode .cockpit-main {
   color: var(--green);
 }
 
+.donate-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  backdrop-filter: blur(4px);
+}
+
 .donate-modal-content {
-  max-width: 560px;
+  background: #0a0a0a;
+  border: 1px solid #333;
+  border-radius: 12px;
+  padding: 2rem;
+  max-width: 800px;
   width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+  position: relative;
+}
+
+.donate-modal-content h2 {
+  color: var(--green);
+  margin-bottom: 1rem;
+}
+
+.modal-close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: none;
+  border: none;
+  color: var(--gray-400);
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  line-height: 1;
+}
+
+.modal-close:hover {
+  color: var(--green);
+}
+
+.pricing-grid, .tech-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5rem;
+}
+
+.pricing-card, .tech-item {
+  background: #111;
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 1.5rem;
+}
+
+.pricing-card.featured {
+  border-color: var(--green);
+}
+
+.pricing-card h3, .tech-item h4 {
+  color: var(--green);
+  margin-bottom: 0.5rem;
+}
+
+.pricing-card .price {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #fff;
+  margin-bottom: 0.5rem;
+}
+
+.pricing-card ul {
+  list-style: none;
+  padding: 0;
+  margin-top: 1rem;
+}
+
+.pricing-card li {
+  color: var(--gray-300);
+  padding: 0.25rem 0;
+  font-size: 0.9rem;
+}
+
+.pricing-card li::before {
+  content: "✓ ";
+  color: var(--green);
+}
+
+.pricing-note {
+  color: var(--gray-400);
+  font-size: 0.85rem;
+  text-align: center;
 }
 
 .donate-title {
