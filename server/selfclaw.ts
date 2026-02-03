@@ -258,6 +258,30 @@ router.post("/v1/callback-test", (req: Request, res: Response) => {
   res.status(200).json({ status: "success", result: true });
 });
 
+// Debug endpoint - echoes back everything for diagnostics
+router.post("/v1/debug-callback", (req: Request, res: Response) => {
+  const timestamp = new Date().toISOString();
+  console.log("[selfclaw] === DEBUG CALLBACK ===", timestamp);
+  console.log("[selfclaw] Method:", req.method);
+  console.log("[selfclaw] Headers:", JSON.stringify(req.headers));
+  console.log("[selfclaw] Body keys:", Object.keys(req.body || {}));
+  console.log("[selfclaw] Full body:", JSON.stringify(req.body || {}).substring(0, 2000));
+  
+  res.status(200).json({ 
+    status: "success", 
+    result: true,
+    debug: {
+      timestamp,
+      method: req.method,
+      bodyKeys: Object.keys(req.body || {}),
+      hasProof: !!req.body?.proof,
+      hasPublicSignals: !!req.body?.publicSignals,
+      hasAttestationId: !!req.body?.attestationId,
+      hasUserContextData: !!req.body?.userContextData
+    }
+  });
+});
+
 // Shared callback handler function
 async function handleCallback(req: Request, res: Response) {
   console.log("[selfclaw] === CALLBACK START ===");
