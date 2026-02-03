@@ -48,4 +48,4 @@ SELFCLAW_STAGING = "false"
 [userenv.shared]
 
 [userenv.development]
-SELFCLAW_STAGING = "true"
+SELFCLAW_STAGING = "false"
