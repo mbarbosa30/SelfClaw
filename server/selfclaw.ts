@@ -27,17 +27,19 @@ setInterval(cleanupExpiredSessions, 5 * 60 * 1000);
 cleanupExpiredSessions();
 
 const SELFCLAW_SCOPE = "selfclaw-verify";
+const SELFCLAW_STAGING = process.env.SELFCLAW_STAGING === "true";
 const SELFCLAW_ENDPOINT = process.env.SELFCLAW_CALLBACK_URL 
   || (process.env.REPLIT_DOMAINS 
     ? `https://${process.env.REPLIT_DOMAINS}/api/selfclaw/v1/callback`
     : "http://localhost:5000/api/selfclaw/v1/callback");
 
 console.log(`[selfclaw] Callback endpoint: ${SELFCLAW_ENDPOINT}`);
+console.log(`[selfclaw] Staging mode: ${SELFCLAW_STAGING}`);
 
 const selfBackendVerifier = new SelfBackendVerifier(
   SELFCLAW_SCOPE,
   SELFCLAW_ENDPOINT,
-  false,
+  SELFCLAW_STAGING,
   AllIds,
   new DefaultConfigStore({
     minimumAge: 0,
@@ -152,7 +154,8 @@ router.post("/v1/start-verification", verificationLimiter, async (req: Request, 
         scope: SELFCLAW_SCOPE,
         endpoint: SELFCLAW_ENDPOINT,
         appName: "SelfClaw",
-        version: 2
+        version: 2,
+        staging: SELFCLAW_STAGING
       }
     });
   } catch (error: any) {
@@ -222,10 +225,12 @@ router.post("/v1/sign-challenge", verificationLimiter, async (req: Request, res:
 });
 
 router.post("/v1/callback", async (req: Request, res: Response) => {
+  console.log("[selfclaw] Callback received:", JSON.stringify(req.body).substring(0, 500));
   try {
     const { attestationId, proof, publicSignals, userContextData } = req.body;
     
     if (!proof || !publicSignals || !attestationId || !userContextData) {
+      console.log("[selfclaw] Missing fields - received keys:", Object.keys(req.body));
       return res.status(200).json({ status: "error", result: false, reason: "Missing required verification data" });
     }
     

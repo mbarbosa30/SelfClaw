@@ -1925,7 +1925,7 @@ async function startAgentVerification() {
       logoBase64: "https://selfclaw.app/favicon.png",
       scope: data.config.scope,
       endpoint: data.config.endpoint,
-      endpointType: "https",
+      endpointType: data.config.staging ? "staging_https" : "https",
       userId: data.sessionId,
       userIdType: "uuid",
       userDefinedData: userDefinedData,
