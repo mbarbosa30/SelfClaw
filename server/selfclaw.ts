@@ -233,37 +233,47 @@ router.get("/v1/callback", (req: Request, res: Response) => {
 });
 
 router.post("/v1/callback", async (req: Request, res: Response) => {
+  console.log("[selfclaw] === CALLBACK START ===");
+  console.log("[selfclaw] Headers:", JSON.stringify(req.headers).substring(0, 300));
   try {
     const body = req.body || {};
-    console.log("[selfclaw] Callback received:", JSON.stringify(body).substring(0, 500));
+    console.log("[selfclaw] Body keys:", Object.keys(body));
+    console.log("[selfclaw] Body preview:", JSON.stringify(body).substring(0, 800));
     
     const { attestationId, proof, publicSignals, userContextData } = body;
     
     if (!proof || !publicSignals || !attestationId || !userContextData) {
-      console.log("[selfclaw] Missing fields - received keys:", Object.keys(body));
+      console.log("[selfclaw] Missing fields - attestationId:", !!attestationId, "proof:", !!proof, "publicSignals:", !!publicSignals, "userContextData:", !!userContextData);
       return res.status(200).json({ status: "error", result: false, reason: "Missing required verification data" });
     }
     
+    console.log("[selfclaw] All required fields present, verifying proof...");
     const result = await selfBackendVerifier.verify(
       attestationId,
       proof,
       publicSignals,
       userContextData
     );
+    console.log("[selfclaw] Verification result:", JSON.stringify(result.isValidDetails));
     
     if (!result.isValidDetails.isValid) {
+      console.log("[selfclaw] Proof invalid:", result.isValidDetails);
       return res.status(200).json({ 
         status: "error",
         result: false,
         reason: "Proof verification failed"
       });
     }
+    console.log("[selfclaw] Proof verified successfully!");
     
     const sessionId = result.userData?.userIdentifier;
+    console.log("[selfclaw] Session ID from proof:", sessionId);
     if (!sessionId) {
+      console.log("[selfclaw] No session ID in proof userData");
       return res.status(200).json({ status: "error", result: false, reason: "Missing session ID in proof" });
     }
     
+    console.log("[selfclaw] Looking up session:", sessionId);
     const sessions = await db.select()
       .from(verificationSessions)
       .where(and(
@@ -274,6 +284,7 @@ router.post("/v1/callback", async (req: Request, res: Response) => {
       .limit(1);
     
     const session = sessions[0];
+    console.log("[selfclaw] Session found:", !!session, session ? `status=${session.status}` : "");
     if (!session) {
       console.log("[selfclaw] Session not found or expired:", sessionId);
       await db.update(verificationSessions)
@@ -339,12 +350,13 @@ router.post("/v1/callback", async (req: Request, res: Response) => {
       .set({ status: "completed" })
       .where(eq(verificationSessions.id, sessionId));
 
+    console.log("[selfclaw] === CALLBACK SUCCESS === Agent registered:", session.agentPublicKey || session.agentName);
     res.status(200).json({
       status: "success",
       result: true
     });
   } catch (error: any) {
-    console.error("[selfclaw] callback error:", error);
+    console.error("[selfclaw] === CALLBACK ERROR ===", error);
     res.status(200).json({ status: "error", result: false, reason: error.message || "Unknown error" });
   }
 });
