@@ -2981,6 +2981,35 @@ body.dashboard-mode .cockpit-main {
   text-decoration: underline;
 }
 
+.section-divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  margin: 3rem 0;
+  padding: 0 2rem;
+}
+
+.divider-line {
+  flex: 1;
+  max-width: 200px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--gray-600), transparent);
+}
+
+.divider-icon {
+  color: var(--green);
+  opacity: 0.6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.divider-icon svg {
+  width: 28px;
+  height: 28px;
+}
+
 @media (max-width: 600px) {
   .footer-row {
     flex-direction: column;
@@ -3047,7 +3076,7 @@ body.dashboard-mode .cockpit-main {
 }
 
 .donate-title {
-  color: var(--gray-500);
+  color: var(--gray-300);
 }
 
 .donate-mission {
