@@ -1985,10 +1985,9 @@ async function startAgentVerification() {
       userIdType: "uuid",
       userDefinedData: userDefinedData,
       disclosures: {
-        minimumAge: 0,
+        minimumAge: 18,
         excludedCountries: [],
-        ofac: false,
-        nationality: true
+        ofac: false
       }
     };
     

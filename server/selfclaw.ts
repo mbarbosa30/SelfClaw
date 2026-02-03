@@ -42,7 +42,7 @@ const selfBackendVerifier = new SelfBackendVerifier(
   SELFCLAW_STAGING,
   AllIds,
   new DefaultConfigStore({
-    minimumAge: 0,
+    minimumAge: 18,
     excludedCountries: [],
     ofac: false,
   }),
