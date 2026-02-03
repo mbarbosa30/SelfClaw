@@ -72,21 +72,21 @@
             <div class="step-number">1</div>
             <div class="step-content">
               <h4>Enter Agent Public Key</h4>
-              <p>Your agent's Ed25519 public key (SPKI format)</p>
+              <p>Your agent's Ed25519 public key in base64 or SPKI format</p>
             </div>
           </div>
           <div class="verify-step">
             <div class="step-number">2</div>
             <div class="step-content">
               <h4>Tap Your Passport</h4>
-              <p>Open Self.xyz app, tap your passport's NFC chip — done</p>
+              <p>Open Self.xyz app and tap your passport's NFC chip</p>
             </div>
           </div>
           <div class="verify-step">
             <div class="step-number">3</div>
             <div class="step-content">
               <h4>Agent Verified</h4>
-              <p>Your agent is now registered with cryptographic proof of human backing</p>
+              <p>Cryptographically linked to your verified human identity</p>
             </div>
           </div>
         </div>
@@ -118,9 +118,11 @@
         <div class="check-form">
           <div class="form-group">
             <label>Agent Public Key or Name</label>
-            <input type="text" id="check-pubkey" class="input" placeholder="MCowBQYDK2VwAyEA... (or agent-name)" />
+            <div class="input-button-row">
+              <input type="text" id="check-pubkey" class="input" placeholder="MCowBQYDK2VwAyEA... (or agent-name)" />
+              <button id="check-verification" class="btn btn-large">Check</button>
+            </div>
           </div>
-          <button id="check-verification" class="btn btn-large">Check</button>
         </div>
 
         <div id="check-result" class="check-result" style="display:none;"></div>
@@ -131,7 +133,7 @@
       <div class="section-card">
         <h2>API Endpoint</h2>
         <p class="section-intro">Query agent verification status from any application:</p>
-        <code class="code-block">GET /api/selfmolt/v1/agent/{publicKey}</code>
+        <code class="code-block">GET /api/selfclaw/v1/agent/{publicKey}</code>
         <p class="api-hint">Returns verification status, humanId, and registration timestamp.</p>
         <div class="api-links">
           <a href="/developers" class="btn btn-outline btn-sm">Developers</a>
@@ -141,9 +143,9 @@
     </section>
 
     <section class="why-section">
-      <h2>Why SelfMolt?</h2>
+      <h2>Why SelfClaw?</h2>
       <p class="why-intro">Most "AI agents" are just REST APIs. Anyone with an API key can post as an agent. One script can register 500,000 fake accounts. The AI hype you see online? Often just curl requests pretending to be agents.</p>
-      <p class="why-intro" style="margin-top: 1rem;">SelfMolt solves this with <strong>cryptographic proof of humanity</strong>. Self.xyz verifies there's a real human behind each agent — no fakes, no sybils, no trust-me-bro.</p>
+      <p class="why-intro" style="margin-top: 1rem;">SelfClaw solves this with <strong>cryptographic proof of humanity</strong>. Self.xyz verifies there's a real human behind each agent — no fakes, no sybils, no trust-me-bro.</p>
       <div class="why-grid">
         <div class="why-card">
           <h3>Passport-First Verification</h3>
@@ -160,9 +162,8 @@
       </div>
     </section>
 
-    <footer class="selfmolt-footer">
-      <p>SelfMolt bridges <a href="https://self.xyz" target="_blank">Self.xyz</a> and <a href="https://openclaw.ai" target="_blank">OpenClaw</a></p>
-      <p class="footer-tagline">Building trust in the age of AI agents</p>
+    <footer class="selfclaw-footer">
+      <p>Powered by <a href="https://self.xyz" target="_blank">Self.xyz</a> zero-knowledge proofs</p>
     </footer>
   </div>
 

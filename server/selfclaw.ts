@@ -71,9 +71,9 @@ async function verifyEd25519Signature(
 
 router.get("/v1/config", (_req: Request, res: Response) => {
   res.json({
-    scope: SELFMOLT_SCOPE,
-    endpoint: SELFMOLT_ENDPOINT,
-    appName: "SelfMolt",
+    scope: SELFCLAW_SCOPE,
+    endpoint: SELFCLAW_ENDPOINT,
+    appName: "SelfClaw",
     version: 2
   });
 });
@@ -123,9 +123,9 @@ router.post("/v1/start-verification", async (req: Request, res: Response) => {
       signatureRequired: !signatureVerified,
       signatureVerified,
       config: {
-        scope: SELFMOLT_SCOPE,
-        endpoint: SELFMOLT_ENDPOINT,
-        appName: "SelfMolt",
+        scope: SELFCLAW_SCOPE,
+        endpoint: SELFCLAW_ENDPOINT,
+        appName: "SelfClaw",
         version: 2
       }
     });

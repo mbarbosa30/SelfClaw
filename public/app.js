@@ -1,4 +1,4 @@
-const SELFMOLT_HEADLINES = [
+const SELFCLAW_HEADLINES = [
   { text: "Fake agents everywhere.", highlight: "Prove yours is real." },
   { text: "Your agent.", highlight: "Cryptographically human." },
   { text: "Stop sybils.", highlight: "Verify your agent." },
@@ -11,7 +11,7 @@ function initRotatingHeadline() {
   const headlineEl = document.getElementById('rotating-headline');
   if (!headlineEl) return;
   
-  const headline = SELFMOLT_HEADLINES[Math.floor(Math.random() * SELFMOLT_HEADLINES.length)];
+  const headline = SELFCLAW_HEADLINES[Math.floor(Math.random() * SELFCLAW_HEADLINES.length)];
   headlineEl.innerHTML = `${headline.text}<br/><span class="text-green">${headline.highlight}</span>`;
 }
 
@@ -1811,7 +1811,7 @@ async function checkAgentVerification() {
       resultEl.className = 'check-result not-verified';
       resultEl.innerHTML = `
         <h4 class="not-verified-badge">NOT VERIFIED</h4>
-        <p>${data.message || 'This agent is not registered in the SelfMolt registry.'}</p>
+        <p>${data.message || 'This agent is not registered in the SelfClaw registry.'}</p>
       `;
     }
   } catch (error) {
@@ -1864,7 +1864,7 @@ async function startAgentVerification() {
     
     const selfAppConfig = {
       version: 2,
-      appName: "SelfMolt",
+      appName: "SelfClaw",
       scope: data.config.scope,
       endpoint: data.config.endpoint,
       userId: data.sessionId,

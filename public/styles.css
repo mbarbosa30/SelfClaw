@@ -2630,6 +2630,21 @@ body.dashboard-mode .cockpit-main {
   padding-top: 2.5rem;
 }
 
+/* Input Button Row */
+.input-button-row {
+  display: flex;
+  gap: 1rem;
+  align-items: stretch;
+}
+
+.input-button-row .input {
+  flex: 1;
+}
+
+.input-button-row .btn {
+  flex-shrink: 0;
+}
+
 /* Claw Section */
 .claw-install {
   display: flex;
