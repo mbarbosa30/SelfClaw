@@ -1880,6 +1880,59 @@ async function checkAgentVerification() {
 
 let currentVerificationSession = null;
 let verificationPollInterval = null;
+let selfSocket = null;
+
+const WS_DB_RELAYER = 'wss://websocket.self.xyz';
+const REDIRECT_URL = 'https://redirect.self.xyz';
+
+function connectToSelfRelayer(sessionId, selfAppConfig, onSuccess, onError) {
+  console.log('[SelfClaw] Connecting to Self.xyz WebSocket relayer...');
+  
+  const socket = io(WS_DB_RELAYER + '/websocket', {
+    query: { sessionId },
+    transports: ['websocket'],
+    reconnection: true,
+    reconnectionAttempts: 5
+  });
+  
+  socket.on('connect', () => {
+    console.log('[SelfClaw] WebSocket connected! Transport:', socket.io.engine.transport.name);
+    socket.emit('register_session', {
+      sessionId,
+      selfApp: selfAppConfig
+    });
+    console.log('[SelfClaw] Session registered with relayer');
+  });
+  
+  socket.on('connect_error', (error) => {
+    console.error('[SelfClaw] WebSocket connection error:', error);
+  });
+  
+  socket.on('mobile_status', (data) => {
+    console.log('[SelfClaw] Mobile status update:', data);
+    const statusEl = document.getElementById('verification-status');
+    
+    if (data.status === 'mobile_connected') {
+      if (statusEl) statusEl.innerHTML = '<span style="color: #00FFB6;">Phone connected! Generating proof...</span>';
+    } else if (data.status === 'proof_generation_started') {
+      if (statusEl) statusEl.innerHTML = '<span style="color: #00FFB6;">Generating zero-knowledge proof...</span>';
+    } else if (data.status === 'proof_generated') {
+      if (statusEl) statusEl.innerHTML = '<span style="color: #00FFB6;">Proof generated! Verifying...</span>';
+    } else if (data.status === 'proof_verified' || data.status === 'done') {
+      if (statusEl) statusEl.innerHTML = '<span style="color: #00FFB6;">Verified successfully!</span>';
+      if (onSuccess) onSuccess(data);
+    } else if (data.status === 'error') {
+      if (statusEl) statusEl.innerHTML = `<span style="color: #ff4444;">Error: ${data.message || 'Verification failed'}</span>`;
+      if (onError) onError(data);
+    }
+  });
+  
+  socket.on('disconnect', (reason) => {
+    console.log('[SelfClaw] WebSocket disconnected:', reason);
+  });
+  
+  return socket;
+}
 
 async function startAgentVerification() {
   const pubkey = document.getElementById('verify-pubkey').value.trim();
@@ -1919,6 +1972,8 @@ async function startAgentVerification() {
     const agentKeyHash = data.agentKeyHash || '';
     const userDefinedData = agentKeyHash.padEnd(128, '0');
     
+    const wsSessionId = crypto.randomUUID ? crypto.randomUUID() : 'sess-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+    
     const selfAppConfig = {
       version: 2,
       appName: "SelfClaw",
@@ -1929,6 +1984,7 @@ async function startAgentVerification() {
       userId: data.sessionId,
       userIdType: "uuid",
       userDefinedData: userDefinedData,
+      sessionId: wsSessionId,
       disclosures: {
         minimumAge: 0,
         excludedCountries: [],
@@ -1937,8 +1993,22 @@ async function startAgentVerification() {
       }
     };
     
-    const selfUniversalLink = `https://redirect.self.xyz?selfApp=${encodeURIComponent(JSON.stringify(selfAppConfig))}`;
+    if (selfSocket) {
+      selfSocket.disconnect();
+    }
+    selfSocket = connectToSelfRelayer(wsSessionId, selfAppConfig, 
+      () => {
+        console.log('[SelfClaw] Verification successful via WebSocket!');
+        handleVerificationSuccess(pubkey, agentName);
+      },
+      (err) => {
+        console.error('[SelfClaw] Verification error via WebSocket:', err);
+      }
+    );
     
+    const selfUniversalLink = `${REDIRECT_URL}?sessionId=${wsSessionId}`;
+    
+    console.log('[SelfClaw] Using WebSocket mode with sessionId:', wsSessionId);
     console.log('[SelfClaw] QR Config:', JSON.stringify(selfAppConfig, null, 2));
     console.log('[SelfClaw] Universal Link:', selfUniversalLink);
     
@@ -2000,6 +2070,28 @@ async function startAgentVerification() {
   } finally {
     startBtn.disabled = false;
     startBtn.textContent = 'Start Verification';
+  }
+}
+
+function handleVerificationSuccess(pubkey, agentName) {
+  const statusEl = document.getElementById('verification-status');
+  if (statusEl) {
+    statusEl.innerHTML = `
+      <span style="color: #00FFB6; font-weight: 600;">Verified!</span>
+      <p style="margin-top: 0.5rem; font-size: 0.85rem; color: #e0e0e0;">
+        Your agent is now verified and linked to your human identity.
+      </p>
+    `;
+  }
+  const qrImg = document.getElementById('qr-code-img');
+  if (qrImg) qrImg.style.opacity = '0.5';
+  
+  if (verificationPollInterval) {
+    clearInterval(verificationPollInterval);
+  }
+  if (selfSocket) {
+    selfSocket.disconnect();
+    selfSocket = null;
   }
 }
 
