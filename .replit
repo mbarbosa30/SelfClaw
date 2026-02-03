@@ -44,4 +44,4 @@ run = ["npx", "tsx", "server/index.ts"]
 SELFCLAW_CALLBACK_URL = "https://selfclaw.app/api/selfclaw/v1/callback"
 
 [userenv.shared]
-SELFCLAW_STAGING = "true"
+SELFCLAW_STAGING = "false"

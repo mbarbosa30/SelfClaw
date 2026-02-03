@@ -1939,6 +1939,9 @@ async function startAgentVerification() {
     
     const selfUniversalLink = `https://redirect.self.xyz?selfApp=${encodeURIComponent(JSON.stringify(selfAppConfig))}`;
     
+    console.log('[SelfClaw] QR Config:', JSON.stringify(selfAppConfig, null, 2));
+    console.log('[SelfClaw] Universal Link:', selfUniversalLink);
+    
     const signatureStatus = data.signatureVerified 
       ? '<span style="color: #00FFB6;">Agent key ownership verified</span>'
       : '<span style="color: #888;">Optional: Sign challenge to prove key ownership</span>';
