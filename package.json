@@ -23,6 +23,7 @@
   ],
   "license": "MIT",
   "dependencies": {
+    "@noble/ed25519": "^3.0.0",
     "@selfxyz/core": "^1.1.0-beta.7",
     "@selfxyz/qrcode": "^1.0.18",
     "@types/connect-pg-simple": "^7.0.3",

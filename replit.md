@@ -81,6 +81,14 @@ ClawPit is an autonomous agent platform that provides a web-based cockpit for cr
 - **LinkedIn**: No public API available for message reading - LinkedIn restricts API access to approved partners only.
 
 ## Recent Changes
+- **February 3, 2026**: Added agent signature verification (Ed25519)
+  - Agents can now prove key ownership by signing a challenge
+  - Challenge includes domain, timestamp, nonce, and agentKeyHash
+  - /v1/start-verification generates challenge and returns it to client
+  - /v1/sign-challenge endpoint for signature verification
+  - Frontend shows "Developer: Sign Challenge" section for advanced users
+  - AgentKeyHash bound to ZK proof via userDefinedData for cryptographic linking
+  - Deprecated insecure /v1/verify endpoint (returns HTTP 410)
 - **February 3, 2026**: Implemented real Self.xyz verification flow
   - Integrated @selfxyz/core SDK with SelfBackendVerifier for ZK proof validation
   - Backend: /v1/start-verification creates session, /v1/callback validates proofs and stores to DB

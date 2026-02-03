@@ -1854,7 +1854,9 @@ async function startAgentVerification() {
     currentVerificationSession = {
       sessionId: data.sessionId,
       agentPublicKey: pubkey,
-      agentName
+      agentName,
+      challenge: data.challenge,
+      signatureVerified: data.signatureVerified
     };
     
     const agentKeyHash = data.agentKeyHash || '';
@@ -1876,6 +1878,10 @@ async function startAgentVerification() {
     const configBase64 = btoa(JSON.stringify(selfAppConfig));
     const selfUniversalLink = `https://self.xyz/verify?config=${configBase64}`;
     
+    const signatureStatus = data.signatureVerified 
+      ? '<span style="color: #00FFB6;">Agent key ownership verified</span>'
+      : '<span style="color: #888;">Optional: Sign challenge to prove key ownership</span>';
+    
     qrContainer.style.display = 'block';
     qrEl.innerHTML = `
       <div style="padding: 1.5rem; background: #0d0d0d; border: 2px solid #00FFB6; border-radius: 12px; text-align: center;">
@@ -1895,6 +1901,19 @@ async function startAgentVerification() {
         <div id="verification-status" style="margin-top: 1rem; padding: 0.5rem; border-radius: 8px; background: #1a1a1a;">
           <span style="color: #888;">Waiting for passport verification...</span>
         </div>
+        
+        <details style="margin-top: 1rem; text-align: left;">
+          <summary style="color: #888; cursor: pointer; font-size: 0.8rem;">Developer: Sign Challenge (Optional)</summary>
+          <div style="margin-top: 0.5rem; padding: 0.75rem; background: #1a1a1a; border-radius: 8px;">
+            <p style="font-size: 0.75rem; color: #888; margin-bottom: 0.5rem;">${signatureStatus}</p>
+            <p style="font-size: 0.7rem; color: #666; margin-bottom: 0.5rem;">Challenge to sign:</p>
+            <code style="display: block; background: #0d0d0d; padding: 0.5rem; border-radius: 4px; font-size: 0.65rem; color: #00FFB6; word-break: break-all; max-height: 80px; overflow-y: auto;">${escapeHtml(data.challenge)}</code>
+            ${!data.signatureVerified ? `
+            <input type="text" id="agent-signature" class="input" placeholder="Paste Ed25519 signature (hex)" style="margin-top: 0.5rem; font-size: 0.75rem;" />
+            <button onclick="submitAgentSignature('${data.sessionId}')" class="btn btn-outline btn-sm" style="margin-top: 0.5rem; width: 100%;">Verify Signature</button>
+            ` : ''}
+          </div>
+        </details>
       </div>
     `;
     
@@ -1958,6 +1977,43 @@ function startVerificationPolling(sessionId, pubkey, agentName) {
     } catch (e) {
     }
   }, 5000);
+}
+
+async function submitAgentSignature(sessionId) {
+  const signatureInput = document.getElementById('agent-signature');
+  const signature = signatureInput?.value?.trim();
+  
+  if (!signature) {
+    alert('Please enter the signature');
+    return;
+  }
+  
+  try {
+    const response = await fetch('/api/selfmolt/v1/sign-challenge', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId, signature })
+    });
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      const statusEl = signatureInput.parentElement.querySelector('p');
+      if (statusEl) {
+        statusEl.innerHTML = '<span style="color: #00FFB6;">Agent key ownership verified</span>';
+      }
+      signatureInput.style.display = 'none';
+      signatureInput.nextElementSibling.style.display = 'none';
+      
+      if (currentVerificationSession) {
+        currentVerificationSession.signatureVerified = true;
+      }
+    } else {
+      alert('Signature verification failed: ' + (data.error || 'Unknown error'));
+    }
+  } catch (error) {
+    alert('Error verifying signature: ' + error.message);
+  }
 }
 
 const checkBotVerification = checkAgentVerification;
