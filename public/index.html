@@ -155,6 +155,56 @@
       </div>
     </section>
 
+    <section id="agent-integration" class="agent-integration-section">
+      <div class="section-card">
+        <h2>For Your Agent</h2>
+        <p class="section-intro">Have your AI agent verify itself. Send these instructions to your agent:</p>
+        
+        <div class="integration-tabs">
+          <button class="tab-btn active" data-tab="manual">Manual</button>
+          <button class="tab-btn" data-tab="claw">Via Claw</button>
+        </div>
+        
+        <div class="tab-content active" id="tab-manual">
+          <div class="code-copy-block">
+            <code>Read https://selfclaw.app/skill.md and follow the instructions to verify.</code>
+            <button class="copy-btn" onclick="copyToClipboard('Read https://selfclaw.app/skill.md and follow the instructions to verify.', this)">Copy</button>
+          </div>
+        </div>
+        
+        <div class="tab-content" id="tab-claw">
+          <div class="code-copy-block">
+            <code>claw install mbarrbosa/selfclaw</code>
+            <button class="copy-btn" onclick="copyToClipboard('claw install mbarrbosa/selfclaw', this)">Copy</button>
+          </div>
+        </div>
+        
+        <div class="integration-steps">
+          <div class="integration-step">
+            <div class="step-num">1</div>
+            <div class="step-text">
+              <strong>Send to your agent</strong>
+              <span>Copy the command above and paste it to your agent</span>
+            </div>
+          </div>
+          <div class="integration-step">
+            <div class="step-num">2</div>
+            <div class="step-text">
+              <strong>Agent verifies with Self</strong>
+              <span>Your agent follows the link and you scan with Self.xyz</span>
+            </div>
+          </div>
+          <div class="integration-step">
+            <div class="step-num">3</div>
+            <div class="step-text">
+              <strong>Verified owner</strong>
+              <span>Your agent now has a cryptographically verified human owner</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <section class="api-section">
       <div class="section-card">
         <h2>API Endpoint</h2>

@@ -44,6 +44,36 @@ document.addEventListener('click', function(e) {
   }
 });
 
+function copyToClipboard(text, btn) {
+  navigator.clipboard.writeText(text).then(() => {
+    const originalText = btn.textContent;
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = originalText, 2000);
+  });
+}
+
+function initIntegrationTabs() {
+  const section = document.getElementById('agent-integration');
+  if (!section) return;
+  
+  const tabBtns = section.querySelectorAll('.integration-tabs .tab-btn');
+  const tabContents = section.querySelectorAll('.tab-content');
+  
+  tabBtns.forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const tabId = btn.getAttribute('data-tab');
+      tabBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      tabContents.forEach(content => content.classList.remove('active'));
+      const targetContent = section.querySelector('#tab-' + tabId);
+      if (targetContent) targetContent.classList.add('active');
+    });
+  });
+}
+
+document.addEventListener('DOMContentLoaded', initIntegrationTabs);
+
 let currentUser = null;
 let currentAgent = null;
 let currentWizardStep = 1;
@@ -171,7 +201,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('check-verification')?.addEventListener('click', checkAgentVerification);
   document.getElementById('start-verification')?.addEventListener('click', startAgentVerification);
 
-  document.querySelectorAll('.tab-btn').forEach(btn => {
+  document.querySelectorAll('.cockpit-tabs .tab-btn').forEach(btn => {
     btn.addEventListener('click', () => switchTab(btn.dataset.tab));
   });
 
@@ -538,11 +568,11 @@ async function selectAgent(agentId) {
 }
 
 function switchTab(tabName) {
-  document.querySelectorAll('.tab-btn').forEach(btn => {
+  document.querySelectorAll('.cockpit-tabs .tab-btn').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.tab === tabName);
   });
 
-  document.querySelectorAll('.tab-panel').forEach(panel => {
+  document.querySelectorAll('.cockpit-content .tab-panel').forEach(panel => {
     panel.classList.toggle('active', panel.id === `tab-${tabName}`);
   });
 
