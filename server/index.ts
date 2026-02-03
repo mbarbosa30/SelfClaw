@@ -40,6 +40,18 @@ app.get("/developers", (req: Request, res: Response) => {
   res.sendFile("developers.html", { root: "public" });
 });
 
+app.get("/pricing", (req: Request, res: Response) => {
+  res.sendFile("pricing.html", { root: "public" });
+});
+
+app.get("/technology", (req: Request, res: Response) => {
+  res.sendFile("technology.html", { root: "public" });
+});
+
+app.get("/docs", (req: Request, res: Response) => {
+  res.sendFile("docs.html", { root: "public" });
+});
+
 const OPENCLAW_DIR = join(homedir(), ".openclaw");
 const CONFIG_PATH = join(OPENCLAW_DIR, "openclaw.json");
 const SKILLS_DIR = join(OPENCLAW_DIR, "workspace", "skills");
