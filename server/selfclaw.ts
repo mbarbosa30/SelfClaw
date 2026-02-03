@@ -368,6 +368,60 @@ router.post("/v1/callback", async (req: Request, res: Response) => {
   }
 });
 
+// Polling endpoint for frontend to check verification status
+router.get("/v1/status/:sessionId", publicApiLimiter, async (req: Request, res: Response) => {
+  try {
+    const { sessionId } = req.params;
+    
+    if (!sessionId) {
+      return res.status(400).json({ error: "sessionId is required" });
+    }
+    
+    // Check verification sessions table
+    const sessions = await db.select()
+      .from(verificationSessions)
+      .where(sql`${verificationSessions.id} = ${sessionId}`)
+      .limit(1);
+    
+    if (sessions.length === 0) {
+      return res.json({ status: "not_found" });
+    }
+    
+    const session = sessions[0];
+    
+    // If session is verified, check if agent was registered
+    if (session.status === "verified" && session.agentPublicKey) {
+      const agents = await db.select()
+        .from(verifiedBots)
+        .where(sql`${verifiedBots.publicKey} = ${session.agentPublicKey}`)
+        .limit(1);
+      
+      if (agents.length > 0) {
+        return res.json({
+          status: "verified",
+          agent: {
+            publicKey: agents[0].publicKey,
+            deviceId: agents[0].deviceId,
+            humanId: agents[0].humanId,
+            verifiedAt: agents[0].verifiedAt
+          }
+        });
+      }
+    }
+    
+    // Check for expired session
+    if (session.status === "expired" || (session.challengeExpiry && new Date(session.challengeExpiry) < new Date())) {
+      return res.json({ status: "expired" });
+    }
+    
+    // Still pending
+    return res.json({ status: "pending" });
+  } catch (error: any) {
+    console.error("[selfclaw] status check error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 router.get("/v1/agent", publicApiLimiter, async (req: Request, res: Response) => {
   try {
     const publicKey = req.query.publicKey as string;

@@ -2009,9 +2009,10 @@ function startVerificationPolling(sessionId, pubkey, agentName) {
   }
   
   let attempts = 0;
-  const maxAttempts = 60;
+  const maxAttempts = 120; // 2 minutes at 1 second intervals
+  let pollInterval = 2000; // Start at 2 seconds
   
-  verificationPollInterval = setInterval(async () => {
+  const poll = async () => {
     attempts++;
     
     if (attempts > maxAttempts) {
@@ -2023,22 +2024,36 @@ function startVerificationPolling(sessionId, pubkey, agentName) {
     }
     
     try {
-      const response = await fetch(`/api/selfclaw/v1/agent/${encodeURIComponent(pubkey)}`);
+      // Poll the session status endpoint
+      const response = await fetch(`/api/selfclaw/v1/status/${encodeURIComponent(sessionId)}`);
       const data = await response.json();
       
-      if (data.verified && data.humanId) {
+      if (data.status === 'verified' && data.agent) {
         clearInterval(verificationPollInterval);
+        const humanIdDisplay = data.agent.humanId ? data.agent.humanId.substring(0, 8) + '...' : 'verified';
         document.getElementById('verification-status').innerHTML = `
           <span style="color: #00FFB6; font-weight: 600;">Verified!</span>
           <p style="margin-top: 0.5rem; font-size: 0.85rem; color: #e0e0e0;">
-            Your agent is now linked to humanId: ${escapeHtml(data.humanId.substring(0, 8))}...
+            Your agent is now linked to humanId: ${escapeHtml(humanIdDisplay)}
           </p>
         `;
-        document.getElementById('qr-code-img').style.opacity = '0.5';
+        const qrImg = document.getElementById('qr-code-img');
+        if (qrImg) qrImg.style.opacity = '0.5';
+      } else if (data.status === 'expired') {
+        clearInterval(verificationPollInterval);
+        document.getElementById('verification-status').innerHTML = `
+          <span style="color: #ff6b6b;">Session expired. Please start again.</span>
+        `;
       }
+      // Keep polling if status is 'pending' or 'not_found'
     } catch (e) {
+      console.error('[polling] Error:', e);
     }
-  }, 5000);
+  };
+  
+  // Start polling immediately
+  poll();
+  verificationPollInterval = setInterval(poll, pollInterval);
 }
 
 async function submitAgentSignature(sessionId) {
