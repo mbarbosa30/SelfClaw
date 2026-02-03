@@ -2,12 +2,29 @@ import { Router, Request, Response } from "express";
 import rateLimit from "express-rate-limit";
 import { db } from "./db.js";
 import { verifiedBots, verificationSessions, type InsertVerifiedBot, type InsertVerificationSession } from "../shared/schema.js";
-import { eq, and, gt } from "drizzle-orm";
+import { eq, and, gt, lt, sql } from "drizzle-orm";
 import { SelfBackendVerifier, AllIds, DefaultConfigStore } from "@selfxyz/core";
 import crypto from "crypto";
 import * as ed from "@noble/ed25519";
 
 const router = Router();
+
+async function cleanupExpiredSessions() {
+  try {
+    const result = await db.update(verificationSessions)
+      .set({ status: "expired" })
+      .where(and(
+        eq(verificationSessions.status, "pending"),
+        lt(verificationSessions.challengeExpiry, new Date())
+      ));
+    console.log("[selfclaw] Cleaned up expired sessions");
+  } catch (error) {
+    console.error("[selfclaw] Session cleanup error:", error);
+  }
+}
+
+setInterval(cleanupExpiredSessions, 5 * 60 * 1000);
+cleanupExpiredSessions();
 
 const SELFCLAW_SCOPE = "selfclaw-verify";
 const SELFCLAW_ENDPOINT = process.env.REPLIT_DOMAINS 
@@ -233,13 +250,20 @@ router.post("/v1/callback", async (req: Request, res: Response) => {
       .from(verificationSessions)
       .where(and(
         eq(verificationSessions.id, sessionId),
-        eq(verificationSessions.status, "pending")
+        eq(verificationSessions.status, "pending"),
+        gt(verificationSessions.challengeExpiry, new Date())
       ))
       .limit(1);
     
     const session = sessions[0];
     if (!session) {
-      console.log("[selfclaw] Session not found:", sessionId);
+      console.log("[selfclaw] Session not found or expired:", sessionId);
+      await db.update(verificationSessions)
+        .set({ status: "expired" })
+        .where(and(
+          eq(verificationSessions.id, sessionId),
+          eq(verificationSessions.status, "pending")
+        ));
       return res.status(400).json({ error: "Invalid or expired verification session" });
     }
     
@@ -262,7 +286,7 @@ router.post("/v1/callback", async (req: Request, res: Response) => {
     
     const existing = await db.select()
       .from(verifiedBots)
-      .where(eq(verifiedBots.publicKey, session.agentPublicKey))
+      .where(sql`${verifiedBots.publicKey} = ${session.agentPublicKey}`)
       .limit(1);
 
     const metadata = { 
@@ -280,7 +304,7 @@ router.post("/v1/callback", async (req: Request, res: Response) => {
           verificationLevel: session.signatureVerified ? "passport+signature" : "passport",
           verifiedAt: new Date()
         })
-        .where(eq(verifiedBots.publicKey, session.agentPublicKey));
+        .where(sql`${verifiedBots.publicKey} = ${session.agentPublicKey}`);
     } else {
       const newBot: InsertVerifiedBot = {
         publicKey: session.agentPublicKey,
@@ -316,13 +340,13 @@ router.get("/v1/agent/:identifier", publicApiLimiter, async (req: Request, res: 
     
     let agents = await db.select()
       .from(verifiedBots)
-      .where(eq(verifiedBots.publicKey, identifier))
+      .where(sql`${verifiedBots.publicKey} = ${identifier}`)
       .limit(1);
     
     if (agents.length === 0) {
       agents = await db.select()
         .from(verifiedBots)
-        .where(eq(verifiedBots.deviceId, identifier))
+        .where(sql`${verifiedBots.deviceId} = ${identifier}`)
         .limit(1);
     }
     
@@ -364,7 +388,7 @@ router.get("/v1/human/:humanId", publicApiLimiter, async (req: Request, res: Res
     
     const agents = await db.select()
       .from(verifiedBots)
-      .where(eq(verifiedBots.humanId, humanId));
+      .where(sql`${verifiedBots.humanId} = ${humanId}`);
 
     res.json({
       humanId,
