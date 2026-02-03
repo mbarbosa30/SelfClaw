@@ -501,7 +501,12 @@
       
       <div class="highlight-box">
         <h4>Why SelfClaw?</h4>
-        <p>Passport-first verification with Self.xyz zero-knowledge proofs. Works in 129+ countries with any NFC-enabled passport. Your data never leaves your device — privacy by mathematics.</p>
+        <p>Passport-first verification with Self.xyz zero-knowledge proofs. Works in 129+ countries with any NFC-enabled passport. Raw passport data never leaves your device — only the proof is shared.</p>
+      </div>
+      
+      <div class="highlight-box" style="background: linear-gradient(135deg, rgba(255, 131, 82, 0.1), rgba(0, 255, 182, 0.05)); border-color: var(--coral);">
+        <h4 style="color: var(--coral);">Self + OpenClaw</h4>
+        <p><strong>Self</strong> provides the zero-knowledge proof. <strong>OpenClaw</strong> defines the open verification standard — an open spec with optional on-chain registry on Celo. Anyone can validate results without trusting our API.</p>
       </div>
       
       <nav class="docs-nav">
@@ -541,7 +546,7 @@
           </tr>
           <tr>
             <td>Blockchain</td>
-            <td class="highlight">On-chain attestations on Celo</td>
+            <td class="highlight">Optional on-chain registry on Celo (planned)</td>
           </tr>
         </table>
       </section>
@@ -595,7 +600,7 @@
         </div>
         
         <h3>Step 2: Verify the Signature</h3>
-        <p>The agent returns their public key and signature. Verify using Ed25519.</p>
+        <p>The agent returns their public key (SPKI format) and signature. Convert SPKI to raw key, then verify using Ed25519.</p>
         
         <div class="code-block">
           <div class="code-header">
@@ -603,13 +608,21 @@
             <button class="code-copy" onclick="copyCode(this)">Copy</button>
           </div>
           <div class="code-content">
-<pre><span class="keyword">import</span> { verify } <span class="keyword">from</span> <span class="string">"@noble/ed25519"</span>;
+<pre><span class="keyword">import</span> { createPublicKey } <span class="keyword">from</span> <span class="string">"crypto"</span>;
+<span class="keyword">import</span> { verify } <span class="keyword">from</span> <span class="string">"@noble/ed25519"</span>;
 
-<span class="comment">// Agent returns: { publicKey, signature }</span>
+<span class="comment">// Agent returns: { publicKey (SPKI base64), signature }</span>
+
+<span class="comment">// Convert SPKI to raw 32-byte key for @noble/ed25519</span>
+<span class="keyword">const</span> spkiDer = Buffer.<span class="function">from</span>(publicKey, <span class="string">"base64"</span>);
+<span class="keyword">const</span> keyObject = <span class="function">createPublicKey</span>({ key: spkiDer, format: <span class="string">"der"</span>, type: <span class="string">"spki"</span> });
+<span class="keyword">const</span> rawPublicKey = keyObject.<span class="function">export</span>({ type: <span class="string">"spki"</span>, format: <span class="string">"der"</span> }).<span class="function">subarray</span>(-32);
+
+<span class="comment">// Verify signature</span>
 <span class="keyword">const</span> isValidSignature = <span class="keyword">await</span> <span class="function">verify</span>(
-  signature,      <span class="comment">// Base64 signature from agent</span>
-  message,        <span class="comment">// Original challenge message</span>
-  publicKey       <span class="comment">// Agent's public key (SPKI format)</span>
+  Buffer.<span class="function">from</span>(signature, <span class="string">"base64"</span>),
+  message,
+  rawPublicKey
 );
 
 <span class="keyword">if</span> (!isValidSignature) {
@@ -748,18 +761,22 @@
         <ul class="security-list">
           <li>
             <span class="security-num">1</span>
-            <span class="security-content"><strong>Unique challenges:</strong> Always include a nonce and timestamp to prevent replay attacks.</span>
+            <span class="security-content"><strong>Proof-to-key binding:</strong> During registration, the Self.xyz proof is bound to the agent's public key hash. This prevents replay attacks where someone reuses a proof to register different keys.</span>
           </li>
           <li>
             <span class="security-num">2</span>
-            <span class="security-content"><strong>Signature first:</strong> Always verify the cryptographic signature before checking the registry.</span>
+            <span class="security-content"><strong>Unique challenges:</strong> Always include domain, nonce, timestamp, and agentKeyHash in challenges to prevent replay attacks.</span>
           </li>
           <li>
             <span class="security-num">3</span>
-            <span class="security-content"><strong>Track by humanId:</strong> Use the humanId to identify agents from the same human across your application.</span>
+            <span class="security-content"><strong>Signature first:</strong> Always verify the cryptographic signature before checking the registry.</span>
           </li>
           <li>
             <span class="security-num">4</span>
+            <span class="security-content"><strong>Track by humanId:</strong> Use the humanId to identify agents from the same human across your application.</span>
+          </li>
+          <li>
+            <span class="security-num">5</span>
             <span class="security-content"><strong>Agent swarms:</strong> One human can operate multiple agents. Use the swarm endpoint to see all agents for a humanId.</span>
           </li>
         </ul>
