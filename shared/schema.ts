@@ -23,6 +23,7 @@ export const sessions = pgTable(
 
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  humanId: varchar("human_id").unique(),
   email: varchar("email").unique(),
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
@@ -53,6 +54,9 @@ export const agents = pgTable("agents", {
   configJson: jsonb("config_json"),
   status: varchar("status").default("pending"),
   registrationFileUrl: varchar("registration_file_url"),
+  erc8004TokenId: varchar("erc8004_token_id"),
+  erc8004RegistrationJson: jsonb("erc8004_registration_json"),
+  erc8004Minted: boolean("erc8004_minted").default(false),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

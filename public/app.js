@@ -1210,8 +1210,111 @@ async function loadWalletTab() {
     }
 
     await loadTransactions();
+    await loadERC8004Status();
   } catch (error) {
     console.error('Failed to load wallet:', error);
+  }
+}
+
+async function loadERC8004Status() {
+  if (!currentAgent) return;
+  
+  const statusEl = document.getElementById('erc8004-status');
+  const actionsEl = document.getElementById('erc8004-actions');
+  
+  if (!statusEl || !actionsEl) return;
+  
+  try {
+    const res = await fetch(`/api/agents/${currentAgent.id}/erc8004`);
+    const data = await res.json();
+    
+    if (data.minted && data.tokenId) {
+      statusEl.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+          <span style="color: var(--green);">&#10003;</span>
+          <span>Token ID: <strong>${data.tokenId}</strong></span>
+        </div>
+        ${data.explorerUrl ? `<a href="${data.explorerUrl}" target="_blank" rel="noopener" style="color: var(--green); font-size: 0.875rem;">View on Celoscan</a>` : ''}
+      `;
+      actionsEl.innerHTML = '';
+    } else if (data.registrationJson) {
+      if (data.contractsDeployed) {
+        statusEl.innerHTML = `
+          <p class="note">Registration file ready. Mint your agent's on-chain identity NFT.</p>
+        `;
+        actionsEl.innerHTML = `
+          <button onclick="mintERC8004Identity()" class="btn btn-primary" style="width: 100%;">
+            Mint On-Chain Identity
+          </button>
+        `;
+      } else {
+        statusEl.innerHTML = `
+          <p class="note" style="color: var(--coral);">ERC-8004 contracts deploying to Celo mainnet soon. Your registration file is ready!</p>
+          <details style="margin-top: 0.5rem; font-size: 0.75rem; opacity: 0.7;">
+            <summary style="cursor: pointer;">View registration JSON</summary>
+            <pre style="margin-top: 0.5rem; font-size: 0.7rem; overflow-x: auto; background: var(--gray-100); padding: 0.5rem;">${JSON.stringify(data.registrationJson, null, 2)}</pre>
+          </details>
+        `;
+        actionsEl.innerHTML = `
+          <button disabled class="btn btn-outline" style="width: 100%; opacity: 0.5;">
+            Contracts Deploying Soon...
+          </button>
+        `;
+      }
+    } else {
+      statusEl.innerHTML = `<p class="note">No registration file generated yet.</p>`;
+      actionsEl.innerHTML = `
+        <button onclick="generateERC8004Registration()" class="btn btn-outline" style="width: 100%;">
+          Generate Registration File
+        </button>
+      `;
+    }
+  } catch (error) {
+    console.error('Failed to load ERC-8004 status:', error);
+    statusEl.innerHTML = `<p class="error">${error.message}</p>`;
+    actionsEl.innerHTML = '';
+  }
+}
+
+async function generateERC8004Registration() {
+  if (!currentAgent) return;
+  
+  try {
+    const res = await fetch(`/api/agents/${currentAgent.id}/erc8004/generate`, { method: 'POST' });
+    const data = await res.json();
+    
+    if (data.success) {
+      await loadERC8004Status();
+    } else {
+      alert('Failed to generate: ' + (data.error || 'Unknown error'));
+    }
+  } catch (error) {
+    alert('Error: ' + error.message);
+  }
+}
+
+async function mintERC8004Identity() {
+  if (!currentAgent) return;
+  
+  const actionsEl = document.getElementById('erc8004-actions');
+  if (actionsEl) {
+    actionsEl.innerHTML = `<p class="note">Minting...</p>`;
+  }
+  
+  try {
+    const res = await fetch(`/api/agents/${currentAgent.id}/erc8004/mint`, { method: 'POST' });
+    const data = await res.json();
+    
+    if (data.success) {
+      alert('Successfully minted! Token ID: ' + data.tokenId);
+      await loadERC8004Status();
+    } else {
+      alert('Minting failed: ' + (data.error || data.message || 'Unknown error'));
+      await loadERC8004Status();
+    }
+  } catch (error) {
+    alert('Error: ' + error.message);
+    await loadERC8004Status();
   }
 }
 
@@ -2199,3 +2302,140 @@ async function submitAgentSignature(sessionId) {
 
 const checkBotVerification = checkAgentVerification;
 const startBotVerification = startAgentVerification;
+
+// ============================================
+// Self.xyz Login Functions
+// ============================================
+
+let selfLoginSessionId = null;
+let selfLoginPollInterval = null;
+
+async function startSelfLogin() {
+  const modal = document.getElementById('self-login-modal');
+  const qrContainer = document.getElementById('self-login-qr');
+  const statusEl = document.getElementById('self-login-status');
+  
+  if (!modal || !qrContainer) {
+    console.error('Self login modal not found');
+    return;
+  }
+  
+  // Show modal
+  modal.style.display = 'flex';
+  qrContainer.innerHTML = '<div class="loading-spinner"></div>';
+  statusEl.textContent = 'Starting verification...';
+  
+  try {
+    // Start auth session
+    const response = await fetch('/api/auth/self/start', { method: 'POST' });
+    const data = await response.json();
+    
+    if (!data.success) {
+      throw new Error(data.error || 'Failed to start login');
+    }
+    
+    selfLoginSessionId = data.sessionId;
+    
+    // Render QR code
+    if (data.selfApp) {
+      const qrUrl = `https://self.xyz/verify?scope=${encodeURIComponent(data.selfApp.scope || 'selfclaw-auth')}&session=${data.sessionId}`;
+      qrContainer.innerHTML = `
+        <div style="background: white; padding: 16px; border-radius: 8px;">
+          <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(JSON.stringify(data.selfApp))}" 
+               alt="Scan with Self app" 
+               style="display: block; width: 200px; height: 200px;" />
+        </div>
+      `;
+    }
+    
+    statusEl.textContent = 'Scan with your Self app...';
+    
+    // Start polling for verification
+    startLoginPolling(data.sessionId);
+    
+  } catch (error) {
+    console.error('Self login error:', error);
+    qrContainer.innerHTML = `<p style="color: #ff6b6b;">Error: ${error.message}</p>`;
+    statusEl.textContent = 'Login failed';
+  }
+}
+
+function startLoginPolling(sessionId) {
+  if (selfLoginPollInterval) {
+    clearInterval(selfLoginPollInterval);
+  }
+  
+  const statusEl = document.getElementById('self-login-status');
+  
+  const poll = async () => {
+    try {
+      const response = await fetch(`/api/auth/self/status/${sessionId}`);
+      const data = await response.json();
+      
+      if (data.status === 'verified') {
+        // Stop polling
+        clearInterval(selfLoginPollInterval);
+        selfLoginPollInterval = null;
+        
+        statusEl.textContent = 'Verified! Logging in...';
+        
+        // Complete login
+        const completeRes = await fetch('/api/auth/self/complete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessionId })
+        });
+        
+        const completeData = await completeRes.json();
+        
+        if (completeData.success) {
+          statusEl.textContent = 'Success! Redirecting...';
+          setTimeout(() => {
+            closeSelfLoginModal();
+            loadAuthState();
+          }, 500);
+        } else {
+          statusEl.textContent = 'Login error: ' + (completeData.error || 'Unknown');
+        }
+      } else if (data.status === 'expired') {
+        clearInterval(selfLoginPollInterval);
+        selfLoginPollInterval = null;
+        statusEl.textContent = 'Session expired. Please try again.';
+      } else if (data.status === 'not_found') {
+        // Session might not be ready yet, keep polling
+      }
+      // Keep polling if pending
+    } catch (e) {
+      console.error('Login polling error:', e);
+    }
+  };
+  
+  poll();
+  selfLoginPollInterval = setInterval(poll, 2000);
+}
+
+function closeSelfLoginModal() {
+  const modal = document.getElementById('self-login-modal');
+  if (modal) modal.style.display = 'none';
+  
+  if (selfLoginPollInterval) {
+    clearInterval(selfLoginPollInterval);
+    selfLoginPollInterval = null;
+  }
+  selfLoginSessionId = null;
+}
+
+// Close modal on Escape key
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    closeSelfLoginModal();
+  }
+});
+
+// Close modal on backdrop click
+document.addEventListener('click', (e) => {
+  const modal = document.getElementById('self-login-modal');
+  if (e.target === modal) {
+    closeSelfLoginModal();
+  }
+});

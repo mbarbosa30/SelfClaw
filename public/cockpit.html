@@ -28,7 +28,7 @@
       <div id="auth-section" class="auth-section">
         <div id="auth-loading" class="auth-loading" style="display:none;"></div>
         <div id="auth-logged-out" class="auth-logged-out" style="display:none;">
-          <a href="/api/login?returnTo=/cockpit" class="btn btn-primary">SIGN IN</a>
+          <button onclick="startSelfLogin()" class="btn btn-primary">SIGN IN WITH SELF</button>
         </div>
         <div id="auth-logged-in" class="auth-logged-in" style="display:none;">
           <img id="user-avatar" class="user-avatar" src="" alt="" />
@@ -44,7 +44,7 @@
           <h2 class="hero-headline"><span class="headline-white">Your agents.</span> <span class="headline-green" id="cockpit-rotating-headline">Always working.</span></h2>
           <p class="hero-subline">Autonomous AI agents with persistent goals, scheduled execution, and a skills marketplace. The cockpit for your AI workforce.</p>
           <div class="hero-cta" style="margin-top: 1.5rem;">
-            <a href="/api/login?returnTo=/cockpit" class="btn btn-primary">Get Started Free</a>
+            <button onclick="startSelfLogin()" class="btn btn-primary">Get Started Free</button>
           </div>
         </div>
       </section>
@@ -465,6 +465,15 @@
                     </div>
                   </div>
                   
+                  <div class="erc8004-section" style="margin-top: 1.5rem; padding: 1rem; border: 2px solid var(--gray-300); background: var(--gray-200);">
+                    <h4 style="margin-bottom: 0.75rem;">ERC-8004 ON-CHAIN IDENTITY</h4>
+                    <div id="erc8004-status">
+                      <p class="note" style="margin-bottom: 0.75rem;">Loading status...</p>
+                    </div>
+                    <div id="erc8004-actions" style="margin-top: 1rem;">
+                    </div>
+                  </div>
+                  
                   <div class="transactions-section">
                     <h4>RECENT TRANSACTIONS</h4>
                     <div id="wallet-transactions" class="transactions-list">
@@ -776,5 +785,19 @@
       }
     });
   </script>
+
+  <!-- Self.xyz Login Modal -->
+  <div id="self-login-modal" class="modal" style="display:none;">
+    <div class="modal-content" style="max-width: 400px; text-align: center;">
+      <button class="modal-close" onclick="closeSelfLoginModal()">&times;</button>
+      <h2 style="margin-bottom: 1rem;">Sign In with Self</h2>
+      <p style="margin-bottom: 1.5rem; opacity: 0.8;">Scan the QR code with your Self app to sign in. Your passport proves you're human.</p>
+      <div id="self-login-qr" style="display: flex; justify-content: center; margin-bottom: 1rem; min-height: 250px; align-items: center;">
+        <div class="loading-spinner"></div>
+      </div>
+      <p id="self-login-status" style="font-size: 0.875rem; opacity: 0.7;">Waiting for verification...</p>
+      <p style="margin-top: 1rem; font-size: 0.75rem; opacity: 0.5;">Don't have Self? <a href="https://self.xyz" target="_blank" rel="noopener" style="color: var(--green);">Get it here</a></p>
+    </div>
+  </div>
 </body>
 </html>

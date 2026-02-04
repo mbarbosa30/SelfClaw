@@ -3,7 +3,9 @@ import { existsSync, readFileSync, writeFileSync, mkdirSync } from "fs";
 import { join } from "path";
 import { homedir } from "os";
 import { execSync, spawn } from "child_process";
-import { setupAuth, isAuthenticated, registerAuthRoutes } from "./replit_integrations/auth/index.js";
+import { setupSelfAuth, isAuthenticated, registerAuthRoutes } from "./self-auth.js";
+// Legacy import kept for reference but not used
+// import { setupAuth as setupReplitAuth, isAuthenticated as replitIsAuthenticated, registerAuthRoutes as replitRegisterAuthRoutes } from "./replit_integrations/auth/index.js";
 import { db } from "./db.js";
 import { agents, payments, users, agentSecrets, agentSkills, agentGoals, agentScheduledTasks, agentMemory, agentToolExecutions, conversations, messages, activityFeed, type InsertAgent, type InsertPayment, type InsertAgentSecret, type InsertAgentSkill, type InsertAgentGoal, type InsertAgentScheduledTask, type InsertActivityFeedEntry } from "../shared/schema.js";
 import { runAgentTurn, buildAgentContext, AVAILABLE_TOOLS } from "./agent-runtime.js";
@@ -17,6 +19,8 @@ import { createAgentPaymentMiddleware, getAgentReceivedPayments, getAgentTotalRe
 import { seedMarketplace } from "./seed-marketplace.js";
 import gmailRouter from "./gmail-oauth.js";
 import selfclawRouter from "./selfclaw.js";
+import { erc8004Service } from "../lib/erc8004.js";
+import { generateRegistrationFile } from "../lib/erc8004-config.js";
 
 const app = express();
 const PORT = 5000;
@@ -117,11 +121,12 @@ function getSystemStatus() {
 
 async function main() {
   try {
-    await setupAuth(app);
+    // Use Self.xyz passport authentication (replaces Replit Auth)
+    await setupSelfAuth(app);
     registerAuthRoutes(app);
-    console.log("[auth] Authentication routes registered successfully");
+    console.log("[auth] Self.xyz authentication routes registered successfully");
   } catch (error) {
-    console.error("[auth] Failed to setup authentication:", error);
+    console.error("[auth] Failed to setup Self.xyz authentication:", error);
     // Add fallback login route that shows an error message
     app.get("/api/login", (req, res) => {
       res.status(503).json({ error: "Authentication not available. Please try again later." });
@@ -317,6 +322,18 @@ async function main() {
         walletAddress = deriveAgentWalletAddress(process.env.CELO_PRIVATE_KEY, tempId);
       }
 
+      // Auto-generate ERC-8004 registration JSON
+      const domain = process.env.REPLIT_DOMAINS || "selfclaw.app";
+      const a2aEndpoint = `https://${domain}/api/agents/${tempId}/a2a`;
+      const erc8004Json = generateRegistrationFile(
+        name,
+        description || "",
+        walletAddress || undefined,
+        a2aEndpoint,
+        undefined,
+        false
+      );
+
       const newAgent: InsertAgent = {
         id: tempId,
         userId,
@@ -330,6 +347,7 @@ async function main() {
           model: model || "gpt-4o",
           systemPrompt: systemPrompt || "",
         },
+        erc8004RegistrationJson: erc8004Json,
       };
 
       const [agent] = await db.insert(agents).values(newAgent).returning();
@@ -441,6 +459,133 @@ async function main() {
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
+  });
+
+  // ERC-8004 Endpoints
+  app.get("/api/agents/:id/erc8004", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const [agent] = await db.select().from(agents).where(eq(agents.id, req.params.id));
+
+      if (!agent || agent.userId !== userId) {
+        return res.status(404).json({ error: "Agent not found" });
+      }
+
+      const config = erc8004Service.getConfig();
+      res.json({
+        tokenId: agent.erc8004TokenId,
+        minted: agent.erc8004Minted || false,
+        registrationJson: agent.erc8004RegistrationJson,
+        contractsDeployed: config.isDeployed,
+        explorerUrl: agent.erc8004TokenId ? erc8004Service.getExplorerUrl(agent.erc8004TokenId) : null,
+        config: {
+          chainId: config.chainId,
+          identityRegistry: config.identityRegistry,
+          reputationRegistry: config.reputationRegistry,
+        }
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/agents/:id/erc8004/generate", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const [agent] = await db.select().from(agents).where(eq(agents.id, req.params.id));
+
+      if (!agent || agent.userId !== userId) {
+        return res.status(404).json({ error: "Agent not found" });
+      }
+
+      const domain = process.env.REPLIT_DOMAINS || "selfclaw.app";
+      const a2aEndpoint = `https://${domain}/api/agents/${agent.id}/a2a`;
+      
+      const registrationJson = generateRegistrationFile(
+        agent.name,
+        agent.description || "",
+        agent.tbaAddress || undefined,
+        a2aEndpoint,
+        undefined,
+        false
+      );
+
+      await db.update(agents)
+        .set({ 
+          erc8004RegistrationJson: registrationJson,
+          updatedAt: new Date() 
+        })
+        .where(eq(agents.id, agent.id));
+
+      res.json({ success: true, registrationJson });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/agents/:id/erc8004/mint", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const [agent] = await db.select().from(agents).where(eq(agents.id, req.params.id));
+
+      if (!agent || agent.userId !== userId) {
+        return res.status(404).json({ error: "Agent not found" });
+      }
+
+      if (!erc8004Service.isReady()) {
+        return res.status(400).json({ 
+          error: "ERC-8004 contracts not deployed yet",
+          message: "Contracts are scheduled for deployment. Check back soon!"
+        });
+      }
+
+      if (agent.erc8004Minted) {
+        return res.status(400).json({ 
+          error: "Already minted",
+          tokenId: agent.erc8004TokenId
+        });
+      }
+
+      if (!agent.erc8004RegistrationJson) {
+        return res.status(400).json({ error: "Generate registration file first" });
+      }
+
+      const agentURI = `https://${process.env.REPLIT_DOMAINS || "selfclaw.app"}/api/agents/${agent.id}/registration`;
+      
+      const result = await erc8004Service.registerAgent(agentURI);
+      
+      if (!result) {
+        return res.status(500).json({ error: "Minting failed" });
+      }
+
+      await db.update(agents)
+        .set({ 
+          erc8004TokenId: result.tokenId,
+          erc8004Minted: true,
+          updatedAt: new Date() 
+        })
+        .where(eq(agents.id, agent.id));
+
+      res.json({ 
+        success: true, 
+        tokenId: result.tokenId,
+        txHash: result.txHash,
+        explorerUrl: erc8004Service.getTxExplorerUrl(result.txHash)
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/erc8004/config", (req: Request, res: Response) => {
+    const config = erc8004Service.getConfig();
+    res.json({
+      isDeployed: config.isDeployed,
+      chainId: config.chainId,
+      identityRegistry: config.identityRegistry,
+      reputationRegistry: config.reputationRegistry,
+      explorer: config.explorer,
+    });
   });
 
   app.get("/api/agents/:id/wallet", isAuthenticated, async (req: any, res: Response) => {

@@ -24,9 +24,9 @@ SelfClaw is a privacy-first agent verification registry leveraging Self.xyz pass
 - **Runtime**: Node.js 22+ with TypeScript (tsx)
 - **Backend**: Express.js (server/index.ts) running on port 5000
 - **Database**: PostgreSQL with Drizzle ORM
-- **Authentication**: Replit Auth (OpenID Connect)
+- **Authentication**: Self.xyz passport-only (QR code login with session polling)
 - **Frontend**: Vanilla HTML/CSS/JS (public/)
-- **Blockchain**: Celo network with USDC for x402 payments
+- **Blockchain**: Celo network with USDC for x402 payments, ERC-8004 agent identity NFTs
 
 ### Core Components and Features
 - **Agent Verification API Endpoints**:
@@ -60,9 +60,16 @@ SelfClaw is a privacy-first agent verification registry leveraging Self.xyz pass
         - **MiniPay Support**: Detection and integration for Opera MiniPay wallet
 
 ## External Dependencies
-- **Replit Auth**: Used for user authentication.
-- **Celo Network**: Integrated for on-chain micropayments using USDC.
-- **OpenAI**: Provides AI model integration (e.g., GPT-5.2, GPT-4.1/Mini, GPT-4o), working out-of-the-box via Replit integration.
-- **Anthropic**: Integrated for AI models (e.g., Claude Sonnet 4.5, Opus 4.5, Haiku 4.5, Sonnet 4), requiring a user-provided API key.
-- **Self.xyz SDK**: Used for production verification flow, including `@selfxyz/qrcode` for frontend QR code display and `@selfxyz/core` with `SelfBackendVerifier` for backend proof validation.
-- **Google OAuth**: For per-user Gmail integration, enabling agents to read emails via the `read_emails` tool. Requires `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`.
+- **Self.xyz SDK**: Primary authentication (passport-only login) using `@selfxyz/qrcode` for QR display and `@selfxyz/core` with `SelfBackendVerifier` for proof validation. Users authenticate by scanning QR with passport NFC.
+- **Celo Network**: On-chain micropayments (USDC), ERC-8004 agent identity NFTs via `@chaoschain/sdk`.
+- **OpenAI**: AI model integration (e.g., GPT-5.2, GPT-4.1/Mini, GPT-4o), working out-of-the-box via Replit integration.
+- **Anthropic**: AI models (e.g., Claude Sonnet 4.5, Opus 4.5, Haiku 4.5, Sonnet 4), requiring a user-provided API key.
+- **ERC-8004 Standard**: On-chain agent identity via `lib/erc8004.ts` and `lib/erc8004-config.ts`. Agents get registration JSON auto-generated on creation with wallet endpoint, A2A endpoint, and supportedTrust array.
+- **Google OAuth**: Optional per-user Gmail integration for `read_emails` tool. Requires `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`.
+
+## Recent Changes (February 2026)
+- **Self.xyz Passport-Only Auth**: Replaced Replit Auth entirely. Users now authenticate via Self.xyz QR code scan with passport NFC chip.
+- **ERC-8004 Integration**: Added `@chaoschain/sdk`, created `lib/erc8004.ts` service layer for agent identity NFTs on Celo.
+- **Database Updates**: Added `humanId` to users table (unique Self.xyz identifier), `erc8004TokenId`, `erc8004RegistrationJson`, `erc8004Minted` to agents table.
+- **Wallet Tab UI**: Added ERC-8004 status display and "Mint On-Chain Identity" button.
+- **API Endpoints**: `/api/agents/:id/erc8004` (status), `/api/agents/:id/erc8004/generate`, `/api/agents/:id/erc8004/mint`.
