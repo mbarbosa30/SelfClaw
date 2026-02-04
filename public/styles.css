@@ -2035,7 +2035,7 @@ body.dashboard-mode .cockpit-main {
 
 .wallet-balance-card {
   padding: 1.5rem;
-  border: 2px solid var(--black);
+  border: 2px solid var(--gray-300);
   margin-bottom: 2rem;
 }
 
@@ -2377,8 +2377,8 @@ body.dashboard-mode .cockpit-main {
 }
 
 .goal-card, .task-card {
-  background: var(--gray-100);
-  border: 2px solid var(--black);
+  background: var(--gray-200);
+  border: 2px solid var(--gray-300);
   padding: 1rem;
   margin-bottom: 0.75rem;
 }
@@ -2564,7 +2564,7 @@ body.dashboard-mode .cockpit-main {
   
   .agents-sidebar {
     border-right: none;
-    border-bottom: 2px solid var(--black);
+    border-bottom: 2px solid var(--gray-300);
     padding-right: 0;
     padding-bottom: 1rem;
     margin-bottom: 1rem;
