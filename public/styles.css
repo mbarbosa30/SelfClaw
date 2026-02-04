@@ -1680,7 +1680,7 @@ body.dashboard-mode .cockpit-main {
 }
 
 .agents-sidebar {
-  border-right: 2px solid var(--black);
+  border-right: 2px solid var(--gray-300);
   padding-right: 1.5rem;
 }
 
@@ -1715,12 +1715,12 @@ body.dashboard-mode .cockpit-main {
 }
 
 .nav-agent:hover {
-  background: var(--gray-100);
+  background: var(--gray-200);
 }
 
 .nav-agent.active {
-  background: var(--black);
-  color: var(--white);
+  background: var(--coral);
+  color: var(--black);
 }
 
 .nav-agent-name {
@@ -1773,12 +1773,12 @@ body.dashboard-mode .cockpit-main {
 }
 
 .agent-nav-item:hover {
-  background: var(--gray-100);
+  background: var(--gray-200);
 }
 
 .agent-nav-item.active {
-  background: var(--black);
-  color: var(--white);
+  background: var(--coral);
+  color: var(--black);
 }
 
 .agent-nav-item .nav-name {
@@ -1833,7 +1833,7 @@ body.dashboard-mode .cockpit-main {
   justify-content: space-between;
   align-items: flex-start;
   padding-bottom: 1rem;
-  border-bottom: 2px solid var(--black);
+  border-bottom: 2px solid var(--gray-300);
   margin-bottom: 1rem;
 }
 
@@ -1860,7 +1860,7 @@ body.dashboard-mode .cockpit-main {
 .cockpit-tabs {
   display: flex;
   gap: 0;
-  border-bottom: 2px solid var(--black);
+  border-bottom: 2px solid var(--gray-300);
   margin-bottom: 1.5rem;
 }
 
@@ -1878,13 +1878,13 @@ body.dashboard-mode .cockpit-main {
 }
 
 .tab-btn:hover {
-  background: var(--gray-100);
+  background: var(--gray-200);
 }
 
 .tab-btn.active {
-  background: var(--black);
-  color: var(--white);
-  border-bottom-color: var(--black);
+  background: var(--coral);
+  color: var(--black);
+  border-bottom-color: var(--coral);
 }
 
 /* Tab Panels */
@@ -1908,7 +1908,7 @@ body.dashboard-mode .cockpit-main {
   overflow-y: auto;
   padding: 1rem;
   border: 1px solid var(--gray-300);
-  background: var(--gray-100);
+  background: var(--gray-800);
   margin-bottom: 1rem;
 }
 
@@ -1919,14 +1919,15 @@ body.dashboard-mode .cockpit-main {
 }
 
 .chat-message.user {
-  background: var(--black);
-  color: var(--white);
+  background: var(--coral);
+  color: var(--black);
   margin-left: 2rem;
 }
 
 .chat-message.assistant {
-  background: var(--white);
+  background: var(--gray-200);
   border: 1px solid var(--gray-300);
+  color: var(--text-primary);
   margin-right: 2rem;
 }
 
