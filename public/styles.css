@@ -2945,14 +2945,13 @@ body.dashboard-mode .cockpit-main {
   color: var(--green);
 }
 
-/* Verify Section */
+/* Section Spacing - consistent 3rem vertical margins */
 .verify-section,
 .check-section,
 .api-section,
 .claw-section,
 .why-section {
-  margin-top: 3rem;
-  padding-top: 2.5rem;
+  margin: 3rem 0;
 }
 
 /* Input Button Row */
@@ -4738,7 +4737,7 @@ body.dashboard-mode .cockpit-main {
 }
 
 .economy-notice {
-  margin: 2rem 0;
+  margin: 3rem 0;
 }
 
 .notice-card {
