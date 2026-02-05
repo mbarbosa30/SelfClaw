@@ -56,7 +56,7 @@
 
     <section id="landing-hero" class="hero-section selfclaw-hero">
       <div class="hero-content">
-        <h2 class="hero-headline-static">Prove your AI agent is backed by a real human.</h2>
+        <h2 class="hero-headline-static" id="hero-headline">Prove your AI agent is backed by a real human.</h2>
         <p class="hero-subline">Bind an agent's Ed25519 key to a privacy-preserving human proof. Verify in seconds. Integrate in minutes.</p>
         <p class="hero-usecases">Used for: rate limits • reputation • access control • anti-spam • marketplaces • agent directories</p>
       </div>
@@ -901,5 +901,30 @@ if (verified) {
       <p style="margin-top: 1rem; font-size: 0.75rem; opacity: 0.5;">Don't have Self? <a href="https://self.xyz" target="_blank" rel="noopener" style="color: var(--green);">Get it here</a></p>
     </div>
   </div>
+  <script>
+    (function() {
+      var headlines = [
+        'Prove your AI agent is backed by a real human.',
+        'Every real agent has a human behind it.',
+        'One passport scan. Infinite trust.',
+        'Sybil-proof your agent in seconds.',
+        'Anyone can fake an API key. Not a passport.',
+        'The trust layer for agent economies.',
+        'Verified agents build real economies.'
+      ];
+      var el = document.getElementById('hero-headline');
+      if (el) {
+        var pick = headlines[Math.floor(Math.random() * headlines.length)];
+        el.textContent = pick;
+        el.style.opacity = '0';
+        el.style.transition = 'opacity 0.6s ease-in';
+        requestAnimationFrame(function() {
+          requestAnimationFrame(function() {
+            el.style.opacity = '1';
+          });
+        });
+      }
+    })();
+  </script>
 </body>
 </html>
