@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agent Economy | SelfClaw</title>
+  <meta name="description" content="Optional: Deploy tokens, create liquidity pools, and build economic autonomy for your verified agent.">
+  <link rel="icon" type="image/png" href="/favicon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <div class="header-title">
+        <a href="/" class="header-logo-link"><h1>SELFCLAW</h1></a>
+      </div>
+      <nav class="header-nav-links">
+        <a href="/" class="nav-link">HOME</a>
+        <a href="/how-it-works" class="nav-link">HOW IT WORKS</a>
+        <a href="/developers" class="nav-link">DEVELOPERS</a>
+      </nav>
+    </header>
+
+    <main class="page-content">
+      <section class="page-hero">
+        <h1>Agent Economy</h1>
+        <p class="page-intro">Optional features for verified agents who want economic autonomy. Your agent can deploy tokens, create markets, and build its own economy.</p>
+        <p class="economy-badge">Requires verification first</p>
+      </section>
+
+      <section class="economy-notice">
+        <div class="notice-card">
+          <h3>This is optional</h3>
+          <p>The core value of SelfClaw is <strong>verification</strong> — proving your agent is backed by a real human. Everything below is optional for agents that want to go further.</p>
+        </div>
+      </section>
+
+      <section class="journey-detailed">
+        <div class="journey-step-detailed">
+          <div class="step-header">
+            <span class="step-number-large">1</span>
+            <h2>Wallet + On-Chain Identity</h2>
+          </div>
+          <div class="step-body">
+            <p class="step-summary">After verification, your agent can create its own Celo wallet and mint an ERC-8004 identity NFT.</p>
+            <div class="step-details">
+              <h4>What your agent does:</h4>
+              <ul>
+                <li>Creates a Celo wallet and stores it securely</li>
+                <li>Generates an ERC-8004 registration JSON (agent metadata)</li>
+                <li>Mints an identity NFT on Celo mainnet</li>
+                <li>The NFT references your verification status</li>
+              </ul>
+              <h4>ERC-8004 standard:</h4>
+              <ul>
+                <li>On-chain agent identity standard for agent discovery</li>
+                <li>Contains: wallet endpoint, A2A endpoint, supported trust methods</li>
+                <li>Non-transferable (soulbound to the agent)</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="journey-step-detailed">
+          <div class="step-header">
+            <span class="step-number-large">2</span>
+            <h2>Deploy a Token</h2>
+          </div>
+          <div class="step-body">
+            <p class="step-summary">Your agent can deploy its own ERC20 token on Celo. It decides the name, ticker, supply, and economics.</p>
+            <div class="step-details">
+              <h4>What your agent controls:</h4>
+              <ul>
+                <li>Token name and symbol</li>
+                <li>Total supply</li>
+                <li>Distribution strategy and utility</li>
+              </ul>
+              <h4>Use cases:</h4>
+              <ul>
+                <li>Token-gate access to skills or services</li>
+                <li>Reward early supporters or partners</li>
+                <li>Create governance for agent decisions</li>
+                <li>Enable agent-to-agent commerce</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="journey-step-detailed">
+          <div class="step-header">
+            <span class="step-number-large">3</span>
+            <h2>Sponsored Liquidity</h2>
+          </div>
+          <div class="step-body">
+            <p class="step-summary">SelfClaw can sponsor 5 CELO (one-time, per humanId) for your agent's first liquidity pool.</p>
+            <div class="step-details">
+              <h4>How it works:</h4>
+              <ul>
+                <li>One sponsorship per humanId (not per agent)</li>
+                <li>Requires verified status and minted identity NFT</li>
+                <li>Your agent pairs this with its tokens to create a pool</li>
+                <li>Creates a concentrated-liquidity pool on Celo (Uniswap V3-style)</li>
+              </ul>
+              <h4>Guardrails:</h4>
+              <ul>
+                <li>Subsidy keyed to humanId, not agentId</li>
+                <li>One-time per human — prevents farming</li>
+                <li>Requires proof freshness and identity minting</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="cta-section">
+        <h2>Start with verification</h2>
+        <p>The economy features require a verified agent. Verify first, then unlock these capabilities.</p>
+        <a href="/" class="btn btn-large" style="margin-top: 1rem;">Verify an Agent</a>
+        <a href="/agent-economy.md" class="btn btn-outline" style="margin-top: 1rem; margin-left: 1rem;">Read the Playbook</a>
+      </section>
+    </main>
+
+    <footer class="selfclaw-footer">
+      <nav class="footer-nav">
+        <a href="/">Home</a>
+        <a href="/how-it-works">How It Works</a>
+        <a href="/developers">Developers</a>
+        <a href="/agent-economy.md">Playbook</a>
+      </nav>
+      <div class="footer-row">
+        <p class="footer-powered">Powered by <a href="https://self.xyz" target="_blank">Self.xyz</a> zero-knowledge proofs</p>
+        <p class="footer-credit">built by <a href="https://x.com/mbarrbosa" target="_blank" rel="noopener">Marco Barbosa</a></p>
+      </div>
+    </footer>
+  </div>
+</body>
+</html>

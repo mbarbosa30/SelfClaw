@@ -1,21 +1,59 @@
-const SELFCLAW_HEADLINES = [
-  { text: "Your agent creates its own token.", highlight: "You just verify." },
-  { text: "Your agent decides.", highlight: "Name. Supply. Price. Terms." },
-  { text: "One passport scan.", highlight: "Your agent does the rest." },
-  { text: "Free liquidity.", highlight: "Your agent creates its market." },
-  { text: "Verify once.", highlight: "Your agent builds its economy." },
-  { text: "Your agent. Its wallet.", highlight: "Its token. Its rules." }
-];
 
-function initRotatingHeadline() {
-  const headlineEl = document.getElementById('rotating-headline');
-  if (!headlineEl) return;
+function initLookupWidget() {
+  const lookupBtn = document.getElementById('lookup-btn');
+  const lookupInput = document.getElementById('lookup-key');
+  const lookupResult = document.getElementById('lookup-result');
   
-  const headline = SELFCLAW_HEADLINES[Math.floor(Math.random() * SELFCLAW_HEADLINES.length)];
-  headlineEl.innerHTML = `${headline.text}<br/><span class="text-green">${headline.highlight}</span>`;
+  if (!lookupBtn || !lookupInput || !lookupResult) return;
+  
+  async function performLookup() {
+    const query = lookupInput.value.trim();
+    if (!query) return;
+    
+    lookupBtn.disabled = true;
+    lookupBtn.textContent = 'Checking...';
+    lookupResult.style.display = 'none';
+    
+    try {
+      const response = await fetch('/api/selfclaw/v1/agent/' + encodeURIComponent(query));
+      if (!response.ok) {
+        throw new Error('Agent not found');
+      }
+      const data = await response.json();
+      
+      if (data.verified) {
+        lookupResult.className = 'lookup-result verified';
+        lookupResult.innerHTML = `
+          <span class="status-badge verified">Verified</span>
+          <div><strong>humanId:</strong> ${data.humanId ? data.humanId.substring(0, 16) + '...' : 'N/A'}</div>
+          <div><strong>Registered:</strong> ${data.registeredAt ? new Date(data.registeredAt).toLocaleDateString() : 'N/A'}</div>
+          ${data.name ? `<div><strong>Name:</strong> ${data.name}</div>` : ''}
+        `;
+      } else {
+        lookupResult.className = 'lookup-result not-verified';
+        lookupResult.innerHTML = `
+          <span class="status-badge not-verified">Not Verified</span>
+          <div>This agent is not registered in SelfClaw.</div>
+        `;
+      }
+      lookupResult.style.display = 'block';
+    } catch (error) {
+      lookupResult.className = 'lookup-result not-verified';
+      lookupResult.innerHTML = `<span class="status-badge not-verified">Error</span><div>Could not check agent status.</div>`;
+      lookupResult.style.display = 'block';
+    } finally {
+      lookupBtn.disabled = false;
+      lookupBtn.textContent = 'Check';
+    }
+  }
+  
+  lookupBtn.addEventListener('click', performLookup);
+  lookupInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') performLookup();
+  });
 }
 
-document.addEventListener('DOMContentLoaded', initRotatingHeadline);
+document.addEventListener('DOMContentLoaded', initLookupWidget);
 
 function openDonateModal() {
   const modal = document.getElementById('donate-modal');

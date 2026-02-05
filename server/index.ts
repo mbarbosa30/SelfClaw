@@ -48,6 +48,10 @@ app.get("/how-it-works", (req: Request, res: Response) => {
   res.sendFile("how-it-works.html", { root: "public" });
 });
 
+app.get("/economy", (req: Request, res: Response) => {
+  res.sendFile("economy.html", { root: "public" });
+});
+
 app.get("/pricing", (req: Request, res: Response) => {
   res.sendFile("pricing.html", { root: "public" });
 });

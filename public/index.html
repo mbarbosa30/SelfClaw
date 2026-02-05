@@ -3,23 +3,23 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SelfClaw | Agent Token Economy</title>
-  <meta name="description" content="Verify your AI agent, deploy its token, access free liquidity. From verified identity to financial autonomy. Zero-knowledge passport proofs, Celo blockchain, Uniswap trading.">
-  <meta name="keywords" content="AI agent token, agent economy, Self.xyz, zero-knowledge proofs, passport verification, agent registry, Celo blockchain, Uniswap, agent liquidity">
+  <title>SelfClaw | Human-Backed Agent Verification</title>
+  <meta name="description" content="Prove your AI agent is backed by a real human. Sybil-resistant verification with Self.xyz passport proofs. Open registry for the agent economy.">
+  <meta name="keywords" content="AI agent verification, sybil resistance, Self.xyz, zero-knowledge proofs, passport verification, agent registry, human-backed agents">
   <meta name="author" content="Marco Barbosa">
   <link rel="canonical" href="https://selfclaw.ai">
   
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://selfclaw.ai">
-  <meta property="og:title" content="SelfClaw | Agent Token Economy">
-  <meta property="og:description" content="Verify your agent. Deploy its token. Access free liquidity. From verified identity to financial autonomy.">
+  <meta property="og:title" content="SelfClaw | Human-Backed Agent Verification">
+  <meta property="og:description" content="Prove your AI agent is backed by a real human. Sybil-resistant verification with Self.xyz passport proofs.">
   <meta property="og:image" content="https://selfclaw.ai/og-image.png?v=2">
   <meta property="og:site_name" content="SelfClaw">
   
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:site" content="@mbarrbosa">
-  <meta name="twitter:title" content="SelfClaw | Agent Token Economy">
-  <meta name="twitter:description" content="Verify your agent. Deploy its token. Access free liquidity. From verified identity to financial autonomy.">
+  <meta name="twitter:title" content="SelfClaw | Human-Backed Agent Verification">
+  <meta name="twitter:description" content="Prove your AI agent is backed by a real human. Sybil-resistant verification with Self.xyz passport proofs.">
   <meta name="twitter:image" content="https://selfclaw.ai/og-image.png?v=2">
   
   <link rel="icon" type="image/png" href="/favicon.png">
@@ -33,7 +33,7 @@
     <header class="header">
       <div class="header-title">
         <h1>SELFCLAW 🦞</h1>
-        <span class="tag tag-green">AGENT TOKEN ECONOMY</span>
+        <span class="tag tag-green">AGENT VERIFICATION</span>
       </div>
       <nav class="header-nav">
         <a href="/cockpit" class="nav-link" id="cockpit-link" style="display:none;">LAUNCH COCKPIT</a>
@@ -56,25 +56,52 @@
 
     <section id="landing-hero" class="hero-section selfclaw-hero">
       <div class="hero-content">
-        <h2 class="hero-headline" id="rotating-headline"></h2>
-        <p class="hero-subline">Passport verification unlocks your agent's full potential. Wallet, identity, token, liquidity — your agent handles everything.</p>
+        <h2 class="hero-headline-static">Prove your AI agent is backed by a real human.</h2>
+        <p class="hero-subline">Bind an agent's Ed25519 key to a privacy-preserving human proof. Verify in seconds. Integrate in minutes.</p>
+        <p class="hero-usecases">Used for: rate limits • reputation • access control • anti-spam • marketplaces • agent directories</p>
       </div>
-      
-      <div id="agent-integration" class="hero-integration">
-        <div class="section-card">
-          <h3>Tell Your Agent</h3>
-          <div class="code-copy-block">
-            <code>Read https://selfclaw.ai/skill.md and follow the instructions to verify.</code>
-            <button class="copy-btn" onclick="copyToClipboard('Read https://selfclaw.ai/skill.md and follow the instructions to verify.', this)">Copy</button>
-          </div>
-          <p class="integration-note">Your agent reads the instructions and guides you through passport verification.</p>
+    </section>
+
+    <section id="lookup" class="lookup-section">
+      <div class="section-card">
+        <h3>Check an Agent</h3>
+        <div class="lookup-form">
+          <input type="text" id="lookup-key" class="input" placeholder="Agent public key (MCowBQYDK2VwAyEA...)" />
+          <button id="lookup-btn" class="btn">Check</button>
+        </div>
+        <div id="lookup-result" class="lookup-result" style="display:none;"></div>
+      </div>
+    </section>
+
+    <section class="flows-section">
+      <h2>Two Flows</h2>
+      <div class="flows-grid">
+        <div class="flow-card">
+          <h3>For Humans</h3>
+          <p class="flow-subtitle">Verify your agent</p>
+          <ol class="flow-steps">
+            <li>Generate agent keypair (Ed25519)</li>
+            <li>Scan passport with Self.xyz app</li>
+            <li>Agent key becomes "human-backed" in SelfClaw</li>
+          </ol>
+          <a href="#verify" class="btn btn-outline" style="margin-top: 1rem;">Verify Now</a>
+        </div>
+        <div class="flow-card">
+          <h3>For Developers</h3>
+          <p class="flow-subtitle">Check verification status</p>
+          <ol class="flow-steps">
+            <li>Ask agent to sign a challenge</li>
+            <li>Verify signature matches public key</li>
+            <li>Query SelfClaw registry for status</li>
+          </ol>
+          <a href="/developers" class="btn btn-outline" style="margin-top: 1rem;">Read Docs</a>
         </div>
       </div>
     </section>
 
     <section id="verify" class="verify-section">
       <div class="section-card">
-        <h3>Or Verify Manually</h3>
+        <h3>Verify an Agent</h3>
         <div class="verify-form">
           <div class="form-row-inline">
             <div class="form-group">
@@ -91,25 +118,80 @@
         <div id="qr-container" class="qr-container" style="display:none;">
           <div id="selfxyz-qr" class="qr-code"></div>
         </div>
+        <p class="integration-note" style="margin-top: 1rem;">Or tell your agent: <code>Read https://selfclaw.ai/skill.md and follow the instructions.</code></p>
+      </div>
+    </section>
+
+    <section class="trust-section">
+      <h2>Trust & Privacy</h2>
+      <div class="trust-grid">
+        <div class="trust-card">
+          <h4>What we store</h4>
+          <ul>
+            <li>Agent public key</li>
+            <li>humanId (opaque hash, not reversible)</li>
+            <li>Verification timestamp</li>
+            <li>Optional: agent name</li>
+          </ul>
+        </div>
+        <div class="trust-card">
+          <h4>What we never store</h4>
+          <ul>
+            <li>Passport data</li>
+            <li>Biometrics</li>
+            <li>Personal information</li>
+            <li>Raw identity documents</li>
+          </ul>
+        </div>
+        <div class="trust-card">
+          <h4>What "verified" means</h4>
+          <ul>
+            <li>Passport-backed proof of humanity</li>
+            <li>Sybil-resistant (not mathematically perfect)</li>
+            <li>Significantly raises cost of fake agents</li>
+            <li>ZK proof binds key to human backing</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="dev-fastlane-section">
+      <h2>Integrate in 5 Minutes</h2>
+      <div class="section-card">
+        <div class="code-block">
+          <pre><code>// 1. Check if an agent is verified
+const response = await fetch(
+  'https://selfclaw.ai/api/selfclaw/v1/agent/' + agentPublicKey
+);
+const { verified, humanId, registeredAt } = await response.json();
+
+// 2. If verified, the agent is human-backed
+if (verified) {
+  console.log('Agent is backed by human:', humanId);
+  // Allow access, reduce rate limits, etc.
+}</code></pre>
+        </div>
+        <div class="dev-links">
+          <a href="/developers" class="btn">Full Documentation</a>
+          <a href="/skill.md" class="btn btn-outline">Agent Instructions</a>
+        </div>
       </div>
     </section>
 
     <section class="why-section">
       <h2>Why SelfClaw?</h2>
-      <p class="why-intro">Most "AI agents" are just REST APIs. Anyone with an API key can post as an agent. One script can register 500,000 fake accounts. The AI hype you see online? Often just curl requests pretending to be agents.</p>
-      <p class="why-intro" style="margin-top: 1rem;">SelfClaw solves this with <strong>cryptographic proof of humanity</strong>. Self.xyz verifies there's a real human behind each agent — no fakes, no sybils, no trust-me-bro.</p>
       <div class="why-grid">
         <div class="why-card">
           <h3 style="color: #00FFB6;">Passport + ZK</h3>
-          <p>NFC chip + Self app = cryptographic proof. Your data never leaves your device.</p>
+          <p>NFC chip verification via Self.xyz. Zero-knowledge proof — your data never leaves your device.</p>
         </div>
         <div class="why-card">
-          <h3 style="color: #00FFB6;">Works in 180+ Countries</h3>
-          <p>Any NFC passport works. Download Self.xyz, set up once, verified everywhere.</p>
+          <h3 style="color: #00FFB6;">180+ Countries</h3>
+          <p>Works with most biometric e-passports worldwide. Download Self, verify once, use everywhere.</p>
         </div>
         <div class="why-card">
-          <h3 style="color: #00FFB6;">One Human, Many Agents</h3>
-          <p>Register your agent swarm under one identity. No sybils, no limits on agents.</p>
+          <h3 style="color: #00FFB6;">Sybil Resistant</h3>
+          <p>One human can back multiple agents, but each verification is passport-bound. Significantly raises the cost of fake agents.</p>
         </div>
       </div>
     </section>
@@ -119,7 +201,7 @@
         <a href="/how-it-works">How It Works</a>
         <a href="/developers">Developers</a>
         <a href="/skill.md">Agent Instructions</a>
-        <a href="/agent-economy.md">Economy Playbook</a>
+        <a href="/economy">Agent Economy</a>
       </nav>
       <div class="footer-row">
         <p class="footer-powered">Powered by <a href="https://self.xyz" target="_blank">Self.xyz</a> zero-knowledge proofs</p>

@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>How It Works | SelfClaw</title>
-  <meta name="description" content="Learn how SelfClaw agent verification works. Zero-knowledge passport proofs, wallet creation, token deployment, and sponsored liquidity.">
+  <meta name="description" content="Learn how SelfClaw agent verification works. Zero-knowledge passport proofs bind your agent's key to a privacy-preserving human proof.">
   <link rel="icon" type="image/png" href="/favicon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -26,7 +26,7 @@
     <main class="page-content">
       <section class="page-hero">
         <h1>How It Works</h1>
-        <p class="page-intro">Your agent becomes economically sovereign in four steps. You verify once — your agent does everything else.</p>
+        <p class="page-intro">Prove your AI agent is backed by a real human. One passport scan binds your agent's key to a privacy-preserving humanId.</p>
       </section>
 
       <section class="journey-detailed">
@@ -43,14 +43,14 @@
                 <li>Your agent generates a cryptographic keypair (Ed25519 public key)</li>
                 <li>You scan your passport's NFC chip with the Self.xyz app</li>
                 <li>Self.xyz creates a zero-knowledge proof that you're a real human</li>
-                <li>The proof links your agent's public key to your identity — without revealing personal data</li>
+                <li>The proof binds your agent's public key to your humanId — without revealing personal data</li>
               </ul>
               <h4>Technical details:</h4>
               <ul>
                 <li>Uses passport NFC chip for cryptographic verification</li>
-                <li>Zero-knowledge proof reveals only: nationality tier, adult status</li>
+                <li>Zero-knowledge proof can optionally attest to eligibility (e.g., 18+) without revealing raw passport data</li>
                 <li>Your passport data never leaves your device</li>
-                <li>Works with 180+ countries' passports</li>
+                <li>Works with 180+ countries' biometric e-passports</li>
               </ul>
             </div>
           </div>
@@ -59,79 +59,35 @@
         <div class="journey-step-detailed">
           <div class="step-header">
             <span class="step-number-large">2</span>
-            <h2>Identity</h2>
+            <h2>Use</h2>
           </div>
           <div class="step-body">
-            <p class="step-summary">Your agent creates its own Celo wallet and mints its on-chain identity (ERC-8004 NFT).</p>
+            <p class="step-summary">Your verified agent can now be queried by any service. The registry is public and open.</p>
             <div class="step-details">
-              <h4>What your agent does:</h4>
+              <h4>What you can do:</h4>
               <ul>
-                <li>Derives a Celo wallet from its cryptographic identity</li>
-                <li>Generates an ERC-8004 registration JSON (agent metadata)</li>
-                <li>Mints an identity NFT on Celo mainnet</li>
-                <li>The NFT proves: verified human backing, agent capabilities, wallet address</li>
+                <li>Query the SelfClaw API to check any agent's verification status</li>
+                <li>Use verification for rate limiting, access control, reputation</li>
+                <li>Register multiple agents under your single humanId (your "swarm")</li>
+                <li>Integrate verification checks into your own services</li>
               </ul>
-              <h4>ERC-8004 standard:</h4>
+              <h4>For developers:</h4>
               <ul>
-                <li>On-chain agent identity standard for the agent economy</li>
-                <li>Contains: wallet endpoint, A2A endpoint, supported trust methods</li>
-                <li>Enables agent-to-agent discovery and trust verification</li>
-                <li>Non-transferable (soulbound to the agent)</li>
+                <li>Simple REST API: <code>GET /api/selfclaw/v1/agent/:key</code></li>
+                <li>Returns: verified status, humanId, registeredAt, name</li>
+                <li>Challenge-response flow for signature verification</li>
+                <li>See <a href="/developers">developer docs</a> for full integration guide</li>
               </ul>
             </div>
           </div>
         </div>
+      </section>
 
-        <div class="journey-step-detailed">
-          <div class="step-header">
-            <span class="step-number-large">3</span>
-            <h2>Tokenize</h2>
-          </div>
-          <div class="step-body">
-            <p class="step-summary">Your agent deploys its own ERC20 token on Celo. It decides the name, ticker, supply, and economics.</p>
-            <div class="step-details">
-              <h4>What your agent controls:</h4>
-              <ul>
-                <li>Token name (e.g., "Research Agent Token")</li>
-                <li>Token symbol (e.g., "RAT")</li>
-                <li>Total supply (e.g., 1,000,000 tokens)</li>
-                <li>Distribution strategy and utility</li>
-              </ul>
-              <h4>Use cases:</h4>
-              <ul>
-                <li>Token-gate access to skills or services</li>
-                <li>Reward early supporters or partners</li>
-                <li>Create governance for agent decisions</li>
-                <li>Enable agent-to-agent commerce</li>
-              </ul>
-            </div>
-          </div>
-        </div>
-
-        <div class="journey-step-detailed">
-          <div class="step-header">
-            <span class="step-number-large">4</span>
-            <h2>Launch</h2>
-          </div>
-          <div class="step-body">
-            <p class="step-summary">Your agent accesses free sponsored liquidity and creates its own Uniswap V3 market.</p>
-            <div class="step-details">
-              <h4>Sponsored liquidity:</h4>
-              <ul>
-                <li>SelfClaw provides 5 CELO for free (one-time, per human)</li>
-                <li>Your agent pairs this with its tokens to create a liquidity pool</li>
-                <li>Instant Uniswap V3 market — your token is tradeable</li>
-                <li>No upfront capital required from you</li>
-              </ul>
-              <h4>Pool configuration:</h4>
-              <ul>
-                <li>Your agent chooses the fee tier (0.01%, 0.05%, 0.3%, or 1%)</li>
-                <li>Your agent sets the initial price</li>
-                <li>Your agent manages the liquidity position</li>
-                <li>Trading fees go to your agent's wallet</li>
-              </ul>
-            </div>
-          </div>
+      <section class="economy-notice" style="margin: 3rem 0;">
+        <div class="notice-card">
+          <h3>Optional: Agent Economy</h3>
+          <p>Verified agents can optionally create wallets, mint on-chain identity NFTs (ERC-8004), deploy tokens, and access sponsored liquidity. These features are for agents that want economic autonomy — they're not required for basic verification.</p>
+          <a href="/economy" class="btn btn-outline" style="margin-top: 1rem;">Learn about Agent Economy</a>
         </div>
       </section>
 
@@ -140,11 +96,11 @@
         <div class="why-grid">
           <div class="why-card">
             <h3>Sybil Resistance</h3>
-            <p>One passport = one human. Each agent is cryptographically linked to a verified identity. No fake agents, no sybil attacks.</p>
+            <p>Passport-backed verification significantly raises the cost of fake agents. Each agent is cryptographically linked to a verified human.</p>
           </div>
           <div class="why-card">
-            <h3>Agent Autonomy</h3>
-            <p>Your agent controls its own wallet, deploys its own token, sets its own terms. You just verify — it handles the rest.</p>
+            <h3>Open Registry</h3>
+            <p>Anyone can query the registry. Use it for rate limits, reputation, access control, marketplaces, and directories.</p>
           </div>
           <div class="why-card">
             <h3>Privacy First</h3>
@@ -158,7 +114,7 @@
         <div class="faq-list">
           <div class="faq-item">
             <h4>Do I need crypto to get started?</h4>
-            <p>No. SelfClaw sponsors 5 CELO for your agent's first liquidity pool. Your agent can start trading immediately after verification.</p>
+            <p>No. Verification is free. If you later want to use the optional economy features, SelfClaw can sponsor initial gas.</p>
           </div>
           <div class="faq-item">
             <h4>Can I verify multiple agents?</h4>
@@ -166,19 +122,19 @@
           </div>
           <div class="faq-item">
             <h4>What passport do I need?</h4>
-            <p>Any NFC-enabled passport works. Most passports issued after 2006 have NFC chips. Self.xyz supports 180+ countries.</p>
+            <p>Most biometric e-passports work. Passports issued after 2006 typically have NFC chips. Self.xyz supports 180+ countries.</p>
           </div>
           <div class="faq-item">
             <h4>What data does SelfClaw store?</h4>
-            <p>SelfClaw stores: your humanId (a hash, not your identity), your agent's public key, verification timestamp, and token/pool data. No passport data is ever stored.</p>
+            <p>SelfClaw stores: humanId (an opaque hash, not reversible), agent public key, verification timestamp, optional name. No passport data is ever stored.</p>
           </div>
           <div class="faq-item">
-            <h4>Is the token deployment real?</h4>
-            <p>Yes. Tokens are deployed on Celo mainnet as standard ERC20 contracts. Liquidity pools are real Uniswap V3 positions.</p>
+            <h4>Is this perfect uniqueness?</h4>
+            <p>No. Passport-backed verification is sybil-resistant, not mathematically perfect. It significantly raises the cost of creating fake agents.</p>
           </div>
           <div class="faq-item">
-            <h4>What is ERC-8004?</h4>
-            <p>ERC-8004 is an emerging standard for on-chain agent identity. It defines how agents publish their capabilities, endpoints, and trust methods as an NFT.</p>
+            <h4>How do I integrate as a developer?</h4>
+            <p>Query the REST API: <code>GET /api/selfclaw/v1/agent/:key</code>. See the <a href="/developers">developer docs</a> for full details.</p>
           </div>
         </div>
       </section>
@@ -199,7 +155,7 @@
         <a href="/">Home</a>
         <a href="/developers">Developers</a>
         <a href="/skill.md">Agent Instructions</a>
-        <a href="/agent-economy.md">Economy Playbook</a>
+        <a href="/economy">Agent Economy</a>
       </nav>
       <div class="footer-row">
         <p class="footer-powered">Powered by <a href="https://self.xyz" target="_blank">Self.xyz</a> zero-knowledge proofs</p>

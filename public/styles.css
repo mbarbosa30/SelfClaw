@@ -4382,3 +4382,269 @@ body.dashboard-mode .cockpit-main {
   margin-bottom: 1.5rem;
   color: var(--text-secondary);
 }
+
+/* Static Hero Headline */
+.hero-headline-static {
+  font-family: var(--font-serif);
+  font-size: 2.5rem;
+  font-weight: 600;
+  color: var(--white);
+  line-height: 1.2;
+  margin-bottom: 1rem;
+}
+
+.hero-usecases {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-top: 1rem;
+}
+
+/* Lookup Section */
+.lookup-section {
+  margin: 2rem 0;
+}
+
+.lookup-form {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.lookup-form .input {
+  flex: 1;
+}
+
+.lookup-result {
+  margin-top: 1rem;
+  padding: 1rem;
+  border-radius: 8px;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+}
+
+.lookup-result.verified {
+  background: var(--self-green-light);
+  border: 1px solid var(--self-green);
+}
+
+.lookup-result.not-verified {
+  background: var(--red-light);
+  border: 1px solid var(--red);
+}
+
+.lookup-result .status-badge {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.lookup-result .status-badge.verified {
+  background: var(--self-green);
+  color: var(--black);
+}
+
+.lookup-result .status-badge.not-verified {
+  background: var(--red);
+  color: var(--white);
+}
+
+/* Flows Section */
+.flows-section {
+  margin: 3rem 0;
+}
+
+.flows-section h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--white);
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+.flows-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+}
+
+@media (max-width: 600px) {
+  .flows-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.flow-card {
+  padding: 1.5rem;
+  background: var(--gray-800);
+  border: 1px solid var(--gray-300);
+  border-radius: 12px;
+}
+
+.flow-card h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--self-green);
+  margin-bottom: 0.25rem;
+}
+
+.flow-subtitle {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: 1rem;
+}
+
+.flow-steps {
+  padding-left: 1.25rem;
+  margin: 0;
+}
+
+.flow-steps li {
+  margin-bottom: 0.5rem;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+/* Trust Section */
+.trust-section {
+  margin: 3rem 0;
+}
+
+.trust-section h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--white);
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+.trust-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+}
+
+@media (max-width: 768px) {
+  .trust-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.trust-card {
+  padding: 1.5rem;
+  background: var(--gray-800);
+  border: 1px solid var(--gray-300);
+  border-radius: 8px;
+}
+
+.trust-card h4 {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--self-green);
+  margin-bottom: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.trust-card ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.trust-card li {
+  position: relative;
+  padding-left: 1rem;
+  margin-bottom: 0.5rem;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+}
+
+.trust-card li::before {
+  content: "•";
+  position: absolute;
+  left: 0;
+  color: var(--self-green);
+}
+
+/* Developer Fast Lane Section */
+.dev-fastlane-section {
+  margin: 3rem 0;
+}
+
+.dev-fastlane-section h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--white);
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+.code-block {
+  background: #0d0d0d;
+  border: 1px solid var(--gray-300);
+  border-radius: 8px;
+  padding: 1.5rem;
+  overflow-x: auto;
+  margin-bottom: 1.5rem;
+}
+
+.code-block pre {
+  margin: 0;
+}
+
+.code-block code {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  white-space: pre;
+}
+
+.dev-links {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+}
+
+@media (max-width: 600px) {
+  .dev-links {
+    flex-direction: column;
+  }
+}
+
+/* Economy Page */
+.economy-badge {
+  display: inline-block;
+  padding: 0.5rem 1rem;
+  background: var(--purple-light);
+  border: 1px solid var(--green);
+  border-radius: 100px;
+  font-size: 0.8rem;
+  color: var(--green);
+  margin-top: 1rem;
+}
+
+.economy-notice {
+  margin: 2rem 0;
+}
+
+.notice-card {
+  padding: 1.5rem;
+  background: var(--gray-800);
+  border: 1px solid var(--gray-300);
+  border-radius: 8px;
+  border-left: 4px solid var(--self-green);
+}
+
+.notice-card h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--self-green);
+  margin-bottom: 0.5rem;
+}
+
+.notice-card p {
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  margin: 0;
+}
