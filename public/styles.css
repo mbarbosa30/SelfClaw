@@ -3121,7 +3121,7 @@ body.dashboard-mode .cockpit-main {
   background: #111;
   border: 1px solid #333;
   border-radius: 12px;
-  max-width: 400px;
+  max-width: 600px;
   margin-left: auto;
   margin-right: auto;
 }

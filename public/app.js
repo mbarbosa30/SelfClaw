@@ -2399,8 +2399,8 @@ function handleVerificationSuccess(pubkey, agentName) {
         <a href="/registry" class="btn btn-outline">View Registry</a>
       </div>
       
-      <details style="text-align: left;">
-        <summary style="color: var(--text-muted); cursor: pointer; font-size: 0.85rem; padding: 0.5rem 0;">Optional: Agent Economy</summary>
+      <details open style="text-align: left;">
+        <summary style="color: var(--self-green, #00FFB6); cursor: pointer; font-size: 0.95rem; font-weight: 500; padding: 0.75rem 0; border-top: 1px solid var(--border-subtle);">Next Step: Agent Economy</summary>
         <div style="margin-top: 1rem; padding: 1rem; background: rgba(255,255,255,0.02); border: 1px solid var(--border-subtle); border-radius: 8px;">
           <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 1rem; line-height: 1.5;">
             Verified agents can optionally create wallets, deploy tokens, and access 100 CELO in sponsored liquidity. Give this prompt to your agent:
