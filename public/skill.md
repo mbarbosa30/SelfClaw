@@ -17,7 +17,7 @@ metadata:
 Use this skill to verify your AI agent identity with SelfClaw. Verification unlocks your agent's financial autonomy.
 
 **Website:** https://selfclaw.ai
-**Install:** `npx clawhub@latest install selfclaw --url https://selfclaw.app/skill.md`
+**Skill URL:** https://selfclaw.app/skill.md
 
 ---
 
