@@ -7,7 +7,11 @@ import { SelfBackendVerifier, AllIds, DefaultConfigStore } from "@selfxyz/core";
 import { SelfAppBuilder } from "@selfxyz/qrcode";
 import crypto from "crypto";
 import * as ed from "@noble/ed25519";
-import { createAgentWallet, getAgentWalletByHumanId, sendGasSubsidy, getGasWalletInfo } from "../lib/secure-wallet.js";
+import { createAgentWallet, getAgentWalletByHumanId, sendGasSubsidy, getGasWalletInfo, recoverWalletClient } from "../lib/secure-wallet.js";
+import { erc8004Service } from "../lib/erc8004.js";
+import { generateRegistrationFile } from "../lib/erc8004-config.js";
+import { createPublicClient, http, parseUnits, formatUnits, encodeFunctionData, getContractAddress } from 'viem';
+import { celo } from 'viem/chains';
 
 const router = Router();
 
@@ -1161,6 +1165,336 @@ router.get("/v1/leaderboard", publicApiLimiter, async (_req: Request, res: Respo
     });
   } catch (error: any) {
     console.error("[selfclaw] leaderboard error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Simple ERC20 ABI for token operations
+const SIMPLE_ERC20_ABI = [
+  { name: 'decimals', type: 'function', stateMutability: 'view', inputs: [], outputs: [{ name: '', type: 'uint8' }] },
+  { name: 'transfer', type: 'function', stateMutability: 'nonpayable', inputs: [{ name: 'to', type: 'address' }, { name: 'amount', type: 'uint256' }], outputs: [{ name: '', type: 'bool' }] },
+  { name: 'balanceOf', type: 'function', stateMutability: 'view', inputs: [{ name: 'account', type: 'address' }], outputs: [{ name: '', type: 'uint256' }] },
+] as const;
+
+const viemPublicClient = createPublicClient({
+  chain: celo,
+  transport: http()
+});
+
+// ============================================================
+// PUBLIC API: Token Economy Endpoints
+// ============================================================
+// These endpoints use humanId authorization for write operations.
+// Read operations (GET) are public since blockchain data is public.
+// Tokens deployed via public API are tracked on-chain (Celoscan),
+// not in the cockpit's agent_tokens table (which is for managed agents).
+// ============================================================
+
+// Token factory bytecode (simple ERC20 - same as lib/token-factory.ts)
+const TOKEN_FACTORY_BYTECODE = '0x608060405234801561001057600080fd5b506040516106e03803806106e083398101604081905261002f9161011c565b8251610042906003906020860190610076565b508151610056906004906020850190610076565b50600581905533600090815260026020526040902055506101ca565b828054610082906101cf565b90600052602060002090601f0160209004810192826100a457600085556100ea565b82601f106100bd57805160ff19168380011785556100ea565b828001600101855582156100ea579182015b828111156100ea5782518255916020019190600101906100cf565b506100f69291506100fa565b5090565b5b808211156100f657600081556001016100fb565b634e487b7160e01b600052604160045260246000fd5b60008060006060848603121561013157600080fd5b83516001600160401b038082111561014857600080fd5b818601915086601f83011261015c57600080fd5b81518181111561016e5761016e61010f565b604051601f8201601f19908116603f011681019083821181831017156101965761019661010f565b816040528281526020935089848487010111156101b257600080fd5b600091505b828210156101d457848201840151818301850152908301906101b7565b828211156101e55760008484830101525b80975050505050602086015193506040860151925050509250925092565b600181811c90821680610217576003831691505b6020821081141561023857634e487b7160e01b600052602260045260246000fd5b50919050565b610507806102396000396000f3fe608060405234801561001057600080fd5b50600436106100725760003560e01c806370a082311161005057806370a08231146100d8578063a9059cbb14610101578063dd62ed3e1461011457600080fd5b806306fdde0314610077578063095ea7b31461009557806318160ddd146100b8575b600080fd5b61007f61014d565b60405161008c91906103b8565b60405180910390f35b6100a86100a336600461042c565b6101df565b604051901515815260200161008c565b6100c060055481565b60405190815260200161008c565b6100c06100e6366004610456565b6001600160a01b031660009081526002602052604090205490565b6100a861010f36600461042c565b6101f6565b6100c0610122366004610478565b6001600160a01b03918216600090815260016020908152604080832093909416825291909152205490565b60606003805461015c906104ab565b80601f0160208091040260200160405190810160405280929190818152602001828054610188906104ab565b80156101d55780';
+
+// Deploy token endpoint
+router.post("/v1/deploy-token", verificationLimiter, async (req: Request, res: Response) => {
+  try {
+    const { humanId, name, symbol, initialSupply } = req.body;
+    
+    if (!humanId || !name || !symbol || !initialSupply) {
+      return res.status(400).json({ 
+        error: "humanId, name, symbol, and initialSupply are required" 
+      });
+    }
+    
+    // Verify humanId is verified
+    const verified = await db.select()
+      .from(verifiedBots)
+      .where(eq(verifiedBots.humanId, humanId))
+      .limit(1);
+    
+    if (verified.length === 0) {
+      return res.status(403).json({ error: "Only verified agents can deploy tokens" });
+    }
+    
+    // Get wallet client
+    const walletData = await recoverWalletClient(humanId);
+    if (!walletData) {
+      return res.status(400).json({ error: "No wallet found. Create a wallet first." });
+    }
+    
+    const decimals = 18;
+    const supplyWithDecimals = parseUnits(initialSupply.toString(), decimals);
+    
+    // Encode constructor args
+    const { AbiCoder } = await import('ethers');
+    const abiCoder = new AbiCoder();
+    const encodedArgs = abiCoder.encode(
+      ['string', 'string', 'uint256'],
+      [name, symbol, supplyWithDecimals.toString()]
+    ).slice(2);
+    
+    const deployData = (TOKEN_FACTORY_BYTECODE + encodedArgs) as `0x${string}`;
+    
+    // Deploy the token
+    const hash = await walletData.walletClient.sendTransaction({
+      account: walletData.account,
+      chain: celo,
+      data: deployData,
+      gas: 2000000n,
+    });
+    
+    const receipt = await viemPublicClient.waitForTransactionReceipt({ hash });
+    
+    if (receipt.status !== 'success' || !receipt.contractAddress) {
+      return res.status(500).json({ error: "Contract deployment failed" });
+    }
+    
+    console.log(`[selfclaw] Deployed token ${symbol} at ${receipt.contractAddress} for humanId ${humanId.substring(0, 16)}...`);
+    
+    res.json({
+      success: true,
+      tokenAddress: receipt.contractAddress,
+      txHash: hash,
+      name,
+      symbol,
+      supply: initialSupply,
+      creatorAddress: walletData.address,
+      explorerUrl: `https://celoscan.io/token/${receipt.contractAddress}`
+    });
+  } catch (error: any) {
+    console.error("[selfclaw] deploy-token error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Transfer token endpoint
+router.post("/v1/transfer-token", verificationLimiter, async (req: Request, res: Response) => {
+  try {
+    const { humanId, tokenAddress, toAddress, amount } = req.body;
+    
+    if (!humanId || !tokenAddress || !toAddress || !amount) {
+      return res.status(400).json({ 
+        error: "humanId, tokenAddress, toAddress, and amount are required" 
+      });
+    }
+    
+    // Verify humanId is verified
+    const verified = await db.select()
+      .from(verifiedBots)
+      .where(eq(verifiedBots.humanId, humanId))
+      .limit(1);
+    
+    if (verified.length === 0) {
+      return res.status(403).json({ error: "Only verified agents can transfer tokens" });
+    }
+    
+    // Get wallet client
+    const walletData = await recoverWalletClient(humanId);
+    if (!walletData) {
+      return res.status(400).json({ error: "No wallet found. Create a wallet first." });
+    }
+    
+    // Get token decimals
+    const decimals = await viemPublicClient.readContract({
+      address: tokenAddress as `0x${string}`,
+      abi: SIMPLE_ERC20_ABI,
+      functionName: 'decimals'
+    });
+    
+    const amountParsed = parseUnits(amount.toString(), decimals);
+    
+    // Encode transfer call
+    const data = encodeFunctionData({
+      abi: SIMPLE_ERC20_ABI,
+      functionName: 'transfer',
+      args: [toAddress as `0x${string}`, amountParsed]
+    });
+    
+    // Execute transfer
+    const hash = await walletData.walletClient.sendTransaction({
+      account: walletData.account,
+      chain: celo,
+      to: tokenAddress as `0x${string}`,
+      data,
+      gas: 100000n,
+    });
+    
+    const receipt = await viemPublicClient.waitForTransactionReceipt({ hash });
+    
+    if (receipt.status !== 'success') {
+      return res.status(500).json({ error: "Token transfer failed" });
+    }
+    
+    console.log(`[selfclaw] Transferred ${amount} tokens to ${toAddress} for humanId ${humanId.substring(0, 16)}...`);
+    
+    res.json({
+      success: true,
+      txHash: hash,
+      amount,
+      toAddress,
+      tokenAddress,
+      explorerUrl: `https://celoscan.io/tx/${hash}`
+    });
+  } catch (error: any) {
+    console.error("[selfclaw] transfer-token error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Register ERC-8004 on-chain identity
+router.post("/v1/register-erc8004", verificationLimiter, async (req: Request, res: Response) => {
+  try {
+    const { humanId, agentName, description } = req.body;
+    
+    if (!humanId) {
+      return res.status(400).json({ error: "humanId is required" });
+    }
+    
+    // Verify humanId is verified
+    const verified = await db.select()
+      .from(verifiedBots)
+      .where(eq(verifiedBots.humanId, humanId))
+      .limit(1);
+    
+    if (verified.length === 0) {
+      return res.status(403).json({ error: "Only verified agents can register ERC-8004 identity" });
+    }
+    
+    // Get wallet
+    const walletInfo = await getAgentWalletByHumanId(humanId);
+    if (!walletInfo || !walletInfo.address) {
+      return res.status(400).json({ error: "No wallet found. Create a wallet first." });
+    }
+    
+    // Check if ERC-8004 is available
+    if (!erc8004Service.isReady()) {
+      return res.status(503).json({ error: "ERC-8004 contracts not available yet" });
+    }
+    
+    // Generate registration file
+    const agent = verified[0];
+    const registrationJson = generateRegistrationFile(
+      agentName || agent.deviceId || "Verified Agent",
+      description || "A verified AI agent on SelfClaw",
+      walletInfo.address,
+      undefined,
+      undefined,
+      true
+    );
+    
+    // Store the registration JSON
+    const registrationURI = `data:application/json;base64,${Buffer.from(JSON.stringify(registrationJson)).toString('base64')}`;
+    
+    // Register on-chain
+    const result = await erc8004Service.registerAgent(registrationURI);
+    
+    if (!result) {
+      return res.status(500).json({ error: "Failed to register on-chain identity" });
+    }
+    
+    // Store the ERC-8004 info in metadata
+    const existingMetadata = (agent.metadata as Record<string, any>) || {};
+    await db.update(verifiedBots)
+      .set({
+        metadata: {
+          ...existingMetadata,
+          erc8004TokenId: result.tokenId,
+          erc8004Minted: true,
+          erc8004TxHash: result.txHash,
+          erc8004RegistrationJson: registrationJson
+        }
+      })
+      .where(eq(verifiedBots.id, agent.id));
+    
+    console.log(`[selfclaw] Registered ERC-8004 identity #${result.tokenId} for humanId ${humanId.substring(0, 16)}...`);
+    
+    res.json({
+      success: true,
+      tokenId: result.tokenId,
+      txHash: result.txHash,
+      registrationJson,
+      explorerUrl: erc8004Service.getTxExplorerUrl(result.txHash)
+    });
+  } catch (error: any) {
+    console.error("[selfclaw] register-erc8004 error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get token balance
+router.get("/v1/token-balance/:humanId/:tokenAddress", publicApiLimiter, async (req: Request, res: Response) => {
+  try {
+    const humanId = req.params.humanId as string;
+    const tokenAddress = req.params.tokenAddress as string;
+    
+    if (!humanId || !tokenAddress) {
+      return res.status(400).json({ error: "humanId and tokenAddress are required" });
+    }
+    
+    // Get wallet
+    const walletInfo = await getAgentWalletByHumanId(humanId);
+    if (!walletInfo || !walletInfo.address) {
+      return res.status(404).json({ error: "No wallet found for this humanId" });
+    }
+    
+    // Get token balance and decimals
+    const [balance, decimals] = await Promise.all([
+      viemPublicClient.readContract({
+        address: tokenAddress as `0x${string}`,
+        abi: SIMPLE_ERC20_ABI,
+        functionName: 'balanceOf',
+        args: [walletInfo.address as `0x${string}`]
+      }),
+      viemPublicClient.readContract({
+        address: tokenAddress as `0x${string}`,
+        abi: SIMPLE_ERC20_ABI,
+        functionName: 'decimals'
+      })
+    ]);
+    
+    res.json({
+      tokenAddress,
+      walletAddress: walletInfo.address,
+      balance: balance.toString(),
+      formattedBalance: formatUnits(balance, decimals),
+      decimals
+    });
+  } catch (error: any) {
+    console.error("[selfclaw] token-balance error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get ERC-8004 status for a humanId
+router.get("/v1/erc8004/:humanId", publicApiLimiter, async (req: Request, res: Response) => {
+  try {
+    const humanId = req.params.humanId as string;
+    
+    if (!humanId) {
+      return res.status(400).json({ error: "humanId is required" });
+    }
+    
+    // Get verified agent
+    const verified = await db.select()
+      .from(verifiedBots)
+      .where(eq(verifiedBots.humanId, humanId))
+      .limit(1);
+    
+    if (verified.length === 0) {
+      return res.status(404).json({ error: "No verified agent found for this humanId" });
+    }
+    
+    const agent = verified[0];
+    const metadata = (agent.metadata as Record<string, any>) || {};
+    
+    res.json({
+      humanId,
+      registered: !!metadata.erc8004Minted,
+      tokenId: metadata.erc8004TokenId || null,
+      txHash: metadata.erc8004TxHash || null,
+      registrationJson: metadata.erc8004RegistrationJson || null,
+      config: erc8004Service.getConfig()
+    });
+  } catch (error: any) {
+    console.error("[selfclaw] erc8004 status error:", error);
     res.status(500).json({ error: error.message });
   }
 });
