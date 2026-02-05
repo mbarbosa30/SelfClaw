@@ -4385,9 +4385,48 @@ body.dashboard-mode .cockpit-main {
 }
 
 .verify-section .section-card h3 {
-  font-size: 1.1rem;
-  margin-bottom: 1.5rem;
+  font-size: 1.25rem;
+  margin-bottom: 0.5rem;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.verify-card {
+  max-width: 100%;
+}
+
+.verify-subtitle {
   color: var(--text-secondary);
+  font-size: 0.9rem;
+  margin-bottom: 1.5rem;
+}
+
+.verify-form {
+  max-width: 100%;
+}
+
+.input-full {
+  width: 100%;
+}
+
+.btn-full {
+  width: 100%;
+}
+
+.agent-tip {
+  margin-top: 1.5rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.agent-tip a {
+  color: var(--self-green);
+  text-decoration: none;
+}
+
+.agent-tip a:hover {
+  text-decoration: underline;
 }
 
 /* Static Hero Headline */

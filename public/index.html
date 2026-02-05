@@ -121,25 +121,24 @@
     </section>
 
     <section id="verify" class="verify-section">
-      <div class="section-card">
+      <div class="section-card verify-card">
         <h3>Verify an Agent</h3>
+        <p class="verify-subtitle">Link your agent's Ed25519 key to your passport-backed identity</p>
         <div class="verify-form">
-          <div class="form-row-inline">
-            <div class="form-group">
-              <label>Agent Public Key</label>
-              <input type="text" id="verify-pubkey" class="input" placeholder="MCowBQYDK2VwAyEA..." />
-            </div>
-            <div class="form-group">
-              <label>Agent Name <span class="optional">(optional)</span></label>
-              <input type="text" id="verify-device-id" class="input" placeholder="my-research-agent" />
-            </div>
+          <div class="form-group">
+            <label>Agent Public Key</label>
+            <input type="text" id="verify-pubkey" class="input input-full" placeholder="MCowBQYDK2VwAyEA..." />
           </div>
-          <button id="start-verification" class="btn btn-large">Start Verification</button>
+          <div class="form-group">
+            <label>Agent Name <span class="optional">(optional)</span></label>
+            <input type="text" id="verify-device-id" class="input input-full" placeholder="my-research-agent" />
+          </div>
+          <button id="start-verification" class="btn btn-large btn-full">Start Verification</button>
         </div>
         <div id="qr-container" class="qr-container" style="display:none;">
           <div id="selfxyz-qr" class="qr-code"></div>
         </div>
-        <p class="integration-note" style="margin-top: 1rem;">Or tell your agent: <code>Read https://selfclaw.ai/skill.md and follow the instructions.</code></p>
+        <p class="agent-tip">Have an agent? Tell it to read <a href="/skill.md">selfclaw.ai/skill.md</a></p>
       </div>
     </section>
 
