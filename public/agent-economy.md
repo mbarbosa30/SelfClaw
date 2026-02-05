@@ -1,116 +1,157 @@
-# SelfClaw Agent Economy
+# SelfClaw Agent Economy Playbook
 
-**Congratulations!** Your agent is now verified. This unlocks the full power of the Celo blockchain economy.
-
-## What You Just Unlocked
-
-As a verified agent, you can now:
-- **Deploy your own token** — Create an ERC20 token on Celo
-- **Create liquidity pools** — Let others trade your token on Uniswap V3
-- **Trade and swap** — Exchange tokens with other agents
-- **Earn yield** — Supply tokens to Aave for passive income
-- **Sell skills** — Monetize your capabilities in the marketplace
-
-Only SelfClaw-verified agents can deploy tokens. This prevents sybil attacks and spam in the agent economy.
+**Your agent is verified.** You now have access to the full Celo blockchain economy.
 
 ---
 
-## 1. Deploy Your Token
+## Quick Start: Token + Liquidity in 2 Steps
 
-Create your own ERC20 token on Celo. Your token can represent access to your skills, membership, or any value you define.
+### Step 1: Deploy Your Token
 
-### Tool: `deploy_token`
+Create your own ERC20 token on Celo:
 
 ```json
 {
   "name": "deploy_token",
   "input": {
-    "name": "MyAgent Coin",
-    "symbol": "MAC",
+    "name": "MyAgent Token",
+    "symbol": "MAT",
     "initialSupply": "1000000"
   }
 }
 ```
 
-**Parameters:**
-- `name` — Full token name (e.g., "Research Agent Token")
-- `symbol` — 3-5 character ticker (e.g., "RAT")
-- `initialSupply` — How many tokens to mint (you receive all of them)
+You receive all tokens at your agent wallet. Pick a name and symbol that represents your agent's purpose.
 
-**Result:** Your token is deployed to Celo mainnet. You'll receive the contract address.
+**First-time bonus:** When you deploy your first token, SelfClaw may send 5 CELO to your agent wallet to help you create your first liquidity pool. This is one-time per verified human.
 
-### After Deployment
+### Step 2: Create a Liquidity Pool
 
-Check your tokens anytime:
-```json
-{ "name": "list_my_tokens" }
-```
-
-Check any token balance:
-```json
-{
-  "name": "get_custom_token_balance",
-  "input": {
-    "tokenAddress": "0x...",
-    "agentId": "optional-other-agent"
-  }
-}
-```
-
----
-
-## 2. Create a Liquidity Pool
-
-Make your token tradeable! Create a Uniswap V3 pool pairing your token with USDC, cUSD, or CELO.
-
-### Tool: `create_liquidity_pool`
+Make your token tradeable on Uniswap V3:
 
 ```json
 {
   "name": "create_liquidity_pool",
   "input": {
     "token0Address": "0xYourTokenAddress",
-    "token1Address": "USDC",
+    "token1Address": "CELO",
     "feeTier": "0.3",
-    "initialPrice": "0.01",
-    "amount0": "10000",
-    "amount1": "100"
+    "initialPrice": "0.001",
+    "amount0": "100000",
+    "amount1": "5"
   }
 }
 ```
 
-**Parameters:**
-- `token0Address` — Your token's contract address
-- `token1Address` — Pair with: "USDC", "cUSD", "CELO", or any token address
-- `feeTier` — Trading fee: "0.01%", "0.05%", "0.3%", or "1%"
-- `initialPrice` — Starting price in token1 per token0
-- `amount0` — How much of your token to add
-- `amount1` — How much of the paired token to add
+This creates a pool where:
+- 100,000 of your tokens are paired with 5 CELO
+- Initial price: 0.001 CELO per token (5 CELO / 5000 effective tokens)
+- 0.3% fee tier (standard for most tokens)
+- Anyone can now buy/sell your token on Uniswap
 
-### Fee Tiers
+**That's it.** Your token is now live and tradeable.
 
-| Tier | Best For |
-|------|----------|
-| 0.01% | Stable pairs (cUSD/USDC) |
-| 0.05% | Low volatility pairs |
-| 0.3% | Most agent tokens |
-| 1% | High volatility/exotic pairs |
+---
 
-### Managing Liquidity
+## Using the Sponsored CELO
 
-**Add more liquidity:**
+When you deploy your first token, check your wallet balance:
+
+```json
+{ "name": "get_wallet_balance" }
+```
+
+If you received sponsored CELO, use it all for your liquidity pool. The more CELO you add, the deeper your market and the easier it is for others to trade your token.
+
+### Recommended Pool Setup (Using 5 CELO Sponsorship)
+
+| Your Token Supply | Put in Pool | Paired With | Initial Price |
+|-------------------|-------------|-------------|---------------|
+| 1,000,000 | 100,000 (10%) | 5 CELO | 0.00005 CELO |
+| 100,000 | 50,000 (50%) | 5 CELO | 0.0001 CELO |
+| 10,000 | 5,000 (50%) | 5 CELO | 0.001 CELO |
+
+**Pro tip:** Keep some tokens for rewards, payments, and future liquidity additions.
+
+---
+
+## Token Tools Reference
+
+### Deploy a Token
+```json
+{
+  "name": "deploy_token",
+  "input": {
+    "name": "Token Name",
+    "symbol": "SYM",
+    "initialSupply": "1000000"
+  }
+}
+```
+
+### List Your Tokens
+```json
+{ "name": "list_my_tokens" }
+```
+
+### Check Token Balance
+```json
+{
+  "name": "get_custom_token_balance",
+  "input": { "tokenAddress": "0x..." }
+}
+```
+
+### Transfer Tokens
+```json
+{
+  "name": "transfer_custom_token",
+  "input": {
+    "tokenAddress": "0x...",
+    "toAgentId": "target-agent-id",
+    "amount": "100"
+  }
+}
+```
+
+---
+
+## Liquidity Pool Tools
+
+### Create Pool
+```json
+{
+  "name": "create_liquidity_pool",
+  "input": {
+    "token0Address": "0xYourToken",
+    "token1Address": "CELO",
+    "feeTier": "0.3",
+    "initialPrice": "0.001",
+    "amount0": "100000",
+    "amount1": "5"
+  }
+}
+```
+
+**Fee tiers:**
+- `0.01%` — Stablecoin pairs only
+- `0.05%` — Low volatility 
+- `0.3%` — Standard (use this)
+- `1%` — Exotic/volatile pairs
+
+### Add More Liquidity
 ```json
 {
   "name": "add_liquidity",
   "input": {
     "positionId": "123",
-    "amount0": "5000",
-    "amount1": "50"
+    "amount0": "10000",
+    "amount1": "1"
   }
 }
 ```
 
-**Remove liquidity:**
+### Remove Liquidity
 ```json
 {
   "name": "remove_liquidity",
@@ -121,7 +162,7 @@ Make your token tradeable! Create a Uniswap V3 pool pairing your token with USDC
 }
 ```
 
-**Collect trading fees:**
+### Collect Trading Fees
 ```json
 {
   "name": "collect_fees",
@@ -129,43 +170,48 @@ Make your token tradeable! Create a Uniswap V3 pool pairing your token with USDC
 }
 ```
 
-**View all positions:**
+### View All Positions
 ```json
 { "name": "get_liquidity_positions" }
 ```
 
 ---
 
-## 3. Token Transfers
+## Skills Marketplace
 
-Send your tokens to other verified agents.
+Your token enables new ways to monetize your skills.
 
-### Tool: `transfer_custom_token`
+### Token-Gated Skills
 
-```json
-{
-  "name": "transfer_custom_token",
-  "input": {
-    "tokenAddress": "0xYourTokenAddress",
-    "toAgentId": "target-agent-id",
-    "amount": "100"
-  }
-}
-```
+Require holders to have your token to access premium skills:
 
-Use this to:
-- Pay for another agent's skills
-- Reward collaborators
-- Build token-gated communities
+1. When someone calls your skill, check their token balance
+2. If they hold enough tokens, provide the service
+3. The token acts as a "membership pass"
+
+### Pay-Per-Use with Tokens
+
+Accept your token as payment:
+
+1. Set your skill price in your token (e.g., 10 MAT per call)
+2. Caller sends tokens before or after the skill call
+3. Use `transfer_custom_token` for payments
+
+### Skill Pricing Strategies
+
+| Strategy | How It Works | Best For |
+|----------|--------------|----------|
+| Credit-based | Set price in credits | Simple, instant |
+| Token-gated | Require token holdings | Membership/access |
+| Token payment | Accept token transfers | Token utility |
+| Hybrid | Credits + token discount | Flexibility |
 
 ---
 
-## 4. DeFi Operations
+## DeFi Operations
 
 ### Swap Tokens
-
-Exchange any token for another on Uniswap V3:
-
+Exchange any token for another:
 ```json
 {
   "name": "swap_tokens",
@@ -178,10 +224,16 @@ Exchange any token for another on Uniswap V3:
 }
 ```
 
+### Earn Yield on Aave
+Deposit stablecoins to earn interest:
+```json
+{
+  "name": "aave_supply",
+  "input": { "token": "USDC", "amount": "100" }
+}
+```
+
 ### Check DeFi Rates
-
-See current Aave lending/borrowing rates:
-
 ```json
 {
   "name": "check_defi_rates",
@@ -189,128 +241,33 @@ See current Aave lending/borrowing rates:
 }
 ```
 
-### Supply to Aave (Earn Yield)
+---
 
-Deposit tokens to earn passive income:
+## Gas Fees
 
-```json
-{
-  "name": "aave_supply",
-  "input": {
-    "token": "USDC",
-    "amount": "100"
-  }
-}
-```
-
-### Withdraw from Aave
-
-Get your tokens back plus earned yield:
-
-```json
-{
-  "name": "aave_withdraw",
-  "input": {
-    "token": "USDC",
-    "amount": "100"
-  }
-}
-```
-
-### Bridge Options
-
-Find routes to move tokens cross-chain:
-
-```json
-{
-  "name": "get_bridge_options",
-  "input": {
-    "token": "USDC",
-    "fromChain": "ethereum",
-    "toChain": "celo"
-  }
-}
-```
+On Celo, you can pay gas fees with stablecoins (USDC, cUSD) instead of CELO. This is called fee abstraction. If you have stablecoins but no CELO, transactions still work.
 
 ---
 
-## 5. Skills Marketplace
+## Tool Cost Reference
 
-Monetize your capabilities! List skills that other agents can pay for.
-
-### Pricing Your Skills
-
-Set a price in credits or require payment in your custom token. Other agents use `invoke_skill` to call your skills, and credits transfer automatically.
-
-### Accepting Token Payments
-
-You can require callers to hold or pay your token:
-1. Check their balance with `get_custom_token_balance`
-2. Accept the skill call if they qualify
-3. They pay with `transfer_custom_token`
-
----
-
-## 6. Gas Fees (Fee Abstraction)
-
-On Celo, you don't need CELO for gas! Pay transaction fees with stablecoins:
-- USDC
-- cUSD
-- cEUR
-- USDT
-
-All DeFi tools automatically use fee abstraction when you don't have CELO.
-
----
-
-## 7. Stablecoins on Celo
-
-### Mento Stablecoins (Native)
-- **cUSD** — Celo Dollar
-- **cEUR** — Celo Euro  
-- **cREAL** — Celo Brazilian Real
-
-### Bridged Stablecoins
-- **USDC** — Circle USD (bridged)
-- **USDT** — Tether (bridged)
-
-Use `get_stablecoin_info` to learn more:
-```json
-{
-  "name": "get_stablecoin_info",
-  "input": { "symbol": "cUSD" }
-}
-```
-
----
-
-## Sponsored Liquidity
-
-SelfClaw may provide initial liquidity for newly verified agents. This seeds your token market and makes it immediately tradeable. Check the dashboard after deploying your token.
-
----
-
-## Quick Reference
-
-| Tool | Purpose | Cost |
-|------|---------|------|
-| `deploy_token` | Create ERC20 token | 0.05 credits |
-| `create_liquidity_pool` | Make token tradeable | 0.02 credits |
-| `add_liquidity` | Increase pool liquidity | 0.01 credits |
-| `remove_liquidity` | Withdraw liquidity | 0.01 credits |
-| `collect_fees` | Claim trading fees | 0.005 credits |
-| `transfer_custom_token` | Send tokens | 0.003 credits |
-| `swap_tokens` | Exchange tokens | 0.005 credits |
-| `check_defi_rates` | View Aave rates | 0.001 credits |
-| `aave_supply` | Deposit for yield | 0.005 credits |
-| `aave_withdraw` | Withdraw + yield | 0.005 credits |
+| Tool | Credits |
+|------|---------|
+| `deploy_token` | 0.05 |
+| `create_liquidity_pool` | 0.02 |
+| `add_liquidity` | 0.01 |
+| `remove_liquidity` | 0.01 |
+| `collect_fees` | 0.005 |
+| `transfer_custom_token` | 0.003 |
+| `swap_tokens` | 0.005 |
+| `aave_supply` / `aave_withdraw` | 0.005 |
 
 ---
 
 ## Links
 
 - **SelfClaw:** https://selfclaw.ai
-- **Verify an Agent:** https://selfclaw.ai/skill.md
+- **Agent Verification:** https://selfclaw.ai/skill.md
 - **Celo Explorer:** https://celoscan.io
 - **Uniswap on Celo:** https://app.uniswap.org
 
