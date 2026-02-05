@@ -2239,13 +2239,13 @@ function connectToSelfRelayer(sessionId, selfAppConfig, onSuccess, onError) {
     const statusEl = document.getElementById('verification-status');
     
     if (data.status === 'mobile_connected') {
-      if (statusEl) statusEl.innerHTML = '<span style="color: #00FFB6;">Phone connected! Generating proof...</span>';
+      if (statusEl) statusEl.innerHTML = '<span style="color: #FF6B4A;">Phone connected! Generating proof...</span>';
     } else if (data.status === 'proof_generation_started') {
-      if (statusEl) statusEl.innerHTML = '<span style="color: #00FFB6;">Generating zero-knowledge proof...</span>';
+      if (statusEl) statusEl.innerHTML = '<span style="color: #FF6B4A;">Generating zero-knowledge proof...</span>';
     } else if (data.status === 'proof_generated') {
-      if (statusEl) statusEl.innerHTML = '<span style="color: #00FFB6;">Proof generated! Verifying...</span>';
+      if (statusEl) statusEl.innerHTML = '<span style="color: #FF6B4A;">Proof generated! Verifying...</span>';
     } else if (data.status === 'proof_verified' || data.status === 'done') {
-      if (statusEl) statusEl.innerHTML = '<span style="color: #00FFB6;">Verified successfully!</span>';
+      if (statusEl) statusEl.innerHTML = '<span style="color: #FF6B4A;">Verified successfully!</span>';
       if (onSuccess) onSuccess(data);
     } else if (data.status === 'error') {
       if (statusEl) statusEl.innerHTML = `<span style="color: #ff4444;">Error: ${data.message || 'Verification failed'}</span>`;
@@ -2320,7 +2320,7 @@ async function startAgentVerification() {
     console.log('[SelfClaw] Universal Link:', selfUniversalLink);
     
     const signatureStatus = data.signatureVerified 
-      ? '<span style="color: #00FFB6;">Agent key ownership verified</span>'
+      ? '<span style="color: #FF6B4A;">Agent key ownership verified</span>'
       : '<span style="color: #888;">Optional: Sign challenge to prove key ownership</span>';
     
     qrContainer.style.display = 'block';
@@ -2388,7 +2388,7 @@ function handleVerificationSuccess(pubkey, agentName) {
   if (statusEl) {
     statusEl.innerHTML = `
       <div style="text-align: center; margin-bottom: 1.5rem;">
-        <div style="color: #00FFB6; font-size: 1.5rem; font-weight: 600; margin-bottom: 0.5rem;">Verified</div>
+        <div style="color: #FF6B4A; font-size: 1.5rem; font-weight: 600; margin-bottom: 0.5rem;">Verified</div>
         <p style="font-size: 0.9rem; color: var(--text-secondary); line-height: 1.5;">
           Your agent is now linked to your passport-backed human identity.
         </p>
@@ -2400,7 +2400,7 @@ function handleVerificationSuccess(pubkey, agentName) {
       </div>
       
       <details open style="text-align: left;">
-        <summary style="color: var(--self-green, #00FFB6); cursor: pointer; font-size: 0.95rem; font-weight: 500; padding: 0.75rem 0; border-top: 1px solid var(--border-subtle);">Next Step: Agent Economy</summary>
+        <summary style="color: var(--green); cursor: pointer; font-size: 0.95rem; font-weight: 500; padding: 0.75rem 0; border-top: 1px solid var(--border-subtle);">Next Step: Agent Economy</summary>
         <div style="margin-top: 1rem; padding: 1rem; background: rgba(255,255,255,0.02); border: 1px solid var(--border-subtle); border-radius: 8px;">
           <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 1rem; line-height: 1.5;">
             Verified agents can optionally create wallets, deploy tokens, and access 100 CELO in sponsored liquidity. Give this prompt to your agent:
@@ -2434,7 +2434,7 @@ function copyAgentPrompt() {
     navigator.clipboard.writeText(promptText.textContent).then(() => {
       const originalText = btn.textContent;
       btn.textContent = 'Copied!';
-      btn.style.background = '#00FFB6';
+      btn.style.background = '#FF6B4A';
       btn.style.color = '#000';
       setTimeout(() => {
         btn.textContent = originalText;
@@ -2511,7 +2511,7 @@ async function submitAgentSignature(sessionId) {
     if (data.success) {
       const statusEl = signatureInput.parentElement.querySelector('p');
       if (statusEl) {
-        statusEl.innerHTML = '<span style="color: #00FFB6;">Agent key ownership verified</span>';
+        statusEl.innerHTML = '<span style="color: #FF6B4A;">Agent key ownership verified</span>';
       }
       signatureInput.style.display = 'none';
       signatureInput.nextElementSibling.style.display = 'none';

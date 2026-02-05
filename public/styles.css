@@ -15,10 +15,6 @@
   --green: #FF6B4A;
   --green-light: rgba(255, 107, 74, 0.15);
   --green-dark: #E85D3D;
-  --self-green: #00FFB6;
-  --self-green-light: rgba(0, 255, 182, 0.15);
-  --coral: #FF8352;
-  --coral-light: rgba(255, 131, 82, 0.15);
   --celo-green: #FF6B4A;
   --celo-dark: #0a0a0a;
   --purple: #FF6B4A;
@@ -29,9 +25,9 @@
   --red-light: rgba(239, 68, 68, 0.15);
   
   /* Font families */
-  --font-serif: 'Cormorant Garamond', Georgia, serif;
+  --font-serif: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   --font-mono: 'IBM Plex Mono', 'Courier New', monospace;
-  --font-sans: 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
 * {
@@ -79,11 +75,11 @@ body {
 
 .header h1 {
   font-size: 2rem;
-  font-weight: 500;
+  font-weight: 700;
   letter-spacing: 0.12em;
   line-height: 1;
   color: var(--white);
-  font-family: 'IBM Plex Mono', 'Courier New', monospace;
+  font-family: var(--font-sans);
 }
 
 .tag {
@@ -169,14 +165,14 @@ body {
 }
 
 .btn-coral {
-  background: var(--coral);
+  background: var(--green);
   color: var(--black);
-  box-shadow: 0 0 20px rgba(255, 131, 82, 0.3);
+  box-shadow: 0 0 20px rgba(255, 107, 74, 0.3);
 }
 
 .btn-coral:hover {
   background: var(--white);
-  box-shadow: 0 0 30px rgba(255, 131, 82, 0.5);
+  box-shadow: 0 0 30px rgba(255, 107, 74, 0.5);
 }
 
 .btn-sm {
@@ -571,18 +567,18 @@ body.dashboard-mode .cockpit-main {
   align-items: center;
   gap: 0.5rem;
   padding: 0.4rem 0.75rem;
-  background: rgba(252, 255, 82, 0.1);
-  border: 1px solid rgba(252, 255, 82, 0.3);
+  background: rgba(255, 107, 74, 0.1);
+  border: 1px solid rgba(255, 107, 74, 0.3);
   border-radius: 100px;
   font-size: 0.75rem;
-  color: #FCFF52;
+  color: var(--green);
   text-decoration: none;
   transition: all 0.2s ease;
 }
 
 .celo-badge:hover {
-  background: rgba(252, 255, 82, 0.2);
-  border-color: #FCFF52;
+  background: rgba(255, 107, 74, 0.2);
+  border-color: var(--green);
 }
 
 .defi-grid {
@@ -594,15 +590,15 @@ body.dashboard-mode .cockpit-main {
 
 .defi-card {
   padding: 1.5rem;
-  background: rgba(252, 255, 82, 0.03);
-  border: 1px solid rgba(252, 255, 82, 0.15);
+  background: rgba(255, 107, 74, 0.03);
+  border: 1px solid rgba(255, 107, 74, 0.15);
   border-radius: 8px;
   transition: all 0.2s ease;
 }
 
 .defi-card:hover {
-  background: rgba(252, 255, 82, 0.06);
-  border-color: rgba(252, 255, 82, 0.4);
+  background: rgba(255, 107, 74, 0.06);
+  border-color: rgba(255, 107, 74, 0.4);
   transform: translateY(-2px);
 }
 
@@ -637,15 +633,15 @@ body.dashboard-mode .cockpit-main {
 .stablecoin-intel {
   margin-top: 1.5rem;
   padding: 1.25rem;
-  background: linear-gradient(135deg, rgba(252, 255, 82, 0.05) 0%, rgba(0, 255, 182, 0.05) 100%);
-  border: 1px solid rgba(252, 255, 82, 0.2);
+  background: linear-gradient(135deg, rgba(255, 107, 74, 0.05) 0%, rgba(255, 107, 74, 0.03) 100%);
+  border: 1px solid rgba(255, 107, 74, 0.2);
   border-radius: 8px;
 }
 
 .stablecoin-intel h4 {
   font-size: 0.9rem;
   font-weight: 600;
-  color: #FCFF52;
+  color: var(--green);
   margin-bottom: 0.5rem;
 }
 
@@ -658,11 +654,11 @@ body.dashboard-mode .cockpit-main {
 .mento-badge {
   display: inline-block;
   padding: 0.15rem 0.5rem;
-  background: rgba(0, 255, 182, 0.15);
-  border: 1px solid rgba(0, 255, 182, 0.4);
+  background: rgba(255, 107, 74, 0.15);
+  border: 1px solid rgba(255, 107, 74, 0.4);
   border-radius: 4px;
   font-size: 0.75rem;
-  color: #00FFB6;
+  color: #FF6B4A;
   font-weight: 500;
 }
 
@@ -714,7 +710,7 @@ body.dashboard-mode .cockpit-main {
 .new-badge {
   display: inline-block;
   padding: 0.2rem 0.5rem;
-  background: linear-gradient(135deg, #00D26A 0%, #00FFB6 100%);
+  background: linear-gradient(135deg, #FF6B4A 0%, #FF8352 100%);
   border-radius: 4px;
   font-size: 0.65rem;
   font-weight: 700;
@@ -747,8 +743,8 @@ body.dashboard-mode .cockpit-main {
 
 .verification-card {
   padding: 1.5rem;
-  background: linear-gradient(135deg, rgba(0, 210, 106, 0.05) 0%, rgba(0, 210, 106, 0.02) 100%);
-  border: 1px solid rgba(0, 210, 106, 0.2);
+  background: linear-gradient(135deg, rgba(255, 107, 74, 0.05) 0%, rgba(255, 107, 74, 0.02) 100%);
+  border: 1px solid rgba(255, 107, 74, 0.2);
   border-radius: 8px;
   text-align: center;
 }
@@ -1794,7 +1790,7 @@ body.dashboard-mode .cockpit-main {
 }
 
 .nav-agent.active {
-  background: var(--coral);
+  background: var(--green);
   color: var(--black);
 }
 
@@ -1852,7 +1848,7 @@ body.dashboard-mode .cockpit-main {
 }
 
 .agent-nav-item.active {
-  background: var(--coral);
+  background: var(--green);
   color: var(--black);
 }
 
@@ -1957,9 +1953,9 @@ body.dashboard-mode .cockpit-main {
 }
 
 .tab-btn.active {
-  background: var(--coral);
+  background: var(--green);
   color: var(--black);
-  border-bottom-color: var(--coral);
+  border-bottom-color: var(--green);
 }
 
 /* Tab Panels */
@@ -1994,7 +1990,7 @@ body.dashboard-mode .cockpit-main {
 }
 
 .chat-message.user {
-  background: var(--coral);
+  background: var(--green);
   color: var(--black);
   margin-left: 2rem;
 }
@@ -2869,8 +2865,8 @@ body.dashboard-mode .cockpit-main {
    ============================================ */
 
 .tag-green {
-  background: var(--self-green-light);
-  color: var(--self-green);
+  background: var(--green-light);
+  color: var(--green);
   border: none;
 }
 
@@ -3297,7 +3293,7 @@ body.dashboard-mode .cockpit-main {
 }
 
 .footer-nav a:hover {
-  color: var(--self-green);
+  color: var(--green);
 }
 
 .footer-row {
@@ -4000,7 +3996,7 @@ body.dashboard-mode .cockpit-main {
   display: block;
   font-size: 2rem;
   font-weight: 700;
-  color: var(--self-green);
+  color: var(--green);
   font-family: var(--font-mono);
   line-height: 1.2;
 }
@@ -4054,12 +4050,12 @@ body.dashboard-mode .cockpit-main {
 }
 
 .leaderboard-table tr:hover td {
-  background: rgba(0, 255, 182, 0.05);
+  background: rgba(255, 107, 74, 0.05);
 }
 
 .token-rank {
   font-weight: 700;
-  color: var(--self-green);
+  color: var(--green);
   font-family: var(--font-mono);
 }
 
@@ -4081,7 +4077,7 @@ body.dashboard-mode .cockpit-main {
 
 .token-tvl {
   font-family: var(--font-mono);
-  color: var(--self-green);
+  color: var(--green);
   font-weight: 600;
 }
 
@@ -4091,7 +4087,7 @@ body.dashboard-mode .cockpit-main {
 }
 
 .token-link {
-  color: var(--self-green);
+  color: var(--green);
   text-decoration: none;
   font-size: 0.8rem;
 }
@@ -4141,7 +4137,7 @@ body.dashboard-mode .cockpit-main {
 .journey-num {
   width: 2.5rem;
   height: 2.5rem;
-  background: var(--self-green);
+  background: var(--green);
   color: var(--black);
   font-size: 1.25rem;
   font-weight: 700;
@@ -4157,14 +4153,14 @@ body.dashboard-mode .cockpit-main {
   text-align: center;
   margin-top: 2rem;
   font-size: 1.1rem;
-  color: var(--self-green);
+  color: var(--green);
   font-weight: 500;
 }
 
 .journey-step h3 {
   font-size: 1rem;
   font-weight: 600;
-  color: var(--self-green);
+  color: var(--green);
   margin-bottom: 0.5rem;
 }
 
@@ -4233,7 +4229,7 @@ body.dashboard-mode .cockpit-main {
 .step-number-large {
   width: 3rem;
   height: 3rem;
-  background: var(--self-green);
+  background: var(--green);
   color: var(--black);
   font-size: 1.5rem;
   font-weight: 700;
@@ -4266,7 +4262,7 @@ body.dashboard-mode .cockpit-main {
 .step-details h4 {
   font-size: 0.9rem;
   font-weight: 600;
-  color: var(--self-green);
+  color: var(--green);
   margin-bottom: 0.75rem;
   margin-top: 1.5rem;
   text-transform: uppercase;
@@ -4296,7 +4292,7 @@ body.dashboard-mode .cockpit-main {
   content: "•";
   position: absolute;
   left: 0;
-  color: var(--self-green);
+  color: var(--green);
 }
 
 /* FAQ Section */
@@ -4420,7 +4416,7 @@ body.dashboard-mode .cockpit-main {
 }
 
 .agent-tip a {
-  color: var(--self-green);
+  color: var(--green);
   text-decoration: none;
 }
 
@@ -4428,9 +4424,20 @@ body.dashboard-mode .cockpit-main {
   text-decoration: underline;
 }
 
+.agent-tip code {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--green);
+  background: rgba(255, 107, 74, 0.08);
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  margin-top: 0.5rem;
+  display: inline-block;
+}
+
 /* Static Hero Headline */
 .hero-headline-static {
-  font-family: var(--font-serif);
+  font-family: var(--font-sans);
   font-size: 2.5rem;
   font-weight: 600;
   color: var(--white);
@@ -4467,8 +4474,8 @@ body.dashboard-mode .cockpit-main {
 }
 
 .lookup-result.verified {
-  background: var(--self-green-light);
-  border: 1px solid var(--self-green);
+  background: var(--green-light);
+  border: 1px solid var(--green);
 }
 
 .lookup-result.not-verified {
@@ -4485,7 +4492,7 @@ body.dashboard-mode .cockpit-main {
 }
 
 .lookup-result .status-badge.verified {
-  background: var(--self-green);
+  background: var(--green);
   color: var(--black);
 }
 
@@ -4515,14 +4522,14 @@ body.dashboard-mode .cockpit-main {
 }
 
 .stat-card:hover {
-  border-color: var(--self-green);
+  border-color: var(--green);
 }
 
 .stat-value {
   display: block;
   font-size: 2.5rem;
   font-weight: 700;
-  color: var(--self-green);
+  color: var(--green);
   font-family: var(--font-mono);
   line-height: 1.2;
 }
@@ -4596,7 +4603,7 @@ body.dashboard-mode .cockpit-main {
 .flow-card h3 {
   font-size: 1.1rem;
   font-weight: 600;
-  color: var(--self-green);
+  color: var(--green);
   margin-bottom: 0.25rem;
 }
 
@@ -4652,7 +4659,7 @@ body.dashboard-mode .cockpit-main {
 .trust-card h4 {
   font-size: 0.9rem;
   font-weight: 600;
-  color: var(--self-green);
+  color: var(--green);
   margin-bottom: 1rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -4676,7 +4683,7 @@ body.dashboard-mode .cockpit-main {
   content: "•";
   position: absolute;
   left: 0;
-  color: var(--self-green);
+  color: var(--green);
 }
 
 /* Developer Fast Lane Section */
@@ -4745,13 +4752,13 @@ body.dashboard-mode .cockpit-main {
   background: var(--gray-800);
   border: 1px solid var(--gray-300);
   border-radius: 8px;
-  border-left: 4px solid var(--self-green);
+  border-left: 4px solid var(--green);
 }
 
 .notice-card h3 {
   font-size: 1rem;
   font-weight: 600;
-  color: var(--self-green);
+  color: var(--green);
   margin-bottom: 0.5rem;
 }
 

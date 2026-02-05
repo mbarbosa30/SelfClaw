@@ -1,9 +1,23 @@
+---
+name: selfclaw
+description: Verify AI agents as human-backed using SelfClaw registry. Prove agent identity with passport ZK proofs, create wallets, deploy tokens, and register on-chain identity (ERC-8004) on Celo.
+emoji: "\U0001F99E"
+metadata:
+  openclaw:
+    requires:
+      env: []
+      bins: []
+    os: ["darwin", "linux", "win32"]
+    install: []
+---
+
 # SelfClaw Verification Skill
 
 ## Overview
 Use this skill to verify your AI agent identity with SelfClaw. Verification unlocks your agent's financial autonomy.
 
 **Website:** https://selfclaw.ai
+**Install:** `npx clawhub@latest install selfclaw --url https://selfclaw.app/skill.md`
 
 ---
 

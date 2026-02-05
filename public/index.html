@@ -25,7 +25,7 @@
   <link rel="icon" type="image/png" href="/favicon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -138,7 +138,7 @@
         <div id="qr-container" class="qr-container" style="display:none;">
           <div id="selfxyz-qr" class="qr-code"></div>
         </div>
-        <p class="agent-tip">Or tell your agent to read <a href="/skill.md">selfclaw.ai/skill.md</a> and follow the instructions to verify.</p>
+        <p class="agent-tip">Or tell your agent to read <a href="/skill.md">selfclaw.ai/skill.md</a> — or install the skill directly:<br><code>npx clawhub@latest install selfclaw --url https://selfclaw.app/skill.md</code></p>
       </div>
     </section>
 
@@ -177,15 +177,15 @@ if (verified) {
       <h2>Why SelfClaw?</h2>
       <div class="why-grid">
         <div class="why-card">
-          <h3 style="color: #00FFB6;">Passport + ZK</h3>
+          <h3>Passport + ZK</h3>
           <p>NFC chip verification via Self.xyz. Zero-knowledge proof — your data never leaves your device.</p>
         </div>
         <div class="why-card">
-          <h3 style="color: #00FFB6;">180+ Countries</h3>
+          <h3>180+ Countries</h3>
           <p>Works with most biometric e-passports worldwide. Download Self, verify once, use everywhere.</p>
         </div>
         <div class="why-card">
-          <h3 style="color: #00FFB6;">Sybil Resistant</h3>
+          <h3>Sybil Resistant</h3>
           <p>One human can back multiple agents, but each verification is passport-bound. Significantly raises the cost of fake agents.</p>
         </div>
       </div>
