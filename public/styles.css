@@ -3274,6 +3274,26 @@ body.dashboard-mode .cockpit-main {
   border-top: 1px solid var(--gray-300);
 }
 
+.footer-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--gray-300);
+}
+
+.footer-nav a {
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-size: 0.85rem;
+  transition: color 0.2s;
+}
+
+.footer-nav a:hover {
+  color: var(--self-green);
+}
+
 .footer-row {
   display: flex;
   justify-content: space-between;
@@ -4151,4 +4171,214 @@ body.dashboard-mode .cockpit-main {
 .journey-cta {
   text-align: center;
   margin-top: 2rem;
+}
+
+/* How It Works Page */
+.page-content {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.page-hero {
+  margin-bottom: 3rem;
+  text-align: center;
+}
+
+.page-hero h1 {
+  font-size: 2.5rem;
+  font-weight: 600;
+  color: var(--white);
+  margin-bottom: 1rem;
+}
+
+.page-intro {
+  font-size: 1.1rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.header-logo-link {
+  text-decoration: none;
+  color: inherit;
+}
+
+.journey-detailed {
+  display: flex;
+  flex-direction: column;
+  gap: 3rem;
+  margin-bottom: 4rem;
+}
+
+.journey-step-detailed {
+  border: 1px solid var(--gray-300);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.step-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.5rem;
+  background: var(--gray-800);
+  border-bottom: 1px solid var(--gray-300);
+}
+
+.step-number-large {
+  width: 3rem;
+  height: 3rem;
+  background: var(--self-green);
+  color: var(--black);
+  font-size: 1.5rem;
+  font-weight: 700;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  flex-shrink: 0;
+}
+
+.step-header h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--white);
+  margin: 0;
+}
+
+.step-body {
+  padding: 1.5rem;
+}
+
+.step-summary {
+  font-size: 1.1rem;
+  color: var(--text-primary);
+  margin-bottom: 1.5rem;
+  line-height: 1.6;
+}
+
+.step-details h4 {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--self-green);
+  margin-bottom: 0.75rem;
+  margin-top: 1.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.step-details h4:first-child {
+  margin-top: 0;
+}
+
+.step-details ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.step-details li {
+  position: relative;
+  padding-left: 1.25rem;
+  margin-bottom: 0.5rem;
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.step-details li::before {
+  content: "•";
+  position: absolute;
+  left: 0;
+  color: var(--self-green);
+}
+
+/* FAQ Section */
+.faq-section {
+  margin: 4rem 0;
+}
+
+.faq-section h2 {
+  font-size: 1.75rem;
+  font-weight: 600;
+  color: var(--white);
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+.faq-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.faq-item {
+  border: 1px solid var(--gray-300);
+  border-radius: 8px;
+  padding: 1.25rem;
+}
+
+.faq-item h4 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--white);
+  margin-bottom: 0.75rem;
+}
+
+.faq-item p {
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin: 0;
+}
+
+.cta-section {
+  text-align: center;
+  padding: 3rem;
+  border: 1px solid var(--gray-300);
+  border-radius: 12px;
+  margin: 3rem 0;
+}
+
+.cta-section h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--white);
+  margin-bottom: 0.75rem;
+}
+
+.cta-section p {
+  color: var(--text-secondary);
+  margin-bottom: 1rem;
+}
+
+/* Clean landing page layout */
+.integration-note {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-top: 1rem;
+}
+
+.form-row-inline {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+@media (max-width: 600px) {
+  .form-row-inline {
+    grid-template-columns: 1fr;
+  }
+}
+
+.optional {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.verify-section .section-card h3 {
+  font-size: 1.1rem;
+  margin-bottom: 1.5rem;
+  color: var(--text-secondary);
 }

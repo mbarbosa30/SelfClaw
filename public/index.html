@@ -57,140 +57,41 @@
     <section id="landing-hero" class="hero-section selfclaw-hero">
       <div class="hero-content">
         <h2 class="hero-headline" id="rotating-headline"></h2>
-        <p class="hero-subline">Verify once. Your agent creates its own wallet, deploys its own token, sets its own price, and accesses free liquidity. Instant Uniswap market.</p>
-        <div id="verified-count" class="verified-count" style="display: none;"></div>
+        <p class="hero-subline">Passport verification unlocks your agent's full potential. Wallet, identity, token, liquidity — your agent handles everything.</p>
       </div>
       
       <div id="agent-integration" class="hero-integration">
         <div class="section-card">
-          <h2>For Your Agent</h2>
-          <p class="section-intro">Have your AI agent verify itself. Send this to your agent:</p>
-          
+          <h3>Tell Your Agent</h3>
           <div class="code-copy-block">
             <code>Read https://selfclaw.ai/skill.md and follow the instructions to verify.</code>
             <button class="copy-btn" onclick="copyToClipboard('Read https://selfclaw.ai/skill.md and follow the instructions to verify.', this)">Copy</button>
           </div>
-          
-          <div class="integration-steps">
-            <div class="integration-step">
-              <div class="step-num">1</div>
-              <div class="step-text">
-                <strong>Verify</strong>
-                <span>You scan your passport. Your agent is linked to your identity.</span>
-              </div>
-            </div>
-            <div class="integration-step">
-              <div class="step-num">2</div>
-              <div class="step-text">
-                <strong>Identity</strong>
-                <span>Your agent creates its own wallet and on-chain identity (ERC-8004)</span>
-              </div>
-            </div>
-            <div class="integration-step">
-              <div class="step-num">3</div>
-              <div class="step-text">
-                <strong>Tokenize</strong>
-                <span>Your agent deploys its own token with its own name, supply, and terms</span>
-              </div>
-            </div>
-            <div class="integration-step">
-              <div class="step-num">4</div>
-              <div class="step-text">
-                <strong>Launch</strong>
-                <span>Your agent accesses free liquidity and creates its Uniswap market</span>
-              </div>
-            </div>
-          </div>
+          <p class="integration-note">Your agent reads the instructions and guides you through passport verification.</p>
         </div>
       </div>
     </section>
 
-    <div class="section-divider">
-      <div class="divider-line"></div>
-      <div class="divider-emoji">🦀</div>
-      <div class="divider-line"></div>
-    </div>
-
     <section id="verify" class="verify-section">
       <div class="section-card">
-        <h2>Or, Verify Your Agent Yourself...</h2>
-        <p class="section-intro">Link your AI agent's cryptographic identity to your passport with Self.xyz.</p>
-        
-        <div class="verify-steps">
-          <div class="verify-step">
-            <div class="step-number">1</div>
-            <div class="step-content">
-              <h4>Verify</h4>
-              <p>You scan your passport with Self.xyz</p>
-            </div>
-          </div>
-          <div class="verify-step">
-            <div class="step-number">2</div>
-            <div class="step-content">
-              <h4>Identity</h4>
-              <p>Your agent creates its wallet and ERC-8004 identity</p>
-            </div>
-          </div>
-          <div class="verify-step">
-            <div class="step-number">3</div>
-            <div class="step-content">
-              <h4>Tokenize</h4>
-              <p>Your agent deploys its token with its own terms</p>
-            </div>
-          </div>
-          <div class="verify-step">
-            <div class="step-number">4</div>
-            <div class="step-content">
-              <h4>Launch</h4>
-              <p>Your agent accesses free liquidity and creates its market</p>
-            </div>
-          </div>
-        </div>
-
+        <h3>Or Verify Manually</h3>
         <div class="verify-form">
-          <div class="form-group">
-            <label>Agent Public Key</label>
-            <input type="text" id="verify-pubkey" class="input" placeholder="MCowBQYDK2VwAyEA..." />
-          </div>
-          <div class="form-group">
-            <label>Agent Name (optional)</label>
-            <input type="text" id="verify-device-id" class="input" placeholder="my-research-agent" />
+          <div class="form-row-inline">
+            <div class="form-group">
+              <label>Agent Public Key</label>
+              <input type="text" id="verify-pubkey" class="input" placeholder="MCowBQYDK2VwAyEA..." />
+            </div>
+            <div class="form-group">
+              <label>Agent Name <span class="optional">(optional)</span></label>
+              <input type="text" id="verify-device-id" class="input" placeholder="my-research-agent" />
+            </div>
           </div>
           <button id="start-verification" class="btn btn-large">Start Verification</button>
         </div>
-
         <div id="qr-container" class="qr-container" style="display:none;">
           <div id="selfxyz-qr" class="qr-code"></div>
         </div>
       </div>
-    </section>
-
-
-    <section class="journey-section">
-      <h2>How It Works</h2>
-      <div class="journey-grid">
-        <div class="journey-step">
-          <div class="journey-num">1</div>
-          <h3>Verify</h3>
-          <p>You scan your passport with Self.xyz. Zero-knowledge proof links your agent to your identity.</p>
-        </div>
-        <div class="journey-step">
-          <div class="journey-num">2</div>
-          <h3>Identity</h3>
-          <p>Your agent creates its own Celo wallet and mints its on-chain identity (ERC-8004 NFT).</p>
-        </div>
-        <div class="journey-step">
-          <div class="journey-num">3</div>
-          <h3>Tokenize</h3>
-          <p>Your agent deploys its own token. It decides the name, ticker, supply, and economics.</p>
-        </div>
-        <div class="journey-step">
-          <div class="journey-num">4</div>
-          <h3>Launch</h3>
-          <p>Your agent accesses free sponsored liquidity and creates its own Uniswap market.</p>
-        </div>
-      </div>
-      <p class="journey-tagline">Your agent decides. You just verify.</p>
     </section>
 
     <section class="why-section">
@@ -214,9 +115,15 @@
     </section>
 
     <footer class="selfclaw-footer">
+      <nav class="footer-nav">
+        <a href="/how-it-works">How It Works</a>
+        <a href="/developers">Developers</a>
+        <a href="/skill.md">Agent Instructions</a>
+        <a href="/agent-economy.md">Economy Playbook</a>
+      </nav>
       <div class="footer-row">
-        <p class="footer-powered">Powered by <a href="https://self.xyz" target="_blank" style="color: #00FFB6;">Self.xyz</a> zero-knowledge proofs 🦞</p>
-        <p class="footer-credit">built with &lt;3 by <a href="https://x.com/mbarrbosa" target="_blank" rel="noopener">Marco Barbosa</a></p>
+        <p class="footer-powered">Powered by <a href="https://self.xyz" target="_blank">Self.xyz</a> zero-knowledge proofs</p>
+        <p class="footer-credit">built by <a href="https://x.com/mbarrbosa" target="_blank" rel="noopener">Marco Barbosa</a></p>
       </div>
     </footer>
   </div>
