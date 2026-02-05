@@ -4099,7 +4099,7 @@ body.dashboard-mode .cockpit-main {
 
 .journey-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 1.5rem;
   margin-top: 2rem;
 }
@@ -4112,9 +4112,27 @@ body.dashboard-mode .cockpit-main {
   border-radius: 8px;
 }
 
-.journey-icon {
-  font-size: 2.5rem;
-  margin-bottom: 1rem;
+.journey-num {
+  width: 2.5rem;
+  height: 2.5rem;
+  background: var(--self-green);
+  color: var(--black);
+  font-size: 1.25rem;
+  font-weight: 700;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1rem;
+  font-family: var(--font-mono);
+}
+
+.journey-tagline {
+  text-align: center;
+  margin-top: 2rem;
+  font-size: 1.1rem;
+  color: var(--self-green);
+  font-weight: 500;
 }
 
 .journey-step h3 {
