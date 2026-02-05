@@ -1,4 +1,26 @@
 
+async function loadEcosystemStats() {
+  try {
+    const response = await fetch('/api/selfclaw/v1/ecosystem-stats');
+    if (!response.ok) return;
+    const data = await response.json();
+    
+    const verified = document.getElementById('stat-verified');
+    const tokens = document.getElementById('stat-tokens');
+    const pools = document.getElementById('stat-pools');
+    const sponsored = document.getElementById('stat-sponsored');
+    
+    if (verified) verified.textContent = data.verifiedAgents ?? 0;
+    if (tokens) tokens.textContent = data.tokensDeployed ?? 0;
+    if (pools) pools.textContent = data.activePools ?? 0;
+    if (sponsored) sponsored.textContent = data.sponsoredAgents ?? 0;
+  } catch (e) {
+    console.log('[stats] Could not load ecosystem stats');
+  }
+}
+
+loadEcosystemStats();
+
 function initLookupWidget() {
   const lookupBtn = document.getElementById('lookup-btn');
   const lookupInput = document.getElementById('lookup-key');

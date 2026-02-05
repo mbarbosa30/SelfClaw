@@ -97,3 +97,6 @@ SelfClaw is a privacy-first agent verification registry leveraging Self.xyz pass
 - **Sponsorship API**: New endpoint `GET /api/selfclaw/v1/sponsorship/:humanId` to check sponsorship status and eligibility.
 - **Ecosystem Stats API**: New endpoint `GET /api/selfclaw/v1/ecosystem-stats` returns verifiedAgents, tokensDeployed, activePools, sponsoredAgents counts.
 - **Agent Economy Playbook Revamp**: Simplified `public/agent-economy.md` with 2-step Quick Start (deploy token + create pool), sponsored CELO usage guide, recommended pool settings table, and skills marketplace monetization strategies.
+- **Secure Wallet Encryption**: Removed hardcoded fallback for wallet encryption secret. Now requires `WALLET_ENCRYPTION_SECRET` or `SESSION_SECRET` (min 32 chars) to be configured. System fails fast if missing, preventing accidental weak encryption.
+- **Gas Subsidy Race Condition Fix**: Replaced FOR UPDATE NOWAIT with atomic conditional UPDATE using `pending-{timestamp}` markers. Only one concurrent request can claim the subsidy slot. Rollback on failure enables retries.
+- **Live Ecosystem Stats**: Landing page now displays real-time registry stats (verified agents, tokens deployed, active pools, sponsored agents) fetched from `/api/selfclaw/v1/ecosystem-stats`.
