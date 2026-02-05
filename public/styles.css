@@ -240,8 +240,8 @@ h2 {
 .hero-section {
   background: var(--black);
   color: var(--white);
-  padding: 4rem 2rem 2.5rem;
-  margin: -3rem -2rem 2.5rem;
+  padding: 4rem 2rem 3.5rem;
+  margin: -3rem -2rem 3.5rem;
   text-align: center;
   position: relative;
   overflow: hidden;
@@ -691,7 +691,7 @@ body.dashboard-mode .cockpit-main {
 /* Token Economy Section */
 .token-economy-section,
 .liquidity-section {
-  margin-bottom: 2.5rem;
+  margin-bottom: 3.5rem;
   padding: 2rem 0;
   border-top: 1px solid var(--gray-200);
 }
@@ -725,7 +725,7 @@ body.dashboard-mode .cockpit-main {
 
 /* Verification Section */
 .verification-section {
-  margin-bottom: 2.5rem;
+  margin-bottom: 3.5rem;
   padding: 2rem 0;
   border-top: 1px solid var(--gray-200);
 }
@@ -778,7 +778,7 @@ body.dashboard-mode .cockpit-main {
 
 /* How It Works */
 .how-it-works {
-  margin-bottom: 2.5rem;
+  margin-bottom: 3.5rem;
 }
 
 .steps-grid {
@@ -818,7 +818,7 @@ body.dashboard-mode .cockpit-main {
 
 /* Pricing */
 .pricing-section {
-  margin-bottom: 2.5rem;
+  margin-bottom: 3.5rem;
 }
 
 .pricing-grid {
@@ -877,7 +877,7 @@ body.dashboard-mode .cockpit-main {
 
 /* What Makes ClawPit Different */
 .why-clawpit {
-  margin-bottom: 2.5rem;
+  margin-bottom: 3.5rem;
 }
 
 .value-grid {
@@ -912,7 +912,7 @@ body.dashboard-mode .cockpit-main {
 
 /* Agent Economy */
 .agent-economy {
-  margin-bottom: 2.5rem;
+  margin-bottom: 3.5rem;
 }
 
 .section-intro {
@@ -954,7 +954,7 @@ body.dashboard-mode .cockpit-main {
 
 /* Technology */
 .tech-section {
-  margin-bottom: 2.5rem;
+  margin-bottom: 3.5rem;
 }
 
 .tech-grid {
@@ -1722,7 +1722,7 @@ body.dashboard-mode .cockpit-main {
   }
   
   .hero-section {
-    margin: -2rem -1rem 2.5rem;
+    margin: -2rem -1rem 3.5rem;
   }
   
   .hero-headline {
@@ -2945,13 +2945,13 @@ body.dashboard-mode .cockpit-main {
   color: var(--green);
 }
 
-/* Section Spacing - consistent 2.5rem vertical margins */
+/* Section Spacing - consistent 3.5rem vertical margins */
 .verify-section,
 .check-section,
 .api-section,
 .claw-section,
 .why-section {
-  margin: 2.5rem 0;
+  margin: 3.5rem 0;
 }
 
 /* Input Button Row */
@@ -4446,7 +4446,7 @@ body.dashboard-mode .cockpit-main {
 
 /* Lookup Section */
 .lookup-section {
-  margin: 2.5rem 0;
+  margin: 3.5rem 0;
 }
 
 .lookup-form {
@@ -4563,7 +4563,7 @@ body.dashboard-mode .cockpit-main {
 
 /* Flows Section */
 .flows-section {
-  margin: 2.5rem 0;
+  margin: 3.5rem 0;
 }
 
 .flows-section h2 {
@@ -4681,7 +4681,7 @@ body.dashboard-mode .cockpit-main {
 
 /* Developer Fast Lane Section */
 .dev-fastlane-section {
-  margin: 2.5rem 0;
+  margin: 3.5rem 0;
 }
 
 .dev-fastlane-section h2 {
@@ -4737,7 +4737,7 @@ body.dashboard-mode .cockpit-main {
 }
 
 .economy-notice {
-  margin: 2.5rem 0;
+  margin: 3.5rem 0;
 }
 
 .notice-card {
