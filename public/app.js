@@ -5,6 +5,16 @@ async function loadEcosystemStats() {
     if (!response.ok) return;
     const data = await response.json();
     
+    const statsSection = document.querySelector('.ecosystem-stats-section');
+    if (!statsSection) return;
+    
+    if ((data.verifiedAgents ?? 0) < 10) {
+      statsSection.style.display = 'none';
+      return;
+    }
+    
+    statsSection.style.display = 'block';
+    
     const verified = document.getElementById('stat-verified');
     const tokens = document.getElementById('stat-tokens');
     const pools = document.getElementById('stat-pools');
