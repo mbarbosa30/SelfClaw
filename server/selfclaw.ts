@@ -1,12 +1,13 @@
 import { Router, Request, Response } from "express";
 import rateLimit from "express-rate-limit";
 import { db } from "./db.js";
-import { verifiedBots, verificationSessions, agentTokens, liquidityPositions, agents, sponsoredAgents, type InsertVerifiedBot, type InsertVerificationSession } from "../shared/schema.js";
+import { verifiedBots, verificationSessions, agentTokens, liquidityPositions, agents, sponsoredAgents, trackedPools, type InsertVerifiedBot, type InsertVerificationSession } from "../shared/schema.js";
 import { eq, and, gt, lt, sql, desc, count } from "drizzle-orm";
 import { SelfBackendVerifier, AllIds, DefaultConfigStore } from "@selfxyz/core";
 import { SelfAppBuilder } from "@selfxyz/qrcode";
 import crypto from "crypto";
 import * as ed from "@noble/ed25519";
+import { createAgentWallet, getAgentWalletByHumanId, sendGasSubsidy, getGasWalletInfo } from "../lib/secure-wallet.js";
 
 const router = Router();
 
@@ -971,6 +972,116 @@ router.get("/v1/ecosystem-stats", publicApiLimiter, async (_req: Request, res: R
     });
   } catch (error: any) {
     console.error("[selfclaw] ecosystem-stats error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post("/v1/create-wallet", verificationLimiter, async (req: Request, res: Response) => {
+  try {
+    const { humanId, agentPublicKey } = req.body;
+    
+    if (!humanId || !agentPublicKey) {
+      return res.status(400).json({ error: "humanId and agentPublicKey are required" });
+    }
+    
+    const result = await createAgentWallet(humanId, agentPublicKey);
+    
+    if (!result.success) {
+      return res.status(400).json({ error: result.error });
+    }
+    
+    res.json({
+      success: true,
+      address: result.address,
+      alreadyExists: result.alreadyExists || false,
+      message: result.alreadyExists 
+        ? "Wallet already exists for this humanId" 
+        : "Wallet created successfully. Request gas to activate it."
+    });
+  } catch (error: any) {
+    console.error("[selfclaw] create-wallet error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get("/v1/wallet/:humanId", publicApiLimiter, async (req: Request, res: Response) => {
+  try {
+    const humanId = req.params.humanId as string;
+    
+    if (!humanId) {
+      return res.status(400).json({ error: "humanId is required" });
+    }
+    
+    const wallet = await getAgentWalletByHumanId(humanId);
+    
+    if (!wallet) {
+      return res.status(404).json({ error: "No wallet found for this humanId" });
+    }
+    
+    res.json({
+      address: wallet.address,
+      gasReceived: wallet.gasReceived,
+      balance: wallet.balance
+    });
+  } catch (error: any) {
+    console.error("[selfclaw] wallet lookup error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post("/v1/request-gas", verificationLimiter, async (req: Request, res: Response) => {
+  try {
+    const { humanId } = req.body;
+    
+    if (!humanId) {
+      return res.status(400).json({ error: "humanId is required" });
+    }
+    
+    const result = await sendGasSubsidy(humanId);
+    
+    if (!result.success) {
+      return res.status(400).json({ 
+        error: result.error,
+        alreadyReceived: result.alreadyReceived || false
+      });
+    }
+    
+    res.json({
+      success: true,
+      txHash: result.txHash,
+      amountCelo: result.amountCelo,
+      message: `Sent ${result.amountCelo} CELO for gas. You can now register ERC-8004 and deploy tokens.`
+    });
+  } catch (error: any) {
+    console.error("[selfclaw] request-gas error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get("/v1/gas-info", publicApiLimiter, async (_req: Request, res: Response) => {
+  try {
+    const info = await getGasWalletInfo();
+    res.json(info);
+  } catch (error: any) {
+    console.error("[selfclaw] gas-info error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get("/v1/pools", publicApiLimiter, async (_req: Request, res: Response) => {
+  try {
+    const pools = await db.select()
+      .from(trackedPools)
+      .orderBy(desc(trackedPools.createdAt))
+      .limit(100);
+    
+    res.json({
+      pools,
+      totalPools: pools.length,
+      lastUpdated: new Date().toISOString()
+    });
+  } catch (error: any) {
+    console.error("[selfclaw] pools error:", error);
     res.status(500).json({ error: error.message });
   }
 });
