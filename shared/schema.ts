@@ -256,4 +256,19 @@ export const verifiedBots = pgTable("verified_bots", {
 export type VerifiedBot = typeof verifiedBots.$inferSelect;
 export type InsertVerifiedBot = typeof verifiedBots.$inferInsert;
 
+export const agentTokens = pgTable("agent_tokens", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  agentId: varchar("agent_id").notNull().references(() => agents.id),
+  contractAddress: varchar("contract_address").notNull().unique(),
+  name: varchar("name").notNull(),
+  symbol: varchar("symbol").notNull(),
+  decimals: integer("decimals").default(18),
+  initialSupply: varchar("initial_supply").notNull(),
+  deployTxHash: varchar("deploy_tx_hash"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export type AgentToken = typeof agentTokens.$inferSelect;
+export type InsertAgentToken = typeof agentTokens.$inferInsert;
+
 export * from "./models/chat";

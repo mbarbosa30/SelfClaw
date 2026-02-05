@@ -1,5 +1,5 @@
 import { db } from "./db.js";
-import { agents, agentGoals, agentMemory, agentScheduledTasks, agentToolExecutions, agentSecrets } from "../shared/schema.js";
+import { agents, agentGoals, agentMemory, agentScheduledTasks, agentToolExecutions, agentSecrets, agentTokens, verifiedBots } from "../shared/schema.js";
 import { eq, desc, and } from "drizzle-orm";
 import OpenAI from "openai";
 import { readGmailMessages } from "./gmail-oauth.js";
@@ -16,6 +16,13 @@ import {
   getBridgeOptions,
   getStablecoinInfo
 } from "../lib/celo-defi.js";
+import {
+  deployERC20Token,
+  transferToken,
+  getTokenBalance,
+  getMultipleTokenBalances,
+  getTokenInfo
+} from "../lib/token-factory.js";
 
 export interface AgentContext {
   agentId: string;
@@ -57,6 +64,10 @@ const TOOL_COSTS: Record<string, number> = {
   get_bridge_options: 0.0005,
   transfer_tokens: 0.003,
   get_stablecoin_info: 0.0001,
+  deploy_token: 0.05,
+  transfer_custom_token: 0.003,
+  get_custom_token_balance: 0.0005,
+  list_my_tokens: 0.0001,
 };
 
 export const AVAILABLE_TOOLS: ToolDefinition[] = [
@@ -240,6 +251,52 @@ export const AVAILABLE_TOOLS: ToolDefinition[] = [
       required: ["token"],
     },
   },
+  {
+    name: "deploy_token",
+    description: "Deploy your own ERC20 token on Celo. Your token can be used to grant access to skills, represent value, or trade with other verified agents. Only SelfClaw-verified agents can deploy tokens.",
+    parameters: {
+      type: "object",
+      properties: {
+        name: { type: "string", description: "The full name of your token (e.g., 'MyAgent Coin')" },
+        symbol: { type: "string", description: "The ticker symbol (e.g., 'MAC')" },
+        initialSupply: { type: "string", description: "Initial supply to mint (e.g., '1000000')" },
+      },
+      required: ["name", "symbol", "initialSupply"],
+    },
+  },
+  {
+    name: "transfer_custom_token",
+    description: "Transfer your custom ERC20 tokens to another agent's wallet. Only works between SelfClaw-verified agents.",
+    parameters: {
+      type: "object",
+      properties: {
+        tokenAddress: { type: "string", description: "The contract address of the token to transfer" },
+        toAgentId: { type: "string", description: "The ID of the recipient agent" },
+        amount: { type: "string", description: "Amount to transfer" },
+      },
+      required: ["tokenAddress", "toAgentId", "amount"],
+    },
+  },
+  {
+    name: "get_custom_token_balance",
+    description: "Check your balance of a specific ERC20 token by its contract address.",
+    parameters: {
+      type: "object",
+      properties: {
+        tokenAddress: { type: "string", description: "The contract address of the token" },
+      },
+      required: ["tokenAddress"],
+    },
+  },
+  {
+    name: "list_my_tokens",
+    description: "List all tokens you have created. Shows contract addresses, symbols, and supplies.",
+    parameters: {
+      type: "object",
+      properties: {},
+      required: [],
+    },
+  },
 ];
 
 export async function buildAgentContext(agentId: string): Promise<AgentContext | null> {
@@ -328,6 +385,14 @@ Your wallet supports paying gas fees with stablecoins instead of CELO!
 - transfer_tokens: Send tokens to any address (gas paid in stablecoins)
 - get_stablecoin_info: Learn about Mento vs bridged stablecoins
 
+### Agent Token Tools
+Create and trade your own tokens with other verified agents!
+
+- deploy_token: Create your own ERC20 token on Celo
+- transfer_custom_token: Send your tokens to other verified agents
+- get_custom_token_balance: Check balance of any custom token
+- list_my_tokens: View all tokens you've created
+
 ### Stablecoin Types on Celo
 - Mento (decentralized): cUSD, cEUR, cREAL - native to Celo, backed by Celo Reserve
 - Bridged: USDC, USDT - bridged from Ethereum
@@ -412,6 +477,18 @@ export async function executeTool(
         break;
       case "get_stablecoin_info":
         result = await toolGetStablecoinInfo(input.token);
+        break;
+      case "deploy_token":
+        result = await toolDeployToken(agentId, input.name, input.symbol, input.initialSupply);
+        break;
+      case "transfer_custom_token":
+        result = await toolTransferCustomToken(agentId, input.tokenAddress, input.toAgentId, input.amount);
+        break;
+      case "get_custom_token_balance":
+        result = await toolGetCustomTokenBalance(agentId, input.tokenAddress);
+        break;
+      case "list_my_tokens":
+        result = await toolListMyTokens(agentId);
         break;
       default:
         return { success: false, output: null, error: `Unknown tool: ${toolName}`, creditsCost: 0 };
@@ -881,5 +958,109 @@ export async function runAgentTurn(
     response: "Maximum iterations reached while processing tools.",
     toolsUsed,
     creditsCost: totalCreditsCost,
+  };
+}
+
+async function isAgentVerified(agentId: string): Promise<boolean> {
+  const [agent] = await db.select().from(agents).where(eq(agents.id, agentId));
+  if (!agent) return false;
+  
+  const walletAddress = deriveAgentWalletAddress(process.env.CELO_PRIVATE_KEY || "", agentId);
+  const [verified] = await db.select().from(verifiedBots).where(eq(verifiedBots.publicKey, walletAddress)).limit(1);
+  
+  return !!verified;
+}
+
+async function toolDeployToken(
+  agentId: string,
+  name: string,
+  symbol: string,
+  initialSupply: string
+): Promise<{ success: boolean; tokenAddress?: string; txHash?: string; error?: string }> {
+  const platformKey = process.env.CELO_PRIVATE_KEY;
+  if (!platformKey) {
+    return { success: false, error: "Platform wallet not configured" };
+  }
+  
+  const result = await deployERC20Token(platformKey, agentId, name, symbol, initialSupply);
+  
+  if (result.success && result.tokenAddress) {
+    await db.insert(agentTokens).values({
+      agentId,
+      contractAddress: result.tokenAddress,
+      name,
+      symbol,
+      initialSupply,
+      deployTxHash: result.txHash || null,
+    });
+    
+    return {
+      success: true,
+      tokenAddress: result.tokenAddress,
+      txHash: result.txHash,
+    };
+  }
+  
+  return { success: false, error: result.error };
+}
+
+async function toolTransferCustomToken(
+  agentId: string,
+  tokenAddress: string,
+  toAgentId: string,
+  amount: string
+): Promise<{ success: boolean; txHash?: string; error?: string }> {
+  const platformKey = process.env.CELO_PRIVATE_KEY;
+  if (!platformKey) {
+    return { success: false, error: "Platform wallet not configured" };
+  }
+  
+  const [recipientAgent] = await db.select().from(agents).where(eq(agents.id, toAgentId)).limit(1);
+  if (!recipientAgent) {
+    return { success: false, error: "Recipient agent not found" };
+  }
+  
+  const recipientWallet = deriveAgentWalletAddress(platformKey, toAgentId);
+  
+  const result = await transferToken(platformKey, agentId, tokenAddress, recipientWallet, amount);
+  
+  if (result.success) {
+    return { success: true, txHash: result.txHash };
+  }
+  
+  return { success: false, error: result.error };
+}
+
+async function toolGetCustomTokenBalance(
+  agentId: string,
+  tokenAddress: string
+): Promise<{ success: boolean; balance?: any; error?: string }> {
+  const platformKey = process.env.CELO_PRIVATE_KEY;
+  if (!platformKey) {
+    return { success: false, error: "Platform wallet not configured" };
+  }
+  
+  const walletAddress = deriveAgentWalletAddress(platformKey, agentId);
+  const balance = await getTokenBalance(tokenAddress, walletAddress);
+  
+  if (balance) {
+    return { success: true, balance };
+  }
+  
+  return { success: false, error: "Failed to get token balance" };
+}
+
+async function toolListMyTokens(agentId: string): Promise<{ tokens: any[] }> {
+  const tokens = await db.select().from(agentTokens).where(eq(agentTokens.agentId, agentId));
+  
+  return {
+    tokens: tokens.map((t) => ({
+      contractAddress: t.contractAddress,
+      name: t.name,
+      symbol: t.symbol,
+      initialSupply: t.initialSupply,
+      deployTxHash: t.deployTxHash,
+      createdAt: t.createdAt,
+    })),
   };
 }
