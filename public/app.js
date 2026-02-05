@@ -2312,25 +2312,41 @@ async function startAgentVerification() {
 
 function handleVerificationSuccess(pubkey, agentName) {
   const statusEl = document.getElementById('verification-status');
+  
+  const agentPrompt = `Read this document carefully: https://selfclaw.ai/agent-economy.md
+
+You are now a verified agent on SelfClaw. This document explains how to:
+1. Create your own wallet with an on-chain identity (ERC-8004)
+2. Deploy your own token with whatever name, ticker, and supply you choose
+3. Access free sponsored liquidity (5 CELO) to make your token tradeable on Uniswap
+4. Strategies for token utility, pricing, and growth
+
+Read it and tell me what you want to do.`;
+
   if (statusEl) {
     statusEl.innerHTML = `
       <div style="text-align: center;">
-        <span style="color: #fff; font-weight: 600; font-size: 1rem;">Verified</span>
-        <p style="margin-top: 0.5rem; font-size: 0.8rem; color: #aaa;">
+        <span style="color: #00FFB6; font-weight: 600; font-size: 1.1rem;">Verified</span>
+        <p style="margin-top: 0.5rem; font-size: 0.85rem; color: #ccc;">
           Your agent is now linked to your human identity.
         </p>
-        <div style="margin-top: 1rem; display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap;">
-          <a href="/developers" class="btn btn-primary btn-sm">Integrate in Your App</a>
-          <button onclick="showDonateModal()" class="btn btn-outline btn-sm">Support Project</button>
-        </div>
-        <p style="margin-top: 0.75rem; font-size: 0.7rem; color: #555;">
-          <a href="/registry" style="color: #888;">View all verified agents</a>
-        </p>
+      </div>
+      
+      <div style="margin-top: 1.25rem; padding: 1rem; background: rgba(0,255,182,0.05); border: 1px solid rgba(0,255,182,0.2); border-radius: 8px; text-align: left;">
+        <p style="color: #00FFB6; font-weight: 600; font-size: 0.9rem; margin-bottom: 0.75rem;">Next: Give this to your agent</p>
+        <p style="color: #aaa; font-size: 0.75rem; margin-bottom: 0.75rem;">Copy this prompt and paste it to your agent. It will learn how to create its wallet, deploy its token, and access free liquidity.</p>
+        <div style="background: #0a0a0a; padding: 0.75rem; border-radius: 6px; font-family: monospace; font-size: 0.7rem; color: #888; white-space: pre-wrap; word-break: break-word; max-height: 140px; overflow-y: auto; border: 1px solid #222;" id="agent-prompt-text">${escapeHtml(agentPrompt)}</div>
+        <button onclick="copyAgentPrompt()" class="btn btn-primary btn-sm" style="margin-top: 0.75rem; width: 100%;" id="copy-prompt-btn">Copy Prompt</button>
+      </div>
+      
+      <div style="margin-top: 1rem; display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap;">
+        <a href="/developers" class="btn btn-outline btn-sm">Developer Docs</a>
+        <a href="/registry" class="btn btn-outline btn-sm">Registry</a>
       </div>
     `;
     statusEl.style.background = 'rgba(255,255,255,0.03)';
     statusEl.style.border = '1px solid #444';
-    statusEl.style.padding = '1rem';
+    statusEl.style.padding = '1.25rem';
   }
   const qrImg = document.getElementById('qr-code-img');
   if (qrImg) qrImg.style.display = 'none';
@@ -2341,6 +2357,24 @@ function handleVerificationSuccess(pubkey, agentName) {
   if (selfSocket) {
     selfSocket.disconnect();
     selfSocket = null;
+  }
+}
+
+function copyAgentPrompt() {
+  const promptText = document.getElementById('agent-prompt-text');
+  const btn = document.getElementById('copy-prompt-btn');
+  if (promptText && btn) {
+    navigator.clipboard.writeText(promptText.textContent).then(() => {
+      const originalText = btn.textContent;
+      btn.textContent = 'Copied!';
+      btn.style.background = '#00FFB6';
+      btn.style.color = '#000';
+      setTimeout(() => {
+        btn.textContent = originalText;
+        btn.style.background = '';
+        btn.style.color = '';
+      }, 2000);
+    });
   }
 }
 
