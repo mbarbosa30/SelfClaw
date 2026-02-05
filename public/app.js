@@ -17,6 +17,102 @@ function initRotatingHeadline() {
 
 document.addEventListener('DOMContentLoaded', initRotatingHeadline);
 
+async function loadEcosystemStats() {
+  try {
+    const response = await fetch('/api/selfclaw/v1/ecosystem-stats');
+    if (!response.ok) throw new Error('Failed to load stats');
+    const data = await response.json();
+    
+    const statVerified = document.getElementById('stat-verified');
+    const statTokens = document.getElementById('stat-tokens');
+    const statPools = document.getElementById('stat-pools');
+    const statSponsored = document.getElementById('stat-sponsored');
+    
+    if (statVerified) statVerified.textContent = data.verifiedAgents || '0';
+    if (statTokens) statTokens.textContent = data.tokensDeployed || '0';
+    if (statPools) statPools.textContent = data.activePools || '0';
+    if (statSponsored) statSponsored.textContent = data.sponsoredAgents || '0';
+  } catch (error) {
+    console.error('Failed to load ecosystem stats:', error);
+  }
+}
+
+async function loadTokenLeaderboard() {
+  const container = document.getElementById('token-leaderboard');
+  const emptyState = document.getElementById('leaderboard-empty');
+  if (!container) return;
+  
+  try {
+    const response = await fetch('/api/selfclaw/v1/leaderboard');
+    if (!response.ok) throw new Error('Failed to load leaderboard');
+    const data = await response.json();
+    
+    if (!data.tokens || data.tokens.length === 0) {
+      container.style.display = 'none';
+      if (emptyState) emptyState.style.display = 'block';
+      return;
+    }
+    
+    const formatTVL = (tvl) => {
+      const num = parseFloat(tvl);
+      if (num === 0) return '-';
+      if (num >= 1000000) return `$${(num / 1000000).toFixed(2)}M`;
+      if (num >= 1000) return `$${(num / 1000).toFixed(2)}K`;
+      return `$${num.toFixed(2)}`;
+    };
+    
+    const truncateAddress = (addr) => {
+      if (!addr) return '';
+      return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+    };
+    
+    const tableHTML = `
+      <table class="leaderboard-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Token</th>
+            <th>Agent</th>
+            <th>Supply</th>
+            <th>Pools</th>
+            <th>TVL</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          ${data.tokens.map((token, index) => `
+            <tr>
+              <td class="token-rank">${index + 1}</td>
+              <td>
+                <span class="token-name">${token.name}</span>
+                <span class="token-symbol">$${token.symbol}</span>
+              </td>
+              <td class="token-agent">${token.agentName}</td>
+              <td>${Number(token.initialSupply).toLocaleString()}</td>
+              <td class="token-pools">${token.pools || 0}</td>
+              <td class="token-tvl">${formatTVL(token.estimatedTVL)}</td>
+              <td>
+                <a href="${token.celoswapUrl}" target="_blank" rel="noopener" class="token-link">View</a>
+              </td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
+    
+    container.innerHTML = tableHTML;
+    if (emptyState) emptyState.style.display = 'none';
+  } catch (error) {
+    console.error('Failed to load leaderboard:', error);
+    container.innerHTML = '<p style="text-align: center; color: var(--text-muted);">Unable to load leaderboard</p>';
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  loadEcosystemStats();
+  loadTokenLeaderboard();
+});
+
 function openDonateModal() {
   const modal = document.getElementById('donate-modal');
   if (modal) modal.style.display = 'flex';

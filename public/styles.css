@@ -3924,4 +3924,213 @@ body.dashboard-mode .cockpit-main {
     font-size: 1.25rem;
     padding: 0 0.75rem;
   }
+  
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .journey-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .leaderboard-table {
+    font-size: 0.8rem;
+  }
+  
+  .leaderboard-table th,
+  .leaderboard-table td {
+    padding: 0.5rem;
+  }
+}
+
+/* Ecosystem Stats Section */
+.ecosystem-stats-section {
+  margin: 3rem 0;
+}
+
+.ecosystem-stats-section h2 {
+  font-size: 1.75rem;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+  text-align: center;
+  color: var(--white);
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+}
+
+.stat-card {
+  background: var(--gray-800);
+  border: 1px solid var(--gray-200);
+  border-radius: 8px;
+  padding: 1.5rem;
+  text-align: center;
+}
+
+.stat-number {
+  display: block;
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--self-green);
+  font-family: var(--font-mono);
+  line-height: 1.2;
+}
+
+.stat-card .stat-label {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-top: 0.5rem;
+}
+
+/* Leaderboard Section */
+.leaderboard-section {
+  margin: 3rem 0;
+}
+
+.leaderboard-section h2 {
+  font-size: 1.75rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  text-align: center;
+  color: var(--white);
+}
+
+.leaderboard-container {
+  margin-top: 1.5rem;
+  overflow-x: auto;
+}
+
+.leaderboard-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.leaderboard-table th {
+  text-align: left;
+  padding: 0.75rem;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--gray-200);
+}
+
+.leaderboard-table td {
+  padding: 0.75rem;
+  border-bottom: 1px solid var(--gray-800);
+}
+
+.leaderboard-table tr:hover td {
+  background: rgba(0, 255, 182, 0.05);
+}
+
+.token-rank {
+  font-weight: 700;
+  color: var(--self-green);
+  font-family: var(--font-mono);
+}
+
+.token-name {
+  font-weight: 600;
+  color: var(--white);
+}
+
+.token-symbol {
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  margin-left: 0.5rem;
+}
+
+.token-agent {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.token-tvl {
+  font-family: var(--font-mono);
+  color: var(--self-green);
+  font-weight: 600;
+}
+
+.token-pools {
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.token-link {
+  color: var(--self-green);
+  text-decoration: none;
+  font-size: 0.8rem;
+}
+
+.token-link:hover {
+  text-decoration: underline;
+}
+
+.leaderboard-empty {
+  text-align: center;
+  padding: 2rem;
+  color: var(--text-secondary);
+}
+
+.leaderboard-empty p {
+  margin-bottom: 1rem;
+}
+
+/* Journey Section */
+.journey-section {
+  margin: 3rem 0;
+}
+
+.journey-section h2 {
+  font-size: 1.75rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  text-align: center;
+  color: var(--white);
+}
+
+.journey-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.5rem;
+  margin-top: 2rem;
+}
+
+.journey-step {
+  text-align: center;
+  padding: 1.5rem;
+  background: var(--gray-800);
+  border: 1px solid var(--gray-200);
+  border-radius: 8px;
+}
+
+.journey-icon {
+  font-size: 2.5rem;
+  margin-bottom: 1rem;
+}
+
+.journey-step h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--self-green);
+  margin-bottom: 0.5rem;
+}
+
+.journey-step p {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.journey-cta {
+  text-align: center;
+  margin-top: 2rem;
 }

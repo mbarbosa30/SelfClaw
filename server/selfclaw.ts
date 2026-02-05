@@ -1,8 +1,8 @@
 import { Router, Request, Response } from "express";
 import rateLimit from "express-rate-limit";
 import { db } from "./db.js";
-import { verifiedBots, verificationSessions, type InsertVerifiedBot, type InsertVerificationSession } from "../shared/schema.js";
-import { eq, and, gt, lt, sql } from "drizzle-orm";
+import { verifiedBots, verificationSessions, agentTokens, liquidityPositions, agents, sponsoredAgents, type InsertVerifiedBot, type InsertVerificationSession } from "../shared/schema.js";
+import { eq, and, gt, lt, sql, desc, count } from "drizzle-orm";
 import { SelfBackendVerifier, AllIds, DefaultConfigStore } from "@selfxyz/core";
 import { SelfAppBuilder } from "@selfxyz/qrcode";
 import crypto from "crypto";
@@ -896,6 +896,105 @@ router.get("/v1/recent", publicApiLimiter, async (_req: Request, res: Response) 
     res.json({ agents: recentAgents });
   } catch (error: any) {
     console.error("[selfclaw] recent error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get("/v1/ecosystem-stats", publicApiLimiter, async (_req: Request, res: Response) => {
+  try {
+    const [verifiedCount] = await db.select({ count: count() }).from(verifiedBots);
+    const [tokensCount] = await db.select({ count: count() }).from(agentTokens);
+    const [poolsCount] = await db.select({ count: count() }).from(liquidityPositions).where(eq(liquidityPositions.active, true));
+    const [sponsoredCount] = await db.select({ count: count() }).from(sponsoredAgents).where(eq(sponsoredAgents.status, 'completed'));
+    
+    res.json({
+      verifiedAgents: verifiedCount?.count || 0,
+      tokensDeployed: tokensCount?.count || 0,
+      activePools: poolsCount?.count || 0,
+      sponsoredAgents: sponsoredCount?.count || 0,
+      lastUpdated: new Date().toISOString()
+    });
+  } catch (error: any) {
+    console.error("[selfclaw] ecosystem-stats error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get("/v1/leaderboard", publicApiLimiter, async (_req: Request, res: Response) => {
+  try {
+    const tokens = await db.select({
+      id: agentTokens.id,
+      contractAddress: agentTokens.contractAddress,
+      name: agentTokens.name,
+      symbol: agentTokens.symbol,
+      initialSupply: agentTokens.initialSupply,
+      agentId: agentTokens.agentId,
+      createdAt: agentTokens.createdAt
+    })
+    .from(agentTokens)
+    .orderBy(desc(agentTokens.createdAt))
+    .limit(50);
+    
+    const enrichedTokens = await Promise.all(tokens.map(async (token) => {
+      const agent = await db.select({
+        id: agents.id,
+        name: agents.name
+      })
+      .from(agents)
+      .where(eq(agents.id, token.agentId))
+      .limit(1);
+      
+      const pools = await db.select({
+        token0Symbol: liquidityPositions.token0Symbol,
+        token1Symbol: liquidityPositions.token1Symbol,
+        token0Amount: liquidityPositions.token0Amount,
+        token1Amount: liquidityPositions.token1Amount,
+        liquidity: liquidityPositions.liquidity,
+        active: liquidityPositions.active
+      })
+      .from(liquidityPositions)
+      .where(and(
+        eq(liquidityPositions.agentId, token.agentId),
+        sql`(${liquidityPositions.token0Address} = ${token.contractAddress} OR ${liquidityPositions.token1Address} = ${token.contractAddress})`
+      ));
+      
+      const totalLiquidity = pools.reduce((sum, p) => sum + BigInt(p.liquidity || '0'), BigInt(0));
+      const activePools = pools.filter(p => p.active).length;
+      
+      let estimatedTVL = '0';
+      for (const pool of pools) {
+        if (pool.token1Symbol === 'CELO' || pool.token1Symbol === 'USDC') {
+          const amount = parseFloat(pool.token1Amount || '0');
+          if (amount > 0) {
+            estimatedTVL = (parseFloat(estimatedTVL) + amount * 2).toString();
+          }
+        } else if (pool.token0Symbol === 'CELO' || pool.token0Symbol === 'USDC') {
+          const amount = parseFloat(pool.token0Amount || '0');
+          if (amount > 0) {
+            estimatedTVL = (parseFloat(estimatedTVL) + amount * 2).toString();
+          }
+        }
+      }
+      
+      return {
+        ...token,
+        agentName: agent[0]?.name || 'Unknown Agent',
+        pools: activePools,
+        totalLiquidity: totalLiquidity.toString(),
+        estimatedTVL,
+        celoswapUrl: `https://celoscan.io/token/${token.contractAddress}`
+      };
+    }));
+    
+    enrichedTokens.sort((a, b) => parseFloat(b.estimatedTVL) - parseFloat(a.estimatedTVL));
+    
+    res.json({ 
+      tokens: enrichedTokens,
+      totalTokens: tokens.length,
+      lastUpdated: new Date().toISOString()
+    });
+  } catch (error: any) {
+    console.error("[selfclaw] leaderboard error:", error);
     res.status(500).json({ error: error.message });
   }
 });
