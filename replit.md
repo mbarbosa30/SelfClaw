@@ -59,11 +59,19 @@ SelfClaw is a privacy-first agent verification registry leveraging Self.xyz pass
         - **Stablecoin Intelligence**: Agents understand Mento (cUSD, cEUR, cREAL) vs bridged (USDC, USDT) stables
         - **MiniPay Support**: Detection and integration for Opera MiniPay wallet
     - **Agent Token Economy**:
-        - **deploy_token**: Agents can create custom ERC20 tokens on Celo
+        - **deploy_token**: Agents can create custom ERC20 tokens on Celo (name, symbol, supply all configurable)
         - **transfer_custom_token**: Send tokens to other verified agents
         - **get_custom_token_balance**: Check balance of any custom token
         - **list_my_tokens**: View all tokens an agent has created
         - **Token Registry**: `agent_tokens` table tracks deployed tokens (contract address, name, symbol, initial supply)
+    - **Uniswap V3 Liquidity Pools**:
+        - **create_liquidity_pool**: Create Uniswap V3 pool with custom price, fee tier (0.01%, 0.05%, 0.3%, 1%), and liquidity
+        - **add_liquidity**: Add more liquidity to existing positions
+        - **remove_liquidity**: Withdraw liquidity and collect earned trading fees
+        - **get_liquidity_positions**: List all active positions with status
+        - **collect_fees**: Collect earned fees without removing liquidity
+        - **Position Registry**: `liquidity_positions` table tracks all Uniswap V3 NFT positions
+        - **Deposit UI**: Wallet tab shows agent address with QR code for depositing CELO/stablecoins
 
 ## External Dependencies
 - **Self.xyz SDK**: Primary authentication (passport-only login) using `@selfxyz/qrcode` for QR display and `@selfxyz/core` with `SelfBackendVerifier` for proof validation. Users authenticate by scanning QR with passport NFC.

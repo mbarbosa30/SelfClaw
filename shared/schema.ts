@@ -271,4 +271,27 @@ export const agentTokens = pgTable("agent_tokens", {
 export type AgentToken = typeof agentTokens.$inferSelect;
 export type InsertAgentToken = typeof agentTokens.$inferInsert;
 
+export const liquidityPositions = pgTable("liquidity_positions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  agentId: varchar("agent_id").notNull().references(() => agents.id),
+  positionId: varchar("position_id").notNull(),
+  token0Address: varchar("token0_address").notNull(),
+  token1Address: varchar("token1_address").notNull(),
+  token0Symbol: varchar("token0_symbol").notNull(),
+  token1Symbol: varchar("token1_symbol").notNull(),
+  feeTier: integer("fee_tier").notNull(),
+  tickLower: integer("tick_lower").notNull(),
+  tickUpper: integer("tick_upper").notNull(),
+  liquidity: varchar("liquidity").notNull(),
+  token0Amount: varchar("token0_amount"),
+  token1Amount: varchar("token1_amount"),
+  mintTxHash: varchar("mint_tx_hash"),
+  active: boolean("active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type LiquidityPosition = typeof liquidityPositions.$inferSelect;
+export type InsertLiquidityPosition = typeof liquidityPositions.$inferInsert;
+
 export * from "./models/chat";

@@ -465,6 +465,27 @@
                     </div>
                   </div>
                   
+                  <div class="deposit-section" style="margin-top: 1.5rem; padding: 1rem; border: 2px solid var(--green); background: var(--gray-200);">
+                    <h4 style="margin-bottom: 0.75rem;">DEPOSIT TOKENS</h4>
+                    <p class="note" style="font-size: 0.75rem; margin-bottom: 0.75rem;">Send CELO, USDC, cUSD, or other tokens to your agent's wallet for DeFi operations</p>
+                    <div id="deposit-wallet-qr" style="text-align: center; margin: 1rem 0;">
+                      <canvas id="wallet-qr-canvas" style="max-width: 150px; border: 2px solid var(--gray-300);"></canvas>
+                    </div>
+                    <div style="background: var(--gray-100); padding: 0.5rem; font-family: monospace; font-size: 0.75rem; word-break: break-all; text-align: center; border: 1px solid var(--gray-300);">
+                      <span id="deposit-wallet-address">---</span>
+                      <button onclick="copyWalletAddress()" class="btn btn-sm" style="margin-left: 0.5rem; padding: 0.25rem 0.5rem;">Copy</button>
+                    </div>
+                    <p class="note" style="font-size: 0.65rem; margin-top: 0.5rem; text-align: center; opacity: 0.7;">Only send tokens on Celo network</p>
+                  </div>
+                  
+                  <div class="liquidity-section" style="margin-top: 1.5rem; padding: 1rem; border: 2px solid var(--gray-300); background: var(--gray-200);">
+                    <h4 style="margin-bottom: 0.75rem;">LIQUIDITY POSITIONS</h4>
+                    <p class="note" style="font-size: 0.75rem; margin-bottom: 0.75rem;">Uniswap V3 positions created by this agent</p>
+                    <div id="liquidity-positions-list">
+                      <p class="note">No liquidity positions yet. Agent can use create_liquidity_pool tool to add liquidity.</p>
+                    </div>
+                  </div>
+                  
                   <div class="agent-tokens-section" style="margin-top: 1.5rem; padding: 1rem; border: 2px solid var(--gray-300); background: var(--gray-200);">
                     <h4 style="margin-bottom: 0.75rem;">AGENT TOKENS</h4>
                     <p class="note" style="font-size: 0.75rem; margin-bottom: 0.75rem;">Custom ERC20 tokens created by this agent</p>

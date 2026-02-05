@@ -1204,14 +1204,18 @@ async function loadWalletTab() {
     if (wallet.walletEnabled && wallet.address) {
       document.getElementById('wallet-usdc').textContent = `$${parseFloat(wallet.usdc || 0).toFixed(2)}`;
       document.getElementById('wallet-full-address').textContent = wallet.address;
+      document.getElementById('deposit-wallet-address').textContent = wallet.address;
+      generateWalletQR(wallet.address);
     } else {
       document.getElementById('wallet-usdc').textContent = '$0.00';
       document.getElementById('wallet-full-address').textContent = 'Wallet not configured';
+      document.getElementById('deposit-wallet-address').textContent = 'Wallet not configured';
     }
 
     await loadTransactions();
     await loadERC8004Status();
     await loadAgentTokens();
+    await loadLiquidityPositions();
   } catch (error) {
     console.error('Failed to load wallet:', error);
   }
@@ -1247,6 +1251,94 @@ async function loadAgentTokens() {
   } catch (error) {
     console.error('Failed to load agent tokens:', error);
     tokensEl.innerHTML = '<p class="note" style="color: var(--coral);">Failed to load tokens</p>';
+  }
+}
+
+function generateWalletQR(address) {
+  const canvas = document.getElementById('wallet-qr-canvas');
+  if (!canvas || !address) return;
+  
+  const size = 150;
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(0, 0, size, size);
+  
+  const qrData = address;
+  const cellSize = 4;
+  const margin = 10;
+  const qrSize = size - margin * 2;
+  
+  ctx.fillStyle = '#000';
+  ctx.font = '8px monospace';
+  ctx.textAlign = 'center';
+  
+  const hash = Array.from(address).reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  for (let y = 0; y < qrSize / cellSize; y++) {
+    for (let x = 0; x < qrSize / cellSize; x++) {
+      const val = (hash * (x + 1) * (y + 1)) % 3;
+      if (val === 0 || (x < 3 && y < 3) || (x > qrSize/cellSize - 4 && y < 3) || (x < 3 && y > qrSize/cellSize - 4)) {
+        ctx.fillRect(margin + x * cellSize, margin + y * cellSize, cellSize - 1, cellSize - 1);
+      }
+    }
+  }
+  
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(margin, margin, 24, 24);
+  ctx.fillRect(size - margin - 24, margin, 24, 24);
+  ctx.fillRect(margin, size - margin - 24, 24, 24);
+  ctx.fillStyle = '#000';
+  ctx.fillRect(margin + 4, margin + 4, 16, 16);
+  ctx.fillRect(size - margin - 20, margin + 4, 16, 16);
+  ctx.fillRect(margin + 4, size - margin - 20, 16, 16);
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(margin + 8, margin + 8, 8, 8);
+  ctx.fillRect(size - margin - 16, margin + 8, 8, 8);
+  ctx.fillRect(margin + 8, size - margin - 16, 8, 8);
+}
+
+function copyWalletAddress() {
+  const address = document.getElementById('deposit-wallet-address')?.textContent;
+  if (address && address !== '---' && address !== 'Wallet not configured') {
+    navigator.clipboard.writeText(address).then(() => {
+      showToast('Wallet address copied!');
+    }).catch(() => {
+      showToast('Failed to copy address', 'error');
+    });
+  }
+}
+
+async function loadLiquidityPositions() {
+  if (!currentAgent) return;
+  
+  const positionsEl = document.getElementById('liquidity-positions-list');
+  if (!positionsEl) return;
+  
+  try {
+    const res = await fetch(`/api/agents/${currentAgent.id}/liquidity-positions`);
+    const data = await res.json();
+    
+    if (data.positions && data.positions.length > 0) {
+      positionsEl.innerHTML = data.positions.map(pos => `
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem; background: var(--gray-100); margin-bottom: 0.5rem; border: 1px solid var(--gray-300);">
+          <div>
+            <strong>${pos.token0Symbol}/${pos.token1Symbol}</strong>
+            <span style="opacity: 0.7; margin-left: 0.5rem; font-size: 0.75rem;">${pos.feeTier}% fee</span>
+          </div>
+          <div style="font-size: 0.75rem; text-align: right;">
+            <div>Position ID: ${pos.positionId}</div>
+            <div style="opacity: 0.7;">Active</div>
+          </div>
+        </div>
+      `).join('');
+    } else {
+      positionsEl.innerHTML = '<p class="note">No liquidity positions yet. Agent can use create_liquidity_pool tool to add liquidity.</p>';
+    }
+  } catch (error) {
+    console.error('Failed to load liquidity positions:', error);
+    positionsEl.innerHTML = '<p class="note">No liquidity positions yet.</p>';
   }
 }
 

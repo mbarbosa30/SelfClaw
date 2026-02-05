@@ -1,5 +1,5 @@
 import { db } from "./db.js";
-import { agents, agentGoals, agentMemory, agentScheduledTasks, agentToolExecutions, agentSecrets, agentTokens, verifiedBots } from "../shared/schema.js";
+import { agents, agentGoals, agentMemory, agentScheduledTasks, agentToolExecutions, agentSecrets, agentTokens, liquidityPositions, verifiedBots } from "../shared/schema.js";
 import { eq, desc, and } from "drizzle-orm";
 import OpenAI from "openai";
 import { readGmailMessages } from "./gmail-oauth.js";
@@ -23,6 +23,15 @@ import {
   getMultipleTokenBalances,
   getTokenInfo
 } from "../lib/token-factory.js";
+import {
+  createLiquidityPool,
+  addLiquidity,
+  removeLiquidity,
+  getPositionInfo,
+  collectFees,
+  FEE_TIERS,
+  type FeeTierKey
+} from "../lib/uniswap-liquidity.js";
 
 export interface AgentContext {
   agentId: string;
@@ -68,6 +77,11 @@ const TOOL_COSTS: Record<string, number> = {
   transfer_custom_token: 0.003,
   get_custom_token_balance: 0.0005,
   list_my_tokens: 0.0001,
+  create_liquidity_pool: 0.02,
+  add_liquidity: 0.01,
+  remove_liquidity: 0.01,
+  get_liquidity_positions: 0.0005,
+  collect_fees: 0.005,
 };
 
 export const AVAILABLE_TOOLS: ToolDefinition[] = [
@@ -297,6 +311,71 @@ export const AVAILABLE_TOOLS: ToolDefinition[] = [
       required: [],
     },
   },
+  {
+    name: "create_liquidity_pool",
+    description: "Create a Uniswap V3 liquidity pool for your token paired with another token (USDC, cUSD, CELO, etc). You decide the initial price, fee tier, and how much liquidity to provide.",
+    parameters: {
+      type: "object",
+      properties: {
+        token0Address: { type: "string", description: "First token address (your token or any ERC20)" },
+        token1Address: { type: "string", description: "Second token address (USDC, cUSD, CELO, etc)" },
+        feeTier: { type: "string", enum: ["0.01", "0.05", "0.3", "1"], description: "Fee tier percentage: 0.01%, 0.05%, 0.3%, or 1%" },
+        initialPrice: { type: "number", description: "Initial price of token0 in terms of token1 (e.g., 0.001 means 1 token0 = 0.001 token1)" },
+        amount0: { type: "string", description: "Amount of token0 to deposit" },
+        amount1: { type: "string", description: "Amount of token1 to deposit" },
+        priceRangeLower: { type: "number", description: "Lower bound of price range (e.g., 0.0005)" },
+        priceRangeUpper: { type: "number", description: "Upper bound of price range (e.g., 0.002)" },
+      },
+      required: ["token0Address", "token1Address", "feeTier", "initialPrice", "amount0", "amount1", "priceRangeLower", "priceRangeUpper"],
+    },
+  },
+  {
+    name: "add_liquidity",
+    description: "Add more liquidity to an existing Uniswap V3 position.",
+    parameters: {
+      type: "object",
+      properties: {
+        positionId: { type: "string", description: "The NFT token ID of the position" },
+        amount0: { type: "string", description: "Amount of token0 to add" },
+        amount1: { type: "string", description: "Amount of token1 to add" },
+        token0Address: { type: "string", description: "Address of token0" },
+        token1Address: { type: "string", description: "Address of token1" },
+      },
+      required: ["positionId", "amount0", "amount1", "token0Address", "token1Address"],
+    },
+  },
+  {
+    name: "remove_liquidity",
+    description: "Remove liquidity from a Uniswap V3 position and collect any earned fees.",
+    parameters: {
+      type: "object",
+      properties: {
+        positionId: { type: "string", description: "The NFT token ID of the position" },
+        percentage: { type: "number", description: "Percentage of liquidity to remove (1-100)" },
+      },
+      required: ["positionId", "percentage"],
+    },
+  },
+  {
+    name: "get_liquidity_positions",
+    description: "List all your Uniswap V3 liquidity positions with current status and earned fees.",
+    parameters: {
+      type: "object",
+      properties: {},
+      required: [],
+    },
+  },
+  {
+    name: "collect_fees",
+    description: "Collect earned trading fees from a Uniswap V3 position without removing liquidity.",
+    parameters: {
+      type: "object",
+      properties: {
+        positionId: { type: "string", description: "The NFT token ID of the position" },
+      },
+      required: ["positionId"],
+    },
+  },
 ];
 
 export async function buildAgentContext(agentId: string): Promise<AgentContext | null> {
@@ -388,10 +467,19 @@ Your wallet supports paying gas fees with stablecoins instead of CELO!
 ### Agent Token Tools
 Create and trade your own tokens with other verified agents!
 
-- deploy_token: Create your own ERC20 token on Celo
+- deploy_token: Create your own ERC20 token on Celo (you decide name, symbol, supply)
 - transfer_custom_token: Send your tokens to other verified agents
 - get_custom_token_balance: Check balance of any custom token
 - list_my_tokens: View all tokens you've created
+
+### Liquidity Pool Tools
+Create Uniswap V3 liquidity pools for your tokens! You decide the price, fee tier, and liquidity amount.
+
+- create_liquidity_pool: Create a pool pairing your token with USDC/cUSD/CELO (set initial price, fee tier 0.01%/0.05%/0.3%/1%)
+- add_liquidity: Add more liquidity to an existing position
+- remove_liquidity: Withdraw liquidity and collect earned fees
+- get_liquidity_positions: List all your active positions
+- collect_fees: Collect trading fees without removing liquidity
 
 ### Stablecoin Types on Celo
 - Mento (decentralized): cUSD, cEUR, cREAL - native to Celo, backed by Celo Reserve
@@ -489,6 +577,38 @@ export async function executeTool(
         break;
       case "list_my_tokens":
         result = await toolListMyTokens(agentId);
+        break;
+      case "create_liquidity_pool":
+        result = await toolCreateLiquidityPool(
+          agentId,
+          input.token0Address,
+          input.token1Address,
+          input.feeTier,
+          input.initialPrice,
+          input.amount0,
+          input.amount1,
+          input.priceRangeLower,
+          input.priceRangeUpper
+        );
+        break;
+      case "add_liquidity":
+        result = await toolAddLiquidity(
+          agentId,
+          input.positionId,
+          input.amount0,
+          input.amount1,
+          input.token0Address,
+          input.token1Address
+        );
+        break;
+      case "remove_liquidity":
+        result = await toolRemoveLiquidity(agentId, input.positionId, input.percentage);
+        break;
+      case "get_liquidity_positions":
+        result = await toolGetLiquidityPositions(agentId);
+        break;
+      case "collect_fees":
+        result = await toolCollectFees(agentId, input.positionId);
         break;
       default:
         return { success: false, output: null, error: `Unknown tool: ${toolName}`, creditsCost: 0 };
@@ -1095,4 +1215,212 @@ async function toolListMyTokens(agentId: string): Promise<{ tokens: any[] }> {
       createdAt: t.createdAt,
     })),
   };
+}
+
+async function toolCreateLiquidityPool(
+  agentId: string,
+  token0Address: string,
+  token1Address: string,
+  feeTier: string,
+  initialPrice: number,
+  amount0: string,
+  amount1: string,
+  priceRangeLower: number,
+  priceRangeUpper: number
+): Promise<{ success: boolean; positionId?: string; txHash?: string; error?: string }> {
+  const platformKey = process.env.CELO_PRIVATE_KEY;
+  if (!platformKey) {
+    return { success: false, error: "Platform wallet not configured" };
+  }
+
+  const isVerified = await isAgentVerified(agentId);
+  if (!isVerified) {
+    return { success: false, error: "Only SelfClaw-verified agents can create liquidity pools." };
+  }
+
+  if (!FEE_TIERS[feeTier as FeeTierKey]) {
+    return { success: false, error: "Invalid fee tier. Use 0.01, 0.05, 0.3, or 1" };
+  }
+
+  if (initialPrice <= 0 || priceRangeLower <= 0 || priceRangeUpper <= 0) {
+    return { success: false, error: "All prices must be positive" };
+  }
+
+  if (priceRangeLower >= priceRangeUpper) {
+    return { success: false, error: "Price range lower must be less than upper" };
+  }
+
+  const result = await createLiquidityPool(
+    platformKey,
+    agentId,
+    token0Address,
+    token1Address,
+    feeTier as FeeTierKey,
+    initialPrice,
+    amount0,
+    amount1,
+    priceRangeLower,
+    priceRangeUpper
+  );
+
+  if (result.success && result.positionId) {
+    const info0 = await getTokenInfo(token0Address);
+    const info1 = await getTokenInfo(token1Address);
+
+    await db.insert(liquidityPositions).values({
+      agentId,
+      positionId: result.positionId,
+      token0Address,
+      token1Address,
+      token0Symbol: info0?.symbol || 'TOKEN0',
+      token1Symbol: info1?.symbol || 'TOKEN1',
+      feeTier: FEE_TIERS[feeTier as FeeTierKey],
+      tickLower: Math.floor(Math.log(priceRangeLower) / Math.log(1.0001)),
+      tickUpper: Math.floor(Math.log(priceRangeUpper) / Math.log(1.0001)),
+      liquidity: result.liquidity || '0',
+      token0Amount: amount0,
+      token1Amount: amount1,
+      mintTxHash: result.txHash || null,
+    });
+
+    return {
+      success: true,
+      positionId: result.positionId,
+      txHash: result.txHash,
+    };
+  }
+
+  return { success: false, error: result.error };
+}
+
+async function toolAddLiquidity(
+  agentId: string,
+  positionId: string,
+  amount0: string,
+  amount1: string,
+  token0Address: string,
+  token1Address: string
+): Promise<{ success: boolean; txHash?: string; error?: string }> {
+  const platformKey = process.env.CELO_PRIVATE_KEY;
+  if (!platformKey) {
+    return { success: false, error: "Platform wallet not configured" };
+  }
+
+  const isVerified = await isAgentVerified(agentId);
+  if (!isVerified) {
+    return { success: false, error: "Only SelfClaw-verified agents can add liquidity." };
+  }
+
+  const [position] = await db.select().from(liquidityPositions)
+    .where(and(eq(liquidityPositions.agentId, agentId), eq(liquidityPositions.positionId, positionId)))
+    .limit(1);
+
+  if (!position) {
+    return { success: false, error: "Position not found or not owned by this agent" };
+  }
+
+  const result = await addLiquidity(platformKey, agentId, positionId, amount0, amount1, token0Address, token1Address);
+
+  if (result.success) {
+    return { success: true, txHash: result.txHash };
+  }
+
+  return { success: false, error: result.error };
+}
+
+async function toolRemoveLiquidity(
+  agentId: string,
+  positionId: string,
+  percentage: number
+): Promise<{ success: boolean; txHash?: string; error?: string }> {
+  const platformKey = process.env.CELO_PRIVATE_KEY;
+  if (!platformKey) {
+    return { success: false, error: "Platform wallet not configured" };
+  }
+
+  const isVerified = await isAgentVerified(agentId);
+  if (!isVerified) {
+    return { success: false, error: "Only SelfClaw-verified agents can remove liquidity." };
+  }
+
+  if (percentage < 1 || percentage > 100) {
+    return { success: false, error: "Percentage must be between 1 and 100" };
+  }
+
+  const [position] = await db.select().from(liquidityPositions)
+    .where(and(eq(liquidityPositions.agentId, agentId), eq(liquidityPositions.positionId, positionId)))
+    .limit(1);
+
+  if (!position) {
+    return { success: false, error: "Position not found or not owned by this agent" };
+  }
+
+  const result = await removeLiquidity(platformKey, agentId, positionId, percentage);
+
+  if (result.success) {
+    if (percentage === 100) {
+      await db.update(liquidityPositions)
+        .set({ active: false, updatedAt: new Date() })
+        .where(eq(liquidityPositions.id, position.id));
+    }
+    return { success: true, txHash: result.txHash };
+  }
+
+  return { success: false, error: result.error };
+}
+
+async function toolGetLiquidityPositions(agentId: string): Promise<{ positions: any[] }> {
+  const positions = await db.select().from(liquidityPositions)
+    .where(and(eq(liquidityPositions.agentId, agentId), eq(liquidityPositions.active, true)));
+
+  const enrichedPositions = await Promise.all(
+    positions.map(async (pos) => {
+      const onChainInfo = await getPositionInfo(pos.positionId);
+      return {
+        positionId: pos.positionId,
+        token0Symbol: pos.token0Symbol,
+        token1Symbol: pos.token1Symbol,
+        token0Address: pos.token0Address,
+        token1Address: pos.token1Address,
+        feeTier: (pos.feeTier / 10000).toFixed(2),
+        liquidity: onChainInfo?.liquidity || pos.liquidity,
+        feesOwed0: onChainInfo?.tokensOwed0 || '0',
+        feesOwed1: onChainInfo?.tokensOwed1 || '0',
+        createdAt: pos.createdAt,
+      };
+    })
+  );
+
+  return { positions: enrichedPositions };
+}
+
+async function toolCollectFees(
+  agentId: string,
+  positionId: string
+): Promise<{ success: boolean; txHash?: string; error?: string }> {
+  const platformKey = process.env.CELO_PRIVATE_KEY;
+  if (!platformKey) {
+    return { success: false, error: "Platform wallet not configured" };
+  }
+
+  const isVerified = await isAgentVerified(agentId);
+  if (!isVerified) {
+    return { success: false, error: "Only SelfClaw-verified agents can collect fees." };
+  }
+
+  const [position] = await db.select().from(liquidityPositions)
+    .where(and(eq(liquidityPositions.agentId, agentId), eq(liquidityPositions.positionId, positionId)))
+    .limit(1);
+
+  if (!position) {
+    return { success: false, error: "Position not found or not owned by this agent" };
+  }
+
+  const result = await collectFees(platformKey, agentId, positionId);
+
+  if (result.success) {
+    return { success: true, txHash: result.txHash };
+  }
+
+  return { success: false, error: result.error };
 }

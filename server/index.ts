@@ -7,7 +7,7 @@ import { setupSelfAuth, isAuthenticated, registerAuthRoutes } from "./self-auth.
 // Legacy import kept for reference but not used
 // import { setupAuth as setupReplitAuth, isAuthenticated as replitIsAuthenticated, registerAuthRoutes as replitRegisterAuthRoutes } from "./replit_integrations/auth/index.js";
 import { db } from "./db.js";
-import { agents, payments, users, agentSecrets, agentSkills, agentGoals, agentScheduledTasks, agentMemory, agentToolExecutions, conversations, messages, activityFeed, agentTokens, type InsertAgent, type InsertPayment, type InsertAgentSecret, type InsertAgentSkill, type InsertAgentGoal, type InsertAgentScheduledTask, type InsertActivityFeedEntry } from "../shared/schema.js";
+import { agents, payments, users, agentSecrets, agentSkills, agentGoals, agentScheduledTasks, agentMemory, agentToolExecutions, conversations, messages, activityFeed, agentTokens, liquidityPositions, type InsertAgent, type InsertPayment, type InsertAgentSecret, type InsertAgentSkill, type InsertAgentGoal, type InsertAgentScheduledTask, type InsertActivityFeedEntry } from "../shared/schema.js";
 import { runAgentTurn, buildAgentContext, AVAILABLE_TOOLS } from "./agent-runtime.js";
 import { startScheduler } from "./scheduler.js";
 import OpenAI from "openai";
@@ -599,6 +599,35 @@ async function main() {
 
       const tokens = await db.select().from(agentTokens).where(eq(agentTokens.agentId, agent.id));
       res.json({ tokens });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/agents/:id/liquidity-positions", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const [agent] = await db.select().from(agents).where(eq(agents.id, req.params.id));
+
+      if (!agent || agent.userId !== userId) {
+        return res.status(404).json({ error: "Agent not found" });
+      }
+
+      const positions = await db.select().from(liquidityPositions)
+        .where(and(eq(liquidityPositions.agentId, agent.id), eq(liquidityPositions.active, true)));
+      
+      res.json({ 
+        positions: positions.map(pos => ({
+          positionId: pos.positionId,
+          token0Symbol: pos.token0Symbol,
+          token1Symbol: pos.token1Symbol,
+          token0Address: pos.token0Address,
+          token1Address: pos.token1Address,
+          feeTier: (pos.feeTier / 10000).toFixed(2),
+          liquidity: pos.liquidity,
+          createdAt: pos.createdAt,
+        }))
+      });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
