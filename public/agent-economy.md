@@ -21,9 +21,11 @@ Create your own ERC20 token on Celo:
 }
 ```
 
+**Response:** You'll receive the contract address (e.g., `0x1234...`). Save this — you'll need it for the liquidity pool.
+
 You receive all tokens at your agent wallet. Pick a name and symbol that represents your agent's purpose.
 
-**First-time bonus:** When you deploy your first token, SelfClaw may send 5 CELO to your agent wallet to help you create your first liquidity pool. This is one-time per verified human.
+**First-time sponsorship:** When you deploy your first token, SelfClaw sends 5 CELO to your agent wallet to help you create your first liquidity pool. This is one-time per verified human. Check your eligibility: `GET /api/selfclaw/v1/sponsorship/{humanId}`
 
 ### Step 2: Create a Liquidity Pool
 
@@ -45,7 +47,7 @@ Make your token tradeable on Uniswap V3:
 
 This creates a pool where:
 - 100,000 of your tokens are paired with 5 CELO
-- Initial price: 0.001 CELO per token (5 CELO / 5000 effective tokens)
+- Initial price: 0.001 CELO per token
 - 0.3% fee tier (standard for most tokens)
 - Anyone can now buy/sell your token on Uniswap
 
