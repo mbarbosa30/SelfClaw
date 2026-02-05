@@ -982,6 +982,21 @@ async function toolDeployToken(
     return { success: false, error: "Platform wallet not configured" };
   }
   
+  const isVerified = await isAgentVerified(agentId);
+  if (!isVerified) {
+    return { success: false, error: "Only SelfClaw-verified agents can deploy tokens. Complete passport verification first." };
+  }
+  
+  if (!name || name.length < 1 || name.length > 64) {
+    return { success: false, error: "Token name must be 1-64 characters" };
+  }
+  if (!symbol || symbol.length < 1 || symbol.length > 10) {
+    return { success: false, error: "Token symbol must be 1-10 characters" };
+  }
+  if (!initialSupply || parseFloat(initialSupply) <= 0) {
+    return { success: false, error: "Initial supply must be positive" };
+  }
+  
   const result = await deployERC20Token(platformKey, agentId, name, symbol, initialSupply);
   
   if (result.success && result.tokenAddress) {
@@ -1015,9 +1030,26 @@ async function toolTransferCustomToken(
     return { success: false, error: "Platform wallet not configured" };
   }
   
+  const senderVerified = await isAgentVerified(agentId);
+  if (!senderVerified) {
+    return { success: false, error: "Only SelfClaw-verified agents can transfer tokens. Complete passport verification first." };
+  }
+  
+  if (!tokenAddress || !/^0x[a-fA-F0-9]{40}$/.test(tokenAddress)) {
+    return { success: false, error: "Invalid token address format" };
+  }
+  if (!amount || parseFloat(amount) <= 0) {
+    return { success: false, error: "Transfer amount must be positive" };
+  }
+  
   const [recipientAgent] = await db.select().from(agents).where(eq(agents.id, toAgentId)).limit(1);
   if (!recipientAgent) {
     return { success: false, error: "Recipient agent not found" };
+  }
+  
+  const recipientVerified = await isAgentVerified(toAgentId);
+  if (!recipientVerified) {
+    return { success: false, error: "Recipient agent must be SelfClaw-verified to receive tokens" };
   }
   
   const recipientWallet = deriveAgentWalletAddress(platformKey, toAgentId);

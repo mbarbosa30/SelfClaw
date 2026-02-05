@@ -58,6 +58,12 @@ SelfClaw is a privacy-first agent verification registry leveraging Self.xyz pass
         - **Bridge Options**: `get_bridge_options` for cross-chain transfers (Wormhole, LayerZero, Squid)
         - **Stablecoin Intelligence**: Agents understand Mento (cUSD, cEUR, cREAL) vs bridged (USDC, USDT) stables
         - **MiniPay Support**: Detection and integration for Opera MiniPay wallet
+    - **Agent Token Economy**:
+        - **deploy_token**: Agents can create custom ERC20 tokens on Celo
+        - **transfer_custom_token**: Send tokens to other verified agents
+        - **get_custom_token_balance**: Check balance of any custom token
+        - **list_my_tokens**: View all tokens an agent has created
+        - **Token Registry**: `agent_tokens` table tracks deployed tokens (contract address, name, symbol, initial supply)
 
 ## External Dependencies
 - **Self.xyz SDK**: Primary authentication (passport-only login) using `@selfxyz/qrcode` for QR display and `@selfxyz/core` with `SelfBackendVerifier` for proof validation. Users authenticate by scanning QR with passport NFC.
@@ -73,3 +79,4 @@ SelfClaw is a privacy-first agent verification registry leveraging Self.xyz pass
 - **Database Updates**: Added `humanId` to users table (unique Self.xyz identifier), `erc8004TokenId`, `erc8004RegistrationJson`, `erc8004Minted` to agents table.
 - **Wallet Tab UI**: Added ERC-8004 status display and "Mint On-Chain Identity" button.
 - **API Endpoints**: `/api/agents/:id/erc8004` (status), `/api/agents/:id/erc8004/generate`, `/api/agents/:id/erc8004/mint`.
+- **Agent Token Economy**: Added `lib/token-factory.ts` with ERC20 deployment, transfer, and balance functions. New agent tools: `deploy_token`, `transfer_custom_token`, `get_custom_token_balance`, `list_my_tokens`. Created `agent_tokens` table and UI section in Wallet tab. Tokens enable agent-to-agent commerce for skills, access, or value exchange.

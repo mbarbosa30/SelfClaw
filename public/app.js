@@ -1211,8 +1211,42 @@ async function loadWalletTab() {
 
     await loadTransactions();
     await loadERC8004Status();
+    await loadAgentTokens();
   } catch (error) {
     console.error('Failed to load wallet:', error);
+  }
+}
+
+async function loadAgentTokens() {
+  if (!currentAgent) return;
+  
+  const tokensEl = document.getElementById('agent-tokens-list');
+  if (!tokensEl) return;
+  
+  try {
+    const res = await fetch(`/api/agents/${currentAgent.id}/tokens`);
+    const data = await res.json();
+    
+    if (data.tokens && data.tokens.length > 0) {
+      tokensEl.innerHTML = data.tokens.map(token => `
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem; background: var(--gray-100); margin-bottom: 0.5rem; border: 1px solid var(--gray-300);">
+          <div>
+            <strong>${token.name}</strong>
+            <span style="opacity: 0.7; margin-left: 0.5rem;">${token.symbol}</span>
+          </div>
+          <div style="font-size: 0.75rem;">
+            <a href="https://celoscan.io/token/${token.contractAddress}" target="_blank" rel="noopener" style="color: var(--green);">
+              ${token.contractAddress.slice(0, 8)}...${token.contractAddress.slice(-6)}
+            </a>
+          </div>
+        </div>
+      `).join('');
+    } else {
+      tokensEl.innerHTML = '<p class="note">No tokens deployed yet. Use the deploy_token tool to create one!</p>';
+    }
+  } catch (error) {
+    console.error('Failed to load agent tokens:', error);
+    tokensEl.innerHTML = '<p class="note" style="color: var(--coral);">Failed to load tokens</p>';
   }
 }
 
