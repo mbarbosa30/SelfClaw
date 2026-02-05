@@ -489,7 +489,7 @@ async function main() {
         config: {
           chainId: config.chainId,
           identityRegistry: config.identityRegistry,
-          reputationRegistry: config.reputationRegistry,
+          resolver: config.resolver,
         }
       });
     } catch (error: any) {
@@ -591,7 +591,7 @@ async function main() {
       isDeployed: config.isDeployed,
       chainId: config.chainId,
       identityRegistry: config.identityRegistry,
-      reputationRegistry: config.reputationRegistry,
+      resolver: config.resolver,
       explorer: config.explorer,
     });
   });

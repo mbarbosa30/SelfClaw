@@ -1,24 +1,22 @@
 // ERC-8004 Configuration for Celo
-// Contract addresses will be updated once deployed to mainnet
+// Official mainnet contracts: https://docs.celo.org/build-on-celo/build-with-ai/8004#celo-mainnet
 
 export const ERC8004_CONFIG = {
-  // Celo Mainnet - Placeholder until contracts are deployed
+  // Celo Mainnet - LIVE
   mainnet: {
     chainId: 42220,
     rpcUrl: "https://forno.celo.org",
-    identityRegistry: "0x0000000000000000000000000000000000000000", // Coming soon
-    reputationRegistry: "0x0000000000000000000000000000000000000000", // Coming soon
-    validationRegistry: "0x0000000000000000000000000000000000000000", // Coming soon
+    identityRegistry: "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
+    resolver: "0x8004BAa17C55a88189AE136b182e5fdA19dE9b63",
     explorer: "https://celoscan.io",
   },
   
-  // Celo Sepolia Testnet - Placeholder until contracts are deployed
+  // Celo Alfajores Testnet
   testnet: {
     chainId: 44787,
     rpcUrl: "https://alfajores-forno.celo-testnet.org",
-    identityRegistry: "0x0000000000000000000000000000000000000000", // Coming soon
-    reputationRegistry: "0x0000000000000000000000000000000000000000", // Coming soon
-    validationRegistry: "0x0000000000000000000000000000000000000000", // Coming soon
+    identityRegistry: "0x0000000000000000000000000000000000000000", // Not deployed yet
+    resolver: "0x0000000000000000000000000000000000000000", // Not deployed yet
     explorer: "https://alfajores.celoscan.io",
   },
   

@@ -148,7 +148,7 @@ export class ERC8004Service {
       throw new Error("No signer available for attestation");
     }
     
-    const reputation = new ethers.Contract(config.reputationRegistry, REPUTATION_REGISTRY_ABI, signer);
+    const reputation = new ethers.Contract(config.resolver, REPUTATION_REGISTRY_ABI, signer);
     
     try {
       // Submit feedback with selfclaw-verified tag and perfect score
@@ -185,7 +185,7 @@ export class ERC8004Service {
     }
     
     const config = ERC8004_CONFIG.active;
-    const reputation = new ethers.Contract(config.reputationRegistry, REPUTATION_REGISTRY_ABI, this.provider);
+    const reputation = new ethers.Contract(config.resolver, REPUTATION_REGISTRY_ABI, this.provider);
     
     try {
       const summary = await reputation.getSummary(agentTokenId);
