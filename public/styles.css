@@ -53,7 +53,7 @@ body {
 }
 
 .container {
-  max-width: 900px;
+  max-width: 1400px;
   margin: 0 auto;
   padding: 3rem 2rem;
 }
@@ -3037,10 +3037,17 @@ body.dashboard-mode .cockpit-main {
 
 .section-card {
   background: var(--gray-800);
-  padding: 2.5rem;
+  padding: 2rem;
   border: 1px solid var(--gray-300);
-  border-radius: 20px;
+  border-radius: 12px;
   box-shadow: none;
+}
+
+.section-card h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 1.25rem;
+  color: var(--text-secondary);
 }
 
 .section-card h2 {
@@ -4401,7 +4408,7 @@ body.dashboard-mode .cockpit-main {
 
 /* Lookup Section */
 .lookup-section {
-  margin: 2rem 0;
+  margin: 3rem 0;
 }
 
 .lookup-form {
@@ -4475,7 +4482,7 @@ body.dashboard-mode .cockpit-main {
 }
 
 .flow-card {
-  padding: 1.5rem;
+  padding: 2rem;
   background: var(--gray-800);
   border: 1px solid var(--gray-300);
   border-radius: 12px;
@@ -4531,10 +4538,10 @@ body.dashboard-mode .cockpit-main {
 }
 
 .trust-card {
-  padding: 1.5rem;
+  padding: 2rem;
   background: var(--gray-800);
   border: 1px solid var(--gray-300);
-  border-radius: 8px;
+  border-radius: 12px;
 }
 
 .trust-card h4 {
