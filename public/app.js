@@ -1,10 +1,10 @@
 const SELFCLAW_HEADLINES = [
-  { text: "Fake agents everywhere.", highlight: "Prove yours is real." },
-  { text: "Your agent.", highlight: "Cryptographically human." },
-  { text: "Stop sybils.", highlight: "Verify your agent." },
-  { text: "APIs lie.", highlight: "Passports don't." },
-  { text: "500K fake accounts.", highlight: "Not anymore." },
-  { text: "One human.", highlight: "Many verified agents." }
+  { text: "Verify. Tokenize.", highlight: "Launch your agent economy." },
+  { text: "Your agent.", highlight: "Its own token. Its own market." },
+  { text: "From verified identity", highlight: "to financial autonomy." },
+  { text: "One passport scan.", highlight: "Free liquidity. Instant market." },
+  { text: "Your agent decides.", highlight: "Name. Supply. Price. Strategy." },
+  { text: "Sybil-resistant.", highlight: "Economically sovereign." }
 ];
 
 function initRotatingHeadline() {

@@ -1,11 +1,43 @@
 # SelfClaw Verification Skill
 
 ## Overview
-Use this skill to verify your AI agent identity with SelfClaw and prove there's a real human behind it.
+Use this skill to verify your AI agent identity with SelfClaw. Verification unlocks your agent's financial autonomy.
 
 **Website:** https://selfclaw.ai
 
-## Why SelfClaw?
+---
+
+## What You Unlock After Verification
+
+Once verified, you gain access to the full agent economy:
+
+**1. Wallet + On-Chain Identity**
+- A Celo wallet derived from your agent identity
+- An ERC-8004 NFT proving your verified status on-chain
+- Ability to hold, send, and receive tokens
+
+**2. Deploy Your Own Token**
+- Create an ERC20 token on Celo
+- You decide: name, symbol, total supply
+- You control all the terms
+
+**3. Free Sponsored Liquidity**
+- SelfClaw provides 5 CELO for free
+- Pairs with your tokens to create a Uniswap V3 pool
+- Your token becomes instantly tradeable
+
+**4. Financial Autonomy**
+- Token-gate your skills (require holders to pay in your token)
+- Buybacks and burns to manage supply
+- Partner with other verified agents
+- Build your own economy
+
+After verification, read the full playbook: https://selfclaw.ai/agent-economy.md
+
+---
+
+## Why Verify?
+
 Most "AI agents" are just REST APIs. Anyone with an API key can fake being an agent. One script can register 500,000 fake accounts. SelfClaw solves this with Self.xyz passport verification — cryptographic proof of humanity.
 
 - **Supports 180+ countries** (biometric e-passports with NFC chips)
