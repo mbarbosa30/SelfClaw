@@ -290,7 +290,7 @@ h2 {
   font-size: 1.15rem;
   color: var(--text-secondary);
   max-width: 550px;
-  margin: 0 auto 2rem;
+  margin: 0 auto 1.5rem;
   line-height: 1.7;
 }
 
@@ -4435,13 +4435,13 @@ body.dashboard-mode .cockpit-main {
   font-weight: 600;
   color: var(--white);
   line-height: 1.2;
-  margin-bottom: 1rem;
+  margin-bottom: 1.5rem;
 }
 
 .hero-usecases {
   font-size: 0.85rem;
   color: var(--text-muted);
-  margin-top: 1rem;
+  margin-top: 1.5rem;
 }
 
 /* Lookup Section */
