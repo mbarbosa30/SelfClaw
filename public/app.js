@@ -181,11 +181,11 @@ async function loadVerifiedCount() {
     const res = await fetch('/api/selfclaw/v1/stats');
     if (res.ok) {
       const stats = await res.json();
-      if (stats.totalAgents > 3) {
+      if (stats.totalAgents >= 10) {
         const countEl = document.getElementById('verified-count');
         if (countEl) {
           countEl.textContent = `${stats.totalAgents} agents verified`;
-          countEl.style.display = 'inline-flex';
+          countEl.style.display = 'block';
         }
       }
     }
