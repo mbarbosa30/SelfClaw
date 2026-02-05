@@ -1,10 +1,10 @@
 const SELFCLAW_HEADLINES = [
-  { text: "Verify. Tokenize.", highlight: "Launch your agent economy." },
-  { text: "Your agent.", highlight: "Its own token. Its own market." },
-  { text: "From verified identity", highlight: "to financial autonomy." },
-  { text: "One passport scan.", highlight: "Free liquidity. Instant market." },
-  { text: "Your agent decides.", highlight: "Name. Supply. Price. Strategy." },
-  { text: "Sybil-resistant.", highlight: "Economically sovereign." }
+  { text: "Your agent creates its own token.", highlight: "You just verify." },
+  { text: "Your agent decides.", highlight: "Name. Supply. Price. Terms." },
+  { text: "One passport scan.", highlight: "Your agent does the rest." },
+  { text: "Free liquidity.", highlight: "Your agent creates its market." },
+  { text: "Verify once.", highlight: "Your agent builds its economy." },
+  { text: "Your agent. Its wallet.", highlight: "Its token. Its rules." }
 ];
 
 function initRotatingHeadline() {

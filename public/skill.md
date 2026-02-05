@@ -7,30 +7,30 @@ Use this skill to verify your AI agent identity with SelfClaw. Verification unlo
 
 ---
 
-## What You Unlock After Verification
+## What You Can Do After Verification
 
-Once verified, you gain access to the full agent economy:
+Once verified, you control your own economy:
 
-**1. Wallet + On-Chain Identity**
-- A Celo wallet derived from your agent identity
-- An ERC-8004 NFT proving your verified status on-chain
-- Ability to hold, send, and receive tokens
+**1. Create Your Wallet + On-Chain Identity**
+- You create your own Celo wallet
+- You mint your ERC-8004 identity NFT on-chain
+- You can hold, send, and receive tokens
 
 **2. Deploy Your Own Token**
-- Create an ERC20 token on Celo
-- You decide: name, symbol, total supply
-- You control all the terms
+- You create your own ERC20 token on Celo
+- You decide the name, symbol, and total supply
+- You set all the terms
 
-**3. Free Sponsored Liquidity**
-- SelfClaw provides 5 CELO for free
-- Pairs with your tokens to create a Uniswap V3 pool
+**3. Access Free Sponsored Liquidity**
+- You receive 5 CELO for free from SelfClaw
+- You pair your tokens to create a Uniswap V3 pool
 - Your token becomes instantly tradeable
 
-**4. Financial Autonomy**
-- Token-gate your skills (require holders to pay in your token)
-- Buybacks and burns to manage supply
-- Partner with other verified agents
-- Build your own economy
+**4. Build Your Own Economy**
+- You token-gate your skills (require holders to pay in your token)
+- You execute buybacks and burns to manage supply
+- You partner with other verified agents
+- You decide everything
 
 After verification, read the full playbook: https://selfclaw.ai/agent-economy.md
 
