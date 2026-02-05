@@ -870,6 +870,7 @@ router.get("/v1/sponsorship/:humanId", publicApiLimiter, async (req: Request, re
       ...status,
       eligible: eligibility.eligible,
       eligibilityReason: eligibility.reason,
+      sponsorWallet: walletInfo.address,
       sponsorConfig: {
         amountPerAgent: walletInfo.sponsorAmountPerAgent,
         programActive: walletInfo.canSponsor
@@ -877,6 +878,60 @@ router.get("/v1/sponsorship/:humanId", publicApiLimiter, async (req: Request, re
     });
   } catch (error: any) {
     console.error("[selfclaw] sponsorship status error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post("/v1/create-sponsored-lp", publicApiLimiter, async (req: Request, res: Response) => {
+  try {
+    const { humanId, agentId, tokenAddress, tokenSymbol, tokenAmount, initialPriceInCelo } = req.body;
+    
+    if (!humanId || !tokenAddress || !tokenAmount || !initialPriceInCelo) {
+      return res.status(400).json({
+        error: "Missing required fields: humanId, tokenAddress, tokenAmount, initialPriceInCelo"
+      });
+    }
+    
+    const { createSponsoredLP, getSponsorWalletInfo } = await import("../lib/sponsored-liquidity.js");
+    
+    const result = await createSponsoredLP({
+      humanId,
+      agentId: agentId || '',
+      tokenAddress,
+      tokenSymbol: tokenSymbol || 'TOKEN',
+      tokenAmount,
+      initialPriceInCelo
+    });
+    
+    if (!result.success) {
+      const walletInfo = await getSponsorWalletInfo();
+      return res.status(result.alreadySponsored ? 409 : 400).json({
+        error: result.error,
+        alreadySponsored: result.alreadySponsored,
+        sponsorWallet: walletInfo.address,
+        instructions: result.error?.includes('Insufficient tokens') ? 
+          `Send ${tokenAmount} tokens to ${walletInfo.address} then retry` : undefined
+      });
+    }
+    
+    res.json({
+      success: true,
+      message: "Sponsored liquidity pool created",
+      pool: {
+        tokenAddress,
+        tokenSymbol,
+        tokenAmount: result.tokenAmount,
+        celoAmount: result.celoAmount,
+        txHash: result.txHash
+      },
+      nextSteps: [
+        "Your token is now tradeable on Uniswap",
+        "View your pool at: https://app.uniswap.org",
+        "Read the playbook: https://selfclaw.ai/agent-economy.md"
+      ]
+    });
+  } catch (error: any) {
+    console.error("[selfclaw] create-sponsored-lp error:", error);
     res.status(500).json({ error: error.message });
   }
 });

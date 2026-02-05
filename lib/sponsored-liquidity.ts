@@ -1,4 +1,4 @@
-import { createPublicClient, createWalletClient, http, parseUnits, formatUnits } from 'viem';
+import { createPublicClient, createWalletClient, http, parseUnits, formatUnits, encodeFunctionData, maxUint256 } from 'viem';
 import { celo } from 'viem/chains';
 import { privateKeyToAccount } from 'viem/accounts';
 import { db } from '../server/db.js';
@@ -182,18 +182,19 @@ export async function executeSponsoredLiquidity(
       };
     }
     
-    let sponsorshipId: number;
+    let sponsorshipId: string;
     let amountCelo: string;
     
-    let lockResult: { success: boolean; id?: number; amount?: string; status?: string };
+    let lockResult: { success: boolean; id?: string; amount?: string; status?: string };
     
     try {
       lockResult = await db.transaction(async (tx) => {
-        const lockedRow: any[] = await tx.execute(sql`
+        const lockedResult = await tx.execute(sql`
           SELECT id, sponsored_amount_celo, status FROM sponsored_agents 
           WHERE human_id = ${humanId} 
           FOR UPDATE NOWAIT
         `);
+        const lockedRow = (lockedResult as any).rows || [];
         
         if (lockedRow && lockedRow.length > 0) {
           const row = lockedRow[0];
@@ -213,12 +214,13 @@ export async function executeSponsoredLiquidity(
           return { success: true, id: row.id, amount: row.sponsored_amount_celo };
         }
         
-        const insertResult: any[] = await tx.execute(sql`
+        const insertRes = await tx.execute(sql`
           INSERT INTO sponsored_agents (human_id, agent_id, token_address, token_symbol, sponsored_amount_celo, status)
           VALUES (${humanId}, ${agentId || null}, ${tokenAddress}, ${tokenSymbol}, ${config.amountCelo}, 'in_progress')
           ON CONFLICT (human_id) DO NOTHING
           RETURNING id, sponsored_amount_celo
         `);
+        const insertResult = (insertRes as any).rows || [];
         
         if (insertResult && insertResult.length > 0) {
           return { success: true, id: insertResult[0].id, amount: insertResult[0].sponsored_amount_celo };
@@ -253,8 +255,8 @@ export async function executeSponsoredLiquidity(
       };
     }
     
-    sponsorshipId = lockResult.id;
-    amountCelo = lockResult.amount;
+    sponsorshipId = lockResult.id!;
+    amountCelo = lockResult.amount!;
     
     if (!SELFCLAW_SPONSOR_PRIVATE_KEY) {
       await db.update(sponsoredAgents)
@@ -394,6 +396,279 @@ export async function getSponsorWalletInfo(): Promise<{
       sponsorAmountPerAgent: SPONSORED_LIQUIDITY_AMOUNT,
       canSponsor: false,
       totalSponsored: 0
+    };
+  }
+}
+
+const UNISWAP_V3_POSITION_MANAGER = '0x3d79EdAaBC0EaB6F08ED885C05Fc0B014290D95A' as `0x${string}`;
+const WRAPPED_CELO = '0x471EcE3750Da237f93B8E339c536989b8978a438' as `0x${string}`;
+
+const POSITION_MANAGER_ABI = [
+  {
+    name: 'mint',
+    type: 'function',
+    stateMutability: 'payable',
+    inputs: [{
+      name: 'params',
+      type: 'tuple',
+      components: [
+        { name: 'token0', type: 'address' },
+        { name: 'token1', type: 'address' },
+        { name: 'fee', type: 'uint24' },
+        { name: 'tickLower', type: 'int24' },
+        { name: 'tickUpper', type: 'int24' },
+        { name: 'amount0Desired', type: 'uint256' },
+        { name: 'amount1Desired', type: 'uint256' },
+        { name: 'amount0Min', type: 'uint256' },
+        { name: 'amount1Min', type: 'uint256' },
+        { name: 'recipient', type: 'address' },
+        { name: 'deadline', type: 'uint256' },
+      ]
+    }],
+    outputs: [
+      { name: 'tokenId', type: 'uint256' },
+      { name: 'liquidity', type: 'uint128' },
+      { name: 'amount0', type: 'uint256' },
+      { name: 'amount1', type: 'uint256' },
+    ]
+  },
+  {
+    name: 'createAndInitializePoolIfNecessary',
+    type: 'function',
+    stateMutability: 'payable',
+    inputs: [
+      { name: 'token0', type: 'address' },
+      { name: 'token1', type: 'address' },
+      { name: 'fee', type: 'uint24' },
+      { name: 'sqrtPriceX96', type: 'uint160' },
+    ],
+    outputs: [{ name: 'pool', type: 'address' }]
+  },
+] as const;
+
+export interface SponsoredLPRequest {
+  humanId: string;
+  agentId: string;
+  tokenAddress: string;
+  tokenSymbol: string;
+  tokenAmount: string;
+  initialPriceInCelo: string;
+}
+
+export interface SponsoredLPResult {
+  success: boolean;
+  poolAddress?: string;
+  positionId?: string;
+  tokenAmount?: string;
+  celoAmount?: string;
+  txHash?: string;
+  error?: string;
+  alreadySponsored?: boolean;
+}
+
+function priceToSqrtPriceX96(price: number): bigint {
+  const sqrtPrice = Math.sqrt(price);
+  const sqrtPriceX96 = sqrtPrice * (2 ** 96);
+  return BigInt(Math.floor(sqrtPriceX96));
+}
+
+function getTickSpacing(fee: number): number {
+  if (fee === 100) return 1;
+  if (fee === 500) return 10;
+  if (fee === 3000) return 60;
+  if (fee === 10000) return 200;
+  return 60;
+}
+
+function alignTickToSpacing(tick: number, spacing: number): number {
+  return Math.floor(tick / spacing) * spacing;
+}
+
+function priceToTick(price: number): number {
+  return Math.floor(Math.log(price) / Math.log(1.0001));
+}
+
+export async function createSponsoredLP(request: SponsoredLPRequest): Promise<SponsoredLPResult> {
+  const { humanId, agentId, tokenAddress, tokenSymbol, tokenAmount, initialPriceInCelo } = request;
+  
+  try {
+    const verified = await db.select()
+      .from(verifiedBots)
+      .where(eq(verifiedBots.humanId, humanId))
+      .limit(1);
+    
+    if (verified.length === 0) {
+      return {
+        success: false,
+        error: 'Only verified agents can receive sponsored liquidity'
+      };
+    }
+    
+    const existingSponsorship = await db.select()
+      .from(sponsoredAgents)
+      .where(eq(sponsoredAgents.humanId, humanId))
+      .limit(1);
+    
+    if (existingSponsorship.length > 0 && existingSponsorship[0].status === 'completed') {
+      return {
+        success: false,
+        error: 'This human identity has already received sponsored liquidity',
+        alreadySponsored: true
+      };
+    }
+    
+    const config = await getSponsorshipConfig();
+    if (!config.enabled) {
+      return {
+        success: false,
+        error: 'Sponsorship program is currently unavailable'
+      };
+    }
+    
+    if (!SELFCLAW_SPONSOR_PRIVATE_KEY) {
+      return {
+        success: false,
+        error: 'Sponsor wallet not configured'
+      };
+    }
+    
+    const account = privateKeyToAccount(SELFCLAW_SPONSOR_PRIVATE_KEY as `0x${string}`);
+    const walletClient = createWalletClient({
+      account,
+      chain: celo,
+      transport: http()
+    });
+    
+    const tokenAddr = tokenAddress as `0x${string}`;
+    const tokenBalance = await publicClient.readContract({
+      address: tokenAddr,
+      abi: ERC20_ABI,
+      functionName: 'balanceOf',
+      args: [account.address]
+    });
+    
+    const requiredTokens = parseUnits(tokenAmount, 18);
+    if (tokenBalance < requiredTokens) {
+      return {
+        success: false,
+        error: `Insufficient tokens received. Expected ${tokenAmount}, got ${formatUnits(tokenBalance, 18)}. Send tokens to ${account.address} first.`
+      };
+    }
+    
+    const celoAmount = config.amountCelo;
+    const celoWei = parseUnits(celoAmount, 18);
+    
+    const price = parseFloat(initialPriceInCelo);
+    let addr0 = tokenAddr;
+    let addr1 = WRAPPED_CELO;
+    let amt0 = requiredTokens;
+    let amt1 = celoWei;
+    let adjustedPrice = price;
+    
+    if (addr0.toLowerCase() > addr1.toLowerCase()) {
+      [addr0, addr1] = [addr1, addr0];
+      [amt0, amt1] = [amt1, amt0];
+      adjustedPrice = 1 / price;
+    }
+    
+    const fee = 3000;
+    const tickSpacing = getTickSpacing(fee);
+    const sqrtPriceX96 = priceToSqrtPriceX96(adjustedPrice);
+    
+    const createPoolData = encodeFunctionData({
+      abi: POSITION_MANAGER_ABI,
+      functionName: 'createAndInitializePoolIfNecessary',
+      args: [addr0, addr1, fee, sqrtPriceX96]
+    });
+    
+    const createPoolHash = await walletClient.sendTransaction({
+      to: UNISWAP_V3_POSITION_MANAGER,
+      data: createPoolData,
+      value: addr0 === WRAPPED_CELO ? amt0 : (addr1 === WRAPPED_CELO ? amt1 : 0n)
+    });
+    await publicClient.waitForTransactionReceipt({ hash: createPoolHash });
+    
+    const approveData = encodeFunctionData({
+      abi: ERC20_ABI,
+      functionName: 'approve',
+      args: [UNISWAP_V3_POSITION_MANAGER, maxUint256]
+    });
+    
+    const approveHash = await walletClient.sendTransaction({
+      to: tokenAddr,
+      data: approveData
+    });
+    await publicClient.waitForTransactionReceipt({ hash: approveHash });
+    
+    const currentTick = priceToTick(adjustedPrice);
+    const tickRange = 6000;
+    const tickLower = alignTickToSpacing(currentTick - tickRange, tickSpacing);
+    const tickUpper = alignTickToSpacing(currentTick + tickRange, tickSpacing);
+    const deadline = BigInt(Math.floor(Date.now() / 1000) + 3600);
+    
+    const mintParams = {
+      token0: addr0,
+      token1: addr1,
+      fee,
+      tickLower,
+      tickUpper,
+      amount0Desired: amt0,
+      amount1Desired: amt1,
+      amount0Min: 0n,
+      amount1Min: 0n,
+      recipient: account.address,
+      deadline
+    };
+    
+    const mintData = encodeFunctionData({
+      abi: POSITION_MANAGER_ABI,
+      functionName: 'mint',
+      args: [mintParams]
+    });
+    
+    const celoValue = addr0 === WRAPPED_CELO ? amt0 : (addr1 === WRAPPED_CELO ? amt1 : 0n);
+    
+    const mintHash = await walletClient.sendTransaction({
+      to: UNISWAP_V3_POSITION_MANAGER,
+      data: mintData,
+      value: celoValue
+    });
+    
+    const mintReceipt = await publicClient.waitForTransactionReceipt({ hash: mintHash });
+    
+    await db.insert(sponsoredAgents).values({
+      humanId,
+      agentId,
+      tokenAddress,
+      tokenSymbol,
+      sponsoredAmountCelo: celoAmount,
+      sponsorTxHash: mintHash,
+      status: 'completed',
+      completedAt: new Date()
+    }).onConflictDoUpdate({
+      target: sponsoredAgents.humanId,
+      set: {
+        tokenAddress,
+        tokenSymbol,
+        sponsorTxHash: mintHash,
+        status: 'completed',
+        completedAt: new Date()
+      }
+    });
+    
+    console.log(`[sponsored-liquidity] Created LP for ${tokenSymbol}: ${tokenAmount} tokens + ${celoAmount} CELO (tx: ${mintHash})`);
+    
+    return {
+      success: true,
+      tokenAmount,
+      celoAmount,
+      txHash: mintHash
+    };
+  } catch (error: any) {
+    console.error('[sponsored-liquidity] LP creation error:', error);
+    return {
+      success: false,
+      error: error.message || 'Failed to create sponsored liquidity pool'
     };
   }
 }
