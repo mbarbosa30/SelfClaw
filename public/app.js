@@ -2383,40 +2383,37 @@ async function startAgentVerification() {
 function handleVerificationSuccess(pubkey, agentName) {
   const statusEl = document.getElementById('verification-status');
   
-  const agentPrompt = `Read this document carefully: https://selfclaw.ai/agent-economy.md
-
-You are now a verified agent on SelfClaw. This document explains how to:
-1. Create your own wallet with an on-chain identity (ERC-8004)
-2. Deploy your own token with whatever name, ticker, and supply you choose
-3. Access free sponsored liquidity (5 CELO) to make your token tradeable on Uniswap
-4. Strategies for token utility, pricing, and growth
-
-Read it and tell me what you want to do.`;
+  const agentPrompt = `Read https://selfclaw.ai/agent-economy.md — you're now verified on SelfClaw. This guide shows how to create a wallet, deploy your own token, and access 100 CELO in sponsored liquidity.`;
 
   if (statusEl) {
     statusEl.innerHTML = `
-      <div style="text-align: center;">
-        <span style="color: #00FFB6; font-weight: 600; font-size: 1.1rem;">Verified</span>
-        <p style="margin-top: 0.5rem; font-size: 0.85rem; color: #ccc;">
-          Your agent is now linked to your human identity.
+      <div style="text-align: center; margin-bottom: 1.5rem;">
+        <div style="color: #00FFB6; font-size: 1.5rem; font-weight: 600; margin-bottom: 0.5rem;">Verified</div>
+        <p style="font-size: 0.9rem; color: var(--text-secondary); line-height: 1.5;">
+          Your agent is now linked to your passport-backed human identity.
         </p>
       </div>
       
-      <div style="margin-top: 1.25rem; padding: 1rem; background: rgba(0,255,182,0.05); border: 1px solid rgba(0,255,182,0.2); border-radius: 8px; text-align: left;">
-        <p style="color: #00FFB6; font-weight: 600; font-size: 0.9rem; margin-bottom: 0.75rem;">Next: Give this to your agent</p>
-        <p style="color: #aaa; font-size: 0.75rem; margin-bottom: 0.75rem;">Copy this prompt and paste it to your agent. It will learn how to create its wallet, deploy its token, and access free liquidity.</p>
-        <div style="background: #0a0a0a; padding: 0.75rem; border-radius: 6px; font-family: monospace; font-size: 0.7rem; color: #888; white-space: pre-wrap; word-break: break-word; max-height: 140px; overflow-y: auto; border: 1px solid #222;" id="agent-prompt-text">${escapeHtml(agentPrompt)}</div>
-        <button onclick="copyAgentPrompt()" class="btn btn-primary btn-sm" style="margin-top: 0.75rem; width: 100%;" id="copy-prompt-btn">Copy Prompt</button>
+      <div style="display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap; margin-bottom: 1.5rem;">
+        <a href="/developers" class="btn btn-primary">Developer Docs</a>
+        <a href="/registry" class="btn btn-outline">View Registry</a>
       </div>
       
-      <div style="margin-top: 1rem; display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap;">
-        <a href="/developers" class="btn btn-outline btn-sm">Developer Docs</a>
-        <a href="/registry" class="btn btn-outline btn-sm">Registry</a>
-      </div>
+      <details style="text-align: left;">
+        <summary style="color: var(--text-muted); cursor: pointer; font-size: 0.85rem; padding: 0.5rem 0;">Optional: Agent Economy</summary>
+        <div style="margin-top: 1rem; padding: 1rem; background: rgba(255,255,255,0.02); border: 1px solid var(--border-subtle); border-radius: 8px;">
+          <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 1rem; line-height: 1.5;">
+            Verified agents can optionally create wallets, deploy tokens, and access 100 CELO in sponsored liquidity. Give this prompt to your agent:
+          </p>
+          <div style="background: var(--bg-darker); padding: 0.75rem; border-radius: 6px; font-family: monospace; font-size: 0.8rem; color: var(--text-muted); word-break: break-word; border: 1px solid var(--border-subtle);" id="agent-prompt-text">${escapeHtml(agentPrompt)}</div>
+          <button onclick="copyAgentPrompt()" class="btn btn-outline btn-sm" style="margin-top: 0.75rem; width: 100%;" id="copy-prompt-btn">Copy Prompt</button>
+        </div>
+      </details>
     `;
-    statusEl.style.background = 'rgba(255,255,255,0.03)';
-    statusEl.style.border = '1px solid #444';
-    statusEl.style.padding = '1.25rem';
+    statusEl.style.background = 'rgba(255,255,255,0.02)';
+    statusEl.style.border = '1px solid var(--border-subtle)';
+    statusEl.style.padding = '1.5rem';
+    statusEl.style.borderRadius = '12px';
   }
   const qrImg = document.getElementById('qr-code-img');
   if (qrImg) qrImg.style.display = 'none';

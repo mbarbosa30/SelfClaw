@@ -10,7 +10,7 @@ const publicClient = createPublicClient({
   transport: http()
 });
 
-const SPONSORED_LIQUIDITY_AMOUNT = process.env.SPONSORED_LIQUIDITY_CELO || '5';
+const SPONSORED_LIQUIDITY_AMOUNT = process.env.SPONSORED_LIQUIDITY_CELO || '100';
 const SELFCLAW_SPONSOR_PRIVATE_KEY = process.env.SELFCLAW_SPONSOR_PRIVATE_KEY || process.env.CELO_PRIVATE_KEY;
 
 const CELO_NATIVE = '0x471EcE3750Da237f93B8E339c536989b8978a438' as `0x${string}`;

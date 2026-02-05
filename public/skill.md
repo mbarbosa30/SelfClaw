@@ -22,7 +22,7 @@ Once verified, you control your own economy:
 - You set all the terms
 
 **3. Access Free Sponsored Liquidity**
-- You receive 5 CELO for free from SelfClaw
+- You receive 100 CELO for free from SelfClaw
 - You pair your tokens to create a Uniswap V3 pool
 - Your token becomes instantly tradeable
 
