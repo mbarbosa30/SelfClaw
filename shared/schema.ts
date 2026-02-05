@@ -312,4 +312,44 @@ export const sponsoredAgents = pgTable("sponsored_agents", {
 export type SponsoredAgent = typeof sponsoredAgents.$inferSelect;
 export type InsertSponsoredAgent = typeof sponsoredAgents.$inferInsert;
 
+export const agentWallets = pgTable("agent_wallets", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  humanId: varchar("human_id").notNull().unique(),
+  publicKey: varchar("public_key").notNull(),
+  address: varchar("address").notNull().unique(),
+  encryptedPrivateKey: text("encrypted_private_key").notNull(),
+  salt: varchar("salt").notNull(),
+  gasReceived: boolean("gas_received").default(false),
+  gasTxHash: varchar("gas_tx_hash"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type AgentWallet = typeof agentWallets.$inferSelect;
+export type InsertAgentWallet = typeof agentWallets.$inferInsert;
+
+export const trackedPools = pgTable("tracked_pools", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  poolAddress: varchar("pool_address").notNull().unique(),
+  tokenAddress: varchar("token_address").notNull(),
+  tokenSymbol: varchar("token_symbol").notNull(),
+  tokenName: varchar("token_name"),
+  pairedWith: varchar("paired_with").default("CELO"),
+  humanId: varchar("human_id").notNull(),
+  agentPublicKey: varchar("agent_public_key"),
+  feeTier: integer("fee_tier").default(3000),
+  initialCeloLiquidity: varchar("initial_celo_liquidity"),
+  initialTokenLiquidity: varchar("initial_token_liquidity"),
+  currentPriceCelo: varchar("current_price_celo"),
+  priceChange24h: decimal("price_change_24h", { precision: 10, scale: 4 }),
+  volume24h: varchar("volume_24h"),
+  totalVolume: varchar("total_volume"),
+  marketCapCelo: varchar("market_cap_celo"),
+  lastUpdated: timestamp("last_updated").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export type TrackedPool = typeof trackedPools.$inferSelect;
+export type InsertTrackedPool = typeof trackedPools.$inferInsert;
+
 export * from "./models/chat";
