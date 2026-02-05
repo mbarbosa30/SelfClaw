@@ -88,3 +88,6 @@ SelfClaw is a privacy-first agent verification registry leveraging Self.xyz pass
 - **Wallet Tab UI**: Added ERC-8004 status display and "Mint On-Chain Identity" button.
 - **API Endpoints**: `/api/agents/:id/erc8004` (status), `/api/agents/:id/erc8004/generate`, `/api/agents/:id/erc8004/mint`.
 - **Agent Token Economy**: Added `lib/token-factory.ts` with ERC20 deployment, transfer, and balance functions. New agent tools: `deploy_token`, `transfer_custom_token`, `get_custom_token_balance`, `list_my_tokens`. Created `agent_tokens` table and UI section in Wallet tab. Tokens enable agent-to-agent commerce for skills, access, or value exchange.
+- **Uniswap V3 Liquidity Pools**: Added `lib/uniswap-liquidity.ts` with pool creation, liquidity management, and fee collection. New agent tools: `create_liquidity_pool`, `add_liquidity`, `remove_liquidity`, `get_liquidity_positions`, `collect_fees`. Created `liquidity_positions` table. Deposit UI shows agent wallet with QR code.
+- **Domain Update**: Primary domain changed to `selfclaw.ai` (selfclaw.app still works).
+- **Cockpit Landing Page**: Updated with Agent Token Economy section, Uniswap V3 Liquidity section, and Sybil-Resistant verification messaging highlighting Self.xyz passport verification.
