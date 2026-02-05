@@ -504,19 +504,6 @@ export async function createSponsoredLP(request: SponsoredLPRequest): Promise<Sp
       };
     }
     
-    const existingSponsorship = await db.select()
-      .from(sponsoredAgents)
-      .where(eq(sponsoredAgents.humanId, humanId))
-      .limit(1);
-    
-    if (existingSponsorship.length > 0 && existingSponsorship[0].status === 'completed') {
-      return {
-        success: false,
-        error: 'This human identity has already received sponsored liquidity',
-        alreadySponsored: true
-      };
-    }
-    
     const config = await getSponsorshipConfig();
     if (!config.enabled) {
       return {
@@ -531,6 +518,78 @@ export async function createSponsoredLP(request: SponsoredLPRequest): Promise<Sp
         error: 'Sponsor wallet not configured'
       };
     }
+    
+    let sponsorshipId: string;
+    let lockResult: { success: boolean; id?: string; status?: string };
+    
+    try {
+      lockResult = await db.transaction(async (tx) => {
+        const lockedResult = await tx.execute(sql`
+          SELECT id, status FROM sponsored_agents 
+          WHERE human_id = ${humanId} 
+          FOR UPDATE NOWAIT
+        `);
+        const lockedRow = (lockedResult as any).rows || [];
+        
+        if (lockedRow && lockedRow.length > 0) {
+          const row = lockedRow[0];
+          if (row.status === 'completed' || row.status === 'in_progress') {
+            return { success: false, status: row.status };
+          }
+          
+          await tx.execute(sql`
+            UPDATE sponsored_agents 
+            SET status = 'in_progress', 
+                token_address = ${tokenAddress}, 
+                token_symbol = ${tokenSymbol}, 
+                agent_id = ${agentId || null}
+            WHERE id = ${row.id}
+          `);
+          
+          return { success: true, id: row.id };
+        }
+        
+        const insertRes = await tx.execute(sql`
+          INSERT INTO sponsored_agents (human_id, agent_id, token_address, token_symbol, sponsored_amount_celo, status)
+          VALUES (${humanId}, ${agentId || null}, ${tokenAddress}, ${tokenSymbol}, ${config.amountCelo}, 'in_progress')
+          ON CONFLICT (human_id) DO NOTHING
+          RETURNING id
+        `);
+        const insertResult = (insertRes as any).rows || [];
+        
+        if (insertResult && insertResult.length > 0) {
+          return { success: true, id: insertResult[0].id };
+        }
+        
+        return { success: false, status: 'conflict' };
+      });
+    } catch (txError: any) {
+      if (txError.code === '55P03') {
+        return {
+          success: false,
+          error: 'Sponsorship creation already in progress',
+          alreadySponsored: true
+        };
+      }
+      throw txError;
+    }
+    
+    if (!lockResult.success) {
+      if (lockResult.status === 'completed') {
+        return {
+          success: false,
+          error: 'This human identity has already received sponsored liquidity',
+          alreadySponsored: true
+        };
+      }
+      return {
+        success: false,
+        error: 'Sponsorship already in progress or completed',
+        alreadySponsored: true
+      };
+    }
+    
+    sponsorshipId = lockResult.id!;
     
     const account = privateKeyToAccount(SELFCLAW_SPONSOR_PRIVATE_KEY as `0x${string}`);
     const walletClient = createWalletClient({
@@ -549,6 +608,7 @@ export async function createSponsoredLP(request: SponsoredLPRequest): Promise<Sp
     
     const requiredTokens = parseUnits(tokenAmount, 18);
     if (tokenBalance < requiredTokens) {
+      await db.execute(sql`UPDATE sponsored_agents SET status = 'pending' WHERE id = ${sponsorshipId}`);
       return {
         success: false,
         error: `Insufficient tokens received. Expected ${tokenAmount}, got ${formatUnits(tokenBalance, 18)}. Send tokens to ${account.address} first.`
@@ -575,95 +635,94 @@ export async function createSponsoredLP(request: SponsoredLPRequest): Promise<Sp
     const tickSpacing = getTickSpacing(fee);
     const sqrtPriceX96 = priceToSqrtPriceX96(adjustedPrice);
     
-    const createPoolData = encodeFunctionData({
-      abi: POSITION_MANAGER_ABI,
-      functionName: 'createAndInitializePoolIfNecessary',
-      args: [addr0, addr1, fee, sqrtPriceX96]
-    });
-    
-    const createPoolHash = await walletClient.sendTransaction({
-      to: UNISWAP_V3_POSITION_MANAGER,
-      data: createPoolData,
-      value: addr0 === WRAPPED_CELO ? amt0 : (addr1 === WRAPPED_CELO ? amt1 : 0n)
-    });
-    await publicClient.waitForTransactionReceipt({ hash: createPoolHash });
-    
-    const approveData = encodeFunctionData({
-      abi: ERC20_ABI,
-      functionName: 'approve',
-      args: [UNISWAP_V3_POSITION_MANAGER, maxUint256]
-    });
-    
-    const approveHash = await walletClient.sendTransaction({
-      to: tokenAddr,
-      data: approveData
-    });
-    await publicClient.waitForTransactionReceipt({ hash: approveHash });
-    
-    const currentTick = priceToTick(adjustedPrice);
-    const tickRange = 6000;
-    const tickLower = alignTickToSpacing(currentTick - tickRange, tickSpacing);
-    const tickUpper = alignTickToSpacing(currentTick + tickRange, tickSpacing);
-    const deadline = BigInt(Math.floor(Date.now() / 1000) + 3600);
-    
-    const mintParams = {
-      token0: addr0,
-      token1: addr1,
-      fee,
-      tickLower,
-      tickUpper,
-      amount0Desired: amt0,
-      amount1Desired: amt1,
-      amount0Min: 0n,
-      amount1Min: 0n,
-      recipient: account.address,
-      deadline
-    };
-    
-    const mintData = encodeFunctionData({
-      abi: POSITION_MANAGER_ABI,
-      functionName: 'mint',
-      args: [mintParams]
-    });
-    
-    const celoValue = addr0 === WRAPPED_CELO ? amt0 : (addr1 === WRAPPED_CELO ? amt1 : 0n);
-    
-    const mintHash = await walletClient.sendTransaction({
-      to: UNISWAP_V3_POSITION_MANAGER,
-      data: mintData,
-      value: celoValue
-    });
-    
-    const mintReceipt = await publicClient.waitForTransactionReceipt({ hash: mintHash });
-    
-    await db.insert(sponsoredAgents).values({
-      humanId,
-      agentId,
-      tokenAddress,
-      tokenSymbol,
-      sponsoredAmountCelo: celoAmount,
-      sponsorTxHash: mintHash,
-      status: 'completed',
-      completedAt: new Date()
-    }).onConflictDoUpdate({
-      target: sponsoredAgents.humanId,
-      set: {
-        tokenAddress,
-        tokenSymbol,
-        sponsorTxHash: mintHash,
-        status: 'completed',
-        completedAt: new Date()
-      }
-    });
-    
-    console.log(`[sponsored-liquidity] Created LP for ${tokenSymbol}: ${tokenAmount} tokens + ${celoAmount} CELO (tx: ${mintHash})`);
-    
-    return {
-      success: true,
-      tokenAmount,
-      celoAmount,
-      txHash: mintHash
-    };
+    try {
+      const createPoolData = encodeFunctionData({
+        abi: POSITION_MANAGER_ABI,
+        functionName: 'createAndInitializePoolIfNecessary',
+        args: [addr0, addr1, fee, sqrtPriceX96]
+      });
+      
+      const createPoolHash = await walletClient.sendTransaction({
+        to: UNISWAP_V3_POSITION_MANAGER,
+        data: createPoolData,
+        value: 0n
+      });
+      await publicClient.waitForTransactionReceipt({ hash: createPoolHash });
+      
+      const approveData = encodeFunctionData({
+        abi: ERC20_ABI,
+        functionName: 'approve',
+        args: [UNISWAP_V3_POSITION_MANAGER, maxUint256]
+      });
+      
+      const approveHash = await walletClient.sendTransaction({
+        to: tokenAddr,
+        data: approveData
+      });
+      await publicClient.waitForTransactionReceipt({ hash: approveHash });
+      
+      const currentTick = priceToTick(adjustedPrice);
+      const tickRange = 6000;
+      const tickLower = alignTickToSpacing(currentTick - tickRange, tickSpacing);
+      const tickUpper = alignTickToSpacing(currentTick + tickRange, tickSpacing);
+      const deadline = BigInt(Math.floor(Date.now() / 1000) + 3600);
+      
+      const mintParams = {
+        token0: addr0,
+        token1: addr1,
+        fee,
+        tickLower,
+        tickUpper,
+        amount0Desired: amt0,
+        amount1Desired: amt1,
+        amount0Min: 0n,
+        amount1Min: 0n,
+        recipient: account.address,
+        deadline
+      };
+      
+      const mintData = encodeFunctionData({
+        abi: POSITION_MANAGER_ABI,
+        functionName: 'mint',
+        args: [mintParams]
+      });
+      
+      const celoValue = addr0 === WRAPPED_CELO ? amt0 : (addr1 === WRAPPED_CELO ? amt1 : 0n);
+      
+      const mintHash = await walletClient.sendTransaction({
+        to: UNISWAP_V3_POSITION_MANAGER,
+        data: mintData,
+        value: celoValue
+      });
+      
+      await publicClient.waitForTransactionReceipt({ hash: mintHash });
+      
+      await db.execute(sql`
+        UPDATE sponsored_agents 
+        SET status = 'completed', 
+            sponsor_tx_hash = ${mintHash}, 
+            completed_at = NOW()
+        WHERE id = ${sponsorshipId}
+      `);
+      
+      console.log(`[sponsored-liquidity] Created LP for ${tokenSymbol}: ${tokenAmount} tokens + ${celoAmount} CELO (tx: ${mintHash})`);
+      
+      return {
+        success: true,
+        tokenAmount,
+        celoAmount,
+        txHash: mintHash
+      };
+    } catch (lpError: any) {
+      console.error('[sponsored-liquidity] LP creation error:', lpError);
+      
+      await db.execute(sql`UPDATE sponsored_agents SET status = 'failed' WHERE id = ${sponsorshipId}`);
+      
+      return {
+        success: false,
+        error: lpError.message || 'Failed to create liquidity pool'
+      };
+    }
   } catch (error: any) {
     console.error('[sponsored-liquidity] LP creation error:', error);
     return {
