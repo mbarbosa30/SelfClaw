@@ -1,0 +1,201 @@
+Here’s how I’d upgrade **selfclaw.ai** so it feels less like “cool idea” and more like a **credible primitive** people will actually integrate (and trust). Think of it as turning the page into a *verification funnel + developer onramp + trust proof*, all in one.
+
+---
+
+## 1) Make the hero brutally specific
+
+Right now you’re juggling “agent identity”, “passport ZK”, “open registry”, “token launch”… that’s too many hats for the top 10 seconds.
+
+**Hero headline options**
+
+* **“Prove your AI agent is backed by a real human.”**
+* **“Human-backed agent keys, verified with Self.”**
+* **“Sybil-resistant agents for the open internet.”**
+
+**Subheadline**
+
+* “Bind an agent’s Ed25519 key to a privacy-preserving human proof. Verify in seconds. Integrate in minutes.”
+
+**Primary CTA**
+
+* **Verify an agent**
+  **Secondary CTA**
+* **Read the docs** (and this must jump to a crisp integration section, not a wall of text)
+
+Add a tiny “used for” ribbon right under:
+
+* rate limits • reputation • access control • anti-spam • marketplaces • agent directories
+
+---
+
+## 2) Put a live demo widget above the fold
+
+People trust what they can poke.
+
+**Widget: “Check an agent”**
+
+* input: public key (or name)
+* output: Verified ✅ / Not verified ❌
+* show: `humanId` (shortened), `registeredAt`, `swarm size`
+* optional: “copy JSON response”
+
+This immediately makes SelfClaw feel real.
+
+---
+
+## 3) Replace “How It Works” with “2 flows” (user vs developer)
+
+Your current 4-step story is cool but too heavy for a landing page. Split it:
+
+### For Humans (verification)
+
+1. Generate agent key
+2. Scan passport with Self app
+3. Agent key becomes “human-backed” in SelfClaw
+
+### For Developers (verification check)
+
+1. Ask agent to sign challenge
+2. Verify signature
+3. Query SelfClaw registry
+
+That’s it. Save token/NFT stuff for a separate “Agent Economy” page.
+
+---
+
+## 4) Create a “Trust” section that answers the uncomfortable questions
+
+This is where you win versus OneMolt: clarity + openness.
+
+### Trust, privacy, and “open”
+
+* **What SelfClaw stores** (minimal): agent public key, humanId (opaque), timestamps, optional name
+* **What it never stores**: passport data
+* **What “verified” means**: passport-backed proof, not “perfect uniqueness”
+* **OpenClaw**: publish the spec (challenge format, binding rules, API schema) and a reference verifier library
+
+Even if OpenClaw is early, saying “spec v0.1” + linking it makes the project feel serious.
+
+---
+
+## 5) Fix the docs experience (and stop key-format confusion at the source)
+
+Your docs currently risk losing devs on SPKI vs raw key.
+
+On landing page, add a single “Key Format” callout:
+
+* “We accept **(X)** as the public key identifier: (base64url raw 32 bytes OR SPKI DER base64).”
+* Provide one copy-paste “generate keypair” snippet that matches that choice.
+
+If you keep SPKI, add “Node crypto” example. If you switch to raw keys, show noble-based generation and verification.
+
+---
+
+## 6) Add “Why not OneMolt?” but politely
+
+Not a dunk, a differentiation panel:
+
+**SelfClaw**
+
+* passport-backed proof via Self
+* privacy-first ZK
+* configurable eligibility attestations (optional)
+* open spec + onchain anchoring (if you do it)
+
+**Legacy PoP**
+
+* depends on provider X
+* less composable / less configurable (phrase gently)
+
+Make it about *capabilities*, not competitors.
+
+---
+
+## 7) Add “use cases” with concrete mini-patterns
+
+This is where people go from “neat” to “I need this”.
+
+* **Agent posting / feed anti-spam**
+
+  * “1 human = N agents; rate-limit by humanId”
+* **Access control**
+
+  * “Only human-backed agents can call endpoint X”
+* **Marketplaces**
+
+  * “Verified agents can list services”
+* **Airdrops / claims**
+
+  * “Human-backed agent wallets can claim once”
+
+Each use case should have a 3-line explainer and a link to a snippet.
+
+---
+
+## 8) Clean up the “token + liquidity” story (put it behind an “Advanced” door)
+
+The tokenization + sponsored liquidity idea is cool, but it will:
+
+* confuse the core message
+* attract farmers
+* trigger “is this a token launcher?” skepticism
+
+Move it to:
+
+* **/economy** or **/launch**
+  and frame it as **optional**.
+
+On landing page, at most:
+
+> “Optional: onchain identity + economics for agent autonomy.”
+
+---
+
+## 9) Make one “developer fast lane”
+
+A box titled: **Integrate in 5 minutes**
+
+* `npm i @selfclaw/verify` (even if it’s just a wrapper)
+* 15 lines of code:
+
+  * create challenge
+  * verify signature
+  * query registry
+
+Then link to:
+
+* llms.txt
+* OpenAPI spec
+* “Try it” Postman-like console
+
+---
+
+## 10) Add social proof even if it’s tiny
+
+If you’re working with Self team, say it carefully:
+
+* “Built with Self.xyz”
+* “Supported by the Self ecosystem” (only if true)
+* logos of protocols/apps using it (even 2 is enough)
+
+Also add:
+
+* uptime status page link
+* “audit / open source” link if applicable
+
+---
+
+### If you want a simple page skeleton
+
+1. Hero + demo widget
+2. “What is SelfClaw?” (1 paragraph)
+3. Two flows (Human / Developer)
+4. Use cases
+5. Trust & Privacy + OpenClaw spec
+6. Integrate in 5 minutes (code snippet)
+7. FAQ
+8. Footer: docs, llms.txt, status, GitHub
+
+---
+
+If you paste the current selfclaw.ai copy/layout (or a screenshot), I’ll rewrite the hero + sections word-for-word and give you a clean component plan (headline variants, CTA copy, and the minimal demo widget text/UX).
