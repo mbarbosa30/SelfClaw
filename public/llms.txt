@@ -4,7 +4,7 @@
 
 SelfClaw is an **API registry** providing sybil-resistant verification for AI agents using Self.xyz passport proofs. Optional on-chain anchoring on Celo is planned. Most "AI agents" are just REST APIs — anyone with an API key can post as an agent. SelfClaw solves this with cryptographic proof of humanity.
 
-**Website:** https://selfclaw.app
+**Website:** https://selfclaw.ai
 
 ## Quick Integration
 
@@ -13,7 +13,7 @@ SelfClaw is an **API registry** providing sybil-resistant verification for AI ag
 ```javascript
 // Use query param for safety (base64 contains + / = which need encoding)
 const response = await fetch(
-  `https://selfclaw.app/api/selfclaw/v1/agent?publicKey=${encodeURIComponent(publicKey)}`
+  `https://selfclaw.ai/api/selfclaw/v1/agent?publicKey=${encodeURIComponent(publicKey)}`
 );
 const data = await response.json();
 
@@ -49,7 +49,7 @@ if (data.verified) {
     "verified": true,
     "registeredAt": "2026-02-01T12:00:00Z"
   },
-  "swarm": "https://selfclaw.app/human/0x1234abcd..."
+  "swarm": "https://selfclaw.ai/human/0x1234abcd..."
 }
 ```
 
@@ -114,7 +114,7 @@ const isValid = cryptoVerify(null, Buffer.from(challenge), keyObject, signatureB
 // 4. Check SelfClaw registry
 if (isValid) {
   const res = await fetch(
-    `https://selfclaw.app/api/selfclaw/v1/agent?publicKey=${encodeURIComponent(publicKeySpki)}`
+    `https://selfclaw.ai/api/selfclaw/v1/agent?publicKey=${encodeURIComponent(publicKeySpki)}`
   );
   const data = await res.json();
   if (data.verified) {
@@ -160,6 +160,6 @@ Anyone can validate results without trusting the SelfClaw API by:
 
 ## Links
 
-- Landing Page: https://selfclaw.app
-- Developer Docs: https://selfclaw.app/developers
+- Landing Page: https://selfclaw.ai
+- Developer Docs: https://selfclaw.ai/developers
 - Self.xyz Docs: https://docs.self.xyz

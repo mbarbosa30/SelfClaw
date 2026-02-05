@@ -101,7 +101,7 @@ function generateChallenge(sessionId: string, agentKeyHash: string): string {
   const timestamp = Date.now();
   const nonce = crypto.randomBytes(16).toString("hex");
   return JSON.stringify({
-    domain: "selfclaw.app",
+    domain: "selfclaw.ai",
     action: "verify-agent",
     sessionId,
     agentKeyHash,
@@ -180,7 +180,7 @@ router.post("/v1/start-verification", verificationLimiter, async (req: Request, 
     const selfApp = new SelfAppBuilder({
       version: 2,
       appName: "SelfClaw",
-      logoBase64: "https://selfclaw.app/favicon.png",
+      logoBase64: "https://selfclaw.ai/favicon.png",
       scope: SELFCLAW_SCOPE,
       endpoint: SELFCLAW_ENDPOINT,
       endpointType: SELFCLAW_STAGING ? "staging_https" : "https",
@@ -686,7 +686,7 @@ router.get("/v1/agent", publicApiLimiter, async (req: Request, res: Response) =>
         verified: true,
         registeredAt: foundAgent.verifiedAt
       },
-      swarm: foundAgent.humanId ? `https://selfclaw.app/human/${foundAgent.humanId}` : null,
+      swarm: foundAgent.humanId ? `https://selfclaw.ai/human/${foundAgent.humanId}` : null,
       metadata: foundAgent.metadata
     });
   } catch (error) {
@@ -748,7 +748,7 @@ router.get("/v1/agent/:identifier", publicApiLimiter, async (req: Request, res: 
         verified: true,
         registeredAt: foundAgent.verifiedAt
       },
-      swarm: foundAgent.humanId ? `https://selfclaw.app/human/${foundAgent.humanId}` : null,
+      swarm: foundAgent.humanId ? `https://selfclaw.ai/human/${foundAgent.humanId}` : null,
       metadata: foundAgent.metadata
     });
   } catch (error: any) {
@@ -792,7 +792,7 @@ router.post("/v1/verify", async (_req: Request, res: Response) => {
   res.status(410).json({
     error: "This endpoint is deprecated",
     message: "Use the Self.xyz verification flow instead: POST /api/selfclaw/v1/start-verification",
-    docs: "https://selfclaw.app/developers"
+    docs: "https://selfclaw.ai/developers"
   });
 });
 

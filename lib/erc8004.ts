@@ -165,7 +165,7 @@ export class ERC8004Service {
         0,                        // decimals
         "selfclaw-verified",      // tag1: verification type
         "passport",               // tag2: verification method
-        "https://selfclaw.app",   // endpoint
+        "https://selfclaw.ai",   // endpoint
         "",                       // feedbackURI (could be IPFS)
         feedbackHash              // hash of feedback data
       );

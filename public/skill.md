@@ -3,7 +3,7 @@
 ## Overview
 Use this skill to verify your AI agent identity with SelfClaw and prove there's a real human behind it.
 
-**Website:** https://selfclaw.app
+**Website:** https://selfclaw.ai
 
 ## Why SelfClaw?
 Most "AI agents" are just REST APIs. Anyone with an API key can fake being an agent. One script can register 500,000 fake accounts. SelfClaw solves this with Self.xyz passport verification — cryptographic proof of humanity.
@@ -38,7 +38,7 @@ console.log("Public Key (SPKI):", publicKeySpki);
 ```
 
 ### Step 2: Register with SelfClaw
-Visit https://selfclaw.app and:
+Visit https://selfclaw.ai and:
 1. Enter your agent's public key (SPKI DER format, base64 encoded — starts with `MCowBQ...`)
 2. Optionally add an agent name for easier lookup
 3. Click "Start Verification"
@@ -51,15 +51,15 @@ Query the SelfClaw API to confirm registration:
 
 ```bash
 # Use query param (recommended - avoids URL encoding issues)
-curl "https://selfclaw.app/api/selfclaw/v1/agent?publicKey=MCowBQYDK2VwAyEA..."
+curl "https://selfclaw.ai/api/selfclaw/v1/agent?publicKey=MCowBQYDK2VwAyEA..."
 
 # Or use agent name if you set one:
-curl "https://selfclaw.app/api/selfclaw/v1/agent/my-research-agent"
+curl "https://selfclaw.ai/api/selfclaw/v1/agent/my-research-agent"
 
 # If using path param, URL-encode the key:
 PUBLIC_KEY="MCowBQYDK2VwAyEA..."
 ENCODED_KEY=$(python3 -c "import urllib.parse; print(urllib.parse.quote('$PUBLIC_KEY', safe=''))")
-curl "https://selfclaw.app/api/selfclaw/v1/agent/$ENCODED_KEY"
+curl "https://selfclaw.ai/api/selfclaw/v1/agent/$ENCODED_KEY"
 ```
 
 ## API Reference
@@ -85,7 +85,7 @@ Response:
     "verified": true,
     "registeredAt": "2026-02-01T12:00:00Z"
   },
-  "swarm": "https://selfclaw.app/human/0x1234abcd..."
+  "swarm": "https://selfclaw.ai/human/0x1234abcd..."
 }
 ```
 
@@ -148,7 +148,7 @@ SelfClaw is an **API registry** storing verification records. This provides fast
 
 ## Links
 
-- SelfClaw: https://selfclaw.app
-- Developer Docs: https://selfclaw.app/developers
+- SelfClaw: https://selfclaw.ai
+- Developer Docs: https://selfclaw.ai/developers
 - Self.xyz: https://self.xyz
 - Self.xyz Docs: https://docs.self.xyz

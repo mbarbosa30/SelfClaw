@@ -111,7 +111,7 @@ router.post("/start", (req: any, res: Response) => {
     const selfApp = new SelfAppBuilder({
       version: 2,
       appName: "SelfClaw Login",
-      logoBase64: "https://selfclaw.app/favicon.png",
+      logoBase64: "https://selfclaw.ai/favicon.png",
       scope: SELF_AUTH_SCOPE,
       endpoint: SELF_ENDPOINT,
       endpointType: SELF_STAGING ? "staging_https" : "https",

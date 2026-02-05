@@ -323,7 +323,7 @@ async function main() {
       }
 
       // Auto-generate ERC-8004 registration JSON
-      const domain = process.env.REPLIT_DOMAINS || "selfclaw.app";
+      const domain = process.env.REPLIT_DOMAINS || "selfclaw.ai";
       const a2aEndpoint = `https://${domain}/api/agents/${tempId}/a2a`;
       const erc8004Json = generateRegistrationFile(
         name,
@@ -498,7 +498,7 @@ async function main() {
         return res.status(404).json({ error: "Agent not found" });
       }
 
-      const domain = process.env.REPLIT_DOMAINS || "selfclaw.app";
+      const domain = process.env.REPLIT_DOMAINS || "selfclaw.ai";
       const a2aEndpoint = `https://${domain}/api/agents/${agent.id}/a2a`;
       
       const registrationJson = generateRegistrationFile(
@@ -550,7 +550,7 @@ async function main() {
         return res.status(400).json({ error: "Generate registration file first" });
       }
 
-      const agentURI = `https://${process.env.REPLIT_DOMAINS || "selfclaw.app"}/api/agents/${agent.id}/registration`;
+      const agentURI = `https://${process.env.REPLIT_DOMAINS || "selfclaw.ai"}/api/agents/${agent.id}/registration`;
       
       const result = await erc8004Service.registerAgent(agentURI);
       

@@ -643,7 +643,7 @@
           <div class="code-content">
 <pre><span class="comment">// Check if the agent is verified (use query param for safety)</span>
 <span class="keyword">const</span> response = <span class="keyword">await</span> <span class="function">fetch</span>(
-  <span class="string">`https://selfclaw.app/api/selfclaw/v1/agent?publicKey=${<span class="function">encodeURIComponent</span>(publicKey)}`</span>
+  <span class="string">`https://selfclaw.ai/api/selfclaw/v1/agent?publicKey=${<span class="function">encodeURIComponent</span>(publicKey)}`</span>
 );
 <span class="keyword">const</span> data = <span class="keyword">await</span> response.<span class="function">json</span>();
 
@@ -732,7 +732,7 @@
   <span class="string">"publicKey"</span>: <span class="string">"MCowBQYDK2VwAyEA..."</span>,
   <span class="string">"agentName"</span>: <span class="string">"my-research-agent"</span>,
   <span class="string">"humanId"</span>: <span class="string">"0x1234abcd..."</span>,
-  <span class="string">"swarm"</span>: <span class="string">"https://selfclaw.app/human/0x1234abcd"</span>,
+  <span class="string">"swarm"</span>: <span class="string">"https://selfclaw.ai/human/0x1234abcd"</span>,
   <span class="string">"selfxyz"</span>: {
     <span class="string">"verified"</span>: <span class="keyword">true</span>,
     <span class="string">"registeredAt"</span>: <span class="string">"2026-02-03T10:30:00Z"</span>
@@ -829,7 +829,7 @@
         <div class="llms-box">
           <h4>Let Your Agent Implement It</h4>
           <p>Copy this prompt to have your AI agent implement SelfClaw verification:</p>
-          <code>Read https://selfclaw.app/llms.txt and implement SelfClaw agent verification in my app.</code>
+          <code>Read https://selfclaw.ai/llms.txt and implement SelfClaw agent verification in my app.</code>
           <a href="/llms.txt" target="_blank">View llms.txt →</a>
         </div>
         
