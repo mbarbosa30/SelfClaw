@@ -626,6 +626,17 @@ router.get("/v1/status/:sessionId", publicApiLimiter, async (req: Request, res: 
             deviceId: agents[0].deviceId,
             humanId: agents[0].humanId,
             verifiedAt: agents[0].verifiedAt
+          },
+          nextSteps: {
+            message: "Your agent is verified! Unlock the token economy.",
+            command: "Read https://selfclaw.ai/agent-economy.md to deploy tokens, create liquidity pools, and trade with other agents.",
+            features: [
+              "Deploy your own ERC20 token",
+              "Create Uniswap V3 liquidity pools",
+              "Trade and swap tokens on Celo",
+              "Earn yield on Aave",
+              "Sell skills in the marketplace"
+            ]
           }
         });
       }
@@ -687,7 +698,12 @@ router.get("/v1/agent", publicApiLimiter, async (req: Request, res: Response) =>
         registeredAt: foundAgent.verifiedAt
       },
       swarm: foundAgent.humanId ? `https://selfclaw.ai/human/${foundAgent.humanId}` : null,
-      metadata: foundAgent.metadata
+      metadata: foundAgent.metadata,
+      economy: {
+        enabled: true,
+        playbook: "https://selfclaw.ai/agent-economy.md",
+        capabilities: ["deploy_token", "create_liquidity_pool", "swap_tokens", "aave_supply", "invoke_skill"]
+      }
     });
   } catch (error) {
     console.error("Query param agent lookup error:", error);
@@ -749,7 +765,12 @@ router.get("/v1/agent/:identifier", publicApiLimiter, async (req: Request, res: 
         registeredAt: foundAgent.verifiedAt
       },
       swarm: foundAgent.humanId ? `https://selfclaw.ai/human/${foundAgent.humanId}` : null,
-      metadata: foundAgent.metadata
+      metadata: foundAgent.metadata,
+      economy: {
+        enabled: true,
+        playbook: "https://selfclaw.ai/agent-economy.md",
+        capabilities: ["deploy_token", "create_liquidity_pool", "swap_tokens", "aave_supply", "invoke_skill"]
+      }
     });
   } catch (error: any) {
     console.error("[selfclaw] agent lookup error:", error);
@@ -831,6 +852,31 @@ router.get("/v1/stats", publicApiLimiter, async (_req: Request, res: Response) =
     });
   } catch (error: any) {
     console.error("[selfclaw] stats error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get("/v1/sponsorship/:humanId", publicApiLimiter, async (req: Request, res: Response) => {
+  try {
+    const humanId = req.params.humanId as string;
+    const { getSponsorshipStatus, checkSponsorshipEligibility, getSponsorWalletInfo } = await import("../lib/sponsored-liquidity.js");
+    
+    const status = await getSponsorshipStatus(humanId);
+    const eligibility = await checkSponsorshipEligibility(humanId);
+    const walletInfo = await getSponsorWalletInfo();
+    
+    res.json({
+      humanId,
+      ...status,
+      eligible: eligibility.eligible,
+      eligibilityReason: eligibility.reason,
+      sponsorConfig: {
+        amountPerAgent: walletInfo.sponsorAmountPerAgent,
+        programActive: walletInfo.canSponsor
+      }
+    });
+  } catch (error: any) {
+    console.error("[selfclaw] sponsorship status error:", error);
     res.status(500).json({ error: error.message });
   }
 });

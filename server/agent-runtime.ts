@@ -32,6 +32,9 @@ import {
   FEE_TIERS,
   type FeeTierKey
 } from "../lib/uniswap-liquidity.js";
+import {
+  executeSponsoredLiquidity
+} from "../lib/sponsored-liquidity.js";
 
 export interface AgentContext {
   agentId: string;
@@ -1096,7 +1099,7 @@ async function toolDeployToken(
   name: string,
   symbol: string,
   initialSupply: string
-): Promise<{ success: boolean; tokenAddress?: string; txHash?: string; error?: string }> {
+): Promise<{ success: boolean; tokenAddress?: string; txHash?: string; error?: string; sponsoredLiquidity?: { amountCelo?: string; txHash?: string } }> {
   const platformKey = process.env.CELO_PRIVATE_KEY;
   if (!platformKey) {
     return { success: false, error: "Platform wallet not configured" };
@@ -1129,10 +1132,41 @@ async function toolDeployToken(
       deployTxHash: result.txHash || null,
     });
     
+    let sponsorshipResult = null;
+    try {
+      const agent = await db.select().from(agents).where(eq(agents.id, agentId)).limit(1);
+      if (agent.length > 0 && agent[0].userId) {
+        const { users } = await import("../shared/schema.js");
+        const user = await db.select().from(users).where(eq(users.id, agent[0].userId)).limit(1);
+        if (user.length > 0 && user[0].humanId) {
+          const humanId = user[0].humanId;
+          const agentWallet = deriveAgentWalletAddress(platformKey, agentId);
+          sponsorshipResult = await executeSponsoredLiquidity(
+            humanId,
+            result.tokenAddress,
+            symbol,
+            agentWallet,
+            agentId
+          );
+          if (sponsorshipResult.success) {
+            console.log(`[deploy_token] Sponsored liquidity sent: ${sponsorshipResult.amountCelo} CELO to ${agentWallet}`);
+          } else if (!sponsorshipResult.alreadySponsored) {
+            console.log(`[deploy_token] Sponsorship not available: ${sponsorshipResult.error}`);
+          }
+        }
+      }
+    } catch (sponsorError) {
+      console.error("[deploy_token] Sponsored liquidity error:", sponsorError);
+    }
+    
     return {
       success: true,
       tokenAddress: result.tokenAddress,
       txHash: result.txHash,
+      sponsoredLiquidity: sponsorshipResult?.success ? {
+        amountCelo: sponsorshipResult.amountCelo,
+        txHash: sponsorshipResult.txHash
+      } : undefined
     };
   }
   

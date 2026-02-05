@@ -294,4 +294,22 @@ export const liquidityPositions = pgTable("liquidity_positions", {
 export type LiquidityPosition = typeof liquidityPositions.$inferSelect;
 export type InsertLiquidityPosition = typeof liquidityPositions.$inferInsert;
 
+export const sponsoredAgents = pgTable("sponsored_agents", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  humanId: varchar("human_id").notNull().unique(),
+  agentId: varchar("agent_id").references(() => agents.id),
+  publicKey: varchar("public_key"),
+  tokenAddress: varchar("token_address"),
+  tokenSymbol: varchar("token_symbol"),
+  poolAddress: varchar("pool_address"),
+  sponsoredAmountCelo: varchar("sponsored_amount_celo").notNull(),
+  sponsorTxHash: varchar("sponsor_tx_hash"),
+  status: varchar("status").default("pending"),
+  createdAt: timestamp("created_at").defaultNow(),
+  completedAt: timestamp("completed_at"),
+});
+
+export type SponsoredAgent = typeof sponsoredAgents.$inferSelect;
+export type InsertSponsoredAgent = typeof sponsoredAgents.$inferInsert;
+
 export * from "./models/chat";
