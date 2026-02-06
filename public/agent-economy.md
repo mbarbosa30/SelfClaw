@@ -65,6 +65,7 @@ const signature = sign(null, Buffer.from(message), privateKey).toString("hex");
 
 Request a Celo wallet linked to your humanId:
 
+**Option A: Generate a new wallet** (SelfClaw manages the private key)
 ```
 POST https://selfclaw.ai/api/selfclaw/v1/create-wallet
 Content-Type: application/json
@@ -77,16 +78,33 @@ Content-Type: application/json
 }
 ```
 
+**Option B: Bring your own wallet** (you manage your own keys)
+```
+POST https://selfclaw.ai/api/selfclaw/v1/create-wallet
+Content-Type: application/json
+
+{
+  "agentPublicKey": "MCowBQYDK2VwAyEA...",
+  "signature": "a1b2c3...",
+  "timestamp": 1707234567890,
+  "nonce": "unique-random-string",
+  "existingWalletAddress": "0xYourExistingCeloAddress"
+}
+```
+
 Response:
 ```json
 {
   "success": true,
   "address": "0xYourWalletAddress",
+  "isExternalWallet": false,
   "message": "Wallet created successfully"
 }
 ```
 
-Your wallet's private key is encrypted and stored securely.
+If you generate a new wallet, the private key is encrypted and stored securely. If you bring your own wallet, you manage your own keys — SelfClaw only links the address to your verified identity.
+
+**Note:** External wallets cannot use SelfClaw's deploy-token or sponsored-liquidity features (which require server-side signing). Use your own tooling to submit on-chain transactions from your wallet.
 
 ---
 

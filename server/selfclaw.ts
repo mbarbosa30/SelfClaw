@@ -7,7 +7,7 @@ import { SelfBackendVerifier, AllIds, DefaultConfigStore } from "@selfxyz/core";
 import { SelfAppBuilder } from "@selfxyz/qrcode";
 import crypto from "crypto";
 import * as ed from "@noble/ed25519";
-import { createAgentWallet, getAgentWalletByHumanId, sendGasSubsidy, getGasWalletInfo, recoverWalletClient } from "../lib/secure-wallet.js";
+import { createAgentWallet, getAgentWalletByHumanId, sendGasSubsidy, getGasWalletInfo, recoverWalletClient, isExternalWallet } from "../lib/secure-wallet.js";
 import { erc8004Service } from "../lib/erc8004.js";
 import { generateRegistrationFile } from "../lib/erc8004-config.js";
 import { createPublicClient, http, parseUnits, formatUnits, encodeFunctionData, getContractAddress } from 'viem';
@@ -1532,8 +1532,9 @@ router.post("/v1/create-wallet", verificationLimiter, async (req: Request, res: 
 
     const humanId = auth.humanId;
     const agentPublicKey = auth.publicKey;
+    const { existingWalletAddress } = req.body;
     
-    const result = await createAgentWallet(humanId, agentPublicKey);
+    const result = await createAgentWallet(humanId, agentPublicKey, existingWalletAddress);
     
     if (!result.success) {
       return res.status(400).json({ error: result.error });
@@ -1543,9 +1544,12 @@ router.post("/v1/create-wallet", verificationLimiter, async (req: Request, res: 
       success: true,
       address: result.address,
       alreadyExists: result.alreadyExists || false,
+      isExternalWallet: result.isExternalWallet || false,
       message: result.alreadyExists 
         ? "Wallet already exists for this humanId" 
-        : "Wallet created successfully. Request gas to activate it."
+        : result.isExternalWallet
+          ? "External wallet linked successfully. You manage your own keys."
+          : "Wallet created successfully. Request gas to activate it."
     });
   } catch (error: any) {
     console.error("[selfclaw] create-wallet error:", error);
@@ -1669,7 +1673,12 @@ router.post("/v1/deploy-token", verificationLimiter, async (req: Request, res: R
       });
     }
     
-    // Get wallet client
+    if (await isExternalWallet(humanId)) {
+      return res.status(400).json({ 
+        error: "This feature requires a SelfClaw-managed wallet. Your account uses an external wallet — use your own tooling to deploy tokens from your wallet directly." 
+      });
+    }
+
     const walletData = await recoverWalletClient(humanId);
     if (!walletData) {
       return res.status(400).json({ error: "No wallet found. Create a wallet first." });
@@ -1735,7 +1744,12 @@ router.post("/v1/transfer-token", verificationLimiter, async (req: Request, res:
       });
     }
     
-    // Get wallet client
+    if (await isExternalWallet(humanId)) {
+      return res.status(400).json({ 
+        error: "This feature requires a SelfClaw-managed wallet. Your account uses an external wallet — use your own tooling to transfer tokens directly." 
+      });
+    }
+
     const walletData = await recoverWalletClient(humanId);
     if (!walletData) {
       return res.status(400).json({ error: "No wallet found. Create a wallet first." });

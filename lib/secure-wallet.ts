@@ -69,9 +69,10 @@ export interface WalletCreationResult {
   publicKey?: string;
   error?: string;
   alreadyExists?: boolean;
+  isExternalWallet?: boolean;
 }
 
-export async function createAgentWallet(humanId: string, agentPublicKey: string): Promise<WalletCreationResult> {
+export async function createAgentWallet(humanId: string, agentPublicKey: string, existingWalletAddress?: string): Promise<WalletCreationResult> {
   try {
     const verified = await db.select()
       .from(verifiedBots)
@@ -105,6 +106,33 @@ export async function createAgentWallet(humanId: string, agentPublicKey: string)
         alreadyExists: true
       };
     }
+
+    if (existingWalletAddress) {
+      const addressRegex = /^0x[0-9a-fA-F]{40}$/;
+      if (!addressRegex.test(existingWalletAddress)) {
+        return {
+          success: false,
+          error: 'Invalid wallet address format. Must be a valid Ethereum/Celo address (0x + 40 hex characters)'
+        };
+      }
+
+      await db.insert(agentWallets).values({
+        humanId,
+        publicKey: agentPublicKey,
+        address: existingWalletAddress,
+        encryptedPrivateKey: 'external',
+        salt: 'external'
+      });
+
+      console.log(`[secure-wallet] Linked external wallet ${existingWalletAddress} for humanId ${humanId.substring(0, 16)}...`);
+
+      return {
+        success: true,
+        address: existingWalletAddress,
+        publicKey: agentPublicKey,
+        isExternalWallet: true
+      };
+    }
     
     const privateKey = generatePrivateKey();
     const account = privateKeyToAccount(privateKey);
@@ -132,6 +160,18 @@ export async function createAgentWallet(humanId: string, agentPublicKey: string)
       success: false,
       error: error.message || 'Failed to create wallet'
     };
+  }
+}
+
+export async function isExternalWallet(humanId: string): Promise<boolean> {
+  try {
+    const wallets = await db.select()
+      .from(agentWallets)
+      .where(eq(agentWallets.humanId, humanId))
+      .limit(1);
+    return wallets.length > 0 && wallets[0].encryptedPrivateKey === 'external';
+  } catch {
+    return false;
   }
 }
 
@@ -185,6 +225,12 @@ export async function recoverWalletClient(humanId: string): Promise<{
     }
     
     const wallet = wallets[0];
+    
+    if (wallet.encryptedPrivateKey === 'external') {
+      console.log(`[secure-wallet] Cannot recover external wallet ${wallet.address} — agent manages their own keys`);
+      return null;
+    }
+
     const privateKey = decryptPrivateKey(wallet.encryptedPrivateKey, humanId, wallet.salt);
     const account = privateKeyToAccount(privateKey as `0x${string}`);
     
