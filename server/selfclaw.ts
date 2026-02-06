@@ -1664,8 +1664,7 @@ const viemPublicClient = createPublicClient({
 // ============================================================
 // These endpoints use humanId authorization for write operations.
 // Read operations (GET) are public since blockchain data is public.
-// Tokens deployed via public API are tracked on-chain (Celoscan),
-// not in the cockpit's agent_tokens table (which is for managed agents).
+// Tokens deployed via public API are tracked on-chain (Celoscan).
 // ============================================================
 
 // Deploy token endpoint
