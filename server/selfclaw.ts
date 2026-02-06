@@ -133,6 +133,75 @@ async function verifyEd25519Signature(
   }
 }
 
+const usedNonces = new Map<string, number>();
+setInterval(() => {
+  const cutoff = Date.now() - 5 * 60 * 1000;
+  for (const [key, ts] of usedNonces) {
+    if (ts < cutoff) usedNonces.delete(key);
+  }
+}, 60 * 1000);
+
+async function authenticateAgent(req: Request, res: Response): Promise<{ publicKey: string; humanId: string; agent: any } | null> {
+  const { agentPublicKey, signature, timestamp, nonce } = req.body;
+
+  if (!agentPublicKey || !signature || !timestamp || !nonce) {
+    res.status(401).json({
+      error: "Authentication required: agentPublicKey, signature, timestamp, and nonce are required",
+      hint: "Sign the JSON payload '{\"agentPublicKey\":\"...\",\"timestamp\":...,\"nonce\":\"...\"}' with your Ed25519 private key (hex-encoded). nonce must be a unique random string per request."
+    });
+    return null;
+  }
+
+  const ts = Number(timestamp);
+  const now = Date.now();
+  if (isNaN(ts) || Math.abs(now - ts) > 5 * 60 * 1000) {
+    res.status(401).json({ error: "Request expired or invalid timestamp. Must be within 5 minutes." });
+    return null;
+  }
+
+  const nonceStr = String(nonce);
+  if (nonceStr.length < 8 || nonceStr.length > 64) {
+    res.status(401).json({ error: "Nonce must be 8-64 characters" });
+    return null;
+  }
+
+  const nonceKey = `${agentPublicKey}:${nonceStr}`;
+  if (usedNonces.has(nonceKey)) {
+    res.status(401).json({ error: "Nonce already used. Each request must have a unique nonce." });
+    return null;
+  }
+
+  const messageToSign = JSON.stringify({ agentPublicKey, timestamp: ts, nonce: nonceStr });
+  const isValid = await verifyEd25519Signature(agentPublicKey, signature, messageToSign);
+
+  if (!isValid) {
+    res.status(401).json({ error: "Invalid signature. Sign the exact JSON: " + messageToSign });
+    return null;
+  }
+
+  usedNonces.set(nonceKey, ts);
+
+  const agentRecords = await db.select()
+    .from(verifiedBots)
+    .where(sql`${verifiedBots.publicKey} = ${agentPublicKey}`)
+    .limit(1);
+
+  if (agentRecords.length === 0) {
+    res.status(403).json({ error: "Agent not found in SelfClaw registry. Verify first." });
+    return null;
+  }
+
+  const agent = agentRecords[0];
+  if (!agent.humanId) {
+    res.status(403).json({ error: "Agent has no humanId. Complete verification first." });
+    return null;
+  }
+
+  return { publicKey: agentPublicKey, humanId: agent.humanId, agent };
+}
+
+const ADMIN_SECRET = process.env.SELFCLAW_ADMIN_SECRET || process.env.SESSION_SECRET;
+
 router.get("/v1/config", (_req: Request, res: Response) => {
   res.json({
     scope: SELFCLAW_SCOPE,
@@ -308,33 +377,31 @@ router.get("/v1/callback/", (req: Request, res: Response) => {
   });
 });
 
-// Test endpoint - minimal callback that just returns success to diagnose connectivity
+// Debug endpoints - gated behind admin secret
 router.post("/v1/callback-test", (req: Request, res: Response) => {
+  const adminKey = req.headers["x-admin-secret"] as string;
+  if (!ADMIN_SECRET || adminKey !== ADMIN_SECRET) {
+    return res.status(403).json({ error: "Admin access required" });
+  }
   console.log("[selfclaw] === TEST CALLBACK HIT ===");
-  console.log("[selfclaw] Test body:", JSON.stringify(req.body || {}).substring(0, 500));
   res.status(200).json({ status: "success", result: true });
 });
 
-// Debug endpoint - echoes back everything for diagnostics
 router.post("/v1/debug-callback", (req: Request, res: Response) => {
+  const adminKey = req.headers["x-admin-secret"] as string;
+  if (!ADMIN_SECRET || adminKey !== ADMIN_SECRET) {
+    return res.status(403).json({ error: "Admin access required" });
+  }
   const timestamp = new Date().toISOString();
   console.log("[selfclaw] === DEBUG CALLBACK ===", timestamp);
-  console.log("[selfclaw] Method:", req.method);
-  console.log("[selfclaw] Headers:", JSON.stringify(req.headers));
-  console.log("[selfclaw] Body keys:", Object.keys(req.body || {}));
-  console.log("[selfclaw] Full body:", JSON.stringify(req.body || {}).substring(0, 2000));
-  
   res.status(200).json({ 
     status: "success", 
     result: true,
     debug: {
       timestamp,
-      method: req.method,
       bodyKeys: Object.keys(req.body || {}),
       hasProof: !!req.body?.proof,
       hasPublicSignals: !!req.body?.publicSignals,
-      hasAttestationId: !!req.body?.attestationId,
-      hasUserContextData: !!req.body?.userContextData
     }
   });
 });
@@ -1009,8 +1076,12 @@ router.post("/v1/verify", async (_req: Request, res: Response) => {
   });
 });
 
-// Debug endpoint to see last verification attempt (for debugging production issues)
-router.get("/v1/debug-status", (_req: Request, res: Response) => {
+// Debug endpoint - gated behind admin secret
+router.get("/v1/debug-status", (req: Request, res: Response) => {
+  const adminKey = req.headers["x-admin-secret"] as string;
+  if (!ADMIN_SECRET || adminKey !== ADMIN_SECRET) {
+    return res.status(403).json({ error: "Admin access required" });
+  }
   res.json({
     status: "ok",
     config: {
@@ -1028,19 +1099,24 @@ router.get("/v1/debug-status", (_req: Request, res: Response) => {
 
 router.get("/v1/stats", publicApiLimiter, async (_req: Request, res: Response) => {
   try {
-    const allAgents = await db.select().from(verifiedBots);
-    const uniqueHumans = new Set(allAgents.map(a => a.humanId).filter(Boolean));
-    
+    const [totalResult] = await db.select({ count: count() }).from(verifiedBots);
+    const [humanResult] = await db.select({ count: sql<number>`COUNT(DISTINCT ${verifiedBots.humanId})` }).from(verifiedBots);
+
     const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    const last24h = allAgents.filter(a => a.verifiedAt && new Date(a.verifiedAt) > oneDayAgo).length;
-    
+    const [last24hResult] = await db.select({ count: count() })
+      .from(verifiedBots)
+      .where(gt(verifiedBots.verifiedAt, oneDayAgo));
+
+    const latestAgent = await db.select({ verifiedAt: verifiedBots.verifiedAt })
+      .from(verifiedBots)
+      .orderBy(desc(verifiedBots.verifiedAt))
+      .limit(1);
+
     res.json({
-      totalAgents: allAgents.length,
-      uniqueHumans: uniqueHumans.size,
-      last24h,
-      latestVerification: allAgents.length > 0 
-        ? allAgents.sort((a, b) => new Date(b.verifiedAt!).getTime() - new Date(a.verifiedAt!).getTime())[0].verifiedAt
-        : null
+      totalAgents: totalResult?.count || 0,
+      uniqueHumans: humanResult?.count || 0,
+      last24h: last24hResult?.count || 0,
+      latestVerification: latestAgent[0]?.verifiedAt || null
     });
   } catch (error: any) {
     console.error("[selfclaw] stats error:", error);
@@ -1074,13 +1150,17 @@ router.get("/v1/sponsorship/:humanId", publicApiLimiter, async (req: Request, re
   }
 });
 
-router.post("/v1/create-sponsored-lp", publicApiLimiter, async (req: Request, res: Response) => {
+router.post("/v1/create-sponsored-lp", verificationLimiter, async (req: Request, res: Response) => {
   try {
-    const { humanId, agentId, tokenAddress, tokenSymbol, tokenAmount, initialPriceInCelo } = req.body;
+    const auth = await authenticateAgent(req, res);
+    if (!auth) return;
+
+    const humanId = auth.humanId;
+    const { agentId, tokenAddress, tokenSymbol, tokenAmount, initialPriceInCelo } = req.body;
     
-    if (!humanId || !tokenAddress || !tokenAmount || !initialPriceInCelo) {
+    if (!tokenAddress || !tokenAmount || !initialPriceInCelo) {
       return res.status(400).json({
-        error: "Missing required fields: humanId, tokenAddress, tokenAmount, initialPriceInCelo"
+        error: "Missing required fields: tokenAddress, tokenAmount, initialPriceInCelo"
       });
     }
     
@@ -1167,27 +1247,254 @@ router.get("/v1/ecosystem-stats", publicApiLimiter, async (_req: Request, res: R
   }
 });
 
-router.post("/v1/reputation/attest", verificationLimiter, async (req: Request, res: Response) => {
+// Reputation leaderboard — ranks all agents with ERC-8004 tokens by on-chain reputation
+router.get("/v1/reputation-leaderboard", publicApiLimiter, async (req: Request, res: Response) => {
   try {
-    const { agentPublicKey, erc8004TokenId } = req.body;
+    const limitParam = Math.min(Number(req.query.limit) || 50, 100);
 
-    if (!agentPublicKey || !erc8004TokenId) {
-      return res.status(400).json({
-        error: "agentPublicKey and erc8004TokenId are required",
-        hint: "The agent must be verified in the SelfClaw registry and have an ERC-8004 identity NFT"
+    const allAgents = await db.select({
+      id: verifiedBots.id,
+      publicKey: verifiedBots.publicKey,
+      deviceId: verifiedBots.deviceId,
+      humanId: verifiedBots.humanId,
+      verifiedAt: verifiedBots.verifiedAt,
+      metadata: verifiedBots.metadata
+    })
+    .from(verifiedBots)
+    .orderBy(desc(verifiedBots.verifiedAt));
+
+    const agentsWithTokens = allAgents.filter(a => {
+      const meta = a.metadata as any;
+      return meta?.erc8004TokenId;
+    });
+
+    if (agentsWithTokens.length === 0) {
+      return res.json({
+        leaderboard: [],
+        totalWithErc8004: 0,
+        message: "No agents with ERC-8004 tokens yet"
       });
     }
 
-    const agentRecords = await db.select()
-      .from(verifiedBots)
-      .where(sql`${verifiedBots.publicKey} = ${agentPublicKey}`)
-      .limit(1);
-
-    if (agentRecords.length === 0) {
-      return res.status(404).json({ error: "Agent not found in SelfClaw registry. Verify first." });
+    if (!erc8004Service.isReady()) {
+      return res.status(503).json({
+        error: "ERC-8004 contracts not available",
+        totalWithErc8004: agentsWithTokens.length
+      });
     }
 
-    const agent = agentRecords[0];
+    let failedQueries = 0;
+    const reputationResults = await Promise.allSettled(
+      agentsWithTokens.map(async (agent) => {
+        const meta = agent.metadata as any;
+        const tokenId = meta.erc8004TokenId;
+        const summary = await erc8004Service.getReputationSummary(tokenId);
+        return {
+          publicKey: agent.publicKey,
+          agentName: agent.deviceId,
+          humanId: agent.humanId,
+          erc8004TokenId: tokenId,
+          verifiedAt: agent.verifiedAt,
+          hasAttestation: !!meta.erc8004Attestation?.txHash,
+          reputation: summary || { totalFeedback: 0, averageScore: 0, lastUpdated: 0 },
+          explorerUrl: erc8004Service.getExplorerUrl(tokenId),
+          reputationEndpoint: `https://selfclaw.ai/api/selfclaw/v1/agent/${encodeURIComponent(agent.publicKey)}/reputation`
+        };
+      })
+    );
+
+    const succeeded: any[] = [];
+    for (const r of reputationResults) {
+      if (r.status === "fulfilled") {
+        succeeded.push(r.value);
+      } else {
+        failedQueries++;
+      }
+    }
+
+    const leaderboard = succeeded
+      .sort((a, b) => {
+        if (b.reputation.averageScore !== a.reputation.averageScore) {
+          return b.reputation.averageScore - a.reputation.averageScore;
+        }
+        return b.reputation.totalFeedback - a.reputation.totalFeedback;
+      })
+      .slice(0, limitParam)
+      .map((entry, index) => ({ rank: index + 1, ...entry }));
+
+    res.json({
+      leaderboard,
+      totalWithErc8004: agentsWithTokens.length,
+      queriedSuccessfully: succeeded.length,
+      failedQueries,
+      warning: failedQueries > 0 ? `${failedQueries} agent(s) could not be scored due to on-chain query failures` : undefined,
+      reputationRegistry: erc8004Service.getReputationRegistryAddress(),
+      lastUpdated: new Date().toISOString()
+    });
+  } catch (error: any) {
+    console.error("[selfclaw] reputation-leaderboard error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Feedback cooldown: one feedback per rater per target per 24 hours
+const feedbackCooldowns = new Map<string, number>();
+setInterval(() => {
+  const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+  for (const [key, ts] of feedbackCooldowns) {
+    if (ts < cutoff) feedbackCooldowns.delete(key);
+  }
+}, 10 * 60 * 1000);
+
+const feedbackLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 10,
+  message: { error: "Too many feedback submissions. Max 10 per hour." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Judge/peer feedback — verified agents or judges can submit reputation feedback for other agents
+router.post("/v1/reputation/feedback", feedbackLimiter, async (req: Request, res: Response) => {
+  try {
+    const auth = await authenticateAgent(req, res);
+    if (!auth) return;
+
+    const { targetAgentPublicKey, score, tag1, tag2, feedbackURI } = req.body;
+
+    if (!targetAgentPublicKey || score === undefined) {
+      return res.status(400).json({
+        error: "targetAgentPublicKey and score are required",
+        hint: "score should be 0-100 (0=worst, 100=best). Optional: tag1, tag2, feedbackURI"
+      });
+    }
+
+    const numericScore = Number(score);
+    if (isNaN(numericScore) || numericScore < 0 || numericScore > 100) {
+      return res.status(400).json({ error: "score must be between 0 and 100" });
+    }
+
+    if (targetAgentPublicKey === auth.publicKey) {
+      return res.status(400).json({ error: "Cannot submit feedback for your own agent" });
+    }
+
+    const cooldownKey = `${auth.publicKey}:${targetAgentPublicKey}`;
+    const lastFeedback = feedbackCooldowns.get(cooldownKey);
+    if (lastFeedback && Date.now() - lastFeedback < 24 * 60 * 60 * 1000) {
+      const hoursLeft = Math.ceil((24 * 60 * 60 * 1000 - (Date.now() - lastFeedback)) / (60 * 60 * 1000));
+      return res.status(429).json({
+        error: `You already submitted feedback for this agent. Try again in ~${hoursLeft} hour(s).`
+      });
+    }
+
+    const targetRecords = await db.select()
+      .from(verifiedBots)
+      .where(sql`${verifiedBots.publicKey} = ${targetAgentPublicKey}`)
+      .limit(1);
+
+    if (targetRecords.length === 0) {
+      return res.status(404).json({ error: "Target agent not found in registry" });
+    }
+
+    const targetMeta = targetRecords[0].metadata as any || {};
+    const targetTokenId = targetMeta.erc8004TokenId;
+
+    if (!targetTokenId) {
+      return res.status(400).json({
+        error: "Target agent does not have an ERC-8004 identity NFT",
+        hint: "The target agent must mint an ERC-8004 token before receiving reputation feedback"
+      });
+    }
+
+    if (!erc8004Service.isReady()) {
+      return res.status(503).json({ error: "ERC-8004 contracts not available" });
+    }
+
+    const identity = await erc8004Service.getAgentIdentity(targetTokenId);
+    if (!identity) {
+      return res.status(400).json({ error: "Target agent's ERC-8004 token not found on-chain" });
+    }
+
+    const feedbackData = JSON.stringify({
+      type: "peer-feedback",
+      from: auth.publicKey,
+      fromHumanId: auth.humanId,
+      score: numericScore,
+      tag1: tag1 || "general",
+      tag2: tag2 || "",
+      submittedAt: new Date().toISOString()
+    });
+
+    const { ethers } = await import("ethers");
+    const feedbackHash = ethers.keccak256(ethers.toUtf8Bytes(feedbackData));
+
+    const config = erc8004Service.getConfig();
+    const wallet = process.env.CELO_PRIVATE_KEY
+      ? new ethers.Wallet(process.env.CELO_PRIVATE_KEY, new ethers.JsonRpcProvider(config.rpcUrl))
+      : null;
+
+    if (!wallet) {
+      return res.status(503).json({ error: "Platform wallet not configured for reputation transactions" });
+    }
+
+    const REPUTATION_REGISTRY_ABI = [
+      "function giveFeedback(uint256 agentId, uint256 score, uint8 decimals, string tag1, string tag2, string endpoint, string feedbackURI, bytes32 feedbackHash) external"
+    ];
+
+    const reputation = new ethers.Contract(config.resolver, REPUTATION_REGISTRY_ABI, wallet);
+
+    const tx = await reputation.giveFeedback(
+      targetTokenId,
+      numericScore,
+      0,
+      tag1 || "peer-review",
+      tag2 || "hackathon",
+      `https://selfclaw.ai/api/selfclaw/v1/agent/${encodeURIComponent(auth.publicKey)}`,
+      feedbackURI || "",
+      feedbackHash
+    );
+
+    const receipt = await tx.wait();
+
+    feedbackCooldowns.set(cooldownKey, Date.now());
+
+    console.log(`[selfclaw] Peer feedback: ${auth.publicKey.substring(0, 20)}... gave score ${numericScore} to ${targetAgentPublicKey.substring(0, 20)}... tx: ${receipt.hash}`);
+
+    res.json({
+      success: true,
+      txHash: receipt.hash,
+      explorerUrl: erc8004Service.getTxExplorerUrl(receipt.hash),
+      feedback: {
+        from: auth.publicKey,
+        to: targetAgentPublicKey,
+        score: numericScore,
+        tag1: tag1 || "peer-review",
+        tag2: tag2 || "hackathon"
+      },
+      reputationRegistry: erc8004Service.getReputationRegistryAddress()
+    });
+  } catch (error: any) {
+    console.error("[selfclaw] reputation feedback error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post("/v1/reputation/attest", verificationLimiter, async (req: Request, res: Response) => {
+  try {
+    const auth = await authenticateAgent(req, res);
+    if (!auth) return;
+
+    const { erc8004TokenId } = req.body;
+
+    if (!erc8004TokenId) {
+      return res.status(400).json({
+        error: "erc8004TokenId is required",
+        hint: "The agent must have an ERC-8004 identity NFT"
+      });
+    }
+
+    const agentPublicKey = auth.publicKey;
+    const agent = auth.agent;
     const meta = agent.metadata as any || {};
 
     if (meta.erc8004Attestation?.txHash) {
@@ -1247,11 +1554,11 @@ router.post("/v1/reputation/attest", verificationLimiter, async (req: Request, r
 
 router.post("/v1/create-wallet", verificationLimiter, async (req: Request, res: Response) => {
   try {
-    const { humanId, agentPublicKey } = req.body;
-    
-    if (!humanId || !agentPublicKey) {
-      return res.status(400).json({ error: "humanId and agentPublicKey are required" });
-    }
+    const auth = await authenticateAgent(req, res);
+    if (!auth) return;
+
+    const humanId = auth.humanId;
+    const agentPublicKey = auth.publicKey;
     
     const result = await createAgentWallet(humanId, agentPublicKey);
     
@@ -1300,11 +1607,10 @@ router.get("/v1/wallet/:humanId", publicApiLimiter, async (req: Request, res: Re
 
 router.post("/v1/request-gas", verificationLimiter, async (req: Request, res: Response) => {
   try {
-    const { humanId } = req.body;
-    
-    if (!humanId) {
-      return res.status(400).json({ error: "humanId is required" });
-    }
+    const auth = await authenticateAgent(req, res);
+    if (!auth) return;
+
+    const humanId = auth.humanId;
     
     const result = await sendGasSubsidy(humanId);
     
@@ -1461,22 +1767,16 @@ const TOKEN_FACTORY_BYTECODE = '0x608060405234801561001057600080fd5b506040516106
 // Deploy token endpoint
 router.post("/v1/deploy-token", verificationLimiter, async (req: Request, res: Response) => {
   try {
-    const { humanId, name, symbol, initialSupply } = req.body;
+    const auth = await authenticateAgent(req, res);
+    if (!auth) return;
+
+    const { name, symbol, initialSupply } = req.body;
+    const humanId = auth.humanId;
     
-    if (!humanId || !name || !symbol || !initialSupply) {
+    if (!name || !symbol || !initialSupply) {
       return res.status(400).json({ 
-        error: "humanId, name, symbol, and initialSupply are required" 
+        error: "name, symbol, and initialSupply are required" 
       });
-    }
-    
-    // Verify humanId is verified
-    const verified = await db.select()
-      .from(verifiedBots)
-      .where(eq(verifiedBots.humanId, humanId))
-      .limit(1);
-    
-    if (verified.length === 0) {
-      return res.status(403).json({ error: "Only verified agents can deploy tokens" });
     }
     
     // Get wallet client
@@ -1533,22 +1833,16 @@ router.post("/v1/deploy-token", verificationLimiter, async (req: Request, res: R
 // Transfer token endpoint
 router.post("/v1/transfer-token", verificationLimiter, async (req: Request, res: Response) => {
   try {
-    const { humanId, tokenAddress, toAddress, amount } = req.body;
+    const auth = await authenticateAgent(req, res);
+    if (!auth) return;
+
+    const { tokenAddress, toAddress, amount } = req.body;
+    const humanId = auth.humanId;
     
-    if (!humanId || !tokenAddress || !toAddress || !amount) {
+    if (!tokenAddress || !toAddress || !amount) {
       return res.status(400).json({ 
-        error: "humanId, tokenAddress, toAddress, and amount are required" 
+        error: "tokenAddress, toAddress, and amount are required" 
       });
-    }
-    
-    // Verify humanId is verified
-    const verified = await db.select()
-      .from(verifiedBots)
-      .where(eq(verifiedBots.humanId, humanId))
-      .limit(1);
-    
-    if (verified.length === 0) {
-      return res.status(403).json({ error: "Only verified agents can transfer tokens" });
     }
     
     // Get wallet client
@@ -1607,21 +1901,11 @@ router.post("/v1/transfer-token", verificationLimiter, async (req: Request, res:
 // Register ERC-8004 on-chain identity
 router.post("/v1/register-erc8004", verificationLimiter, async (req: Request, res: Response) => {
   try {
-    const { humanId, agentName, description } = req.body;
-    
-    if (!humanId) {
-      return res.status(400).json({ error: "humanId is required" });
-    }
-    
-    // Verify humanId is verified
-    const verified = await db.select()
-      .from(verifiedBots)
-      .where(eq(verifiedBots.humanId, humanId))
-      .limit(1);
-    
-    if (verified.length === 0) {
-      return res.status(403).json({ error: "Only verified agents can register ERC-8004 identity" });
-    }
+    const auth = await authenticateAgent(req, res);
+    if (!auth) return;
+
+    const { agentName, description } = req.body;
+    const humanId = auth.humanId;
     
     // Get wallet
     const walletInfo = await getAgentWalletByHumanId(humanId);
@@ -1635,7 +1919,7 @@ router.post("/v1/register-erc8004", verificationLimiter, async (req: Request, re
     }
     
     // Generate registration file
-    const agent = verified[0];
+    const agent = auth.agent;
     const registrationJson = generateRegistrationFile(
       agentName || agent.deviceId || "Verified Agent",
       description || "A verified AI agent on SelfClaw",
