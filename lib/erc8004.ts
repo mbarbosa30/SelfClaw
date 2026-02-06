@@ -178,8 +178,7 @@ export class ERC8004Service {
     }
   }
   
-  // Get reputation summary for an agent
-  async getReputationSummary(agentTokenId: string): Promise<{ totalFeedback: number; averageScore: number } | null> {
+  async getReputationSummary(agentTokenId: string): Promise<{ totalFeedback: number; averageScore: number; lastUpdated: number } | null> {
     if (!this.isReady()) {
       return null;
     }
@@ -192,11 +191,53 @@ export class ERC8004Service {
       return {
         totalFeedback: Number(summary.totalFeedback),
         averageScore: Number(summary.averageScore),
+        lastUpdated: Number(summary.lastUpdated),
       };
     } catch (error: any) {
       console.error("[erc8004] Failed to get reputation:", error.message);
       return null;
     }
+  }
+  
+  async readAllFeedback(agentTokenId: string): Promise<Array<{
+    rater: string;
+    score: number;
+    decimals: number;
+    tag1: string;
+    tag2: string;
+    endpoint: string;
+    feedbackURI: string;
+    feedbackHash: string;
+    timestamp: number;
+  }> | null> {
+    if (!this.isReady()) {
+      return null;
+    }
+    
+    const config = ERC8004_CONFIG.active;
+    const reputation = new ethers.Contract(config.resolver, REPUTATION_REGISTRY_ABI, this.provider);
+    
+    try {
+      const feedback = await reputation.readAllFeedback(agentTokenId);
+      return feedback.map((f: any) => ({
+        rater: f.rater,
+        score: Number(f.score),
+        decimals: Number(f.decimals),
+        tag1: f.tag1,
+        tag2: f.tag2,
+        endpoint: f.endpoint,
+        feedbackURI: f.feedbackURI,
+        feedbackHash: f.feedbackHash,
+        timestamp: Number(f.timestamp),
+      }));
+    } catch (error: any) {
+      console.error("[erc8004] Failed to read feedback:", error.message);
+      return null;
+    }
+  }
+  
+  getReputationRegistryAddress(): string {
+    return ERC8004_CONFIG.active.resolver;
   }
   
   // Get explorer URL for a token

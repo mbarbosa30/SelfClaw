@@ -707,6 +707,18 @@ router.get("/v1/agent", publicApiLimiter, async (req: Request, res: Response) =>
     const qMeta = foundAgent.metadata as any || {};
     const { zkProof: qZkProof, ...qPublicMetadata } = qMeta;
 
+    const qRepData: any = {
+      hasErc8004: !!qPublicMetadata.erc8004TokenId,
+      endpoint: `https://selfclaw.ai/api/selfclaw/v1/agent/${encodeURIComponent(foundAgent.publicKey)}/reputation`,
+      registryAddress: erc8004Service.getReputationRegistryAddress()
+    };
+    if (qPublicMetadata.erc8004TokenId) {
+      qRepData.erc8004TokenId = qPublicMetadata.erc8004TokenId;
+      qRepData.attestation = qPublicMetadata.erc8004Attestation || null;
+    }
+
+    const { erc8004TokenId: _qt, erc8004Attestation: _qa, ...qCleanMetadata } = qPublicMetadata;
+
     res.json({
       verified: true,
       publicKey: foundAgent.publicKey,
@@ -721,8 +733,9 @@ router.get("/v1/agent", publicApiLimiter, async (req: Request, res: Response) =>
         hash: qZkProof?.proofHash || null,
         endpoint: `https://selfclaw.ai/api/selfclaw/v1/agent/${encodeURIComponent(foundAgent.publicKey)}/proof`
       },
+      reputation: qRepData,
       swarm: foundAgent.humanId ? `https://selfclaw.ai/human/${foundAgent.humanId}` : null,
-      metadata: qPublicMetadata,
+      metadata: qCleanMetadata,
       economy: {
         enabled: true,
         playbook: "https://selfclaw.ai/agent-economy.md",
@@ -808,6 +821,67 @@ router.get("/v1/agent/:identifier/proof", publicApiLimiter, async (req: Request,
   }
 });
 
+router.get("/v1/agent/:identifier/reputation", publicApiLimiter, async (req: Request, res: Response) => {
+  try {
+    const { identifier } = req.params;
+
+    if (!identifier || identifier.length < 2) {
+      return res.status(400).json({ error: "Invalid identifier" });
+    }
+
+    let agentRecords: any[] = [];
+    agentRecords = await db.select()
+      .from(verifiedBots)
+      .where(sql`${verifiedBots.publicKey} = ${identifier}`)
+      .limit(1);
+
+    if (agentRecords.length === 0) {
+      agentRecords = await db.select()
+        .from(verifiedBots)
+        .where(sql`${verifiedBots.deviceId} = ${identifier}`)
+        .limit(1);
+    }
+
+    const agent = agentRecords[0];
+    if (!agent) {
+      return res.status(404).json({ error: "Agent not found in registry" });
+    }
+
+    const meta = agent.metadata as any || {};
+    const tokenId = meta.erc8004TokenId;
+
+    if (!tokenId) {
+      return res.json({
+        publicKey: agent.publicKey,
+        humanId: agent.humanId,
+        hasErc8004: false,
+        message: "This agent does not have an ERC-8004 identity NFT. Mint one first to build on-chain reputation.",
+        reputationRegistry: erc8004Service.getReputationRegistryAddress()
+      });
+    }
+
+    const [summary, feedback] = await Promise.all([
+      erc8004Service.getReputationSummary(tokenId),
+      erc8004Service.readAllFeedback(tokenId)
+    ]);
+
+    res.json({
+      publicKey: agent.publicKey,
+      humanId: agent.humanId,
+      erc8004TokenId: tokenId,
+      hasErc8004: true,
+      reputationRegistry: erc8004Service.getReputationRegistryAddress(),
+      attestation: meta.erc8004Attestation || null,
+      summary: summary || { totalFeedback: 0, averageScore: 0, lastUpdated: 0 },
+      feedback: feedback || [],
+      explorerUrl: erc8004Service.getExplorerUrl(tokenId)
+    });
+  } catch (error: any) {
+    console.error("[selfclaw] reputation lookup error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 router.get("/v1/agent/:identifier", publicApiLimiter, async (req: Request, res: Response) => {
   try {
     const { identifier } = req.params;
@@ -855,6 +929,18 @@ router.get("/v1/agent/:identifier", publicApiLimiter, async (req: Request, res: 
     const meta = foundAgent.metadata as any || {};
     const { zkProof, ...publicMetadata } = meta;
 
+    const reputationData: any = {
+      hasErc8004: !!publicMetadata.erc8004TokenId,
+      endpoint: `https://selfclaw.ai/api/selfclaw/v1/agent/${encodeURIComponent(foundAgent.publicKey)}/reputation`,
+      registryAddress: erc8004Service.getReputationRegistryAddress()
+    };
+    if (publicMetadata.erc8004TokenId) {
+      reputationData.erc8004TokenId = publicMetadata.erc8004TokenId;
+      reputationData.attestation = publicMetadata.erc8004Attestation || null;
+    }
+
+    const { erc8004TokenId: _t, erc8004Attestation: _a, ...cleanMetadata } = publicMetadata;
+
     res.json({
       verified: true,
       publicKey: foundAgent.publicKey,
@@ -869,8 +955,9 @@ router.get("/v1/agent/:identifier", publicApiLimiter, async (req: Request, res: 
         hash: zkProof?.proofHash || null,
         endpoint: `https://selfclaw.ai/api/selfclaw/v1/agent/${encodeURIComponent(foundAgent.publicKey)}/proof`
       },
+      reputation: reputationData,
       swarm: foundAgent.humanId ? `https://selfclaw.ai/human/${foundAgent.humanId}` : null,
-      metadata: publicMetadata,
+      metadata: cleanMetadata,
       economy: {
         enabled: true,
         playbook: "https://selfclaw.ai/agent-economy.md",
@@ -1076,6 +1163,84 @@ router.get("/v1/ecosystem-stats", publicApiLimiter, async (_req: Request, res: R
     });
   } catch (error: any) {
     console.error("[selfclaw] ecosystem-stats error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post("/v1/reputation/attest", verificationLimiter, async (req: Request, res: Response) => {
+  try {
+    const { agentPublicKey, erc8004TokenId } = req.body;
+
+    if (!agentPublicKey || !erc8004TokenId) {
+      return res.status(400).json({
+        error: "agentPublicKey and erc8004TokenId are required",
+        hint: "The agent must be verified in the SelfClaw registry and have an ERC-8004 identity NFT"
+      });
+    }
+
+    const agentRecords = await db.select()
+      .from(verifiedBots)
+      .where(sql`${verifiedBots.publicKey} = ${agentPublicKey}`)
+      .limit(1);
+
+    if (agentRecords.length === 0) {
+      return res.status(404).json({ error: "Agent not found in SelfClaw registry. Verify first." });
+    }
+
+    const agent = agentRecords[0];
+    const meta = agent.metadata as any || {};
+
+    if (meta.erc8004Attestation?.txHash) {
+      return res.status(409).json({
+        error: "Attestation already submitted for this agent",
+        txHash: meta.erc8004Attestation.txHash,
+        explorerUrl: erc8004Service.getTxExplorerUrl(meta.erc8004Attestation.txHash)
+      });
+    }
+
+    if (!erc8004Service.isReady()) {
+      return res.status(503).json({ error: "ERC-8004 contracts not available" });
+    }
+
+    const identity = await erc8004Service.getAgentIdentity(erc8004TokenId);
+    if (!identity) {
+      return res.status(400).json({
+        error: "ERC-8004 token not found on-chain",
+        hint: "Ensure the token has been minted on the Identity Registry before submitting attestation"
+      });
+    }
+
+    const attestation = await erc8004Service.submitVerificationAttestation(erc8004TokenId);
+
+    if (!attestation) {
+      return res.status(500).json({ error: "Attestation submission failed" });
+    }
+
+    await db.update(verifiedBots)
+      .set({
+        metadata: {
+          ...meta,
+          erc8004TokenId,
+          erc8004Attestation: {
+            txHash: attestation.txHash,
+            submittedAt: new Date().toISOString(),
+            registryAddress: erc8004Service.getReputationRegistryAddress()
+          }
+        }
+      })
+      .where(sql`${verifiedBots.publicKey} = ${agentPublicKey}`);
+
+    console.log("[selfclaw] Reputation attestation submitted for agent:", agentPublicKey, "tokenId:", erc8004TokenId, "tx:", attestation.txHash);
+
+    res.json({
+      success: true,
+      txHash: attestation.txHash,
+      explorerUrl: erc8004Service.getTxExplorerUrl(attestation.txHash),
+      reputationRegistry: erc8004Service.getReputationRegistryAddress(),
+      message: "SelfClaw verification attestation submitted to ERC-8004 Reputation Registry"
+    });
+  } catch (error: any) {
+    console.error("[selfclaw] reputation attest error:", error);
     res.status(500).json({ error: error.message });
   }
 });

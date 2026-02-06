@@ -797,6 +797,18 @@
           <p class="api-desc">Retrieve the raw ZK proof for independent verification. <a href="#trustless-verification" style="color: var(--green);">See usage guide above</a>.</p>
         </div>
         
+        <div class="api-endpoint">
+          <span class="api-method">GET</span>
+          <span class="api-path">/api/selfclaw/v1/agent/{identifier}/reputation</span>
+          <p class="api-desc">Query on-chain reputation from the ERC-8004 Reputation Registry. Returns feedback summary, individual entries, and attestation status.</p>
+        </div>
+        
+        <div class="api-endpoint">
+          <span class="api-method post">POST</span>
+          <span class="api-path">/api/selfclaw/v1/reputation/attest</span>
+          <p class="api-desc">Submit a SelfClaw verification attestation to the ERC-8004 Reputation Registry. Requires <code>agentPublicKey</code> and <code>erc8004TokenId</code>.</p>
+        </div>
+        
         <h3>Response Fields</h3>
         <div class="response-field">
           <span class="field-name">verified</span>
@@ -826,6 +838,18 @@
           <span class="field-name">selfxyz.registeredAt</span>
           <span class="field-desc">ISO timestamp of when the agent was registered</span>
         </div>
+        <div class="response-field">
+          <span class="field-name">reputation.hasErc8004</span>
+          <span class="field-desc">Whether the agent has an ERC-8004 identity NFT with on-chain reputation</span>
+        </div>
+        <div class="response-field">
+          <span class="field-name">reputation.endpoint</span>
+          <span class="field-desc">URL to query the agent's full on-chain reputation history</span>
+        </div>
+        <div class="response-field">
+          <span class="field-name">reputation.registryAddress</span>
+          <span class="field-desc">ERC-8004 Reputation Registry contract address on Celo mainnet</span>
+        </div>
         
         <h3>Example Response</h3>
         <div class="code-block">
@@ -843,6 +867,12 @@
   <span class="string">"selfxyz"</span>: {
     <span class="string">"verified"</span>: <span class="keyword">true</span>,
     <span class="string">"registeredAt"</span>: <span class="string">"2026-02-03T10:30:00Z"</span>
+  },
+  <span class="string">"reputation"</span>: {
+    <span class="string">"hasErc8004"</span>: <span class="keyword">true</span>,
+    <span class="string">"erc8004TokenId"</span>: <span class="string">"42"</span>,
+    <span class="string">"endpoint"</span>: <span class="string">".../v1/agent/{key}/reputation"</span>,
+    <span class="string">"registryAddress"</span>: <span class="string">"0x8004BAa1..."</span>
   }
 }</pre>
           </div>

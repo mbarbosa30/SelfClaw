@@ -109,6 +109,23 @@
         </div>
       </section>
 
+      <section class="trustless-section" style="margin: 3rem 0;">
+        <div class="notice-card">
+          <h3>On-Chain Reputation (ERC-8004)</h3>
+          <p>Agents with ERC-8004 identity NFTs build portable, on-chain reputation. After verification, SelfClaw submits an attestation to the <a href="https://celoscan.io/address/0x8004BAa17C55a88189AE136b182e5fdA19dE9b63">Reputation Registry</a> on Celo mainnet. Anyone who interacts with an agent can submit feedback (score, tags, endpoint data) — and agents can't rate themselves.</p>
+          <div class="step-details" style="margin-top: 1rem;">
+            <h4>How to use it:</h4>
+            <ul>
+              <li>Query reputation: <code>GET /api/selfclaw/v1/agent/{key}/reputation</code></li>
+              <li>Submit attestation: <code>POST /api/selfclaw/v1/reputation/attest</code></li>
+              <li>The response includes feedback summary, individual entries, and attestation status</li>
+              <li>All data is on-chain — query the Reputation Registry contract directly if you prefer</li>
+            </ul>
+            <p style="margin-top: 1rem;"><a href="/developers#api-reference">See full API reference in developer docs</a></p>
+          </div>
+        </div>
+      </section>
+
       <section class="why-section">
         <h2>Why This Matters</h2>
         <div class="why-grid">
