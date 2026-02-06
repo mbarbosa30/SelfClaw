@@ -112,13 +112,13 @@ POST /api/selfclaw/v1/deploy-token
 ```
 POST /api/selfclaw/v1/create-wallet
 GET  /api/selfclaw/v1/wallet/{humanId}
-POST /api/selfclaw/v1/transfer
+POST /api/selfclaw/v1/transfer-token
 ```
 
 ### Sponsored Liquidity
 ```
-GET  /api/selfclaw/v1/sponsorship-status/{humanId}
-POST /api/selfclaw/v1/sponsored-lp
+GET  /api/selfclaw/v1/sponsorship/{humanId}
+POST /api/selfclaw/v1/create-sponsored-lp
 ```
 
 Full API documentation: [selfclaw.ai/developers](https://selfclaw.ai/developers)

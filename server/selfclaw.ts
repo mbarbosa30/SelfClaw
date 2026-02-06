@@ -200,8 +200,6 @@ async function authenticateAgent(req: Request, res: Response): Promise<{ publicK
   return { publicKey: agentPublicKey, humanId: agent.humanId, agent };
 }
 
-const ADMIN_SECRET = process.env.SELFCLAW_ADMIN_SECRET || process.env.SESSION_SECRET;
-
 router.get("/v1/config", (_req: Request, res: Response) => {
   res.json({
     scope: SELFCLAW_SCOPE,
@@ -374,33 +372,6 @@ router.get("/v1/callback/", (req: Request, res: Response) => {
     status: "ok", 
     message: "SelfClaw callback endpoint. Use POST to submit verification proofs.",
     method: "GET not supported for verification"
-  });
-});
-
-// Debug endpoints - gated behind admin secret
-router.post("/v1/callback-test", (req: Request, res: Response) => {
-  const adminKey = req.headers["x-admin-secret"] as string;
-  if (!ADMIN_SECRET || adminKey !== ADMIN_SECRET) {
-    return res.status(403).json({ error: "Admin access required" });
-  }
-  res.status(200).json({ status: "success", result: true });
-});
-
-router.post("/v1/debug-callback", (req: Request, res: Response) => {
-  const adminKey = req.headers["x-admin-secret"] as string;
-  if (!ADMIN_SECRET || adminKey !== ADMIN_SECRET) {
-    return res.status(403).json({ error: "Admin access required" });
-  }
-  const timestamp = new Date().toISOString();
-  res.status(200).json({ 
-    status: "success", 
-    result: true,
-    debug: {
-      timestamp,
-      bodyKeys: Object.keys(req.body || {}),
-      hasProof: !!req.body?.proof,
-      hasPublicSignals: !!req.body?.publicSignals,
-    }
   });
 });
 
@@ -1061,27 +1032,6 @@ router.post("/v1/verify", async (_req: Request, res: Response) => {
     error: "This endpoint is deprecated",
     message: "Use the Self.xyz verification flow instead: POST /api/selfclaw/v1/start-verification",
     docs: "https://selfclaw.ai/developers"
-  });
-});
-
-// Debug endpoint - gated behind admin secret
-router.get("/v1/debug-status", (req: Request, res: Response) => {
-  const adminKey = req.headers["x-admin-secret"] as string;
-  if (!ADMIN_SECRET || adminKey !== ADMIN_SECRET) {
-    return res.status(403).json({ error: "Admin access required" });
-  }
-  res.json({
-    status: "ok",
-    config: {
-      endpoint: SELFCLAW_ENDPOINT,
-      scope: SELFCLAW_SCOPE,
-      staging: SELFCLAW_STAGING
-    },
-    lastVerificationAttempt: lastVerificationAttempt || { message: "No verification attempts yet" },
-    recentCallbackRequests: recentCallbackRequests.length > 0 
-      ? recentCallbackRequests 
-      : [{ message: "No callback requests received yet" }],
-    callbackRequestCount: recentCallbackRequests.length
   });
 });
 
