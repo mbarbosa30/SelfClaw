@@ -1,7 +1,7 @@
 import { Router, Request, Response } from "express";
 import rateLimit from "express-rate-limit";
 import { db } from "./db.js";
-import { verifiedBots, verificationSessions, sponsoredAgents, trackedPools, type InsertVerifiedBot, type InsertVerificationSession } from "../shared/schema.js";
+import { verifiedBots, verificationSessions, sponsoredAgents, trackedPools, agentWallets, type InsertVerifiedBot, type InsertVerificationSession } from "../shared/schema.js";
 import { eq, and, gt, lt, sql, desc, count } from "drizzle-orm";
 import { SelfBackendVerifier, AllIds, DefaultConfigStore } from "@selfxyz/core";
 import { SelfAppBuilder } from "@selfxyz/qrcode";
@@ -1579,6 +1579,83 @@ router.get("/v1/wallet/:humanId", publicApiLimiter, async (req: Request, res: Re
   } catch (error: any) {
     console.error("[selfclaw] wallet lookup error:", error);
     res.status(500).json({ error: error.message });
+  }
+});
+
+router.get("/v1/wallet-verify/:address", publicApiLimiter, async (req: Request, res: Response) => {
+  try {
+    const { address } = req.params;
+    
+    if (!address || !/^0x[0-9a-fA-F]{40}$/.test(address)) {
+      return res.json({
+        verified: false,
+        address: address || "",
+        message: "Invalid wallet address format"
+      });
+    }
+
+    const wallets = await db.select()
+      .from(agentWallets)
+      .where(sql`LOWER(${agentWallets.address}) = LOWER(${address})`)
+      .limit(1);
+
+    if (wallets.length === 0) {
+      return res.json({
+        verified: false,
+        address,
+        message: "Wallet not found in SelfClaw registry"
+      });
+    }
+
+    const wallet = wallets[0];
+    const isExternal = wallet.encryptedPrivateKey === 'external';
+
+    const agents = await db.select()
+      .from(verifiedBots)
+      .where(eq(verifiedBots.humanId, wallet.humanId))
+      .limit(1);
+
+    const agent = agents[0];
+    if (!agent) {
+      return res.json({
+        verified: false,
+        address,
+        message: "Wallet exists but no verified agent found"
+      });
+    }
+
+    const meta = (agent.metadata as any) || {};
+
+    res.json({
+      verified: true,
+      address: wallet.address,
+      walletType: isExternal ? "external" : "managed",
+      agent: {
+        publicKey: agent.publicKey,
+        agentName: agent.deviceId,
+        registeredAt: agent.verifiedAt,
+        humanId: agent.humanId
+      },
+      identity: {
+        hasErc8004: !!meta.erc8004TokenId,
+        erc8004TokenId: meta.erc8004TokenId || null,
+        scan8004Url: meta.erc8004TokenId ? `https://www.8004scan.io/agents/${meta.erc8004TokenId}` : null
+      },
+      swarm: {
+        endpoint: `https://selfclaw.ai/api/selfclaw/v1/human/${agent.humanId}`,
+      },
+      lookup: {
+        agentEndpoint: `https://selfclaw.ai/api/selfclaw/v1/agent/${encodeURIComponent(agent.publicKey)}`,
+        proofEndpoint: `https://selfclaw.ai/api/selfclaw/v1/agent/${encodeURIComponent(agent.publicKey)}/proof`
+      }
+    });
+  } catch (error: any) {
+    console.error("[selfclaw] wallet-verify error:", error);
+    return res.json({
+      verified: false,
+      address: req.params.address || "",
+      message: "Lookup failed"
+    });
   }
 });
 

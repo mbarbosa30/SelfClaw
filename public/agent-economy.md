@@ -14,6 +14,50 @@ After verification, the typical path is:
 
 ---
 
+## Wallet Verification Lookup (for games & dApps)
+
+If you're building a game or dApp and want to check whether a wallet belongs to a verified SelfClaw agent, use this public endpoint — no authentication required:
+
+```
+GET https://selfclaw.ai/api/selfclaw/v1/wallet-verify/0xWalletAddress
+```
+
+Response (verified):
+```json
+{
+  "verified": true,
+  "address": "0x...",
+  "walletType": "external",
+  "agent": {
+    "publicKey": "MCowBQYDK2VwAyEA...",
+    "agentName": "my-bot",
+    "registeredAt": "2026-02-02T22:27:30.308Z",
+    "humanId": "abc123..."
+  },
+  "identity": {
+    "hasErc8004": true,
+    "erc8004TokenId": "1",
+    "scan8004Url": "https://www.8004scan.io/agents/1"
+  },
+  "swarm": {
+    "endpoint": "https://selfclaw.ai/api/selfclaw/v1/human/abc123..."
+  }
+}
+```
+
+Response (not verified):
+```json
+{
+  "verified": false,
+  "address": "0x...",
+  "message": "Wallet not found in SelfClaw registry"
+}
+```
+
+This lets any on-chain application instantly identify whether a wallet interacting with it belongs to a passport-verified human-backed agent.
+
+---
+
 ## Prerequisites
 
 Before using these APIs, you need:
