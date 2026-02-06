@@ -537,11 +537,22 @@ async function handleCallback(req: Request, res: Response) {
       .where(sql`${verifiedBots.publicKey} = ${session.agentPublicKey}`)
       .limit(1);
 
+    const proofHash = crypto.createHash("sha256")
+      .update(attestationId + ":" + JSON.stringify(proof) + ":" + JSON.stringify(publicSignals))
+      .digest("hex");
+
     const metadata = { 
       nationality, 
       verifiedVia: "selfxyz", 
       signatureVerified: session.signatureVerified || false,
-      lastUpdated: new Date().toISOString() 
+      lastUpdated: new Date().toISOString(),
+      zkProof: {
+        attestationId,
+        proof,
+        publicSignals,
+        proofHash,
+        verifiedAt: new Date().toISOString()
+      }
     };
 
     try {
@@ -693,6 +704,9 @@ router.get("/v1/agent", publicApiLimiter, async (req: Request, res: Response) =>
       });
     }
 
+    const qMeta = foundAgent.metadata as any || {};
+    const { zkProof: qZkProof, ...qPublicMetadata } = qMeta;
+
     res.json({
       verified: true,
       publicKey: foundAgent.publicKey,
@@ -702,8 +716,13 @@ router.get("/v1/agent", publicApiLimiter, async (req: Request, res: Response) =>
         verified: true,
         registeredAt: foundAgent.verifiedAt
       },
+      proof: {
+        available: !!qZkProof,
+        hash: qZkProof?.proofHash || null,
+        endpoint: `https://selfclaw.ai/api/selfclaw/v1/agent/${encodeURIComponent(foundAgent.publicKey)}/proof`
+      },
       swarm: foundAgent.humanId ? `https://selfclaw.ai/human/${foundAgent.humanId}` : null,
-      metadata: foundAgent.metadata,
+      metadata: qPublicMetadata,
       economy: {
         enabled: true,
         playbook: "https://selfclaw.ai/agent-economy.md",
@@ -713,6 +732,79 @@ router.get("/v1/agent", publicApiLimiter, async (req: Request, res: Response) =>
   } catch (error) {
     console.error("Query param agent lookup error:", error);
     res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.get("/v1/agent/:identifier/proof", publicApiLimiter, async (req: Request, res: Response) => {
+  try {
+    const { identifier } = req.params;
+
+    if (!identifier || identifier.length < 2) {
+      return res.status(400).json({ error: "Invalid identifier" });
+    }
+
+    let agents: any[] = [];
+    try {
+      agents = await db.select()
+        .from(verifiedBots)
+        .where(sql`${verifiedBots.publicKey} = ${identifier}`)
+        .limit(1);
+    } catch (dbError) {
+      console.error("[selfclaw] DB error on proof lookup:", dbError);
+    }
+
+    if (agents.length === 0) {
+      try {
+        agents = await db.select()
+          .from(verifiedBots)
+          .where(sql`${verifiedBots.deviceId} = ${identifier}`)
+          .limit(1);
+      } catch (dbError) {
+        console.error("[selfclaw] DB error on proof deviceId lookup:", dbError);
+      }
+    }
+
+    const foundAgent = agents[0];
+    if (!foundAgent) {
+      return res.status(404).json({ error: "Agent not found in registry" });
+    }
+
+    const agentMeta = foundAgent.metadata as any || {};
+    const zkProof = agentMeta.zkProof;
+
+    if (!zkProof) {
+      return res.json({
+        publicKey: foundAgent.publicKey,
+        proofAvailable: false,
+        message: "This agent was verified before proof storage was enabled. The verification is valid but the raw proof is not available for independent re-verification."
+      });
+    }
+
+    res.json({
+      publicKey: foundAgent.publicKey,
+      humanId: foundAgent.humanId,
+      proofAvailable: true,
+      verifiedAt: zkProof.verifiedAt,
+      proofHash: zkProof.proofHash,
+      attestationId: zkProof.attestationId,
+      proof: zkProof.proof,
+      publicSignals: zkProof.publicSignals,
+      verification: {
+        method: "selfxyz",
+        description: "Zero-knowledge passport proof via Self.xyz. Verify independently using the Self.xyz SDK.",
+        howToVerify: [
+          "Install @selfxyz/core: npm install @selfxyz/core",
+          "Import SelfBackendVerifier from @selfxyz/core",
+          "Create verifier with scope 'selfclaw-verify' and attestationId 'selfclaw-passport'",
+          "Call verifier.verify(attestationId, proof, publicSignals) with the data above",
+          "If isValid is true, the agent's human backing is cryptographically confirmed"
+        ],
+        sdkDocs: "https://docs.self.xyz"
+      }
+    });
+  } catch (error: any) {
+    console.error("[selfclaw] proof lookup error:", error);
+    return res.status(500).json({ error: "Proof lookup failed" });
   }
 });
 
@@ -760,6 +852,9 @@ router.get("/v1/agent/:identifier", publicApiLimiter, async (req: Request, res: 
       });
     }
 
+    const meta = foundAgent.metadata as any || {};
+    const { zkProof, ...publicMetadata } = meta;
+
     res.json({
       verified: true,
       publicKey: foundAgent.publicKey,
@@ -769,8 +864,13 @@ router.get("/v1/agent/:identifier", publicApiLimiter, async (req: Request, res: 
         verified: true,
         registeredAt: foundAgent.verifiedAt
       },
+      proof: {
+        available: !!zkProof,
+        hash: zkProof?.proofHash || null,
+        endpoint: `https://selfclaw.ai/api/selfclaw/v1/agent/${encodeURIComponent(foundAgent.publicKey)}/proof`
+      },
       swarm: foundAgent.humanId ? `https://selfclaw.ai/human/${foundAgent.humanId}` : null,
-      metadata: foundAgent.metadata,
+      metadata: publicMetadata,
       economy: {
         enabled: true,
         playbook: "https://selfclaw.ai/agent-economy.md",
