@@ -7,6 +7,7 @@ import { ERC8004_CONFIG, generateRegistrationFile, type ERC8004RegistrationFile 
 // Simplified ABI for ERC-8004 Identity Registry
 const IDENTITY_REGISTRY_ABI = [
   "function register(string agentURI) external returns (uint256)",
+  "function setAgentURI(uint256 agentId, string agentURI) external",
   "function ownerOf(uint256 tokenId) external view returns (address)",
   "function tokenURI(uint256 tokenId) external view returns (string)",
   "function totalSupply() external view returns (uint256)",
@@ -47,16 +48,17 @@ export class ERC8004Service {
     };
   }
   
-  // Generate registration file for an agent
   generateRegistration(
     name: string,
     description: string,
     walletAddress?: string,
     a2aEndpoint?: string,
+    webEndpoint?: string,
     imageUrl?: string,
-    isVerified: boolean = false
+    isVerified: boolean = false,
+    agentId?: string,
   ): ERC8004RegistrationFile {
-    return generateRegistrationFile(name, description, walletAddress, a2aEndpoint, imageUrl, isVerified);
+    return generateRegistrationFile(name, description, walletAddress, a2aEndpoint, webEndpoint, imageUrl, isVerified, agentId);
   }
   
   // Register an agent on-chain (mint NFT)
@@ -103,6 +105,33 @@ export class ERC8004Service {
       };
     } catch (error: any) {
       console.error("[erc8004] Registration failed:", error.message);
+      throw error;
+    }
+  }
+  
+  async setAgentURI(agentId: string, newURI: string, signerPrivateKey?: string): Promise<{ txHash: string } | null> {
+    if (!this.isReady()) {
+      console.log("[erc8004] Contracts not deployed yet");
+      return null;
+    }
+    
+    const config = ERC8004_CONFIG.active;
+    const signer = signerPrivateKey 
+      ? new ethers.Wallet(signerPrivateKey, this.provider)
+      : this.wallet;
+    
+    if (!signer) {
+      throw new Error("No signer available for URI update");
+    }
+    
+    const registry = new ethers.Contract(config.identityRegistry, IDENTITY_REGISTRY_ABI, signer);
+    
+    try {
+      const tx = await registry.setAgentURI(agentId, newURI);
+      const receipt = await tx.wait();
+      return { txHash: receipt.hash };
+    } catch (error: any) {
+      console.error("[erc8004] setAgentURI failed:", error.message);
       throw error;
     }
   }

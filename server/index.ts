@@ -150,6 +150,35 @@ async function main() {
   app.use("/api/selfclaw", selfclawRouter);
   app.use("/api/selfmolt", selfclawRouter); // Legacy redirect support
 
+  app.get("/.well-known/agent-registration.json", async (req: Request, res: Response) => {
+    try {
+      const { db: dbConn } = await import("./db.js");
+      const { verifiedBots } = await import("../shared/schema.js");
+      const { sql: sqlTag } = await import("drizzle-orm");
+
+      const minted = await dbConn.select()
+        .from(verifiedBots)
+        .where(sqlTag`(${verifiedBots.metadata}->>'erc8004Minted')::boolean = true`);
+
+      const domain = process.env.REPLIT_DOMAINS || "selfclaw.ai";
+      const registrations = minted.map((a: any) => {
+        const meta = (a.metadata as Record<string, any>) || {};
+        return {
+          agentRegistry: `eip155:42220:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432`,
+          agentId: meta.erc8004TokenId,
+          agentURI: `https://${domain}/api/selfclaw/v1/agent/${a.publicKey || a.deviceId}/registration.json`,
+        };
+      }).filter((r: any) => r.agentId);
+
+      res.setHeader("Content-Type", "application/json");
+      res.setHeader("Cache-Control", "public, max-age=300");
+      res.json({ registrations });
+    } catch (error: any) {
+      console.error("[well-known] agent-registration error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.get("/api/env-check", (req: Request, res: Response) => {
     res.json({
       ANTHROPIC_API_KEY: !!process.env.ANTHROPIC_API_KEY,
@@ -333,13 +362,13 @@ async function main() {
       // Auto-generate ERC-8004 registration JSON
       const domain = process.env.REPLIT_DOMAINS || "selfclaw.ai";
       const a2aEndpoint = `https://${domain}/api/agents/${tempId}/a2a`;
+      const webEndpoint = `https://${domain}/cockpit`;
       const erc8004Json = generateRegistrationFile(
         name,
         description || "",
         walletAddress || undefined,
         a2aEndpoint,
-        undefined,
-        false
+        webEndpoint,
       );
 
       const newAgent: InsertAgent = {
@@ -441,28 +470,31 @@ async function main() {
     }
   });
 
-  app.get("/api/agents/:id/registration", isAuthenticated, async (req: any, res: Response) => {
+  app.get("/api/agents/:id/registration.json", async (req: Request, res: Response) => {
     try {
-      const [agent] = await db.select().from(agents).where(eq(agents.id, req.params.id));
+      const [agent] = await db.select().from(agents).where(eq(agents.id, req.params.id as string));
 
       if (!agent) {
         return res.status(404).json({ error: "Agent not found" });
       }
 
-      const registrationFile = {
-        type: "https://eips.ethereum.org/EIPS/eip-8004#registration-v1",
-        name: agent.name,
-        description: agent.description || "",
-        services: [
-          { name: "web", endpoint: `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co/agents/${agent.id}` },
-          { name: "x402", endpoint: `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co/api/agents/${agent.id}/x402/pay` },
-          { name: "service", endpoint: `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co/api/agents/${agent.id}/service` },
-        ],
-        wallet: agent.tbaAddress || agent.ownerAddress,
-        network: "celo",
-        chainId: CELO_CONFIG.chainId,
-      };
+      if (agent.erc8004RegistrationJson) {
+        res.setHeader("Content-Type", "application/json");
+        res.setHeader("Cache-Control", "public, max-age=300");
+        return res.json(agent.erc8004RegistrationJson);
+      }
 
+      const domain = process.env.REPLIT_DOMAINS || "selfclaw.ai";
+      const registrationFile = generateRegistrationFile(
+        agent.name,
+        agent.description || "",
+        agent.tbaAddress || undefined,
+        `https://${domain}/api/agents/${agent.id}/a2a`,
+        `https://${domain}/cockpit`,
+      );
+
+      res.setHeader("Content-Type", "application/json");
+      res.setHeader("Cache-Control", "public, max-age=300");
       res.json(registrationFile);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -509,13 +541,13 @@ async function main() {
       const domain = process.env.REPLIT_DOMAINS || "selfclaw.ai";
       const a2aEndpoint = `https://${domain}/api/agents/${agent.id}/a2a`;
       
+      const webEndpoint = `https://${domain}/cockpit`;
       const registrationJson = generateRegistrationFile(
         agent.name,
         agent.description || "",
         agent.tbaAddress || undefined,
         a2aEndpoint,
-        undefined,
-        false
+        webEndpoint,
       );
 
       await db.update(agents)
@@ -558,7 +590,8 @@ async function main() {
         return res.status(400).json({ error: "Generate registration file first" });
       }
 
-      const agentURI = `https://${process.env.REPLIT_DOMAINS || "selfclaw.ai"}/api/agents/${agent.id}/registration`;
+      const domain = process.env.REPLIT_DOMAINS || "selfclaw.ai";
+      const agentURI = `https://${domain}/api/agents/${agent.id}/registration.json`;
       
       const result = await erc8004Service.registerAgent(agentURI);
       
@@ -566,10 +599,21 @@ async function main() {
         return res.status(500).json({ error: "Minting failed" });
       }
 
+      const existingReg = agent.erc8004RegistrationJson as any;
+      const updatedReg = {
+        ...existingReg,
+        registrations: [{
+          agentRegistry: `eip155:${erc8004Service.getConfig().chainId}:${erc8004Service.getConfig().identityRegistry}`,
+          agentId: result.tokenId,
+          supportedTrust: existingReg?.supportedTrust || ["reputation"],
+        }],
+      };
+
       await db.update(agents)
         .set({ 
           erc8004TokenId: result.tokenId,
           erc8004Minted: true,
+          erc8004RegistrationJson: updatedReg,
           updatedAt: new Date() 
         })
         .where(eq(agents.id, agent.id));
@@ -578,7 +622,10 @@ async function main() {
         success: true, 
         tokenId: result.tokenId,
         txHash: result.txHash,
-        explorerUrl: erc8004Service.getTxExplorerUrl(result.txHash)
+        agentURI,
+        registrationJson: updatedReg,
+        explorerUrl: erc8004Service.getTxExplorerUrl(result.txHash),
+        scan8004Url: `https://www.8004scan.io/agents/${result.tokenId}`,
       });
     } catch (error: any) {
       res.status(500).json({ error: error.message });

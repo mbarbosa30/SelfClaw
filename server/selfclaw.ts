@@ -949,6 +949,37 @@ router.get("/v1/agent/:identifier/reputation", publicApiLimiter, async (req: Req
   }
 });
 
+// Serve ERC-8004 registration.json for any agent (public, used as agentURI on-chain)
+router.get("/v1/agent/:identifier/registration.json", publicApiLimiter, async (req: Request, res: Response) => {
+  try {
+    const identifier = req.params.identifier as string;
+    const regAgents = await db.select()
+      .from(verifiedBots)
+      .where(
+        sql`${verifiedBots.publicKey} = ${identifier} OR ${verifiedBots.deviceId} = ${identifier}`
+      )
+      .limit(1);
+    
+    if (!regAgents.length) {
+      return res.status(404).json({ error: "Agent not found" });
+    }
+    
+    const regAgent = regAgents[0];
+    const regMetadata = (regAgent.metadata as Record<string, any>) || {};
+    
+    if (!regMetadata.erc8004RegistrationJson) {
+      return res.status(404).json({ error: "No ERC-8004 registration file generated yet" });
+    }
+    
+    res.setHeader("Content-Type", "application/json");
+    res.setHeader("Cache-Control", "public, max-age=300");
+    res.json(regMetadata.erc8004RegistrationJson);
+  } catch (error: any) {
+    console.error("[selfclaw] registration.json error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 router.get("/v1/agent/:identifier", publicApiLimiter, async (req: Request, res: Response) => {
   try {
     const { identifier } = req.params;
@@ -1907,40 +1938,64 @@ router.post("/v1/register-erc8004", verificationLimiter, async (req: Request, re
     const { agentName, description } = req.body;
     const humanId = auth.humanId;
     
-    // Get wallet
     const walletInfo = await getAgentWalletByHumanId(humanId);
     if (!walletInfo || !walletInfo.address) {
       return res.status(400).json({ error: "No wallet found. Create a wallet first." });
     }
     
-    // Check if ERC-8004 is available
     if (!erc8004Service.isReady()) {
       return res.status(503).json({ error: "ERC-8004 contracts not available yet" });
     }
     
-    // Generate registration file
     const agent = auth.agent;
+    const existingMetadata = (agent.metadata as Record<string, any>) || {};
+    if (existingMetadata.erc8004Minted) {
+      return res.status(400).json({
+        error: "Already registered",
+        tokenId: existingMetadata.erc8004TokenId,
+        explorerUrl: erc8004Service.getExplorerUrl(existingMetadata.erc8004TokenId),
+      });
+    }
+
+    const domain = process.env.REPLIT_DOMAINS || "selfclaw.ai";
+    const agentIdentifier = agent.publicKey || agent.deviceId;
+
     const registrationJson = generateRegistrationFile(
       agentName || agent.deviceId || "Verified Agent",
-      description || "A verified AI agent on SelfClaw",
+      description || "A verified AI agent on SelfClaw — passport-verified, sybil-resistant",
       walletInfo.address,
       undefined,
+      `https://${domain}`,
       undefined,
-      true
+      true,
     );
     
-    // Store the registration JSON
-    const registrationURI = `data:application/json;base64,${Buffer.from(JSON.stringify(registrationJson)).toString('base64')}`;
+    const registrationURL = `https://${domain}/api/selfclaw/v1/agent/${agentIdentifier}/registration.json`;
     
-    // Register on-chain
-    const result = await erc8004Service.registerAgent(registrationURI);
+    await db.update(verifiedBots)
+      .set({
+        metadata: {
+          ...existingMetadata,
+          erc8004RegistrationJson: registrationJson,
+        }
+      })
+      .where(eq(verifiedBots.id, agent.id));
+    
+    const result = await erc8004Service.registerAgent(registrationURL);
     
     if (!result) {
       return res.status(500).json({ error: "Failed to register on-chain identity" });
     }
+
+    const updatedRegistrationJson = {
+      ...registrationJson,
+      registrations: [{
+        agentRegistry: `eip155:${erc8004Service.getConfig().chainId}:${erc8004Service.getConfig().identityRegistry}`,
+        agentId: result.tokenId,
+        supportedTrust: registrationJson.supportedTrust,
+      }],
+    };
     
-    // Store the ERC-8004 info in metadata
-    const existingMetadata = (agent.metadata as Record<string, any>) || {};
     await db.update(verifiedBots)
       .set({
         metadata: {
@@ -1948,7 +2003,7 @@ router.post("/v1/register-erc8004", verificationLimiter, async (req: Request, re
           erc8004TokenId: result.tokenId,
           erc8004Minted: true,
           erc8004TxHash: result.txHash,
-          erc8004RegistrationJson: registrationJson
+          erc8004RegistrationJson: updatedRegistrationJson,
         }
       })
       .where(eq(verifiedBots.id, agent.id));
@@ -1959,8 +2014,10 @@ router.post("/v1/register-erc8004", verificationLimiter, async (req: Request, re
       success: true,
       tokenId: result.tokenId,
       txHash: result.txHash,
-      registrationJson,
-      explorerUrl: erc8004Service.getTxExplorerUrl(result.txHash)
+      agentURI: registrationURL,
+      registrationJson: updatedRegistrationJson,
+      explorerUrl: erc8004Service.getTxExplorerUrl(result.txHash),
+      scan8004Url: `https://www.8004scan.io/agents/${result.tokenId}`,
     });
   } catch (error: any) {
     console.error("[selfclaw] register-erc8004 error:", error);
