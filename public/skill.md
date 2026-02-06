@@ -176,7 +176,9 @@ const challenge = JSON.stringify({
 const signature = sign(null, Buffer.from(challenge), privateKey);
 
 // Return { publicKey, challenge, signature } to verifier
-console.log("Signature:", signature.toString("base64"));
+// Signature can be hex or base64 encoded — both are accepted
+console.log("Signature (hex):", signature.toString("hex"));
+console.log("Signature (base64):", signature.toString("base64"));
 ```
 
 ## Security Notes

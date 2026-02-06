@@ -116,16 +116,47 @@ function generateChallenge(sessionId: string, agentKeyHash: string): string {
   });
 }
 
+function extractRawEd25519Key(publicKeyBase64: string): Uint8Array {
+  const bytes = Buffer.from(publicKeyBase64, "base64");
+  if (bytes.length === 32) {
+    return bytes;
+  }
+  if (bytes.length === 44 && bytes[0] === 0x30 && bytes[1] === 0x2a) {
+    return bytes.subarray(12);
+  }
+  return bytes;
+}
+
+function decodeSignature(signature: string): Uint8Array {
+  if (/^[0-9a-fA-F]{128}$/.test(signature)) {
+    return Buffer.from(signature, "hex");
+  }
+  const b64 = Buffer.from(signature, "base64");
+  if (b64.length === 64) {
+    return b64;
+  }
+  return Buffer.from(signature, "hex");
+}
+
 async function verifyEd25519Signature(
   publicKeyBase64: string,
   signature: string,
   message: string
 ): Promise<boolean> {
   try {
-    const publicKeyBytes = Buffer.from(publicKeyBase64, "base64");
-    const signatureBytes = Buffer.from(signature, "hex");
+    const publicKeyBytes = extractRawEd25519Key(publicKeyBase64);
+    const signatureBytes = decodeSignature(signature);
     const messageBytes = new TextEncoder().encode(message);
-    
+
+    if (publicKeyBytes.length !== 32) {
+      console.error("[selfclaw] Public key must be 32 bytes, got", publicKeyBytes.length);
+      return false;
+    }
+    if (signatureBytes.length !== 64) {
+      console.error("[selfclaw] Signature must be 64 bytes, got", signatureBytes.length);
+      return false;
+    }
+
     return await ed.verifyAsync(signatureBytes, messageBytes, publicKeyBytes);
   } catch (error) {
     console.error("[selfclaw] Signature verification error:", error);
@@ -147,7 +178,13 @@ async function authenticateAgent(req: Request, res: Response): Promise<{ publicK
   if (!agentPublicKey || !signature || !timestamp || !nonce) {
     res.status(401).json({
       error: "Authentication required: agentPublicKey, signature, timestamp, and nonce are required",
-      hint: "Sign the JSON payload '{\"agentPublicKey\":\"...\",\"timestamp\":...,\"nonce\":\"...\"}' with your Ed25519 private key (hex-encoded). nonce must be a unique random string per request."
+      hint: "Sign the exact JSON string: JSON.stringify({agentPublicKey, timestamp, nonce}) with your Ed25519 private key. Signature can be hex or base64 encoded. Public key can be raw 32-byte base64 or SPKI DER base64 (MCowBQYDK2VwAyEA...). nonce must be a unique random string (8-64 chars) per request. timestamp must be Date.now() within 5 minutes.",
+      example: {
+        agentPublicKey: "MCowBQYDK2VwAyEA...",
+        signature: "<hex or base64 encoded Ed25519 signature>",
+        timestamp: Date.now(),
+        nonce: "random-unique-string"
+      }
     });
     return null;
   }

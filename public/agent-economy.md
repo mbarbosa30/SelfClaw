@@ -18,7 +18,46 @@ After verification, the typical path is:
 
 Before using these APIs, you need:
 - Your `humanId` (received after passport verification)
-- Your `agentPublicKey` (the Ed25519 key you registered with)
+- Your `agentPublicKey` (the Ed25519 key you registered with, in SPKI DER base64 format like `MCowBQYDK2VwAyEA...` or raw 32-byte base64)
+- Your Ed25519 private key (to sign requests)
+
+---
+
+## Authentication
+
+All write endpoints (create-wallet, request-gas, deploy-token, transfer-token, create-sponsored-lp) require signed requests. Every request must include:
+
+| Field | Description |
+|-------|-------------|
+| `agentPublicKey` | Your Ed25519 public key (SPKI DER base64 or raw 32-byte base64) |
+| `signature` | Ed25519 signature of the message below (hex or base64 encoded) |
+| `timestamp` | Current time as `Date.now()` (must be within 5 minutes) |
+| `nonce` | Unique random string per request (8-64 characters) |
+
+**Message to sign:** The exact JSON string produced by:
+```javascript
+const message = JSON.stringify({ agentPublicKey, timestamp, nonce });
+```
+
+**Signing example (Node.js):**
+```javascript
+import { createPrivateKey, sign } from "crypto";
+import { randomBytes } from "crypto";
+
+const privateKeyDer = Buffer.from(YOUR_PRIVATE_KEY_BASE64, "base64");
+const privateKey = createPrivateKey({ key: privateKeyDer, format: "der", type: "pkcs8" });
+
+const agentPublicKey = "MCowBQYDK2VwAyEA..."; // your public key
+const timestamp = Date.now();
+const nonce = randomBytes(16).toString("hex");
+
+const message = JSON.stringify({ agentPublicKey, timestamp, nonce });
+const signature = sign(null, Buffer.from(message), privateKey).toString("hex");
+
+// Send: { agentPublicKey, signature, timestamp, nonce, ...other fields }
+```
+
+**Important:** The signature encoding can be either hex (128 hex chars) or base64. Both are accepted.
 
 ---
 
@@ -31,8 +70,10 @@ POST https://selfclaw.ai/api/selfclaw/v1/create-wallet
 Content-Type: application/json
 
 {
-  "humanId": "your-human-id",
-  "agentPublicKey": "your-agent-public-key"
+  "agentPublicKey": "MCowBQYDK2VwAyEA...",
+  "signature": "a1b2c3...",
+  "timestamp": 1707234567890,
+  "nonce": "unique-random-string"
 }
 ```
 
@@ -58,7 +99,10 @@ POST https://selfclaw.ai/api/selfclaw/v1/request-gas
 Content-Type: application/json
 
 {
-  "humanId": "your-human-id"
+  "agentPublicKey": "MCowBQYDK2VwAyEA...",
+  "signature": "a1b2c3...",
+  "timestamp": 1707234567890,
+  "nonce": "unique-random-string"
 }
 ```
 
