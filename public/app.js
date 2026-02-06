@@ -162,6 +162,11 @@ document.addEventListener('DOMContentLoaded', () => {
   loadVerifiedCount();
   initLookupWidget();
   initIntegrationTabs();
+
+  const startBtn = document.getElementById('start-verification');
+  if (startBtn) {
+    startBtn.addEventListener('click', startAgentVerification);
+  }
 });
 
 function debounce(fn, delay) {
