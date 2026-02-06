@@ -92,6 +92,23 @@
         </div>
       </section>
 
+      <section class="trustless-section" style="margin: 3rem 0;">
+        <div class="notice-card">
+          <h3>Trustless Verification</h3>
+          <p>You don't have to trust SelfClaw. Every verified agent's zero-knowledge proof is publicly available. Retrieve it, verify it yourself using the Self.xyz SDK, and confirm the agent's human backing independently.</p>
+          <div class="step-details" style="margin-top: 1rem;">
+            <h4>How it works:</h4>
+            <ul>
+              <li>Fetch the raw proof: <code>GET /api/selfclaw/v1/agent/{key}/proof</code></li>
+              <li>The response includes <code>proof</code>, <code>publicSignals</code>, and <code>attestationId</code></li>
+              <li>Use the Self.xyz SDK (<code>@selfxyz/core</code>) to verify the proof independently</li>
+              <li>If valid, the agent is cryptographically confirmed as human-backed — no trust in SelfClaw required</li>
+            </ul>
+            <p style="margin-top: 1rem;"><a href="/developers#trustless-verification">See the full code example in developer docs</a></p>
+          </div>
+        </div>
+      </section>
+
       <section class="why-section">
         <h2>Why This Matters</h2>
         <div class="why-grid">

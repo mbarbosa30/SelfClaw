@@ -514,6 +514,7 @@
         <a href="#comparison" class="active">Why Different</a>
         <a href="#how-it-works">How It Works</a>
         <a href="#implementation">Implementation</a>
+        <a href="#trustless-verification">Trustless Verification</a>
         <a href="#check-verification">Check Agent</a>
         <a href="#api-reference">API Reference</a>
         <a href="#security">Security</a>
@@ -659,6 +660,105 @@
         </div>
       </section>
       
+      <section id="trustless-verification" class="docs-section">
+        <h2>Trustless Proof Verification</h2>
+        <p>You don't have to trust SelfClaw. Every verified agent's zero-knowledge proof is publicly available. Retrieve it and verify independently using the Self.xyz SDK.</p>
+        
+        <div class="highlight-box">
+          <h4>Why this matters</h4>
+          <p>Traditional registries require you to trust the registry operator. SelfClaw publishes the raw ZK proof so anyone can independently confirm an agent's human backing — cryptographically, without trusting our API.</p>
+        </div>
+        
+        <h3>Step 1: Fetch the Proof</h3>
+        
+        <div class="api-endpoint">
+          <span class="api-method">GET</span>
+          <span class="api-path">/api/selfclaw/v1/agent/{identifier}/proof</span>
+          <p class="api-desc">Returns the raw ZK proof, public signals, and attestation ID for independent verification.</p>
+        </div>
+        
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">JavaScript</span>
+            <button class="code-copy" onclick="copyCode(this)">Copy</button>
+          </div>
+          <div class="code-content">
+<pre><span class="keyword">const</span> res = <span class="keyword">await</span> <span class="function">fetch</span>(
+  <span class="string">`https://selfclaw.ai/api/selfclaw/v1/agent/${agentPublicKey}/proof`</span>
+);
+<span class="keyword">const</span> data = <span class="keyword">await</span> res.<span class="function">json</span>();
+
+<span class="keyword">if</span> (!data.proofAvailable) {
+  console.<span class="function">log</span>(<span class="string">"Proof not available (verified before proof storage)"</span>);
+}
+
+<span class="comment">// data.proof          — the ZK proof object</span>
+<span class="comment">// data.publicSignals  — the public signals</span>
+<span class="comment">// data.attestationId  — the attestation identifier</span>
+<span class="comment">// data.proofHash      — SHA-256 hash of the full proof payload</span></pre>
+          </div>
+        </div>
+        
+        <h3>Step 2: Verify Independently</h3>
+        <p>Use the Self.xyz SDK to verify the proof without trusting SelfClaw at all.</p>
+        
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">JavaScript</span>
+            <button class="code-copy" onclick="copyCode(this)">Copy</button>
+          </div>
+          <div class="code-content">
+<pre><span class="keyword">import</span> { SelfBackendVerifier } <span class="keyword">from</span> <span class="string">"@selfxyz/core"</span>;
+
+<span class="comment">// 1. Create a verifier</span>
+<span class="keyword">const</span> verifier = <span class="keyword">new</span> <span class="function">SelfBackendVerifier</span>(
+  <span class="string">"selfclaw-verify"</span>,     <span class="comment">// scope</span>
+  <span class="string">"selfclaw-passport"</span>   <span class="comment">// attestation ID</span>
+);
+
+<span class="comment">// 2. Verify the proof</span>
+<span class="keyword">const</span> result = <span class="keyword">await</span> verifier.<span class="function">verify</span>(
+  data.attestationId,
+  data.proof,
+  data.publicSignals
+);
+
+<span class="keyword">if</span> (result.isValid) {
+  console.<span class="function">log</span>(<span class="string">"Cryptographically confirmed: agent is human-backed"</span>);
+} <span class="keyword">else</span> {
+  console.<span class="function">log</span>(<span class="string">"Proof verification failed"</span>);
+}</pre>
+          </div>
+        </div>
+        
+        <h3>Proof Response Fields</h3>
+        <div class="response-field">
+          <span class="field-name">proofAvailable</span>
+          <span class="field-desc">Boolean — whether the raw proof is stored for this agent</span>
+        </div>
+        <div class="response-field">
+          <span class="field-name">proof</span>
+          <span class="field-desc">The raw zero-knowledge proof object from Self.xyz</span>
+        </div>
+        <div class="response-field">
+          <span class="field-name">publicSignals</span>
+          <span class="field-desc">Public signals used during proof generation</span>
+        </div>
+        <div class="response-field">
+          <span class="field-name">attestationId</span>
+          <span class="field-desc">The attestation identifier for this verification</span>
+        </div>
+        <div class="response-field">
+          <span class="field-name">proofHash</span>
+          <span class="field-desc">SHA-256 hash of <code>attestationId:proof:publicSignals</code> for integrity checking</span>
+        </div>
+        
+        <div class="alert-box">
+          <h5>Legacy agents</h5>
+          <p>Agents verified before proof storage was enabled will return <code>proofAvailable: false</code>. Their verification is still valid — the raw proof just isn't available for re-verification.</p>
+        </div>
+      </section>
+      
       <section id="check-verification" class="docs-section">
         <h2>Check Verification</h2>
         <p>Verify if an agent is backed by a real human — instantly.</p>
@@ -689,6 +789,12 @@
           <span class="api-method">GET</span>
           <span class="api-path">/api/selfclaw/v1/agent/{identifier}</span>
           <p class="api-desc">Check agent verification (path param, URL-encode base64 keys).</p>
+        </div>
+        
+        <div class="api-endpoint">
+          <span class="api-method">GET</span>
+          <span class="api-path">/api/selfclaw/v1/agent/{identifier}/proof</span>
+          <p class="api-desc">Retrieve the raw ZK proof for independent verification. <a href="#trustless-verification" style="color: var(--green);">See usage guide above</a>.</p>
         </div>
         
         <h3>Response Fields</h3>
