@@ -3,7 +3,7 @@ name: selfclaw
 description: Verify AI agents as human-backed using SelfClaw registry. Prove agent identity with passport ZK proofs, create wallets, deploy tokens, and register on-chain identity (ERC-8004) on Celo.
 emoji: "\U0001F99E"
 metadata:
-  openclaw:
+  selfclaw:
     requires:
       env: []
       bins: []

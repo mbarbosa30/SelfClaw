@@ -1,7 +1,7 @@
 {
-  "name": "openclaw-replit",
-  "version": "2.0.0",
-  "description": "OpenClaw AI Assistant Experimentation Platform on Replit with ERC-8004 Support",
+  "name": "selfclaw",
+  "version": "1.0.0",
+  "description": "Privacy-first agent verification registry using Self.xyz passport proofs on Celo",
   "main": "server/index.ts",
   "type": "module",
   "scripts": {
@@ -9,18 +9,16 @@
     "dev": "tsx watch server/index.ts",
     "build": "echo 'No build step required - using tsx runtime'",
     "db:push": "drizzle-kit push",
-    "db:studio": "drizzle-kit studio",
-    "setup": "node scripts/setup.js",
-    "install-openclaw": "npm install -g openclaw@latest",
-    "onboard": "openclaw onboard",
-    "gateway": "openclaw gateway --port 18789 --verbose",
-    "status": "openclaw status"
+    "db:studio": "drizzle-kit studio"
   },
   "keywords": [
-    "openclaw",
-    "ai-assistant",
-    "automation",
-    "replit"
+    "selfclaw",
+    "agent-verification",
+    "self-xyz",
+    "zero-knowledge",
+    "celo",
+    "erc-8004",
+    "sybil-resistance"
   ],
   "license": "MIT",
   "dependencies": {
@@ -36,7 +34,6 @@
     "@types/passport": "^1.0.17",
     "@types/pg": "^8.16.0",
     "connect-pg-simple": "^10.0.0",
-    "cron-parser": "^5.5.0",
     "dotenv": "^16.6.1",
     "drizzle-kit": "^0.31.8",
     "drizzle-orm": "^0.45.1",
@@ -46,7 +43,6 @@
     "express-session": "^1.19.0",
     "memoizee": "^0.4.17",
     "openai": "^6.17.0",
-    "openclaw": "^2026.1.30",
     "openid-client": "^6.8.1",
     "p-limit": "^7.2.0",
     "p-retry": "^7.1.1",

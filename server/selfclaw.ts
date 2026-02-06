@@ -1,7 +1,7 @@
 import { Router, Request, Response } from "express";
 import rateLimit from "express-rate-limit";
 import { db } from "./db.js";
-import { verifiedBots, verificationSessions, agentTokens, liquidityPositions, agents, sponsoredAgents, trackedPools, type InsertVerifiedBot, type InsertVerificationSession } from "../shared/schema.js";
+import { verifiedBots, verificationSessions, sponsoredAgents, trackedPools, type InsertVerifiedBot, type InsertVerificationSession } from "../shared/schema.js";
 import { eq, and, gt, lt, sql, desc, count } from "drizzle-orm";
 import { SelfBackendVerifier, AllIds, DefaultConfigStore } from "@selfxyz/core";
 import { SelfAppBuilder } from "@selfxyz/qrcode";
@@ -12,6 +12,7 @@ import { erc8004Service } from "../lib/erc8004.js";
 import { generateRegistrationFile } from "../lib/erc8004-config.js";
 import { createPublicClient, http, parseUnits, formatUnits, encodeFunctionData, getContractAddress } from 'viem';
 import { celo } from 'viem/chains';
+import { TOKEN_FACTORY_BYTECODE } from '../lib/constants.js';
 
 const router = Router();
 
@@ -23,7 +24,6 @@ async function cleanupExpiredSessions() {
         eq(verificationSessions.status, "pending"),
         lt(verificationSessions.challengeExpiry, new Date())
       ));
-    console.log("[selfclaw] Cleaned up expired sessions");
   } catch (error) {
     console.error("[selfclaw] Session cleanup error:", error);
   }
@@ -383,7 +383,6 @@ router.post("/v1/callback-test", (req: Request, res: Response) => {
   if (!ADMIN_SECRET || adminKey !== ADMIN_SECRET) {
     return res.status(403).json({ error: "Admin access required" });
   }
-  console.log("[selfclaw] === TEST CALLBACK HIT ===");
   res.status(200).json({ status: "success", result: true });
 });
 
@@ -393,7 +392,6 @@ router.post("/v1/debug-callback", (req: Request, res: Response) => {
     return res.status(403).json({ error: "Admin access required" });
   }
   const timestamp = new Date().toISOString();
-  console.log("[selfclaw] === DEBUG CALLBACK ===", timestamp);
   res.status(200).json({ 
     status: "success", 
     result: true,
@@ -432,14 +430,6 @@ async function handleCallback(req: Request, res: Response) {
     recentCallbackRequests.pop();
   }
   
-  console.log("[selfclaw] === CALLBACK REQUEST RECEIVED ===");
-  console.log("[selfclaw] Time:", rawTimestamp);
-  console.log("[selfclaw] IP:", rawRequest.ip);
-  console.log("[selfclaw] Content-Type:", rawRequest.contentType);
-  console.log("[selfclaw] Content-Length:", rawRequest.contentLength);
-  console.log("[selfclaw] Headers:", JSON.stringify(rawRequest.headers).substring(0, 500));
-  console.log("[selfclaw] Body preview:", rawRequest.bodyPreview);
-  
   // Initialize debug tracking
   lastVerificationAttempt = {
     timestamp: rawTimestamp,
@@ -450,9 +440,6 @@ async function handleCallback(req: Request, res: Response) {
   
   try {
     const body = req.body || {};
-    console.log("[selfclaw] Body keys:", Object.keys(body));
-    console.log("[selfclaw] Body preview:", JSON.stringify(body).substring(0, 800));
-    
     const { attestationId, proof, publicSignals, userContextData } = body;
     
     // Update debug info
@@ -464,16 +451,10 @@ async function handleCallback(req: Request, res: Response) {
     lastVerificationAttempt.sessionId = userContextData?.userIdentifier;
     
     if (!proof || !publicSignals || !attestationId || !userContextData) {
-      console.log("[selfclaw] Missing fields - attestationId:", !!attestationId, "proof:", !!proof, "publicSignals:", !!publicSignals, "userContextData:", !!userContextData);
       lastVerificationAttempt.finalStatus = "error";
       lastVerificationAttempt.finalReason = "Missing required verification data";
       return res.status(200).json({ status: "error", result: false, reason: "Missing required verification data" });
     }
-    
-    console.log("[selfclaw] All required fields present, verifying proof...");
-    console.log("[selfclaw] attestationId:", attestationId);
-    console.log("[selfclaw] publicSignals length:", publicSignals?.length || 0);
-    console.log("[selfclaw] userContextData:", JSON.stringify(userContextData || {}).substring(0, 200));
     
     let result;
     try {
@@ -483,7 +464,6 @@ async function handleCallback(req: Request, res: Response) {
         publicSignals,
         userContextData
       );
-      console.log("[selfclaw] Verification result:", JSON.stringify(result.isValidDetails));
       lastVerificationAttempt.verifyResult = result.isValidDetails;
     } catch (verifyError: any) {
       console.error("[selfclaw] SDK verify() threw error:", verifyError.message);
@@ -500,7 +480,6 @@ async function handleCallback(req: Request, res: Response) {
     }
     
     if (!result.isValidDetails.isValid) {
-      console.log("[selfclaw] Proof invalid:", result.isValidDetails);
       lastVerificationAttempt.finalStatus = "error";
       lastVerificationAttempt.finalReason = "Proof invalid: " + JSON.stringify(result.isValidDetails);
       return res.status(200).json({ 
@@ -509,24 +488,14 @@ async function handleCallback(req: Request, res: Response) {
         reason: "Proof verification failed"
       });
     }
-    console.log("[selfclaw] Proof verified successfully!");
-    
-    // Debug: log full userData to understand sessionId/userId mapping
-    console.log("[selfclaw] Full userData:", JSON.stringify(result.userData || {}, null, 2));
-    console.log("[selfclaw] userIdentifier:", result.userData?.userIdentifier);
-    console.log("[selfclaw] userDefinedData:", result.userData?.userDefinedData);
-    console.log("[selfclaw] userDefinedData type:", typeof result.userData?.userDefinedData);
     
     const sessionId = result.userData?.userIdentifier;
-    console.log("[selfclaw] Session ID from proof:", sessionId);
     if (!sessionId) {
-      console.log("[selfclaw] No session ID in proof userData");
       lastVerificationAttempt.finalStatus = "error";
       lastVerificationAttempt.finalReason = "Missing session ID in proof userData";
       return res.status(200).json({ status: "error", result: false, reason: "Missing session ID in proof" });
     }
     
-    console.log("[selfclaw] Looking up session:", sessionId);
     const sessions = await db.select()
       .from(verificationSessions)
       .where(and(
@@ -537,9 +506,7 @@ async function handleCallback(req: Request, res: Response) {
       .limit(1);
     
     const session = sessions[0];
-    console.log("[selfclaw] Session found:", !!session, session ? `status=${session.status}` : "");
     if (!session) {
-      console.log("[selfclaw] Session not found or expired:", sessionId);
       await db.update(verificationSessions)
         .set({ status: "expired" })
         .where(and(
@@ -549,12 +516,8 @@ async function handleCallback(req: Request, res: Response) {
       return res.status(200).json({ status: "error", result: false, reason: "Invalid or expired verification session" });
     }
     
-    // Debug: extract and compare agent key hash
     // Self.xyz SDK hex-encodes the userDefinedData, so we need to decode it
     const rawUserDefinedData = result.userData?.userDefinedData || "";
-    console.log("[selfclaw] Raw userDefinedData length:", rawUserDefinedData.length);
-    console.log("[selfclaw] Raw userDefinedData first 64 chars:", rawUserDefinedData.substring(0, 64));
-    console.log("[selfclaw] Session agentKeyHash:", session.agentKeyHash);
     
     // Decode hex-encoded ASCII: each 2 hex chars = 1 ASCII char
     // We need 16 chars of agentKeyHash, so take first 32 hex chars
@@ -569,20 +532,14 @@ async function handleCallback(req: Request, res: Response) {
         }
       }
     } catch (e) {
-      console.log("[selfclaw] Failed to decode hex userDefinedData:", e);
     }
     
-    console.log("[selfclaw] Decoded proofAgentKeyHash:", proofAgentKeyHash);
-    console.log("[selfclaw] Comparison: '", proofAgentKeyHash, "' === '", session.agentKeyHash, "':", proofAgentKeyHash === session.agentKeyHash);
-    
     if (!proofAgentKeyHash) {
-      console.log("[selfclaw] Missing agentKeyHash in proof userDefinedData");
       lastVerificationAttempt.finalStatus = "error";
       lastVerificationAttempt.finalReason = "Missing agentKeyHash in userDefinedData";
       return res.status(200).json({ status: "error", result: false, reason: "Agent key binding required" });
     }
     if (proofAgentKeyHash !== session.agentKeyHash) {
-      console.log("[selfclaw] Agent key hash mismatch:", proofAgentKeyHash, "vs", session.agentKeyHash);
       lastVerificationAttempt.finalStatus = "error";
       lastVerificationAttempt.finalReason = `Agent key mismatch: proof='${proofAgentKeyHash}' vs session='${session.agentKeyHash}'`;
       return res.status(200).json({ status: "error", result: false, reason: "Agent key binding mismatch" });
@@ -1261,15 +1218,13 @@ router.get("/v1/recent", publicApiLimiter, async (_req: Request, res: Response) 
 router.get("/v1/ecosystem-stats", publicApiLimiter, async (_req: Request, res: Response) => {
   try {
     const [verifiedCount] = await db.select({ count: count() }).from(verifiedBots);
-    const [tokensCount] = await db.select({ count: count() }).from(agentTokens);
-    const [poolsCount] = await db.select({ count: count() }).from(liquidityPositions).where(eq(liquidityPositions.active, true));
     const [sponsoredCount] = await db.select({ count: count() }).from(sponsoredAgents).where(eq(sponsoredAgents.status, 'completed'));
+    const [poolsCount] = await db.select({ count: count() }).from(trackedPools);
     
     res.json({
       verifiedAgents: verifiedCount?.count || 0,
-      tokensDeployed: tokensCount?.count || 0,
-      activePools: poolsCount?.count || 0,
       sponsoredAgents: sponsoredCount?.count || 0,
+      trackedPools: poolsCount?.count || 0,
       lastUpdated: new Date().toISOString()
     });
   } catch (error: any) {
@@ -1692,85 +1647,6 @@ router.get("/v1/pools", publicApiLimiter, async (_req: Request, res: Response) =
   }
 });
 
-router.get("/v1/leaderboard", publicApiLimiter, async (_req: Request, res: Response) => {
-  try {
-    const tokens = await db.select({
-      id: agentTokens.id,
-      contractAddress: agentTokens.contractAddress,
-      name: agentTokens.name,
-      symbol: agentTokens.symbol,
-      initialSupply: agentTokens.initialSupply,
-      agentId: agentTokens.agentId,
-      createdAt: agentTokens.createdAt
-    })
-    .from(agentTokens)
-    .orderBy(desc(agentTokens.createdAt))
-    .limit(50);
-    
-    const enrichedTokens = await Promise.all(tokens.map(async (token) => {
-      const agent = await db.select({
-        id: agents.id,
-        name: agents.name
-      })
-      .from(agents)
-      .where(eq(agents.id, token.agentId))
-      .limit(1);
-      
-      const pools = await db.select({
-        token0Symbol: liquidityPositions.token0Symbol,
-        token1Symbol: liquidityPositions.token1Symbol,
-        token0Amount: liquidityPositions.token0Amount,
-        token1Amount: liquidityPositions.token1Amount,
-        liquidity: liquidityPositions.liquidity,
-        active: liquidityPositions.active
-      })
-      .from(liquidityPositions)
-      .where(and(
-        eq(liquidityPositions.agentId, token.agentId),
-        sql`(${liquidityPositions.token0Address} = ${token.contractAddress} OR ${liquidityPositions.token1Address} = ${token.contractAddress})`
-      ));
-      
-      const totalLiquidity = pools.reduce((sum, p) => sum + BigInt(p.liquidity || '0'), BigInt(0));
-      const activePools = pools.filter(p => p.active).length;
-      
-      let estimatedTVL = '0';
-      for (const pool of pools) {
-        if (pool.token1Symbol === 'CELO' || pool.token1Symbol === 'USDC') {
-          const amount = parseFloat(pool.token1Amount || '0');
-          if (amount > 0) {
-            estimatedTVL = (parseFloat(estimatedTVL) + amount * 2).toString();
-          }
-        } else if (pool.token0Symbol === 'CELO' || pool.token0Symbol === 'USDC') {
-          const amount = parseFloat(pool.token0Amount || '0');
-          if (amount > 0) {
-            estimatedTVL = (parseFloat(estimatedTVL) + amount * 2).toString();
-          }
-        }
-      }
-      
-      return {
-        ...token,
-        agentName: agent[0]?.name || 'Unknown Agent',
-        pools: activePools,
-        totalLiquidity: totalLiquidity.toString(),
-        estimatedTVL,
-        celoswapUrl: `https://celoscan.io/token/${token.contractAddress}`
-      };
-    }));
-    
-    enrichedTokens.sort((a, b) => parseFloat(b.estimatedTVL) - parseFloat(a.estimatedTVL));
-    
-    res.json({ 
-      tokens: enrichedTokens,
-      totalTokens: tokens.length,
-      lastUpdated: new Date().toISOString()
-    });
-  } catch (error: any) {
-    console.error("[selfclaw] leaderboard error:", error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
 // Simple ERC20 ABI for token operations
 const SIMPLE_ERC20_ABI = [
   { name: 'decimals', type: 'function', stateMutability: 'view', inputs: [], outputs: [{ name: '', type: 'uint8' }] },
@@ -1791,9 +1667,6 @@ const viemPublicClient = createPublicClient({
 // Tokens deployed via public API are tracked on-chain (Celoscan),
 // not in the cockpit's agent_tokens table (which is for managed agents).
 // ============================================================
-
-// Token factory bytecode (simple ERC20 - same as lib/token-factory.ts)
-const TOKEN_FACTORY_BYTECODE = '0x608060405234801561001057600080fd5b506040516106e03803806106e083398101604081905261002f9161011c565b8251610042906003906020860190610076565b508151610056906004906020850190610076565b50600581905533600090815260026020526040902055506101ca565b828054610082906101cf565b90600052602060002090601f0160209004810192826100a457600085556100ea565b82601f106100bd57805160ff19168380011785556100ea565b828001600101855582156100ea579182015b828111156100ea5782518255916020019190600101906100cf565b506100f69291506100fa565b5090565b5b808211156100f657600081556001016100fb565b634e487b7160e01b600052604160045260246000fd5b60008060006060848603121561013157600080fd5b83516001600160401b038082111561014857600080fd5b818601915086601f83011261015c57600080fd5b81518181111561016e5761016e61010f565b604051601f8201601f19908116603f011681019083821181831017156101965761019661010f565b816040528281526020935089848487010111156101b257600080fd5b600091505b828210156101d457848201840151818301850152908301906101b7565b828211156101e55760008484830101525b80975050505050602086015193506040860151925050509250925092565b600181811c90821680610217576003831691505b6020821081141561023857634e487b7160e01b600052602260045260246000fd5b50919050565b610507806102396000396000f3fe608060405234801561001057600080fd5b50600436106100725760003560e01c806370a082311161005057806370a08231146100d8578063a9059cbb14610101578063dd62ed3e1461011457600080fd5b806306fdde0314610077578063095ea7b31461009557806318160ddd146100b8575b600080fd5b61007f61014d565b60405161008c91906103b8565b60405180910390f35b6100a86100a336600461042c565b6101df565b604051901515815260200161008c565b6100c060055481565b60405190815260200161008c565b6100c06100e6366004610456565b6001600160a01b031660009081526002602052604090205490565b6100a861010f36600461042c565b6101f6565b6100c0610122366004610478565b6001600160a01b03918216600090815260016020908152604080832093909416825291909152205490565b60606003805461015c906104ab565b80601f0160208091040260200160405190810160405280929190818152602001828054610188906104ab565b80156101d55780';
 
 // Deploy token endpoint
 router.post("/v1/deploy-token", verificationLimiter, async (req: Request, res: Response) => {
