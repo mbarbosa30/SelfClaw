@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin | SelfClaw</title>
+  <link rel="icon" type="image/png" href="/favicon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .admin-login-wrap {
+      min-height: 80vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .admin-login-box {
+      background: #111;
+      border: 1px solid #333;
+      border-radius: 12px;
+      padding: 2.5rem;
+      width: 100%;
+      max-width: 400px;
+      text-align: center;
+    }
+    .admin-login-box h2 {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 1.2rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      color: #E8E8E8;
+      margin-bottom: 1.5rem;
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+    .admin-login-box .input {
+      margin-bottom: 1rem;
+      text-align: center;
+    }
+    .admin-login-error {
+      color: #ef4444;
+      font-size: 0.8rem;
+      margin-bottom: 1rem;
+      font-family: 'IBM Plex Mono', monospace;
+      display: none;
+    }
+    .admin-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #333;
+      padding-bottom: 1.5rem;
+      margin-bottom: 2rem;
+    }
+    .admin-header h1 {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 1.5rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      color: #E8E8E8;
+    }
+    .logout-btn {
+      background: transparent;
+      border: 1px solid #444;
+      color: #aaa;
+      padding: 0.4rem 1rem;
+      border-radius: 100px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.7rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .logout-btn:hover {
+      border-color: #ef4444;
+      color: #ef4444;
+    }
+    .admin-section {
+      margin-bottom: 2.5rem;
+    }
+    .admin-section-title {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      margin-bottom: 1.25rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid #333;
+      color: #E8E8E8;
+    }
+    .wallet-overview {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+    .wallet-panel {
+      background: #0d0d0d;
+      border: 1px solid #333;
+      border-radius: 12px;
+      padding: 1.5rem;
+    }
+    .wallet-panel-title {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #FF6B4A;
+      margin-bottom: 1rem;
+    }
+    .wallet-addr {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.7rem;
+      color: #777;
+      margin-bottom: 1rem;
+      word-break: break-all;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+    .wallet-addr a {
+      color: #777;
+      text-decoration: none;
+    }
+    .wallet-addr a:hover {
+      color: #FF6B4A;
+    }
+    .copy-btn {
+      background: transparent;
+      border: 1px solid #444;
+      color: #777;
+      padding: 0.15rem 0.4rem;
+      border-radius: 4px;
+      font-size: 0.6rem;
+      cursor: pointer;
+      font-family: 'IBM Plex Mono', monospace;
+      transition: all 0.2s ease;
+      flex-shrink: 0;
+    }
+    .copy-btn:hover {
+      border-color: #FF6B4A;
+      color: #FF6B4A;
+    }
+    .balance-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.5rem 0;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    .balance-row:last-child {
+      border-bottom: none;
+    }
+    .balance-label {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.7rem;
+      color: #aaa;
+      text-transform: uppercase;
+    }
+    .balance-value {
+      font-family: 'Inter', sans-serif;
+      font-size: 1rem;
+      font-weight: 600;
+      color: #E8E8E8;
+    }
+    .bridge-status-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+    .bridge-status-card {
+      background: #0d0d0d;
+      border: 1px solid #333;
+      border-radius: 12px;
+      padding: 1.5rem;
+    }
+    .bridge-token-name {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      color: #E8E8E8;
+      margin-bottom: 0.75rem;
+    }
+    .bridge-attested {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.8rem;
+      margin-bottom: 0.5rem;
+    }
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .status-dot.green { background: #4AFF6B; }
+    .status-dot.red { background: #ef4444; }
+    .status-dot.yellow { background: #FFD700; }
+    .wrapped-addr {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.65rem;
+      color: #777;
+      word-break: break-all;
+      margin-top: 0.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+    .actions-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+    }
+    .action-card {
+      background: #0d0d0d;
+      border: 1px solid #333;
+      border-radius: 12px;
+      padding: 1.25rem;
+    }
+    .action-card h4 {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #E8E8E8;
+      margin-bottom: 0.75rem;
+    }
+    .action-card .input {
+      margin-bottom: 0.75rem;
+      font-size: 0.8rem;
+      padding: 0.6rem 0.8rem;
+    }
+    .action-card textarea.input {
+      min-height: 80px;
+      font-size: 0.7rem;
+    }
+    .action-btn {
+      width: 100%;
+      padding: 0.5rem 1rem;
+      background: #FF6B4A;
+      color: #000;
+      border: none;
+      border-radius: 8px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.7rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .action-btn:hover {
+      background: #fff;
+    }
+    .action-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .action-result {
+      margin-top: 0.75rem;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.65rem;
+      line-height: 1.5;
+      word-break: break-all;
+      max-height: 120px;
+      overflow-y: auto;
+    }
+    .action-result.success { color: #4AFF6B; }
+    .action-result.error { color: #ef4444; }
+    .action-result.loading { color: #FFD700; }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1rem;
+    }
+    .stat-card {
+      background: #0d0d0d;
+      border: 1px solid #333;
+      border-radius: 12px;
+      padding: 1.5rem;
+      border-bottom: 2px solid #FF6B4A;
+    }
+    .stat-label {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.65rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #777;
+      display: block;
+      margin-bottom: 0.5rem;
+    }
+    .stat-value {
+      font-family: 'Inter', sans-serif;
+      font-size: 2rem;
+      font-weight: 700;
+      color: #E8E8E8;
+      line-height: 1;
+    }
+    .activity-log {
+      background: #0d0d0d;
+      border: 1px solid #333;
+      border-radius: 12px;
+      max-height: 500px;
+      overflow-y: auto;
+    }
+    .log-item {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.75rem 1.25rem;
+      border-bottom: 1px solid #1a1a1a;
+      font-size: 0.8rem;
+    }
+    .log-item:last-child {
+      border-bottom: none;
+    }
+    .log-type {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.65rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      color: #FF6B4A;
+      min-width: 100px;
+      flex-shrink: 0;
+    }
+    .log-detail {
+      flex: 1;
+      color: #aaa;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .log-time {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.6rem;
+      color: #555;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .log-empty {
+      padding: 2rem;
+      text-align: center;
+      color: #555;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.8rem;
+    }
+    .spinner {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border: 2px solid #333;
+      border-top-color: #FF6B4A;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .refresh-info {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2rem;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+    .refresh-info span {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.7rem;
+      color: #555;
+    }
+    .refresh-btn {
+      background: transparent;
+      border: 1px solid #444;
+      color: #aaa;
+      padding: 0.35rem 0.8rem;
+      border-radius: 100px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.65rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .refresh-btn:hover {
+      border-color: #FF6B4A;
+      color: #FF6B4A;
+    }
+    @media (max-width: 768px) {
+      .wallet-overview,
+      .bridge-status-grid {
+        grid-template-columns: 1fr;
+      }
+      .actions-grid {
+        grid-template-columns: 1fr;
+      }
+      .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <div id="login-view" class="admin-login-wrap">
+      <div class="admin-login-box">
+        <h2>SELFCLAW ADMIN</h2>
+        <div id="login-error" class="admin-login-error"></div>
+        <input type="password" id="login-password" class="input" placeholder="Admin password" onkeydown="if(event.key==='Enter')doLogin()">
+        <button class="btn" style="width:100%;margin-top:0.5rem;" onclick="doLogin()">Login</button>
+      </div>
+    </div>
+
+    <div id="dashboard-view" style="display:none;">
+
+      <header class="admin-header">
+        <h1>SELFCLAW ADMIN</h1>
+        <button class="logout-btn" onclick="doLogout()">Logout</button>
+      </header>
+
+      <div class="refresh-info">
+        <span id="last-refresh">Loading...</span>
+        <button class="refresh-btn" onclick="refreshAll()">Refresh</button>
+      </div>
+
+      <section class="admin-section">
+        <h2 class="admin-section-title">Registry Stats</h2>
+        <div class="stats-grid">
+          <div class="stat-card">
+            <span class="stat-label">Verified Agents</span>
+            <span class="stat-value" id="stat-verified">&mdash;</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Wallets Created</span>
+            <span class="stat-value" id="stat-wallets">&mdash;</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Gas Sent</span>
+            <span class="stat-value" id="stat-gas">&mdash;</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Tokens Deployed</span>
+            <span class="stat-value" id="stat-tokens">&mdash;</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="admin-section">
+        <h2 class="admin-section-title">Wallet Overview</h2>
+        <div id="wallet-loading" style="text-align:center;padding:2rem;color:#555;"><span class="spinner"></span> Loading balances...</div>
+        <div id="wallet-content" class="wallet-overview" style="display:none;"></div>
+      </section>
+
+      <section class="admin-section">
+        <h2 class="admin-section-title">Bridge Status</h2>
+        <div id="bridge-loading" style="text-align:center;padding:2rem;color:#555;"><span class="spinner"></span> Loading bridge status...</div>
+        <div id="bridge-content" class="bridge-status-grid" style="display:none;"></div>
+      </section>
+
+      <section class="admin-section">
+        <h2 class="admin-section-title">Bridge Actions</h2>
+        <div class="actions-grid">
+
+          <div class="action-card">
+            <h4>Attest SELFCLAW</h4>
+            <button class="action-btn" onclick="doAttest('0x9ae5f51d81ff510bf961218f833f79d57bfbab07', this)">Attest on Celo</button>
+            <div class="action-result" id="result-attest-selfclaw"></div>
+          </div>
+
+          <div class="action-card">
+            <h4>Attest WETH</h4>
+            <button class="action-btn" onclick="doAttest('0x4200000000000000000000000000000000000006', this)">Attest on Celo</button>
+            <div class="action-result" id="result-attest-weth"></div>
+          </div>
+
+          <div class="action-card">
+            <h4>Bridge SELFCLAW</h4>
+            <input type="text" class="input" id="bridge-selfclaw-amount" placeholder="Amount (e.g. 1000)">
+            <button class="action-btn" onclick="doBridgeTransfer('0x9ae5f51d81ff510bf961218f833f79d57bfbab07', 'bridge-selfclaw-amount', this)">Bridge to Celo</button>
+            <div class="action-result" id="result-bridge-selfclaw"></div>
+          </div>
+
+          <div class="action-card">
+            <h4>Bridge WETH</h4>
+            <input type="text" class="input" id="bridge-weth-amount" placeholder="Amount (e.g. 0.1)">
+            <button class="action-btn" onclick="doBridgeTransfer('0x4200000000000000000000000000000000000006', 'bridge-weth-amount', this)">Bridge to Celo</button>
+            <div class="action-result" id="result-bridge-weth"></div>
+          </div>
+
+          <div class="action-card">
+            <h4>Complete Attestation</h4>
+            <textarea class="input" id="complete-attest-vaa" placeholder="Paste VAA bytes here..."></textarea>
+            <button class="action-btn" onclick="doCompleteAttestation(this)">Complete</button>
+            <div class="action-result" id="result-complete-attest"></div>
+          </div>
+
+          <div class="action-card">
+            <h4>Complete Transfer</h4>
+            <textarea class="input" id="complete-transfer-vaa" placeholder="Paste VAA bytes here..."></textarea>
+            <button class="action-btn" onclick="doCompleteTransfer(this)">Complete</button>
+            <div class="action-result" id="result-complete-transfer"></div>
+          </div>
+
+        </div>
+      </section>
+
+      <section class="admin-section">
+        <h2 class="admin-section-title">Activity Log</h2>
+        <div class="activity-log" id="activity-log">
+          <div class="log-empty"><span class="spinner"></span> Loading...</div>
+        </div>
+      </section>
+
+    </div>
+  </div>
+
+  <script>
+    var refreshInterval = null;
+
+    function getToken() {
+      return sessionStorage.getItem('selfclaw_admin_token');
+    }
+
+    function authHeaders() {
+      return { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getToken() };
+    }
+
+    function showDashboard() {
+      document.getElementById('login-view').style.display = 'none';
+      document.getElementById('dashboard-view').style.display = 'block';
+      refreshAll();
+      refreshInterval = setInterval(loadWalletBalances, 30000);
+    }
+
+    function doLogin() {
+      var pw = document.getElementById('login-password').value.trim();
+      if (!pw) return;
+      var errEl = document.getElementById('login-error');
+      errEl.style.display = 'none';
+      fetch('/api/admin/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: pw })
+      })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (data.success && data.token) {
+          sessionStorage.setItem('selfclaw_admin_token', data.token);
+          showDashboard();
+        } else {
+          errEl.textContent = data.error || 'Invalid password';
+          errEl.style.display = 'block';
+        }
+      })
+      .catch(function(e) {
+        errEl.textContent = 'Connection error';
+        errEl.style.display = 'block';
+      });
+    }
+
+    function doLogout() {
+      sessionStorage.removeItem('selfclaw_admin_token');
+      if (refreshInterval) clearInterval(refreshInterval);
+      document.getElementById('dashboard-view').style.display = 'none';
+      document.getElementById('login-view').style.display = 'flex';
+      document.getElementById('login-password').value = '';
+    }
+
+    function refreshAll() {
+      loadStats();
+      loadWalletBalances();
+      loadBridgeStatus();
+      loadActivityLog();
+      document.getElementById('last-refresh').textContent = 'Last refresh: ' + new Date().toLocaleTimeString();
+    }
+
+    function copyToClipboard(text, btn) {
+      navigator.clipboard.writeText(text).then(function() {
+        var orig = btn.textContent;
+        btn.textContent = 'Copied!';
+        setTimeout(function() { btn.textContent = orig; }, 1500);
+      });
+    }
+
+    function truncateAddr(addr) {
+      if (!addr) return '';
+      return addr.slice(0, 6) + '...' + addr.slice(-4);
+    }
+
+    function timeAgo(dateStr) {
+      if (!dateStr) return '';
+      var now = new Date();
+      var then = new Date(dateStr);
+      var diff = Math.floor((now - then) / 1000);
+      if (diff < 60) return diff + 's ago';
+      diff = Math.floor(diff / 60);
+      if (diff < 60) return diff + 'min ago';
+      diff = Math.floor(diff / 60);
+      if (diff < 24) return diff + 'h ago';
+      diff = Math.floor(diff / 24);
+      return diff + 'd ago';
+    }
+
+    function loadStats() {
+      fetch('/api/selfclaw/v1/stats')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          document.getElementById('stat-verified').textContent = data.verifiedAgents != null ? data.verifiedAgents : (data.verified_agents != null ? data.verified_agents : '\u2014');
+          document.getElementById('stat-wallets').textContent = data.walletsCreated != null ? data.walletsCreated : (data.wallets_created != null ? data.wallets_created : '\u2014');
+          document.getElementById('stat-gas').textContent = data.gasSent != null ? data.gasSent : (data.gas_sent != null ? data.gas_sent : '\u2014');
+          document.getElementById('stat-tokens').textContent = data.tokensDeployed != null ? data.tokensDeployed : (data.tokens_deployed != null ? data.tokens_deployed : '\u2014');
+        })
+        .catch(function() {});
+    }
+
+    function loadWalletBalances() {
+      var loading = document.getElementById('wallet-loading');
+      var content = document.getElementById('wallet-content');
+      loading.style.display = 'block';
+      content.style.display = 'none';
+
+      fetch('/api/admin/wallet-balances', { headers: authHeaders() })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          loading.style.display = 'none';
+          content.style.display = 'grid';
+
+          var walletAddr = data.walletAddress || data.address || '';
+          var base = data.base || {};
+          var celo = data.celo || {};
+
+          content.innerHTML =
+            '<div class="wallet-panel">' +
+              '<div class="wallet-panel-title">Base</div>' +
+              '<div class="wallet-addr">' +
+                '<a href="https://basescan.org/address/' + walletAddr + '" target="_blank" rel="noopener">' + truncateAddr(walletAddr) + '</a>' +
+                '<button class="copy-btn" onclick="copyToClipboard(\'' + walletAddr + '\', this)">Copy</button>' +
+              '</div>' +
+              '<div class="balance-row"><span class="balance-label">ETH</span><span class="balance-value">' + (base.eth != null ? base.eth : '\u2014') + '</span></div>' +
+              '<div class="balance-row"><span class="balance-label">SELFCLAW</span><span class="balance-value">' + (base.selfclaw != null ? base.selfclaw : '\u2014') + '</span></div>' +
+              '<div class="balance-row"><span class="balance-label">WETH</span><span class="balance-value">' + (base.weth != null ? base.weth : '\u2014') + '</span></div>' +
+            '</div>' +
+            '<div class="wallet-panel">' +
+              '<div class="wallet-panel-title">Celo</div>' +
+              '<div class="wallet-addr">' +
+                '<a href="https://celoscan.io/address/' + walletAddr + '" target="_blank" rel="noopener">' + truncateAddr(walletAddr) + '</a>' +
+                '<button class="copy-btn" onclick="copyToClipboard(\'' + walletAddr + '\', this)">Copy</button>' +
+              '</div>' +
+              '<div class="balance-row"><span class="balance-label">CELO</span><span class="balance-value">' + (celo.celo != null ? celo.celo : '\u2014') + '</span></div>' +
+              '<div class="balance-row"><span class="balance-label">Wrapped SELFCLAW</span><span class="balance-value">' + (celo.wrappedSelfclaw != null ? celo.wrappedSelfclaw : (celo.selfclaw != null ? celo.selfclaw : '\u2014')) + '</span></div>' +
+              '<div class="balance-row"><span class="balance-label">Wrapped WETH</span><span class="balance-value">' + (celo.wrappedWeth != null ? celo.wrappedWeth : (celo.weth != null ? celo.weth : '\u2014')) + '</span></div>' +
+            '</div>';
+        })
+        .catch(function(e) {
+          loading.style.display = 'none';
+          content.style.display = 'grid';
+          content.innerHTML = '<div class="wallet-panel" style="grid-column:1/-1;text-align:center;color:#ef4444;">Failed to load wallet balances</div>';
+        });
+    }
+
+    function loadBridgeStatus() {
+      var loading = document.getElementById('bridge-loading');
+      var content = document.getElementById('bridge-content');
+      loading.style.display = 'block';
+      content.style.display = 'none';
+
+      fetch('/api/admin/bridge-status', { headers: authHeaders() })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          loading.style.display = 'none';
+          content.style.display = 'grid';
+
+          var selfclaw = data.selfclaw || data.SELFCLAW || {};
+          var weth = data.weth || data.WETH || {};
+
+          content.innerHTML =
+            renderBridgeCard('SELFCLAW', selfclaw) +
+            renderBridgeCard('WETH', weth);
+        })
+        .catch(function(e) {
+          loading.style.display = 'none';
+          content.style.display = 'grid';
+          content.innerHTML = '<div class="bridge-status-card" style="grid-column:1/-1;text-align:center;color:#ef4444;">Failed to load bridge status</div>';
+        });
+    }
+
+    function renderBridgeCard(name, info) {
+      var attested = info.attested || info.isAttested || false;
+      var wrappedAddr = info.wrappedAddress || info.wrapped_address || '';
+      var html = '<div class="bridge-status-card">' +
+        '<div class="bridge-token-name">' + name + '</div>' +
+        '<div class="bridge-attested">' +
+          '<span class="status-dot ' + (attested ? 'green' : 'red') + '"></span>' +
+          '<span style="color:' + (attested ? '#4AFF6B' : '#ef4444') + '">' + (attested ? 'Attested on Celo' : 'Not attested') + '</span>' +
+        '</div>';
+      if (wrappedAddr) {
+        html += '<div class="wrapped-addr">' +
+          '<a href="https://celoscan.io/address/' + wrappedAddr + '" target="_blank" rel="noopener" style="color:#777;text-decoration:none;">' + truncateAddr(wrappedAddr) + '</a>' +
+          '<button class="copy-btn" onclick="copyToClipboard(\'' + wrappedAddr + '\', this)">Copy</button>' +
+        '</div>';
+      }
+      html += '</div>';
+      return html;
+    }
+
+    function setActionResult(id, msg, type) {
+      var el = document.getElementById(id);
+      el.className = 'action-result ' + type;
+      el.textContent = msg;
+    }
+
+    function doAttest(tokenAddress, btn) {
+      var resultId = tokenAddress === '0x9ae5f51d81ff510bf961218f833f79d57bfbab07' ? 'result-attest-selfclaw' : 'result-attest-weth';
+      btn.disabled = true;
+      setActionResult(resultId, 'Attesting...', 'loading');
+
+      fetch('/api/admin/bridge/attest', {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({ tokenAddress: tokenAddress })
+      })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        btn.disabled = false;
+        if (data.error) {
+          setActionResult(resultId, data.error, 'error');
+        } else {
+          setActionResult(resultId, JSON.stringify(data, null, 2), 'success');
+          loadBridgeStatus();
+        }
+      })
+      .catch(function(e) {
+        btn.disabled = false;
+        setActionResult(resultId, 'Request failed: ' + e.message, 'error');
+      });
+    }
+
+    function doBridgeTransfer(tokenAddress, inputId, btn) {
+      var amount = document.getElementById(inputId).value.trim();
+      if (!amount) return;
+      var resultId = tokenAddress === '0x9ae5f51d81ff510bf961218f833f79d57bfbab07' ? 'result-bridge-selfclaw' : 'result-bridge-weth';
+      btn.disabled = true;
+      setActionResult(resultId, 'Bridging...', 'loading');
+
+      fetch('/api/admin/bridge/transfer', {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({ tokenAddress: tokenAddress, amount: amount })
+      })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        btn.disabled = false;
+        if (data.error) {
+          setActionResult(resultId, data.error, 'error');
+        } else {
+          setActionResult(resultId, JSON.stringify(data, null, 2), 'success');
+          loadWalletBalances();
+        }
+      })
+      .catch(function(e) {
+        btn.disabled = false;
+        setActionResult(resultId, 'Request failed: ' + e.message, 'error');
+      });
+    }
+
+    function doCompleteAttestation(btn) {
+      var vaaBytes = document.getElementById('complete-attest-vaa').value.trim();
+      if (!vaaBytes) return;
+      btn.disabled = true;
+      setActionResult('result-complete-attest', 'Completing attestation...', 'loading');
+
+      fetch('/api/admin/bridge/complete-attestation', {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({ vaaBytes: vaaBytes })
+      })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        btn.disabled = false;
+        if (data.error) {
+          setActionResult('result-complete-attest', data.error, 'error');
+        } else {
+          setActionResult('result-complete-attest', JSON.stringify(data, null, 2), 'success');
+          loadBridgeStatus();
+        }
+      })
+      .catch(function(e) {
+        btn.disabled = false;
+        setActionResult('result-complete-attest', 'Request failed: ' + e.message, 'error');
+      });
+    }
+
+    function doCompleteTransfer(btn) {
+      var vaaBytes = document.getElementById('complete-transfer-vaa').value.trim();
+      if (!vaaBytes) return;
+      btn.disabled = true;
+      setActionResult('result-complete-transfer', 'Completing transfer...', 'loading');
+
+      fetch('/api/admin/bridge/complete-transfer', {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({ vaaBytes: vaaBytes })
+      })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        btn.disabled = false;
+        if (data.error) {
+          setActionResult('result-complete-transfer', data.error, 'error');
+        } else {
+          setActionResult('result-complete-transfer', JSON.stringify(data, null, 2), 'success');
+          loadWalletBalances();
+        }
+      })
+      .catch(function(e) {
+        btn.disabled = false;
+        setActionResult('result-complete-transfer', 'Request failed: ' + e.message, 'error');
+      });
+    }
+
+    function loadActivityLog() {
+      var el = document.getElementById('activity-log');
+      el.innerHTML = '<div class="log-empty"><span class="spinner"></span> Loading...</div>';
+
+      fetch('/api/admin/activity-log', { headers: authHeaders() })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          var items = Array.isArray(data) ? data : (data.activities || data.log || []);
+          if (!items.length) {
+            el.innerHTML = '<div class="log-empty">No activity yet</div>';
+            return;
+          }
+          var html = '';
+          items.forEach(function(item) {
+            html += '<div class="log-item">' +
+              '<span class="log-type">' + (item.type || item.action || 'event') + '</span>' +
+              '<span class="log-detail">' + (item.detail || item.message || item.description || JSON.stringify(item)) + '</span>' +
+              '<span class="log-time">' + timeAgo(item.createdAt || item.created_at || item.timestamp) + '</span>' +
+            '</div>';
+          });
+          el.innerHTML = html;
+        })
+        .catch(function(e) {
+          el.innerHTML = '<div class="log-empty" style="color:#ef4444;">Failed to load activity log</div>';
+        });
+    }
+
+    (function() {
+      var token = getToken();
+      if (token) {
+        showDashboard();
+      }
+    })();
+  </script>
+</body>
+</html>

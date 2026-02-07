@@ -4,6 +4,7 @@ import { db } from "./db.js";
 import { verifiedBots } from "../shared/schema.js";
 import { sql } from "drizzle-orm";
 import selfclawRouter from "./selfclaw.js";
+import adminRouter from "./admin.js";
 import { erc8004Service } from "../lib/erc8004.js";
 
 const app = express();
@@ -56,6 +57,11 @@ app.get("/registry", (req: Request, res: Response) => {
   res.sendFile("registry.html", { root: "public" });
 });
 
+app.get("/admin", (req: Request, res: Response) => {
+  res.setHeader("X-Robots-Tag", "noindex, nofollow");
+  res.sendFile("admin.html", { root: "public" });
+});
+
 app.get("/human/:humanId", (req: Request, res: Response) => {
   res.sendFile("human.html", { root: "public" });
 });
@@ -73,6 +79,7 @@ async function main() {
   }
 
   app.use("/api/selfclaw", selfclawRouter);
+  app.use("/api/admin", adminRouter);
 
   app.get("/.well-known/agent-registration.json", async (req: Request, res: Response) => {
     try {

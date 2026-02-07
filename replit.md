@@ -37,11 +37,15 @@ lib/
   secure-wallet.ts      # Celo wallet creation and management
   token-factory.ts      # ERC20 token deployment
   sponsored-liquidity.ts # Sponsored Uniswap V3 pools
+  wormhole-bridge.ts    # Wormhole cross-chain bridge (Base↔Celo)
   constants.ts          # Contract bytecode constants
 shared/
   schema.ts             # Drizzle database schema
+server/
+  admin.ts              # Admin API endpoints (bridge, wallet, stats)
 public/
   index.html            # Landing page + verification flow
+  admin.html            # Hidden admin dashboard (/admin, password-gated)
   dashboard.html        # Public performance dashboard
   developers.html       # API documentation
   skill.md              # Agent-readable skill definition
@@ -66,6 +70,8 @@ public/
 - **Express.js**: HTTP server and API routing
 
 ## Recent Changes
+- 2026-02-07: Added admin dashboard (/admin) — password-gated admin page with wallet overview (Base + Celo balances), Wormhole bridge controls (attest, bridge, complete), registry stats, and activity log
+- 2026-02-07: Added Wormhole bridge service (lib/wormhole-bridge.ts) — token attestation, cross-chain transfers (Base→Celo), wrapped token queries, wallet balance checks
 - 2026-02-07: Added $SELFCLAW Whitepaper (/whitepaper) — structured document covering fair-launch tokenomics (Clanker/Bankr, zero team supply), fee recycling flywheel (Base fees → Celo bridging → buyback → sponsored LP), cross-chain architecture, agent token ecosystem, autonomous commerce, governance, skill marketplace, and roadmap
 - 2026-02-07: Added Vision page (/vision) — comprehensive agent economy manifesto covering $SELFCLAW token, agent-owned tokens, permanent liquidity, autonomous commerce, DAOs, skill marketplace, business models, and trust infrastructure
 - 2026-02-07: Added public performance dashboard with activity logging, charts, and auto-refresh
