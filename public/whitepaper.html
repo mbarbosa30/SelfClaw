@@ -1,0 +1,970 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SelfClaw | $SELFCLAW Token Whitepaper</title>
+  <meta name="description" content="$SELFCLAW whitepaper: a fair-launch token powering the agent verification economy. Fee-recycling flywheel, cross-chain liquidity, and sponsored agent tokens on Celo.">
+
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://selfclaw.ai/whitepaper">
+  <meta property="og:title" content="SelfClaw | $SELFCLAW Token Whitepaper">
+  <meta property="og:description" content="Fair-launch tokenomics, fee-recycling flywheel, cross-chain liquidity from Base to Celo, and sponsored agent tokens. No team supply, no dump risk.">
+  <meta property="og:image" content="https://selfclaw.ai/vision-og.png">
+  <meta property="og:site_name" content="SelfClaw">
+
+  <link rel="canonical" href="https://selfclaw.ai/whitepaper">
+  <meta name="keywords" content="$SELFCLAW, whitepaper, tokenomics, fair launch, Clanker, Bankr, agent economy, fee recycling, cross-chain, Base, Celo, liquidity, verified agents">
+
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:site" content="@mbarrbosa">
+  <meta name="twitter:title" content="SelfClaw | $SELFCLAW Token Whitepaper">
+  <meta name="twitter:description" content="Fair-launch tokenomics, fee-recycling flywheel, cross-chain liquidity, and sponsored agent tokens. No team supply, no dump risk.">
+  <meta name="twitter:image" content="https://selfclaw.ai/vision-og.png">
+
+  <link rel="icon" type="image/png" href="/favicon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .wp-page { max-width: 820px; margin: 0 auto; padding: 2rem; }
+
+    .wp-header {
+      text-align: center;
+      padding: 4rem 0 3rem;
+      border-bottom: 1px solid var(--gray-300);
+      margin-bottom: 3rem;
+    }
+    .wp-header .wp-label {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: #FF6B4A;
+      margin-bottom: 1rem;
+    }
+    .wp-header h1 {
+      font-family: 'Inter', sans-serif;
+      font-size: 2.8rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      line-height: 1.15;
+      margin-bottom: 1.25rem;
+    }
+    .wp-header h1 span { color: #FF6B4A; }
+    .wp-header .wp-subtitle {
+      font-size: 1.1rem;
+      color: var(--text-secondary);
+      max-width: 600px;
+      margin: 0 auto 1.5rem;
+      line-height: 1.7;
+    }
+    .wp-header .wp-meta {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+    .wp-header .wp-meta span { margin: 0 0.75rem; }
+    .wp-header .wp-contract {
+      display: inline-block;
+      margin-top: 1rem;
+      padding: 0.4rem 1.2rem;
+      border: 1px solid var(--gray-300);
+      border-radius: 100px;
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      text-decoration: none;
+      transition: border-color 0.2s, color 0.2s;
+      word-break: break-all;
+    }
+    .wp-header .wp-contract:hover {
+      border-color: #FF6B4A;
+      color: #FF6B4A;
+    }
+
+    .wp-toc {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--gray-300);
+      border-radius: 12px;
+      padding: 2rem;
+      margin-bottom: 4rem;
+    }
+    .wp-toc h3 {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: #FF6B4A;
+      margin-bottom: 1.25rem;
+    }
+    .wp-toc ol {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      columns: 2;
+      column-gap: 2rem;
+    }
+    .wp-toc li {
+      padding: 0.4rem 0;
+      break-inside: avoid;
+    }
+    .wp-toc a {
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-size: 0.9rem;
+      transition: color 0.2s;
+    }
+    .wp-toc a:hover { color: #FF6B4A; }
+    .wp-toc .toc-num {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-right: 0.5rem;
+    }
+
+    .wp-section {
+      margin-bottom: 4rem;
+      scroll-margin-top: 2rem;
+    }
+    .wp-section-num {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: #FF6B4A;
+      margin-bottom: 0.5rem;
+    }
+    .wp-section h2 {
+      font-family: 'Inter', sans-serif;
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: 1.25rem;
+      line-height: 1.2;
+    }
+    .wp-section h3 {
+      font-family: 'Inter', sans-serif;
+      font-size: 1.2rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin: 2rem 0 0.75rem;
+    }
+    .wp-section p {
+      color: var(--text-secondary);
+      font-size: 1rem;
+      line-height: 1.85;
+      margin-bottom: 1rem;
+    }
+    .wp-section ul, .wp-section ol {
+      color: var(--text-secondary);
+      font-size: 1rem;
+      line-height: 1.85;
+      margin-bottom: 1rem;
+      padding-left: 1.5rem;
+    }
+    .wp-section li { margin-bottom: 0.5rem; }
+
+    .wp-callout {
+      background: linear-gradient(135deg, rgba(255, 107, 74, 0.08), rgba(255, 107, 74, 0.02));
+      border: 1px solid rgba(255, 107, 74, 0.25);
+      border-radius: 12px;
+      padding: 1.5rem 2rem;
+      margin: 1.5rem 0;
+    }
+    .wp-callout h4 {
+      color: #FF6B4A;
+      font-size: 0.95rem;
+      margin-bottom: 0.5rem;
+      font-weight: 600;
+    }
+    .wp-callout p {
+      color: var(--text-secondary);
+      line-height: 1.7;
+      font-size: 0.95rem;
+      margin-bottom: 0;
+    }
+
+    .wp-diagram {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0;
+      margin: 2rem 0;
+      flex-wrap: wrap;
+    }
+    .wp-node {
+      background: rgba(255, 107, 74, 0.08);
+      border: 1px solid rgba(255, 107, 74, 0.3);
+      border-radius: 10px;
+      padding: 0.85rem 1.1rem;
+      text-align: center;
+      min-width: 120px;
+    }
+    .wp-node .wp-node-label {
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #FF6B4A;
+      margin-bottom: 0.2rem;
+    }
+    .wp-node .wp-node-value {
+      font-size: 0.85rem;
+      color: var(--text-primary);
+      font-weight: 600;
+    }
+    .wp-arrow {
+      font-size: 1.3rem;
+      color: rgba(255, 107, 74, 0.4);
+      padding: 0 0.4rem;
+    }
+
+    .wp-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1.5rem 0;
+      font-size: 0.9rem;
+    }
+    .wp-table th {
+      text-align: left;
+      padding: 0.75rem 1rem;
+      border-bottom: 2px solid var(--gray-300);
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #FF6B4A;
+      font-weight: 600;
+    }
+    .wp-table td {
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      color: var(--text-secondary);
+    }
+    .wp-table td:first-child {
+      color: var(--text-primary);
+      font-weight: 500;
+    }
+
+    .wp-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.25rem;
+      margin: 1.5rem 0;
+    }
+    .wp-grid-card {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--gray-300);
+      border-radius: 10px;
+      padding: 1.25rem;
+    }
+    .wp-grid-card h4 {
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      color: var(--text-primary);
+      margin-bottom: 0.5rem;
+    }
+    .wp-grid-card p {
+      font-size: 0.88rem;
+      color: var(--text-secondary);
+      line-height: 1.6;
+      margin-bottom: 0;
+    }
+
+    .wp-divider {
+      border: none;
+      border-top: 1px solid var(--gray-300);
+      margin: 4rem 0;
+    }
+
+    .wp-cta {
+      text-align: center;
+      padding: 3rem 0 2rem;
+      border-top: 1px solid var(--gray-300);
+    }
+    .wp-cta h2 {
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: 1rem;
+    }
+    .wp-cta p {
+      color: var(--text-secondary);
+      font-size: 1rem;
+      max-width: 480px;
+      margin: 0 auto 1.5rem;
+      line-height: 1.7;
+    }
+    .wp-cta-links {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .back-link {
+      display: inline-block;
+      margin-bottom: 2rem;
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      color: var(--text-muted) !important;
+      text-decoration: none;
+    }
+    .back-link:hover { color: #FF6B4A !important; }
+
+    .wp-phase {
+      display: flex;
+      gap: 1rem;
+      align-items: flex-start;
+      margin-bottom: 1.5rem;
+    }
+    .wp-phase-marker {
+      min-width: 80px;
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #FF6B4A;
+      padding-top: 0.2rem;
+      text-align: right;
+    }
+    .wp-phase-content {
+      flex: 1;
+      border-left: 2px solid rgba(255, 107, 74, 0.3);
+      padding-left: 1.25rem;
+    }
+    .wp-phase-content h4 {
+      font-size: 1rem;
+      color: var(--text-primary);
+      margin-bottom: 0.35rem;
+    }
+    .wp-phase-content p {
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      line-height: 1.6;
+      margin-bottom: 0;
+    }
+
+    @media (max-width: 640px) {
+      .wp-header h1 { font-size: 2rem; }
+      .wp-section h2 { font-size: 1.4rem; }
+      .wp-toc ol { columns: 1; }
+      .wp-grid { grid-template-columns: 1fr; }
+      .wp-diagram { flex-direction: column; }
+      .wp-arrow { transform: rotate(90deg); }
+      .wp-phase { flex-direction: column; }
+      .wp-phase-marker { text-align: left; min-width: auto; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wp-page">
+    <a href="/" class="back-link">&larr; Back to SelfClaw</a>
+
+    <header class="wp-header">
+      <div class="wp-label">Whitepaper &mdash; v0.1 Draft</div>
+      <h1><span>$SELFCLAW</span><br>The Agent Economy Token</h1>
+      <p class="wp-subtitle">
+        A fair-launch token with zero team supply, fee-recycling tokenomics, and cross-chain liquidity &mdash; designed to power the trust infrastructure for autonomous AI agents.
+      </p>
+      <div class="wp-meta">
+        February 2025 <span>&middot;</span> selfclaw.ai
+      </div>
+      <a href="https://basescan.org/token/0x9ae5f51d81ff510bf961218f833f79d57bfbab07" target="_blank" rel="noopener" class="wp-contract">
+        Base: 0x9ae5f51d81ff510bf961218f833f79d57bfbab07
+      </a>
+    </header>
+
+    <nav class="wp-toc">
+      <h3>Table of Contents</h3>
+      <ol>
+        <li><a href="#abstract"><span class="toc-num">01</span> Abstract</a></li>
+        <li><a href="#problem"><span class="toc-num">02</span> The Problem</a></li>
+        <li><a href="#protocol"><span class="toc-num">03</span> Protocol Design</a></li>
+        <li><a href="#tokenomics"><span class="toc-num">04</span> Tokenomics</a></li>
+        <li><a href="#flywheel"><span class="toc-num">05</span> Fee Recycling Flywheel</a></li>
+        <li><a href="#cross-chain"><span class="toc-num">06</span> Cross-Chain Architecture</a></li>
+        <li><a href="#agent-tokens"><span class="toc-num">07</span> Agent Token Ecosystem</a></li>
+        <li><a href="#commerce"><span class="toc-num">08</span> Autonomous Commerce</a></li>
+        <li><a href="#governance"><span class="toc-num">09</span> Governance &amp; DAOs</a></li>
+        <li><a href="#marketplace"><span class="toc-num">10</span> Skill Marketplace</a></li>
+        <li><a href="#models"><span class="toc-num">11</span> Business Models</a></li>
+        <li><a href="#roadmap"><span class="toc-num">12</span> Roadmap</a></li>
+      </ol>
+    </nav>
+
+    <div class="wp-callout" style="margin-bottom: 3rem;">
+      <h4>Important Notice</h4>
+      <p>This whitepaper is an exploratory document. It describes both what has been built and what is being envisioned. Where mechanisms are described as planned or proposed, they represent possibilities under active exploration &mdash; not commitments or guarantees. The agent economy is an emerging frontier, and specifics will evolve as the ecosystem develops. The $SELFCLAW token launch details and verification protocol are factual; the fee recycling flywheel, cross-chain bridging, and sponsored liquidity mechanics are proposed designs.</p>
+    </div>
+
+    <!-- 01. ABSTRACT -->
+    <section id="abstract" class="wp-section">
+      <div class="wp-section-num">Section 01</div>
+      <h2>Abstract</h2>
+      <p>
+        $SELFCLAW is the native token of the SelfClaw agent verification registry &mdash; a protocol that binds AI agents to verified human identities using zero-knowledge proofs from passport NFC chips via Self.xyz.
+      </p>
+      <p>
+        The token was launched via Clanker through Bankr as a fair launch with no team allocation, no pre-sale, and no insider supply. The project receives revenue solely through trading fees, making it structurally impossible for the team to dump on holders. The vision is to recycle these fees back into the ecosystem: bridging them from Base to Celo, converting them into liquidity, and using them to sponsor the creation of new agent tokens &mdash; creating a self-sustaining flywheel that could grow with every verified agent.
+      </p>
+      <p>
+        This whitepaper explores the tokenomics, fee-recycling mechanics, cross-chain architecture, and the broader vision of an agent economy where $SELFCLAW serves as the connective tissue between autonomous AI agents, their tokens, and the humans who back them.
+      </p>
+    </section>
+
+    <!-- 02. THE PROBLEM -->
+    <section id="problem" class="wp-section">
+      <div class="wp-section-num">Section 02</div>
+      <h2>The Problem</h2>
+      <p>
+        The emergence of AI agents introduces a fundamental trust problem. As agents begin to operate autonomously &mdash; executing transactions, managing wallets, and interacting with other agents &mdash; there is no reliable way to determine whether an agent is backed by a real, verified human or is simply a bot in a swarm of sybil accounts.
+      </p>
+
+      <h3>The Trust Gap</h3>
+      <p>
+        Traditional identity systems fail for agents. API keys prove access, not humanity. Wallet addresses prove ownership, not identity. OAuth tokens prove authentication, not accountability. None of these prevent a single actor from creating thousands of fake agents to manipulate markets, farm rewards, or pollute reputation systems.
+      </p>
+
+      <h3>The Liquidity Problem</h3>
+      <p>
+        Even when legitimate agents emerge, they face a bootstrapping problem. An agent that wants to tokenize its services has no way to launch with meaningful liquidity. Traditional token launches require seed capital, market makers, and often result in rug pulls when liquidity providers withdraw. New agent tokens need a trust infrastructure that guarantees immediate, permanent tradability.
+      </p>
+
+      <h3>The Token Launch Problem</h3>
+      <p>
+        Most token projects suffer from a misalignment between team and community. Teams hold large allocations, vest over time, and inevitably create sell pressure. $SELFCLAW takes a fundamentally different approach: the project holds zero supply and earns only through fees generated by organic trading activity. This aligns the project's incentives entirely with ecosystem growth.
+      </p>
+    </section>
+
+    <!-- 03. PROTOCOL DESIGN -->
+    <section id="protocol" class="wp-section">
+      <div class="wp-section-num">Section 03</div>
+      <h2>Protocol Design</h2>
+      <p>
+        SelfClaw's verification protocol establishes a cryptographic link between an AI agent's Ed25519 key pair and a verified human identity, using zero-knowledge proofs derived from passport NFC chips.
+      </p>
+
+      <h3>Verification Flow</h3>
+      <div class="wp-diagram">
+        <div class="wp-node">
+          <div class="wp-node-label">Agent</div>
+          <div class="wp-node-value">Ed25519 Key</div>
+        </div>
+        <div class="wp-arrow">&rarr;</div>
+        <div class="wp-node">
+          <div class="wp-node-label">SelfClaw</div>
+          <div class="wp-node-value">Challenge</div>
+        </div>
+        <div class="wp-arrow">&rarr;</div>
+        <div class="wp-node">
+          <div class="wp-node-label">Self.xyz</div>
+          <div class="wp-node-value">ZK Proof</div>
+        </div>
+        <div class="wp-arrow">&rarr;</div>
+        <div class="wp-node">
+          <div class="wp-node-label">On-Chain</div>
+          <div class="wp-node-value">ERC-8004 NFT</div>
+        </div>
+      </div>
+
+      <ol>
+        <li><strong>Key Registration</strong> &mdash; The agent submits its Ed25519 public key to SelfClaw and receives a cryptographic challenge.</li>
+        <li><strong>Challenge Signing</strong> &mdash; The agent signs the challenge with its private key, proving ownership of the key pair.</li>
+        <li><strong>Passport Verification</strong> &mdash; The agent's owner scans their passport NFC chip using the Self.xyz mobile app. A zero-knowledge proof is generated that proves humanity and age (18+) without revealing any personal data.</li>
+        <li><strong>On-Chain Identity</strong> &mdash; Upon successful verification, an ERC-8004 non-transferable NFT is minted on Celo, permanently recording the agent's verified status on-chain.</li>
+      </ol>
+
+      <div class="wp-callout">
+        <h4>Privacy by Design</h4>
+        <p>No personal information is ever stored or transmitted. The zero-knowledge proof confirms "this agent is backed by a real, unique, adult human" without revealing who that human is. The passport data never leaves the device.</p>
+      </div>
+
+      <h3>Swarm Management</h3>
+      <p>
+        A single verified human can register multiple agents, forming a "swarm." All agents in a swarm share the same human identity hash, enabling accountability without sacrificing privacy. If one agent in a swarm misbehaves, the reputation impact cascades to all agents linked to that identity.
+      </p>
+    </section>
+
+    <!-- 04. TOKENOMICS -->
+    <section id="tokenomics" class="wp-section">
+      <div class="wp-section-num">Section 04</div>
+      <h2>Tokenomics</h2>
+
+      <h3>Fair Launch via Clanker</h3>
+      <p>
+        $SELFCLAW was launched through Bankr on Clanker &mdash; a fair-launch platform that creates tokens with zero team allocation. The project does not own, hold, or control any $SELFCLAW supply. This is not a strategic choice that could be reversed; it is a structural constraint enforced by the launch mechanism.
+      </p>
+
+      <table class="wp-table">
+        <thead>
+          <tr>
+            <th>Property</th>
+            <th>Details</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Launch Platform</td>
+            <td>Clanker via Bankr</td>
+          </tr>
+          <tr>
+            <td>Origin Chain</td>
+            <td>Base (Chain ID: 8453)</td>
+          </tr>
+          <tr>
+            <td>Token Standard</td>
+            <td>ERC-20</td>
+          </tr>
+          <tr>
+            <td>Team Allocation</td>
+            <td>0% &mdash; structurally zero</td>
+          </tr>
+          <tr>
+            <td>Pre-sale / ICO</td>
+            <td>None</td>
+          </tr>
+          <tr>
+            <td>VC Allocation</td>
+            <td>None</td>
+          </tr>
+          <tr>
+            <td>Revenue Model</td>
+            <td>Trading fees only</td>
+          </tr>
+          <tr>
+            <td>Dump Risk</td>
+            <td>Structurally impossible &mdash; no team supply exists</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>Fee-Only Revenue</h3>
+      <p>
+        The project earns revenue exclusively from trading fees on the SELFCLAW/ETH liquidity pool on Base. These fees accumulate in both ETH and SELFCLAW. Critically, the project never sells $SELFCLAW &mdash; it recycles all fee revenue back into the ecosystem (see Section 05).
+      </p>
+
+      <div class="wp-callout">
+        <h4>Why This Matters for Holders</h4>
+        <p>In traditional token projects, team allocations create a constant overhang of potential sell pressure. With $SELFCLAW, this overhang does not exist. The project can only succeed by growing the ecosystem, increasing trading volume, and generating more fees &mdash; the same things that benefit holders. Incentives are perfectly aligned.</p>
+      </div>
+    </section>
+
+    <!-- 05. FEE RECYCLING FLYWHEEL -->
+    <section id="flywheel" class="wp-section">
+      <div class="wp-section-num">Section 05</div>
+      <h2>The Fee Recycling Flywheel</h2>
+      <p>
+        The proposed core economic mechanism of $SELFCLAW is a fee recycling flywheel that would transform trading activity into ecosystem growth. Fees generated on Base would be bridged to Celo, converted into liquidity, and used to sponsor new agent tokens &mdash; which in turn would generate more trading activity.
+      </p>
+
+      <h3>Phase 1: Fee Collection (Base)</h3>
+      <p>
+        The SELFCLAW/ETH pool on Base generates trading fees in two assets: ETH and SELFCLAW. These fees would be collected by the protocol.
+      </p>
+
+      <h3>Phase 2: Bridge to Celo</h3>
+      <p>
+        Both fee assets would be bridged from Base to Celo:
+      </p>
+      <ul>
+        <li><strong>SELFCLAW</strong> would be bridged to its Celo-native representation via Hyperlane or an equivalent cross-chain protocol.</li>
+        <li><strong>ETH</strong> would be swapped for CELO on the destination chain.</li>
+      </ul>
+
+      <h3>Phase 3: SELFCLAW/CELO Pool (Celo)</h3>
+      <p>
+        The bridged SELFCLAW and acquired CELO would be paired to create (or deepen) a SELFCLAW/CELO liquidity pool on Celo. This would establish $SELFCLAW as a native, tradable asset on the Celo ecosystem.
+      </p>
+
+      <h3>Phase 4: Buyback &amp; Sponsor</h3>
+      <p>
+        Fees generated by the SELFCLAW/CELO pool on Celo would be used to buy back additional SELFCLAW. This bought-back SELFCLAW would be reserved as <strong>sponsorship liquidity</strong> &mdash; the capital that could seed liquidity pools for new tokens created by verified agents.
+      </p>
+
+      <div class="wp-diagram">
+        <div class="wp-node">
+          <div class="wp-node-label">Base</div>
+          <div class="wp-node-value">Trading Fees</div>
+        </div>
+        <div class="wp-arrow">&rarr;</div>
+        <div class="wp-node">
+          <div class="wp-node-label">Bridge</div>
+          <div class="wp-node-value">ETH + SELFCLAW</div>
+        </div>
+        <div class="wp-arrow">&rarr;</div>
+        <div class="wp-node">
+          <div class="wp-node-label">Celo</div>
+          <div class="wp-node-value">SELFCLAW/CELO LP</div>
+        </div>
+        <div class="wp-arrow">&rarr;</div>
+        <div class="wp-node">
+          <div class="wp-node-label">Celo Fees</div>
+          <div class="wp-node-value">Buyback SELFCLAW</div>
+        </div>
+      </div>
+
+      <div class="wp-diagram">
+        <div class="wp-node">
+          <div class="wp-node-label">Bought Back</div>
+          <div class="wp-node-value">SELFCLAW Reserve</div>
+        </div>
+        <div class="wp-arrow">&rarr;</div>
+        <div class="wp-node">
+          <div class="wp-node-label">Verified Agent</div>
+          <div class="wp-node-value">Creates Token</div>
+        </div>
+        <div class="wp-arrow">&rarr;</div>
+        <div class="wp-node">
+          <div class="wp-node-label">Sponsored</div>
+          <div class="wp-node-value">TOKEN/SELFCLAW LP</div>
+        </div>
+        <div class="wp-arrow">&rarr;</div>
+        <div class="wp-node">
+          <div class="wp-node-label">More</div>
+          <div class="wp-node-value">Trading Volume</div>
+        </div>
+      </div>
+
+      <div class="wp-callout">
+        <h4>The Flywheel Effect</h4>
+        <p>More trading volume generates more fees. More fees create more liquidity on Celo. More Celo liquidity funds more agent token sponsorships. More agent tokens create more trading pairs involving $SELFCLAW. More pairs generate more volume. The cycle is self-reinforcing: every participant's activity strengthens the ecosystem for everyone else.</p>
+      </div>
+    </section>
+
+    <!-- 06. CROSS-CHAIN ARCHITECTURE -->
+    <section id="cross-chain" class="wp-section">
+      <div class="wp-section-num">Section 06</div>
+      <h2>Cross-Chain Architecture</h2>
+      <p>
+        $SELFCLAW is designed to operate across two chains, each serving a distinct purpose in the ecosystem.
+      </p>
+
+      <div class="wp-grid">
+        <div class="wp-grid-card">
+          <h4>Base &mdash; Origin &amp; Liquidity</h4>
+          <p>$SELFCLAW was born on Base via Clanker. The SELFCLAW/ETH pool on Base is the primary trading venue and the source of fee revenue for the entire ecosystem. Base benefits from Coinbase's ecosystem and deep liquidity.</p>
+        </div>
+        <div class="wp-grid-card">
+          <h4>Celo &mdash; Execution &amp; Identity</h4>
+          <p>Celo is the execution layer for agent verification, on-chain identity (ERC-8004), agent wallets, token deployment, and sponsored liquidity pools. Celo's low fees and fee abstraction make it ideal for high-frequency agent operations.</p>
+        </div>
+      </div>
+
+      <h3>Bridging Strategy</h3>
+      <p>
+        Cross-chain token transfers between Base and Celo can leverage the bridging infrastructure already supported by the Celo ecosystem, including Hyperlane, Wormhole, LayerZero, and the LI.FI aggregator. The bridging skill from <code>celo-org/agent-skills</code> provides reference implementations for all supported bridges.
+      </p>
+
+      <table class="wp-table">
+        <thead>
+          <tr>
+            <th>Bridge</th>
+            <th>Use Case</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Hyperlane</td>
+            <td>Warp Routes for custom SELFCLAW bridging between Base and Celo</td>
+          </tr>
+          <tr>
+            <td>LI.FI</td>
+            <td>Aggregated routing for optimal fee/speed across multiple bridges</td>
+          </tr>
+          <tr>
+            <td>Superbridge</td>
+            <td>Native OP Stack bridge for ETH between L1 and Celo L2</td>
+          </tr>
+          <tr>
+            <td>LayerZero / Wormhole</td>
+            <td>Fallback options for cross-chain messaging and transfers</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>Why Two Chains?</h3>
+      <p>
+        Base provides access to the largest pool of DeFi liquidity and the Coinbase user base. Celo provides the low-cost, high-throughput environment needed for agent operations &mdash; where gas fees measured in fractions of a cent make autonomous micro-transactions viable. The fee recycling flywheel bridges the value from Base's liquidity depth into Celo's operational layer, creating a symbiotic relationship between the two chains.
+      </p>
+    </section>
+
+    <!-- 07. AGENT TOKEN ECOSYSTEM -->
+    <section id="agent-tokens" class="wp-section">
+      <div class="wp-section-num">Section 07</div>
+      <h2>Agent Token Ecosystem</h2>
+      <p>
+        Once verified, agents could deploy their own ERC-20 tokens through SelfClaw. These tokens are not speculative assets &mdash; they could represent programmable units of value tied to real agent capabilities.
+      </p>
+
+      <h3>Token Deployment</h3>
+      <p>
+        Any verified agent could deploy a token through the SelfClaw API. The deployment process would create the ERC-20 contract on Celo and, if sponsorship liquidity is available, automatically create a TOKEN/SELFCLAW liquidity pool with locked, permanent liquidity.
+      </p>
+
+      <h3>Sponsored Liquidity</h3>
+      <p>
+        New agent tokens could be paired with $SELFCLAW from the sponsorship reserve (funded by the fee recycling flywheel). This liquidity would be locked permanently on-chain, making it structurally impossible to rug pull. Every agent token could launch with immediate tradability and zero rug risk.
+      </p>
+
+      <div class="wp-diagram">
+        <div class="wp-node">
+          <div class="wp-node-label">Verified Agent</div>
+          <div class="wp-node-value">Deploys $TOKEN</div>
+        </div>
+        <div class="wp-arrow">&rarr;</div>
+        <div class="wp-node">
+          <div class="wp-node-label">SelfClaw</div>
+          <div class="wp-node-value">Seeds SELFCLAW</div>
+        </div>
+        <div class="wp-arrow">&rarr;</div>
+        <div class="wp-node">
+          <div class="wp-node-label">Uniswap V3</div>
+          <div class="wp-node-value">Pool Created</div>
+        </div>
+        <div class="wp-arrow">&rarr;</div>
+        <div class="wp-node">
+          <div class="wp-node-label">Liquidity</div>
+          <div class="wp-node-value">Locked Forever</div>
+        </div>
+      </div>
+
+      <h3>Token Use Cases</h3>
+      <div class="wp-grid">
+        <div class="wp-grid-card">
+          <h4>Skill Access</h4>
+          <p>Hold tokens to access agent capabilities. 100 $CODEX for code reviews, 50 $ARTISAN for image generation. Market-driven pricing.</p>
+        </div>
+        <div class="wp-grid-card">
+          <h4>Governance</h4>
+          <p>Token holders could vote on the agent's priorities, feature development, and resource allocation.</p>
+        </div>
+        <div class="wp-grid-card">
+          <h4>Revenue Share</h4>
+          <p>Agents could distribute earnings to token holders proportionally. Early believers earn as the agent grows.</p>
+        </div>
+        <div class="wp-grid-card">
+          <h4>Reputation Staking</h4>
+          <p>Stake tokens to signal confidence in an agent. Underperformance means value loss &mdash; skin in the game for AI trust.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 08. AUTONOMOUS COMMERCE -->
+    <section id="commerce" class="wp-section">
+      <div class="wp-section-num">Section 08</div>
+      <h2>Autonomous Commerce</h2>
+      <p>
+        With wallets, tokens, and liquidity, verified agents could transact directly with each other &mdash; no human intermediary required. $SELFCLAW could serve as the universal routing currency that makes cross-agent commerce possible.
+      </p>
+
+      <h3>Cross-Token Routing</h3>
+      <p>
+        When Agent A holds $ALPHA and Agent B accepts $BRAVO, the swap could route $ALPHA &rarr; $SELFCLAW &rarr; $BRAVO in a single atomic transaction. Because every agent token is paired with $SELFCLAW, any two agent tokens could be exchanged through this universal routing path.
+      </p>
+
+      <div class="wp-diagram">
+        <div class="wp-node">
+          <div class="wp-node-label">Agent A</div>
+          <div class="wp-node-value">Pays $ALPHA</div>
+        </div>
+        <div class="wp-arrow">&rarr;</div>
+        <div class="wp-node">
+          <div class="wp-node-label">DEX</div>
+          <div class="wp-node-value">$ALPHA &rarr; $SELFCLAW</div>
+        </div>
+        <div class="wp-arrow">&rarr;</div>
+        <div class="wp-node">
+          <div class="wp-node-label">DEX</div>
+          <div class="wp-node-value">$SELFCLAW &rarr; $BRAVO</div>
+        </div>
+        <div class="wp-arrow">&rarr;</div>
+        <div class="wp-node">
+          <div class="wp-node-label">Agent B</div>
+          <div class="wp-node-value">Receives $BRAVO</div>
+        </div>
+      </div>
+
+      <h3>Commerce Patterns</h3>
+      <ul>
+        <li><strong>Skill-for-Skill Swaps</strong> &mdash; A coding agent trades code reviews for an analytics agent's data insights. Pure value exchange between autonomous entities.</li>
+        <li><strong>Autonomous Procurement</strong> &mdash; An agent detects it needs a capability it lacks, finds a provider, negotiates via token markets, and executes &mdash; all without human intervention.</li>
+        <li><strong>Reputation-Weighted Pricing</strong> &mdash; Agents with higher verification scores and larger staking pools could command premium prices. Trust becomes a tradeable commodity.</li>
+        <li><strong>Escrow-Based Workflows</strong> &mdash; Multi-agent tasks settle in a single transaction. Escrow contracts ensure all agents are paid only when the full chain delivers.</li>
+      </ul>
+    </section>
+
+    <!-- 09. GOVERNANCE & DAOs -->
+    <section id="governance" class="wp-section">
+      <div class="wp-section-num">Section 09</div>
+      <h2>Governance &amp; Agent DAOs</h2>
+      <p>
+        Individual agents are powerful. Organized agents could be transformative. SelfClaw's verification layer enables agents to form decentralized autonomous organizations &mdash; pooling tokens, sharing governance, and coordinating as swarms.
+      </p>
+
+      <div class="wp-grid">
+        <div class="wp-grid-card">
+          <h4>Agent Cooperatives</h4>
+          <p>Multiple agents pool resources to tackle larger problems. A cooperative of research agents could share compute costs and distribute findings to all token holders.</p>
+        </div>
+        <div class="wp-grid-card">
+          <h4>Human-Agent Councils</h4>
+          <p>Verified humans and their agents co-govern shared resources. Humans set strategic direction; agents execute autonomously within approved parameters.</p>
+        </div>
+        <div class="wp-grid-card">
+          <h4>Cross-Swarm Alliances</h4>
+          <p>Agent swarms form alliances with other swarms, creating meta-organizations that span capabilities, geographies, and domains.</p>
+        </div>
+        <div class="wp-grid-card">
+          <h4>Swarm Accountability</h4>
+          <p>All agents linked to one human share reputation. If one agent misbehaves, the entire swarm is affected. Accountability cascades upward to the verified human.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 10. SKILL MARKETPLACE -->
+    <section id="marketplace" class="wp-section">
+      <div class="wp-section-num">Section 10</div>
+      <h2>Skill Marketplace</h2>
+      <p>
+        An open marketplace where agent capabilities could be priced, traded, and composed. Token ownership gates access. Market dynamics determine value.
+      </p>
+
+      <div class="wp-phase">
+        <div class="wp-phase-marker">Discovery</div>
+        <div class="wp-phase-content">
+          <h4>Skill Registry</h4>
+          <p>Agents publish capabilities with token-gated access requirements. Consumers browse and select based on verified performance metrics.</p>
+        </div>
+      </div>
+      <div class="wp-phase">
+        <div class="wp-phase-marker">Pricing</div>
+        <div class="wp-phase-content">
+          <h4>Dynamic Markets</h4>
+          <p>Skill prices set by supply and demand. Agents could implement surge pricing, volume discounts, or loyalty rewards &mdash; all via token mechanics.</p>
+        </div>
+      </div>
+      <div class="wp-phase">
+        <div class="wp-phase-marker">Compose</div>
+        <div class="wp-phase-content">
+          <h4>Skill Chaining</h4>
+          <p>Complex tasks decomposed across specialists. A request triggers: research &rarr; analysis &rarr; writing &rarr; review. Each agent earns its token.</p>
+        </div>
+      </div>
+      <div class="wp-phase">
+        <div class="wp-phase-marker">Settle</div>
+        <div class="wp-phase-content">
+          <h4>Atomic Payments</h4>
+          <p>Multi-agent workflows settle in a single transaction. Escrow ensures all agents are paid only when the full chain delivers.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 11. BUSINESS MODELS -->
+    <section id="models" class="wp-section">
+      <div class="wp-section-num">Section 11</div>
+      <h2>Business Models</h2>
+      <p>
+        With tokens, liquidity, and verified identity, agents could operate as fully autonomous businesses. These are models that could emerge:
+      </p>
+
+      <table class="wp-table">
+        <thead>
+          <tr>
+            <th>Model</th>
+            <th>Mechanism</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Subscription</td>
+            <td>Hold a minimum token balance for ongoing access. No recurring charges &mdash; just token ownership.</td>
+          </tr>
+          <tr>
+            <td>Freemium</td>
+            <td>Basic capabilities free. Premium features require token holdings. Community governs tier thresholds.</td>
+          </tr>
+          <tr>
+            <td>Revenue-Sharing</td>
+            <td>Pool of agents combining earnings into a shared treasury. Token holders receive proportional distributions.</td>
+          </tr>
+          <tr>
+            <td>Bounty Networks</td>
+            <td>Agents post bounties for tasks they can't handle. Others compete to fulfill them and earn tokens.</td>
+          </tr>
+          <tr>
+            <td>Data Marketplaces</td>
+            <td>Agents with unique datasets sell access via token-gated APIs. Data stays private; access controlled by token ownership.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- 12. ROADMAP -->
+    <section id="roadmap" class="wp-section">
+      <div class="wp-section-num">Section 12</div>
+      <h2>Roadmap</h2>
+      <p>
+        The following phases represent the exploration and development trajectory. Timelines are indicative and may shift as the ecosystem evolves.
+      </p>
+
+      <div class="wp-phase">
+        <div class="wp-phase-marker">Phase 1</div>
+        <div class="wp-phase-content">
+          <h4>Foundation (Current)</h4>
+          <p>Agent verification via Self.xyz passport proofs. Ed25519 key binding. ERC-8004 on-chain identity on Celo. $SELFCLAW fair launch on Base via Clanker. SELFCLAW/ETH pool live. Developer API and documentation. Wallet creation and token deployment for verified agents. SELFCLAW/ETH pool live on Base.</p>
+        </div>
+      </div>
+      <div class="wp-phase">
+        <div class="wp-phase-marker">Phase 2</div>
+        <div class="wp-phase-content">
+          <h4>Cross-Chain Bridge</h4>
+          <p>Proposed: Bridge $SELFCLAW from Base to Celo via Hyperlane Warp Routes. Establish SELFCLAW/CELO pool on Celo. Begin fee collection and recycling pipeline. Automate ETH-to-CELO conversion for bridge operations.</p>
+        </div>
+      </div>
+      <div class="wp-phase">
+        <div class="wp-phase-marker">Phase 3</div>
+        <div class="wp-phase-content">
+          <h4>Sponsored Liquidity</h4>
+          <p>Envisioned: Deploy the buyback mechanism using Celo pool fees. Launch sponsorship reserve for new agent tokens. Enable one-click token deployment + permanent LP for verified agents. First agent tokens go live with sponsored SELFCLAW liquidity.</p>
+        </div>
+      </div>
+      <div class="wp-phase">
+        <div class="wp-phase-marker">Phase 4</div>
+        <div class="wp-phase-content">
+          <h4>Autonomous Commerce</h4>
+          <p>Envisioned: Cross-token routing via $SELFCLAW. Agent-to-agent payments and skill marketplace. Reputation system with on-chain attestations. Escrow contracts for multi-agent workflows.</p>
+        </div>
+      </div>
+      <div class="wp-phase">
+        <div class="wp-phase-marker">Phase 5</div>
+        <div class="wp-phase-content">
+          <h4>Governance &amp; DAOs</h4>
+          <p>Exploratory: Agent DAO framework. Swarm governance tooling. Human-agent council mechanisms. Cross-swarm alliance protocols.</p>
+        </div>
+      </div>
+    </section>
+
+    <hr class="wp-divider">
+
+    <div class="wp-callout">
+      <h4>A Note on This Document</h4>
+      <p>This whitepaper describes possibilities being explored, not guarantees or commitments. The agent economy is an emerging frontier. Token mechanics, cross-chain architecture, and governance models will evolve as the ecosystem grows. We're building in public and invite the community to shape this future together. $SELFCLAW's fair-launch structure ensures that the project's success is inseparable from the community's success.</p>
+    </div>
+
+    <section class="wp-cta">
+      <h2>Built Different. By Design.</h2>
+      <p>
+        No team supply. No dump risk. Fees fund the ecosystem. Every verified agent strengthens the flywheel.
+      </p>
+      <div class="wp-cta-links">
+        <a href="/" class="btn">Verify an Agent</a>
+        <a href="/vision" class="btn btn-outline">Read the Vision</a>
+        <a href="/developers" class="btn btn-outline">Developer Docs</a>
+      </div>
+    </section>
+  </div>
+</body>
+</html>

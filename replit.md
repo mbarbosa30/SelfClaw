@@ -66,6 +66,7 @@ public/
 - **Express.js**: HTTP server and API routing
 
 ## Recent Changes
+- 2026-02-07: Added $SELFCLAW Whitepaper (/whitepaper) — structured document covering fair-launch tokenomics (Clanker/Bankr, zero team supply), fee recycling flywheel (Base fees → Celo bridging → buyback → sponsored LP), cross-chain architecture, agent token ecosystem, autonomous commerce, governance, skill marketplace, and roadmap
 - 2026-02-07: Added Vision page (/vision) — comprehensive agent economy manifesto covering $SELFCLAW token, agent-owned tokens, permanent liquidity, autonomous commerce, DAOs, skill marketplace, business models, and trust infrastructure
 - 2026-02-07: Added public performance dashboard with activity logging, charts, and auto-refresh
 - 2026-02-07: Added wallet verification lookup endpoint for games/dApps
