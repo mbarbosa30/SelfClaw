@@ -4,6 +4,18 @@ a, a:link, a:visited, a:hover, a:active {
 a:hover {
   color: #E85D3D;
 }
+a.btn, a.btn:link, a.btn:visited, a.btn:hover, a.btn:active {
+  color: var(--black);
+}
+a.btn-outline, a.btn-outline:link, a.btn-outline:visited {
+  color: var(--green);
+}
+a.btn-outline:hover, a.btn-outline:active {
+  color: var(--black);
+}
+a.btn-danger, a.btn-danger:link, a.btn-danger:visited, a.btn-danger:hover, a.btn-danger:active {
+  color: var(--white);
+}
 .dashboard-nav-link { display: none; }
 
 :root {
