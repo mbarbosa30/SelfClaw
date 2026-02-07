@@ -11,7 +11,8 @@ const publicClient = createPublicClient({
 });
 
 const SPONSORED_LIQUIDITY_AMOUNT = process.env.SPONSORED_LIQUIDITY_CELO || '100';
-const SELFCLAW_SPONSOR_PRIVATE_KEY = process.env.SELFCLAW_SPONSOR_PRIVATE_KEY || process.env.CELO_PRIVATE_KEY;
+const rawSponsorKey = process.env.SELFCLAW_SPONSOR_PRIVATE_KEY || process.env.CELO_PRIVATE_KEY;
+const SELFCLAW_SPONSOR_PRIVATE_KEY = rawSponsorKey && !rawSponsorKey.startsWith('0x') ? `0x${rawSponsorKey}` : rawSponsorKey;
 
 const CELO_NATIVE = '0x471EcE3750Da237f93B8E339c536989b8978a438' as `0x${string}`;
 const USDC_ADDRESS = '0xcebA9300f2b948710d2653dD7B07f33A8B32118C' as `0x${string}`;

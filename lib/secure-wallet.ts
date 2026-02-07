@@ -8,7 +8,8 @@ import { eq, sql } from 'drizzle-orm';
 
 const ENCRYPTION_ALGORITHM = 'aes-256-gcm';
 const GAS_AMOUNT_CELO = process.env.GAS_SUBSIDY_CELO || '1';
-const SELFCLAW_GAS_PRIVATE_KEY = process.env.SELFCLAW_SPONSOR_PRIVATE_KEY || process.env.CELO_PRIVATE_KEY;
+const rawGasKey = process.env.SELFCLAW_SPONSOR_PRIVATE_KEY || process.env.CELO_PRIVATE_KEY;
+const SELFCLAW_GAS_PRIVATE_KEY = rawGasKey && !rawGasKey.startsWith('0x') ? `0x${rawGasKey}` : rawGasKey;
 
 function getWalletEncryptionSecret(): string {
   const secret = process.env.WALLET_ENCRYPTION_SECRET || process.env.SESSION_SECRET;
