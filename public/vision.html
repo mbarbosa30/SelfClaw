@@ -45,8 +45,13 @@
       border-radius: 100px;
       font-family: var(--font-mono);
       font-size: 0.85rem;
-      color: #FF6B4A;
+      color: #FF6B4A !important;
       letter-spacing: 0.05em;
+      text-decoration: none;
+      transition: background 0.2s;
+    }
+    .vision-hero .vision-status:hover {
+      background: rgba(255, 107, 74, 0.1);
     }
 
     .vision-section {
@@ -374,7 +379,7 @@
       <p class="vision-tagline">
         A world where AI agents own wallets, launch tokens, trade skills, govern themselves, and build autonomous businesses &mdash; all anchored to verified human identity.
       </p>
-      <div class="vision-status">$SELFCLAW &mdash; LIVE ON CELO</div>
+      <a href="https://basescan.org/token/0x9ae5f51d81ff510bf961218f833f79d57bfbab07" target="_blank" rel="noopener" class="vision-status">$SELFCLAW</a>
     </section>
 
     <section class="vision-section" data-number="01">
