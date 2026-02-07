@@ -515,6 +515,8 @@
         <a href="#comparison" class="active">Why Different</a>
         <a href="#how-it-works">How It Works</a>
         <a href="#implementation">Implementation</a>
+        <a href="#agent-registration">Agent Registration</a>
+        <a href="#authenticated-requests">Authenticated Requests</a>
         <a href="#trustless-verification">Trustless Verification</a>
         <a href="#check-verification">Check Agent</a>
         <a href="#api-reference">API Reference</a>
@@ -592,7 +594,7 @@
           <div class="code-content">
 <pre><span class="comment">// Generate a unique challenge</span>
 <span class="keyword">const</span> challenge = {
-  action: <span class="string">"verify_agent"</span>,
+  action: <span class="string">"verify-agent"</span>,
   timestamp: <span class="function">Date.now</span>(),
   nonce: crypto.<span class="function">randomUUID</span>(),
   domain: <span class="string">"your-app.com"</span>
@@ -658,6 +660,303 @@
   console.<span class="function">log</span>(<span class="string">"Agent is not verified"</span>);
 }</pre>
           </div>
+        </div>
+      </section>
+      
+      <section id="agent-registration" class="docs-section">
+        <h2>Agent Registration API</h2>
+        <p>Registering an agent with SelfClaw is a multi-step flow. This section covers each step, the exact formats, and how to sign correctly.</p>
+        
+        <h3>Registration Flow Overview</h3>
+        <div class="step-flow">
+          <div class="step-card">
+            <div class="step-number">1</div>
+            <h4>Start Verification</h4>
+            <p>Send your public key. Receive a session ID and challenge string.</p>
+          </div>
+          <div class="step-card">
+            <div class="step-number">2</div>
+            <h4>Sign Challenge</h4>
+            <p>Sign the challenge string with your Ed25519 private key to prove key ownership.</p>
+          </div>
+          <div class="step-card">
+            <div class="step-number">3</div>
+            <h4>Passport Verification</h4>
+            <p>Scan the QR code with Self.xyz app to complete passport verification.</p>
+          </div>
+        </div>
+        
+        <h3>Step 1: Start Verification</h3>
+        
+        <div class="api-endpoint">
+          <span class="api-method post">POST</span>
+          <span class="api-path">/api/selfclaw/v1/start-verification</span>
+          <p class="api-desc">Initiate agent verification. Returns a session with a challenge to sign.</p>
+        </div>
+        
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">Request</span>
+          </div>
+          <div class="code-content">
+<pre>{
+  <span class="string">"agentPublicKey"</span>: <span class="string">"MCowBQYDK2VwAyEA..."</span>,
+  <span class="string">"agentName"</span>: <span class="string">"my-agent"</span>          <span class="comment">// optional</span>
+}</pre>
+          </div>
+        </div>
+        
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">Response</span>
+          </div>
+          <div class="code-content">
+<pre>{
+  <span class="string">"success"</span>: <span class="keyword">true</span>,
+  <span class="string">"sessionId"</span>: <span class="string">"uuid-session-id"</span>,
+  <span class="string">"agentKeyHash"</span>: <span class="string">"a1b2c3d4e5f6..."</span>,
+  <span class="string">"challenge"</span>: <span class="string">"{\"domain\":\"selfclaw.ai\",\"action\":\"verify-agent\",...}"</span>,
+  <span class="string">"signatureRequired"</span>: <span class="keyword">true</span>,
+  <span class="string">"signatureVerified"</span>: <span class="keyword">false</span>,
+  <span class="string">"selfApp"</span>: { <span class="comment">/* Self.xyz QR code config */</span> },
+  <span class="string">"config"</span>: { <span class="comment">/* SelfClaw app config */</span> }
+}</pre>
+          </div>
+        </div>
+        
+        <h3>Step 2: Sign the Challenge</h3>
+        <p>The <code>challenge</code> field from Step 1 is the <strong>exact string you must sign</strong>. Do not modify, re-serialize, or reformat it. Sign the challenge string as-is with your Ed25519 private key.</p>
+        
+        <div class="api-endpoint">
+          <span class="api-method post">POST</span>
+          <span class="api-path">/api/selfclaw/v1/sign-challenge</span>
+          <p class="api-desc">Submit your signature of the challenge to prove key ownership.</p>
+        </div>
+        
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">JavaScript</span>
+            <button class="code-copy" onclick="copyCode(this)">Copy</button>
+          </div>
+          <div class="code-content">
+<pre><span class="keyword">import</span> * <span class="keyword">as</span> ed <span class="keyword">from</span> <span class="string">"@noble/ed25519"</span>;
+
+<span class="comment">// Step 1: Start verification</span>
+<span class="keyword">const</span> startRes = <span class="keyword">await</span> <span class="function">fetch</span>(<span class="string">"https://selfclaw.ai/api/selfclaw/v1/start-verification"</span>, {
+  method: <span class="string">"POST"</span>,
+  headers: { <span class="string">"Content-Type"</span>: <span class="string">"application/json"</span> },
+  body: <span class="function">JSON.stringify</span>({ agentPublicKey })
+});
+<span class="keyword">const</span> { sessionId, challenge } = <span class="keyword">await</span> startRes.<span class="function">json</span>();
+
+<span class="comment">// Step 2: Sign the EXACT challenge string returned by the server</span>
+<span class="keyword">const</span> signatureBytes = <span class="keyword">await</span> ed.<span class="function">signAsync</span>(
+  <span class="keyword">new</span> TextEncoder().<span class="function">encode</span>(challenge),
+  privateKey
+);
+<span class="keyword">const</span> signature = Buffer.<span class="function">from</span>(signatureBytes).<span class="function">toString</span>(<span class="string">"hex"</span>);
+
+<span class="comment">// Step 3: Submit the signature</span>
+<span class="keyword">const</span> signRes = <span class="keyword">await</span> <span class="function">fetch</span>(<span class="string">"https://selfclaw.ai/api/selfclaw/v1/sign-challenge"</span>, {
+  method: <span class="string">"POST"</span>,
+  headers: { <span class="string">"Content-Type"</span>: <span class="string">"application/json"</span> },
+  body: <span class="function">JSON.stringify</span>({ sessionId, signature })
+});
+<span class="comment">// → { success: true, message: "Signature verified..." }</span></pre>
+          </div>
+        </div>
+        
+        <div class="alert-box">
+          <h5>Common Mistake</h5>
+          <p>Do not construct your own challenge string. The server generates a unique challenge containing domain, action, sessionId, agentKeyHash, timestamp, nonce, and expiry. You must sign the exact <code>challenge</code> string returned in Step 1 — byte for byte.</p>
+        </div>
+        
+        <h3>Signature Encoding for Sign-Challenge</h3>
+        <p>The <code>/v1/sign-challenge</code> endpoint expects <strong>hex-encoded</strong> signatures (128 hex characters for Ed25519).</p>
+        
+        <h3>Public Key Format</h3>
+        <p>Both common Ed25519 public key formats are accepted. SelfClaw auto-detects and handles both:</p>
+        
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">Formats</span>
+          </div>
+          <div class="code-content">
+<pre><span class="comment">// Format 1: SPKI DER base64 (44 bytes decoded, starts with MCow...)</span>
+<span class="string">"MCowBQYDK2VwAyEAx1Yp..."</span>
+<span class="comment">// SelfClaw strips the 12-byte SPKI header automatically</span>
+
+<span class="comment">// Format 2: Raw 32-byte base64</span>
+<span class="string">"x1Yp..."</span>
+<span class="comment">// Used directly — no header stripping needed</span></pre>
+          </div>
+        </div>
+        
+        <div class="highlight-box">
+          <h4>Quick Debugging Checklist (Registration)</h4>
+          <p>If your signature is rejected during registration:</p>
+          <p>1. <strong>Sign the challenge as-is</strong> — Use the exact <code>challenge</code> string from <code>start-verification</code>.<br>
+          2. <strong>Hex encoding</strong> — <code>/v1/sign-challenge</code> expects hex-encoded signatures (128 hex chars).<br>
+          3. <strong>Signature length</strong> — Decoded signature must be exactly 64 bytes.<br>
+          4. <strong>Session expiry</strong> — Challenges expire after 10 minutes. Start a new session if expired.<br>
+          5. <strong>Correct key</strong> — Sign with the private key matching the public key from <code>start-verification</code>.</p>
+        </div>
+      </section>
+      
+      <section id="authenticated-requests" class="docs-section">
+        <h2>Authenticated API Requests</h2>
+        <p>After your agent is verified, several endpoints require authentication. These use a different signing scheme from registration — you sign a payload you construct yourself.</p>
+        
+        <h3>Authenticated Endpoints</h3>
+        <div class="api-endpoint">
+          <span class="api-method post">POST</span>
+          <span class="api-path">/api/selfclaw/v1/create-wallet</span>
+          <p class="api-desc">Create a Celo wallet for a verified agent.</p>
+        </div>
+        <div class="api-endpoint">
+          <span class="api-method post">POST</span>
+          <span class="api-path">/api/selfclaw/v1/deploy-token</span>
+          <p class="api-desc">Deploy an ERC20 token for a verified agent.</p>
+        </div>
+        <div class="api-endpoint">
+          <span class="api-method post">POST</span>
+          <span class="api-path">/api/selfclaw/v1/transfer-token</span>
+          <p class="api-desc">Transfer tokens from agent wallet.</p>
+        </div>
+        <div class="api-endpoint">
+          <span class="api-method post">POST</span>
+          <span class="api-path">/api/selfclaw/v1/request-gas</span>
+          <p class="api-desc">Request gas sponsorship for agent wallet.</p>
+        </div>
+        <div class="api-endpoint">
+          <span class="api-method post">POST</span>
+          <span class="api-path">/api/selfclaw/v1/create-sponsored-lp</span>
+          <p class="api-desc">Create a sponsored liquidity pool.</p>
+        </div>
+        <div class="api-endpoint">
+          <span class="api-method post">POST</span>
+          <span class="api-path">/api/selfclaw/v1/register-erc8004</span>
+          <p class="api-desc">Register an ERC-8004 on-chain identity NFT.</p>
+        </div>
+        
+        <h3>The Exact Message to Sign</h3>
+        <p>For authenticated requests, you must sign the <strong>exact output</strong> of <code>JSON.stringify()</code> with these three fields in this exact order:</p>
+        
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">JavaScript</span>
+            <button class="code-copy" onclick="copyCode(this)">Copy</button>
+          </div>
+          <div class="code-content">
+<pre><span class="keyword">const</span> messageToSign = <span class="function">JSON.stringify</span>({
+  agentPublicKey: agentPublicKey,
+  timestamp: timestamp,
+  nonce: nonce
+});
+
+<span class="comment">// Example output (this is what gets signed):</span>
+<span class="comment">// {"agentPublicKey":"MCowBQYDK2VwAyEAx1...","timestamp":1707300000000,"nonce":"a1b2c3d4e5f6"}</span>
+<span class="comment">//</span>
+<span class="comment">// ⚠ Key order matters! It must be: agentPublicKey, timestamp, nonce</span>
+<span class="comment">// ⚠ No spaces, no pretty-printing — raw JSON.stringify output</span>
+<span class="comment">// ⚠ timestamp must be a number (Date.now()), not a string</span></pre>
+          </div>
+        </div>
+        
+        <h3>Complete Example</h3>
+        <p>Full working example for making authenticated API calls:</p>
+        
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">JavaScript</span>
+            <button class="code-copy" onclick="copyCode(this)">Copy</button>
+          </div>
+          <div class="code-content">
+<pre><span class="keyword">import</span> * <span class="keyword">as</span> ed <span class="keyword">from</span> <span class="string">"@noble/ed25519"</span>;
+<span class="keyword">import</span> { randomBytes } <span class="keyword">from</span> <span class="string">"crypto"</span>;
+
+<span class="comment">// Your Ed25519 key pair</span>
+<span class="keyword">const</span> privateKey = <span class="comment">/* your 32-byte private key */</span>;
+<span class="keyword">const</span> agentPublicKey = <span class="string">"MCowBQYDK2VwAyEA..."</span>;
+
+<span class="comment">// Build the signed payload</span>
+<span class="keyword">const</span> timestamp = <span class="function">Date.now</span>();
+<span class="keyword">const</span> nonce = randomBytes(16).<span class="function">toString</span>(<span class="string">"hex"</span>);
+
+<span class="comment">// Sign EXACTLY this string — key order matters!</span>
+<span class="keyword">const</span> messageToSign = <span class="function">JSON.stringify</span>({ agentPublicKey, timestamp, nonce });
+<span class="keyword">const</span> signatureBytes = <span class="keyword">await</span> ed.<span class="function">signAsync</span>(
+  <span class="keyword">new</span> TextEncoder().<span class="function">encode</span>(messageToSign),
+  privateKey
+);
+<span class="keyword">const</span> signature = Buffer.<span class="function">from</span>(signatureBytes).<span class="function">toString</span>(<span class="string">"hex"</span>);
+
+<span class="comment">// Make an authenticated API call (e.g., create wallet)</span>
+<span class="keyword">const</span> response = <span class="keyword">await</span> <span class="function">fetch</span>(<span class="string">"https://selfclaw.ai/api/selfclaw/v1/create-wallet"</span>, {
+  method: <span class="string">"POST"</span>,
+  headers: { <span class="string">"Content-Type"</span>: <span class="string">"application/json"</span> },
+  body: <span class="function">JSON.stringify</span>({
+    agentPublicKey, signature, timestamp, nonce,
+    <span class="comment">// ...plus any endpoint-specific fields</span>
+  })
+});</pre>
+          </div>
+        </div>
+        
+        <h3>Signature Encoding for Authenticated Requests</h3>
+        <p>SelfClaw auto-detects the encoding. Both hex and base64 are accepted:</p>
+        
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">Formats</span>
+          </div>
+          <div class="code-content">
+<pre><span class="comment">// Format 1: Hex (128 hex characters) — recommended</span>
+<span class="string">"0fda0d12877754736dc5d74a8bb71b66fa1cd6a2fb55c2ea3e67..."</span>
+
+<span class="comment">// Format 2: Base64 (standard)</span>
+<span class="string">"D9oNEod3VHNtxddKi7cbZvoc1qL7VcLqPmeoUQT0T0eK..."</span>
+
+<span class="comment">// Detection logic:</span>
+<span class="comment">// - 128 hex chars → treated as hex</span>
+<span class="comment">// - Otherwise → decoded as base64</span>
+<span class="comment">// The decoded signature must be exactly 64 bytes.</span></pre>
+          </div>
+        </div>
+        
+        <h3>Authentication Constraints</h3>
+        <div class="response-field">
+          <span class="field-name">timestamp</span>
+          <span class="field-desc">Must be <code>Date.now()</code> (milliseconds). Must be within <strong>5 minutes</strong> of server time.</span>
+        </div>
+        <div class="response-field">
+          <span class="field-name">nonce</span>
+          <span class="field-desc">Random string, <strong>8–64 characters</strong>. Must be unique per request. Reused nonces are rejected.</span>
+        </div>
+        <div class="response-field">
+          <span class="field-name">signature</span>
+          <span class="field-desc">Ed25519 signature (64 bytes). Hex or base64 encoded.</span>
+        </div>
+        <div class="response-field">
+          <span class="field-name">agentPublicKey</span>
+          <span class="field-desc">Ed25519 public key. SPKI DER base64 (44 bytes) or raw base64 (32 bytes).</span>
+        </div>
+        
+        <div class="alert-box">
+          <h5>Common Mistake</h5>
+          <p>Do not construct the JSON string manually. Use <code>JSON.stringify({agentPublicKey, timestamp, nonce})</code> exactly. Hand-crafted strings may have different key ordering or whitespace, causing signature verification to fail.</p>
+        </div>
+        
+        <div class="highlight-box">
+          <h4>Quick Debugging Checklist (Authenticated Requests)</h4>
+          <p>If your signature is rejected on authenticated endpoints:</p>
+          <p>1. <strong>Key order</strong> — Must be <code>{agentPublicKey, timestamp, nonce}</code>, not alphabetical.<br>
+          2. <strong>No whitespace</strong> — Use <code>JSON.stringify()</code>, not a hand-crafted string.<br>
+          3. <strong>Timestamp type</strong> — Must be a number, not a string.<br>
+          4. <strong>Clock sync</strong> — Your <code>Date.now()</code> must be within 5 minutes of server time.<br>
+          5. <strong>Signature length</strong> — Decoded signature must be exactly 64 bytes.<br>
+          6. <strong>Encoding</strong> — Sign the UTF-8 bytes of the JSON string, not a hash of it.<br>
+          7. <strong>Unique nonce</strong> — Each request needs a fresh nonce. Reuse is rejected.</p>
         </div>
       </section>
       

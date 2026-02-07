@@ -1269,6 +1269,33 @@ h2 {
   align-items: flex-start;
 }
 
+.step-flow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5rem;
+  margin: 2rem 0;
+}
+
+.step-flow .step-card {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border);
+  padding: 1.5rem;
+  position: relative;
+}
+
+.step-flow .step-card h4 {
+  margin: 0.75rem 0 0.5rem;
+  color: var(--white);
+  font-size: 1rem;
+}
+
+.step-flow .step-card p {
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  line-height: 1.5;
+  margin: 0;
+}
+
 .step-number {
   width: 2.5rem;
   height: 2.5rem;
