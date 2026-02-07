@@ -11,60 +11,45 @@ const app = express();
 const PORT = 5000;
 
 app.use(express.json({ limit: '10mb' }));
-app.use(express.static("public"));
+
+app.use(express.static("public", {
+  setHeaders: (res, filePath) => {
+    if (filePath.endsWith('.html')) {
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+    }
+  }
+}));
 
 app.get("/skill.md", (req: Request, res: Response) => {
   res.sendFile("skill.md", { root: "public" });
 });
 
-app.get("/developers", (req: Request, res: Response) => {
-  res.sendFile("developers.html", { root: "public" });
-});
+function sendHtml(res: Response, file: string, extraHeaders?: Record<string, string>) {
+  res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+  res.setHeader("Pragma", "no-cache");
+  res.setHeader("Expires", "0");
+  if (extraHeaders) {
+    for (const [k, v] of Object.entries(extraHeaders)) {
+      res.setHeader(k, v);
+    }
+  }
+  res.sendFile(file, { root: "public" });
+}
 
-app.get("/how-it-works", (req: Request, res: Response) => {
-  res.sendFile("how-it-works.html", { root: "public" });
-});
-
-app.get("/economy", (req: Request, res: Response) => {
-  res.sendFile("economy.html", { root: "public" });
-});
-
-app.get("/pricing", (req: Request, res: Response) => {
-  res.sendFile("pricing.html", { root: "public" });
-});
-
-app.get("/technology", (req: Request, res: Response) => {
-  res.sendFile("technology.html", { root: "public" });
-});
-
-app.get("/docs", (req: Request, res: Response) => {
-  res.sendFile("docs.html", { root: "public" });
-});
-
-app.get("/vision", (req: Request, res: Response) => {
-  res.sendFile("vision.html", { root: "public" });
-});
-
-app.get("/whitepaper", (req: Request, res: Response) => {
-  res.sendFile("whitepaper.html", { root: "public" });
-});
-
-app.get("/dashboard", (req: Request, res: Response) => {
-  res.sendFile("dashboard.html", { root: "public" });
-});
-
-app.get("/registry", (req: Request, res: Response) => {
-  res.sendFile("registry.html", { root: "public" });
-});
-
-app.get("/admin", (req: Request, res: Response) => {
-  res.setHeader("X-Robots-Tag", "noindex, nofollow");
-  res.sendFile("admin.html", { root: "public" });
-});
-
-app.get("/human/:humanId", (req: Request, res: Response) => {
-  res.sendFile("human.html", { root: "public" });
-});
+app.get("/developers", (_req: Request, res: Response) => sendHtml(res, "developers.html"));
+app.get("/how-it-works", (_req: Request, res: Response) => sendHtml(res, "how-it-works.html"));
+app.get("/economy", (_req: Request, res: Response) => sendHtml(res, "economy.html"));
+app.get("/pricing", (_req: Request, res: Response) => sendHtml(res, "pricing.html"));
+app.get("/technology", (_req: Request, res: Response) => sendHtml(res, "technology.html"));
+app.get("/docs", (_req: Request, res: Response) => sendHtml(res, "docs.html"));
+app.get("/vision", (_req: Request, res: Response) => sendHtml(res, "vision.html"));
+app.get("/whitepaper", (_req: Request, res: Response) => sendHtml(res, "whitepaper.html"));
+app.get("/dashboard", (_req: Request, res: Response) => sendHtml(res, "dashboard.html"));
+app.get("/registry", (_req: Request, res: Response) => sendHtml(res, "registry.html"));
+app.get("/admin", (_req: Request, res: Response) => sendHtml(res, "admin.html", { "X-Robots-Tag": "noindex, nofollow" }));
+app.get("/human/:humanId", (_req: Request, res: Response) => sendHtml(res, "human.html"));
 
 async function main() {
   try {
