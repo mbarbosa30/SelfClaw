@@ -32,6 +32,14 @@ async function cleanupExpiredSessions() {
 setInterval(cleanupExpiredSessions, 5 * 60 * 1000);
 cleanupExpiredSessions();
 
+async function logActivity(eventType: string, humanId?: string, agentPublicKey?: string, agentName?: string, metadata?: any) {
+  try {
+    await db.insert(agentActivity).values({ eventType, humanId, agentPublicKey, agentName, metadata });
+  } catch (e: any) {
+    console.error("[selfclaw] activity log error:", e.message);
+  }
+}
+
 const SELFCLAW_SCOPE = "selfclaw-verify";
 const SELFCLAW_STAGING = process.env.SELFCLAW_STAGING === "true";
 const SELFCLAW_ENDPOINT = process.env.SELFCLAW_CALLBACK_URL 
@@ -622,6 +630,7 @@ async function handleCallback(req: Request, res: Response) {
     console.log("[selfclaw] === CALLBACK SUCCESS === Agent registered:", session.agentPublicKey || session.agentName);
     lastVerificationAttempt.finalStatus = "success";
     lastVerificationAttempt.finalReason = "Agent verified and registered";
+    logActivity("verification", humanId, session.agentPublicKey, session.agentName || undefined);
     res.status(200).json({
       status: "success",
       result: true
@@ -1161,6 +1170,9 @@ router.post("/v1/create-sponsored-lp", verificationLimiter, async (req: Request,
       });
     }
     
+    logActivity("sponsorship", humanId, auth.publicKey, undefined, { 
+      tokenAddress, tokenSymbol, celoAmount: result.celoAmount 
+    });
     res.json({
       success: true,
       message: "Sponsored liquidity pool created",
@@ -1540,6 +1552,11 @@ router.post("/v1/create-wallet", verificationLimiter, async (req: Request, res: 
       return res.status(400).json({ error: result.error });
     }
     
+    if (!result.alreadyExists) {
+      logActivity("wallet_creation", humanId, auth.publicKey, undefined, { 
+        isExternal: result.isExternalWallet || false, address: result.address 
+      });
+    }
     res.json({
       success: true,
       address: result.address,
@@ -1584,7 +1601,7 @@ router.get("/v1/wallet/:humanId", publicApiLimiter, async (req: Request, res: Re
 
 router.get("/v1/wallet-verify/:address", publicApiLimiter, async (req: Request, res: Response) => {
   try {
-    const { address } = req.params;
+    const address = req.params.address as string;
     
     if (!address || !/^0x[0-9a-fA-F]{40}$/.test(address)) {
       return res.json({
@@ -1675,6 +1692,9 @@ router.post("/v1/request-gas", verificationLimiter, async (req: Request, res: Re
       });
     }
     
+    logActivity("gas_request", humanId, auth.publicKey, undefined, { 
+      txHash: result.txHash, amountCelo: result.amountCelo 
+    });
     res.json({
       success: true,
       txHash: result.txHash,
@@ -1790,6 +1810,9 @@ router.post("/v1/deploy-token", verificationLimiter, async (req: Request, res: R
     
     console.log(`[selfclaw] Deployed token ${symbol} at ${receipt.contractAddress} for humanId ${humanId.substring(0, 16)}...`);
     
+    logActivity("token_deployment", humanId, auth.publicKey, undefined, { 
+      tokenAddress: receipt.contractAddress, symbol, name, supply: initialSupply 
+    });
     res.json({
       success: true,
       tokenAddress: receipt.contractAddress,

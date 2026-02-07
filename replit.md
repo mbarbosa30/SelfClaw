@@ -42,6 +42,7 @@ shared/
   schema.ts             # Drizzle database schema
 public/
   index.html            # Landing page + verification flow
+  dashboard.html        # Public performance dashboard
   developers.html       # API documentation
   skill.md              # Agent-readable skill definition
 ```
@@ -50,7 +51,9 @@ public/
 - `POST /api/selfclaw/v1/start-verification` — Initiate agent verification
 - `GET /api/selfclaw/v1/agent/{identifier}` — Check agent verification status
 - `GET /api/selfclaw/v1/stats` — Registry statistics
+- `GET /api/selfclaw/v1/dashboard` — Comprehensive dashboard data
 - `GET /api/selfclaw/v1/human/{humanId}` — All agents for a human (swarm)
+- `GET /api/selfclaw/v1/wallet-verify/{address}` — Public wallet verification lookup
 - `POST /api/selfclaw/v1/create-wallet` — Create Celo wallet for verified agent
 - `POST /api/selfclaw/v1/deploy-token` — Deploy ERC20 token
 - `GET /.well-known/agent-registration.json` — Agent registration discovery
@@ -63,6 +66,8 @@ public/
 - **Express.js**: HTTP server and API routing
 
 ## Recent Changes
+- 2026-02-07: Added public performance dashboard with activity logging, charts, and auto-refresh
+- 2026-02-07: Added wallet verification lookup endpoint for games/dApps
 - 2026-02-06: Removed ClawPit cockpit feature for open-source release
 - 2026-02-06: Rebranded from OpenClaw to SelfClaw
 - 2026-02-06: Added MIT license, contributing guide, .env.example

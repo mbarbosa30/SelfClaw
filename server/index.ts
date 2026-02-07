@@ -40,6 +40,10 @@ app.get("/docs", (req: Request, res: Response) => {
   res.sendFile("docs.html", { root: "public" });
 });
 
+app.get("/dashboard", (req: Request, res: Response) => {
+  res.sendFile("dashboard.html", { root: "public" });
+});
+
 app.get("/registry", (req: Request, res: Response) => {
   res.sendFile("registry.html", { root: "public" });
 });
