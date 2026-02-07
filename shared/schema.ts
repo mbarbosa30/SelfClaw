@@ -120,5 +120,21 @@ export const trackedPools = pgTable("tracked_pools", {
 export type TrackedPool = typeof trackedPools.$inferSelect;
 export type InsertTrackedPool = typeof trackedPools.$inferInsert;
 
+export const agentActivity = pgTable("agent_activity", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  eventType: varchar("event_type").notNull(),
+  humanId: varchar("human_id"),
+  agentPublicKey: text("agent_public_key"),
+  agentName: varchar("agent_name"),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_activity_event_type").on(table.eventType),
+  index("IDX_activity_created_at").on(table.createdAt),
+]);
+
+export type AgentActivity = typeof agentActivity.$inferSelect;
+export type InsertAgentActivity = typeof agentActivity.$inferInsert;
+
 export type User = typeof users.$inferSelect;
 export type UpsertUser = typeof users.$inferInsert;

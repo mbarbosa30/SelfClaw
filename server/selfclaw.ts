@@ -1,7 +1,7 @@
 import { Router, Request, Response } from "express";
 import rateLimit from "express-rate-limit";
 import { db } from "./db.js";
-import { verifiedBots, verificationSessions, sponsoredAgents, trackedPools, agentWallets, type InsertVerifiedBot, type InsertVerificationSession } from "../shared/schema.js";
+import { verifiedBots, verificationSessions, sponsoredAgents, trackedPools, agentWallets, agentActivity, type InsertVerifiedBot, type InsertVerificationSession } from "../shared/schema.js";
 import { eq, and, gt, lt, sql, desc, count } from "drizzle-orm";
 import { SelfBackendVerifier, AllIds, DefaultConfigStore } from "@selfxyz/core";
 import { SelfAppBuilder } from "@selfxyz/qrcode";
@@ -2051,6 +2051,107 @@ router.get("/v1/erc8004/:humanId", publicApiLimiter, async (req: Request, res: R
     });
   } catch (error: any) {
     console.error("[selfclaw] erc8004 status error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get("/v1/dashboard", publicApiLimiter, async (_req: Request, res: Response) => {
+  try {
+    const now = new Date();
+    const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+    const [
+      totalVerifiedResult,
+      uniqueHumansResult,
+      verified24hResult,
+      verified7dResult,
+      totalWalletsResult,
+      externalWalletsResult,
+      gasSubsidiesResult,
+      completedSponsorsResult,
+      totalPoolsResult,
+      celoLiquidityResult,
+      timelineResult,
+      recentActivityResult,
+      funnelResult
+    ] = await Promise.all([
+      db.select({ value: count() }).from(verifiedBots),
+      db.select({ value: sql<number>`count(distinct ${verifiedBots.humanId})` }).from(verifiedBots),
+      db.select({ value: count() }).from(verifiedBots).where(gt(verifiedBots.verifiedAt, oneDayAgo)),
+      db.select({ value: count() }).from(verifiedBots).where(gt(verifiedBots.verifiedAt, sevenDaysAgo)),
+      db.select({ value: count() }).from(agentWallets),
+      db.select({ value: count() }).from(agentWallets).where(eq(agentWallets.encryptedPrivateKey, 'external')),
+      db.select({ value: count() }).from(agentWallets).where(eq(agentWallets.gasReceived, true)),
+      db.select({ value: count() }).from(sponsoredAgents).where(eq(sponsoredAgents.status, 'completed')),
+      db.select({ value: count() }).from(trackedPools),
+      db.select({ value: sql<string>`coalesce(sum(cast(${trackedPools.initialCeloLiquidity} as numeric)), 0)` }).from(trackedPools),
+      db.select({
+        date: sql<string>`to_char(${agentActivity.createdAt}, 'YYYY-MM-DD')`,
+        eventType: agentActivity.eventType,
+        eventCount: count()
+      }).from(agentActivity)
+        .where(gt(agentActivity.createdAt, thirtyDaysAgo))
+        .groupBy(sql`to_char(${agentActivity.createdAt}, 'YYYY-MM-DD')`, agentActivity.eventType)
+        .orderBy(sql`to_char(${agentActivity.createdAt}, 'YYYY-MM-DD')`),
+      db.select({
+        id: agentActivity.id,
+        eventType: agentActivity.eventType,
+        agentName: agentActivity.agentName,
+        createdAt: agentActivity.createdAt
+      }).from(agentActivity).orderBy(desc(agentActivity.createdAt)).limit(20),
+      db.select({
+        status: verificationSessions.status,
+        statusCount: count()
+      }).from(verificationSessions).groupBy(verificationSessions.status)
+    ]);
+
+    const totalWallets = totalWalletsResult[0]?.value ?? 0;
+    const externalWallets = externalWalletsResult[0]?.value ?? 0;
+    const managedWallets = Number(totalWallets) - Number(externalWallets);
+
+    const timelineMap: Record<string, Record<string, number>> = {};
+    for (const row of timelineResult) {
+      if (!timelineMap[row.date]) {
+        timelineMap[row.date] = { verification: 0, wallet_creation: 0, token_deployment: 0, gas_request: 0, sponsorship: 0 };
+      }
+      timelineMap[row.date][row.eventType] = Number(row.eventCount);
+    }
+    const activityTimeline = Object.entries(timelineMap).map(([date, events]) => ({ date, events }));
+
+    const funnelMap: Record<string, number> = { pending: 0, verified: 0, expired: 0, failed: 0 };
+    for (const row of funnelResult) {
+      if (row.status && row.status in funnelMap) {
+        funnelMap[row.status] = Number(row.statusCount);
+      }
+    }
+
+    res.json({
+      registry: {
+        totalVerifiedAgents: Number(totalVerifiedResult[0]?.value ?? 0),
+        uniqueHumans: Number(uniqueHumansResult[0]?.value ?? 0),
+        verifiedLast24h: Number(verified24hResult[0]?.value ?? 0),
+        verifiedLast7d: Number(verified7dResult[0]?.value ?? 0)
+      },
+      wallets: {
+        total: Number(totalWallets),
+        external: Number(externalWallets),
+        managed: managedWallets,
+        gasSubsidies: Number(gasSubsidiesResult[0]?.value ?? 0)
+      },
+      tokenEconomy: {
+        sponsoredAgents: Number(completedSponsorsResult[0]?.value ?? 0),
+        trackedPools: Number(totalPoolsResult[0]?.value ?? 0),
+        totalCeloLiquidity: String(celoLiquidityResult[0]?.value ?? "0")
+      },
+      activityTimeline,
+      recentActivity: recentActivityResult,
+      verificationFunnel: funnelMap,
+      generatedAt: now.toISOString()
+    });
+  } catch (error: any) {
+    console.error("[selfclaw] dashboard error:", error);
     res.status(500).json({ error: error.message });
   }
 });
