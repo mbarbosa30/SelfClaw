@@ -501,7 +501,6 @@
   </div>
 
   <script>
-    var refreshInterval = null;
 
     function getToken() {
       return sessionStorage.getItem('selfclaw_admin_token');
@@ -515,7 +514,6 @@
       document.getElementById('login-view').style.display = 'none';
       document.getElementById('dashboard-view').style.display = 'block';
       refreshAll();
-      refreshInterval = setInterval(refreshAll, 30000);
     }
 
     function handleAuthError(r) {
@@ -557,7 +555,6 @@
 
     function doLogout() {
       sessionStorage.removeItem('selfclaw_admin_token');
-      if (refreshInterval) clearInterval(refreshInterval);
       document.getElementById('dashboard-view').style.display = 'none';
       document.getElementById('login-view').style.display = 'flex';
       document.getElementById('login-password').value = '';
