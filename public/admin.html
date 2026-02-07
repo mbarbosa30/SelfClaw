@@ -216,7 +216,7 @@
     }
     .actions-grid {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: repeat(2, 1fr);
       gap: 1rem;
     }
     .action-card {
@@ -474,29 +474,17 @@
 
           <div class="action-card">
             <h4>Attest SELFCLAW</h4>
-            <button class="action-btn" onclick="doAttest('0x9ae5f51d81ff510bf961218f833f79d57bfbab07', this)">Attest on Celo</button>
-            <div class="action-result" id="result-attest-selfclaw"></div>
+            <p style="color:#777;font-size:0.7rem;margin-bottom:0.75rem;line-height:1.4;">One-time: registers SELFCLAW with Wormhole on Celo. After submitting, the system will automatically wait for guardian signatures and finalize on Celo.</p>
+            <button class="action-btn" id="btn-attest" onclick="doFullAttest(this)">Attest on Celo</button>
+            <div class="action-result" id="result-attest"></div>
           </div>
 
           <div class="action-card">
             <h4>Bridge SELFCLAW</h4>
+            <p style="color:#777;font-size:0.7rem;margin-bottom:0.75rem;line-height:1.4;">Locks SELFCLAW on Base and mints wrapped SELFCLAW on Celo. The system handles the full flow automatically.</p>
             <input type="text" class="input" id="bridge-selfclaw-amount" placeholder="Amount (e.g. 1000)">
-            <button class="action-btn" onclick="doBridgeTransfer('0x9ae5f51d81ff510bf961218f833f79d57bfbab07', 'bridge-selfclaw-amount', this)">Bridge to Celo</button>
-            <div class="action-result" id="result-bridge-selfclaw"></div>
-          </div>
-
-          <div class="action-card">
-            <h4>Complete Attestation</h4>
-            <textarea class="input" id="complete-attest-vaa" placeholder="Paste VAA bytes here..."></textarea>
-            <button class="action-btn" onclick="doCompleteAttestation(this)">Complete</button>
-            <div class="action-result" id="result-complete-attest"></div>
-          </div>
-
-          <div class="action-card">
-            <h4>Complete Transfer</h4>
-            <textarea class="input" id="complete-transfer-vaa" placeholder="Paste VAA bytes here..."></textarea>
-            <button class="action-btn" onclick="doCompleteTransfer(this)">Complete</button>
-            <div class="action-result" id="result-complete-transfer"></div>
+            <button class="action-btn" id="btn-bridge" onclick="doFullBridge(this)">Bridge to Celo</button>
+            <div class="action-result" id="result-bridge"></div>
           </div>
 
         </div>
@@ -623,9 +611,18 @@
           loading.style.display = 'none';
           content.style.display = 'grid';
 
-          var walletAddr = data.walletAddress || data.address || '';
+          var walletAddr = data.sponsorAddress || data.walletAddress || data.address || '';
           var base = data.base || {};
           var celo = data.celo || {};
+
+          function fmtBal(val) {
+            if (val == null) return '\u2014';
+            var n = parseFloat(val);
+            if (isNaN(n)) return val;
+            if (n === 0) return '0';
+            if (n < 0.0001) return '< 0.0001';
+            return n.toFixed(4);
+          }
 
           content.innerHTML =
             '<div class="wallet-panel">' +
@@ -634,8 +631,8 @@
                 '<a href="https://basescan.org/address/' + walletAddr + '" target="_blank" rel="noopener">' + truncateAddr(walletAddr) + '</a>' +
                 '<button class="copy-btn" onclick="copyToClipboard(\'' + walletAddr + '\', this)">Copy</button>' +
               '</div>' +
-              '<div class="balance-row"><span class="balance-label">ETH</span><span class="balance-value">' + (base.eth != null ? base.eth : '\u2014') + '</span></div>' +
-              '<div class="balance-row"><span class="balance-label">SELFCLAW</span><span class="balance-value">' + (base.selfclaw != null ? base.selfclaw : '\u2014') + '</span></div>' +
+              '<div class="balance-row"><span class="balance-label">ETH</span><span class="balance-value">' + fmtBal(base.native) + '</span></div>' +
+              '<div class="balance-row"><span class="balance-label">SELFCLAW</span><span class="balance-value">' + fmtBal(base.selfclaw) + '</span></div>' +
             '</div>' +
             '<div class="wallet-panel">' +
               '<div class="wallet-panel-title">Celo</div>' +
@@ -643,8 +640,8 @@
                 '<a href="https://celoscan.io/address/' + walletAddr + '" target="_blank" rel="noopener">' + truncateAddr(walletAddr) + '</a>' +
                 '<button class="copy-btn" onclick="copyToClipboard(\'' + walletAddr + '\', this)">Copy</button>' +
               '</div>' +
-              '<div class="balance-row"><span class="balance-label">CELO</span><span class="balance-value">' + (celo.celo != null ? celo.celo : '\u2014') + '</span></div>' +
-              '<div class="balance-row"><span class="balance-label">Wrapped SELFCLAW</span><span class="balance-value">' + (celo.wrappedSelfclaw != null ? celo.wrappedSelfclaw : (celo.selfclaw != null ? celo.selfclaw : '\u2014')) + '</span></div>' +
+              '<div class="balance-row"><span class="balance-label">CELO</span><span class="balance-value">' + fmtBal(celo.native) + '</span></div>' +
+              '<div class="balance-row"><span class="balance-label">Wrapped SELFCLAW</span><span class="balance-value">' + fmtBal(celo.wrappedSelfclaw) + '</span></div>' +
             '</div>';
         })
         .catch(function(e) {
@@ -666,7 +663,10 @@
           loading.style.display = 'none';
           content.style.display = 'grid';
 
-          var selfclaw = data.selfclaw || data.SELFCLAW || {};
+          var selfclaw = {
+            attested: data.selfclawAttested || false,
+            wrappedAddress: data.selfclawWrappedAddress || ''
+          };
 
           content.innerHTML =
             renderBridgeCard('SELFCLAW', selfclaw);
@@ -703,112 +703,117 @@
       el.textContent = msg;
     }
 
-    function doAttest(tokenAddress, btn) {
-      var resultId = 'result-attest-selfclaw';
+    function doFullAttest(btn) {
       btn.disabled = true;
-      setActionResult(resultId, 'Attesting...', 'loading');
+      setActionResult('result-attest', 'Step 1/3: Submitting attestation on Base...', 'loading');
 
       fetch('/api/admin/bridge/attest', {
         method: 'POST',
-        headers: authHeaders(),
-        body: JSON.stringify({ tokenAddress: tokenAddress })
+        headers: authHeaders()
       })
       .then(function(r) { return r.json(); })
       .then(function(data) {
-        btn.disabled = false;
         if (data.error) {
-          setActionResult(resultId, data.error, 'error');
-        } else {
-          setActionResult(resultId, JSON.stringify(data, null, 2), 'success');
-          loadBridgeStatus();
+          btn.disabled = false;
+          setActionResult('result-attest', data.error, 'error');
+          return;
         }
+        var txHash = data.txHash;
+        setActionResult('result-attest', 'Step 2/3: Waiting for Wormhole guardians (~15 min)...\nTx: ' + txHash, 'loading');
+        pollVaaAndComplete(txHash, 'attestation', btn);
       })
       .catch(function(e) {
         btn.disabled = false;
-        setActionResult(resultId, 'Request failed: ' + e.message, 'error');
+        setActionResult('result-attest', 'Request failed: ' + e.message, 'error');
       });
     }
 
-    function doBridgeTransfer(tokenAddress, inputId, btn) {
-      var amount = document.getElementById(inputId).value.trim();
+    function doFullBridge(btn) {
+      var amount = document.getElementById('bridge-selfclaw-amount').value.trim();
       if (!amount) return;
-      var resultId = 'result-bridge-selfclaw';
       btn.disabled = true;
-      setActionResult(resultId, 'Bridging...', 'loading');
+      setActionResult('result-bridge', 'Step 1/3: Locking SELFCLAW on Base...', 'loading');
 
       fetch('/api/admin/bridge/transfer', {
         method: 'POST',
         headers: authHeaders(),
-        body: JSON.stringify({ tokenAddress: tokenAddress, amount: amount })
+        body: JSON.stringify({ amount: amount })
       })
       .then(function(r) { return r.json(); })
       .then(function(data) {
-        btn.disabled = false;
         if (data.error) {
-          setActionResult(resultId, data.error, 'error');
-        } else {
-          setActionResult(resultId, JSON.stringify(data, null, 2), 'success');
-          loadWalletBalances();
+          btn.disabled = false;
+          setActionResult('result-bridge', data.error, 'error');
+          return;
         }
+        var txHash = data.sourceTxHash || data.txHash;
+        setActionResult('result-bridge', 'Step 2/3: Waiting for Wormhole guardians (~15 min)...\nTx: ' + txHash, 'loading');
+        pollVaaAndComplete(txHash, 'transfer', btn);
       })
       .catch(function(e) {
         btn.disabled = false;
-        setActionResult(resultId, 'Request failed: ' + e.message, 'error');
+        setActionResult('result-bridge', 'Request failed: ' + e.message, 'error');
       });
     }
 
-    function doCompleteAttestation(btn) {
-      var vaaBytes = document.getElementById('complete-attest-vaa').value.trim();
-      if (!vaaBytes) return;
-      btn.disabled = true;
-      setActionResult('result-complete-attest', 'Completing attestation...', 'loading');
+    function pollVaaAndComplete(txHash, type, btn) {
+      var resultId = type === 'attestation' ? 'result-attest' : 'result-bridge';
+      var attempt = 0;
+      var maxAttempts = 60;
+      var interval = 15000;
 
-      fetch('/api/admin/bridge/complete-attestation', {
-        method: 'POST',
-        headers: authHeaders(),
-        body: JSON.stringify({ vaaBytes: vaaBytes })
-      })
-      .then(function(r) { return r.json(); })
-      .then(function(data) {
-        btn.disabled = false;
-        if (data.error) {
-          setActionResult('result-complete-attest', data.error, 'error');
-        } else {
-          setActionResult('result-complete-attest', JSON.stringify(data, null, 2), 'success');
-          loadBridgeStatus();
-        }
-      })
-      .catch(function(e) {
-        btn.disabled = false;
-        setActionResult('result-complete-attest', 'Request failed: ' + e.message, 'error');
-      });
-    }
+      function poll() {
+        attempt++;
+        fetch('/api/admin/bridge/fetch-vaa?txHash=' + encodeURIComponent(txHash), {
+          headers: authHeaders()
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (data.vaaBytes) {
+            setActionResult(resultId, 'Step 3/3: Finalizing on Celo...', 'loading');
+            var completeUrl = type === 'attestation'
+              ? '/api/admin/bridge/complete-attestation'
+              : '/api/admin/bridge/complete-transfer';
 
-    function doCompleteTransfer(btn) {
-      var vaaBytes = document.getElementById('complete-transfer-vaa').value.trim();
-      if (!vaaBytes) return;
-      btn.disabled = true;
-      setActionResult('result-complete-transfer', 'Completing transfer...', 'loading');
+            fetch(completeUrl, {
+              method: 'POST',
+              headers: authHeaders(),
+              body: JSON.stringify({ vaaBytes: data.vaaBytes })
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(result) {
+              btn.disabled = false;
+              if (result.error) {
+                setActionResult(resultId, 'Finalization failed: ' + result.error, 'error');
+              } else {
+                setActionResult(resultId, 'Complete! Tx: ' + (result.txHash || result.destTxHash || 'confirmed'), 'success');
+                loadBridgeStatus();
+                loadWalletBalances();
+              }
+            })
+            .catch(function(e) {
+              btn.disabled = false;
+              setActionResult(resultId, 'Finalization request failed: ' + e.message, 'error');
+            });
+          } else if (attempt >= maxAttempts) {
+            btn.disabled = false;
+            setActionResult(resultId, 'Timed out waiting for VAA. The transaction was submitted (tx: ' + txHash + ') but guardians have not signed yet. Try again later or check wormholescan.io.', 'error');
+          } else {
+            setActionResult(resultId, 'Step 2/3: Waiting for guardians... (' + attempt + '/' + maxAttempts + ')\nTx: ' + txHash, 'loading');
+            setTimeout(poll, interval);
+          }
+        })
+        .catch(function(e) {
+          if (attempt >= maxAttempts) {
+            btn.disabled = false;
+            setActionResult(resultId, 'Error polling VAA: ' + e.message, 'error');
+          } else {
+            setTimeout(poll, interval);
+          }
+        });
+      }
 
-      fetch('/api/admin/bridge/complete-transfer', {
-        method: 'POST',
-        headers: authHeaders(),
-        body: JSON.stringify({ vaaBytes: vaaBytes })
-      })
-      .then(function(r) { return r.json(); })
-      .then(function(data) {
-        btn.disabled = false;
-        if (data.error) {
-          setActionResult('result-complete-transfer', data.error, 'error');
-        } else {
-          setActionResult('result-complete-transfer', JSON.stringify(data, null, 2), 'success');
-          loadWalletBalances();
-        }
-      })
-      .catch(function(e) {
-        btn.disabled = false;
-        setActionResult('result-complete-transfer', 'Request failed: ' + e.message, 'error');
-      });
+      setTimeout(poll, interval);
     }
 
     function loadActivityLog() {

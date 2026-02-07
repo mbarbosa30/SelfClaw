@@ -158,6 +158,70 @@ function generateNonce(): number {
   return Math.floor(Math.random() * 2147483647);
 }
 
+export async function fetchVaaForTx(txHash: string): Promise<{ vaaBytes: string | null; status?: string; error?: string }> {
+  try {
+    const operationsUrl = `https://api.wormholescan.io/api/v1/operations?txHash=${encodeURIComponent(txHash)}`;
+    const opsResponse = await fetch(operationsUrl);
+    if (!opsResponse.ok) {
+      if (opsResponse.status === 404) {
+        return { vaaBytes: null, status: 'not_found' };
+      }
+      if (opsResponse.status === 429) {
+        return { vaaBytes: null, status: 'rate_limited', error: 'Rate limited by Wormholescan, will retry' };
+      }
+      return { vaaBytes: null, status: 'api_error', error: `Wormholescan returned ${opsResponse.status}` };
+    }
+    const opsData = await opsResponse.json() as any;
+
+    const operations = opsData.operations || opsData;
+    if (!operations || !Array.isArray(operations) || operations.length === 0) {
+      return { vaaBytes: null, status: 'pending' };
+    }
+
+    const op = operations[0];
+
+    function decodeVaaRaw(raw: string): string {
+      if (raw.startsWith('0x')) return raw;
+      return '0x' + Buffer.from(raw, 'base64').toString('hex');
+    }
+
+    if (op.vaa?.raw) {
+      return { vaaBytes: decodeVaaRaw(op.vaa.raw), status: 'complete' };
+    }
+
+    const emitterChain = op.emitterChain
+      || op.sourceChain?.chainId
+      || op.content?.standarizedProperties?.fromChain
+      || op.content?.standardizedProperties?.fromChain;
+    const emitterAddress = op.emitterAddress
+      || op.content?.standarizedProperties?.emitterAddress
+      || op.content?.standardizedProperties?.emitterAddress;
+    const sequence = op.sequence
+      || (op.id ? op.id.split('/')[2] : null);
+
+    if (!emitterChain || !emitterAddress || !sequence) {
+      return { vaaBytes: null, status: 'pending' };
+    }
+
+    const vaaUrl = `https://api.wormholescan.io/api/v1/vaas/${emitterChain}/${emitterAddress}/${sequence}`;
+    const vaaResponse = await fetch(vaaUrl);
+    if (!vaaResponse.ok) {
+      return { vaaBytes: null, status: 'pending' };
+    }
+    const vaaData = await vaaResponse.json() as any;
+
+    const vaaRaw = vaaData.data?.vaa || vaaData.vaa;
+    if (!vaaRaw) {
+      return { vaaBytes: null, status: 'pending' };
+    }
+
+    return { vaaBytes: decodeVaaRaw(vaaRaw), status: 'complete' };
+  } catch (error: any) {
+    console.error('[wormhole-bridge] fetchVaaForTx error:', error);
+    return { vaaBytes: null, status: 'error', error: error.message };
+  }
+}
+
 export async function attestToken(tokenAddress: string): Promise<BridgeResult> {
   try {
     if (!PRIVATE_KEY) {

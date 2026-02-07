@@ -12,6 +12,7 @@ import {
   getWrappedTokenAddress,
   getBridgeStatus,
   getWalletBalances,
+  fetchVaaForTx,
 } from "../lib/wormhole-bridge.js";
 
 const router = Router();
@@ -153,6 +154,21 @@ router.post("/bridge/complete-transfer", async (req: Request, res: Response) => 
     res.json(result);
   } catch (error: any) {
     console.error("[admin] bridge/complete-transfer error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get("/bridge/fetch-vaa", async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    const txHash = req.query.txHash as string;
+    if (!txHash) {
+      return res.status(400).json({ error: "txHash query parameter required" });
+    }
+    const result = await fetchVaaForTx(txHash);
+    res.json(result);
+  } catch (error: any) {
+    console.error("[admin] bridge/fetch-vaa error:", error);
     res.status(500).json({ error: error.message });
   }
 });
