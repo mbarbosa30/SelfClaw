@@ -515,7 +515,18 @@
       document.getElementById('login-view').style.display = 'none';
       document.getElementById('dashboard-view').style.display = 'block';
       refreshAll();
-      refreshInterval = setInterval(loadWalletBalances, 30000);
+      refreshInterval = setInterval(refreshAll, 30000);
+    }
+
+    function handleAuthError(r) {
+      if (r.status === 401) {
+        doLogout();
+        var errEl = document.getElementById('login-error');
+        errEl.textContent = 'Session expired, please log in again';
+        errEl.style.display = 'block';
+        return true;
+      }
+      return false;
     }
 
     function doLogin() {
@@ -606,10 +617,19 @@
       content.style.display = 'none';
 
       fetch('/api/admin/wallet-balances', { headers: authHeaders() })
-        .then(function(r) { return r.json(); })
+        .then(function(r) {
+          if (handleAuthError(r)) throw new Error('auth');
+          if (!r.ok) throw new Error('Server error (' + r.status + ')');
+          return r.json();
+        })
         .then(function(data) {
           loading.style.display = 'none';
           content.style.display = 'grid';
+
+          if (data.error && !data.base) {
+            content.innerHTML = '<div class="wallet-panel" style="grid-column:1/-1;text-align:center;color:#ef4444;">' + data.error + '</div>';
+            return;
+          }
 
           var walletAddr = data.sponsorAddress || data.walletAddress || data.address || '';
           var base = data.base || {};
@@ -645,6 +665,7 @@
             '</div>';
         })
         .catch(function(e) {
+          if (e.message === 'auth') return;
           loading.style.display = 'none';
           content.style.display = 'grid';
           content.innerHTML = '<div class="wallet-panel" style="grid-column:1/-1;text-align:center;color:#ef4444;">Failed to load wallet balances</div>';
@@ -658,10 +679,19 @@
       content.style.display = 'none';
 
       fetch('/api/admin/bridge-status', { headers: authHeaders() })
-        .then(function(r) { return r.json(); })
+        .then(function(r) {
+          if (handleAuthError(r)) throw new Error('auth');
+          if (!r.ok) throw new Error('Server error (' + r.status + ')');
+          return r.json();
+        })
         .then(function(data) {
           loading.style.display = 'none';
           content.style.display = 'grid';
+
+          if (data.error && data.selfclawAttested == null) {
+            content.innerHTML = '<div class="bridge-status-card" style="grid-column:1/-1;text-align:center;color:#ef4444;">' + data.error + '</div>';
+            return;
+          }
 
           var selfclaw = {
             attested: data.selfclawAttested || false,
@@ -672,6 +702,7 @@
             renderBridgeCard('SELFCLAW', selfclaw);
         })
         .catch(function(e) {
+          if (e.message === 'auth') return;
           loading.style.display = 'none';
           content.style.display = 'grid';
           content.innerHTML = '<div class="bridge-status-card" style="grid-column:1/-1;text-align:center;color:#ef4444;">Failed to load bridge status</div>';
@@ -821,7 +852,11 @@
       el.innerHTML = '<div class="log-empty"><span class="spinner"></span> Loading...</div>';
 
       fetch('/api/admin/activity-log', { headers: authHeaders() })
-        .then(function(r) { return r.json(); })
+        .then(function(r) {
+          if (handleAuthError(r)) throw new Error('auth');
+          if (!r.ok) throw new Error('Server error (' + r.status + ')');
+          return r.json();
+        })
         .then(function(data) {
           var items = Array.isArray(data) ? data : (data.activities || data.log || []);
           if (!items.length) {
@@ -839,6 +874,7 @@
           el.innerHTML = html;
         })
         .catch(function(e) {
+          if (e.message === 'auth') return;
           el.innerHTML = '<div class="log-empty" style="color:#ef4444;">Failed to load activity log</div>';
         });
     }

@@ -539,14 +539,23 @@ export async function getWalletBalances(): Promise<WalletBalances> {
     const address = account.address;
 
     const [baseNative, celoNative, selfclawBalance] = await Promise.all([
-      baseClient.getBalance({ address }),
-      celoClient.getBalance({ address }),
+      baseClient.getBalance({ address }).catch((e: any) => {
+        console.error('[wormhole-bridge] Base native balance error:', e.message);
+        return BigInt(0);
+      }),
+      celoClient.getBalance({ address }).catch((e: any) => {
+        console.error('[wormhole-bridge] Celo native balance error:', e.message);
+        return BigInt(0);
+      }),
       baseClient.readContract({
         address: SELFCLAW_TOKEN_BASE,
         abi: ERC20_ABI,
         functionName: 'balanceOf',
         args: [address],
-      }).catch(() => BigInt(0)),
+      }).catch((e: any) => {
+        console.error('[wormhole-bridge] SELFCLAW balance error:', e.message);
+        return BigInt(0);
+      }),
     ]);
 
     const status = await getBridgeStatus();
