@@ -170,7 +170,7 @@
     }
     .bridge-status-grid {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: 1fr;
       gap: 1rem;
     }
     .bridge-status-card {
@@ -479,23 +479,10 @@
           </div>
 
           <div class="action-card">
-            <h4>Attest WETH</h4>
-            <button class="action-btn" onclick="doAttest('0x4200000000000000000000000000000000000006', this)">Attest on Celo</button>
-            <div class="action-result" id="result-attest-weth"></div>
-          </div>
-
-          <div class="action-card">
             <h4>Bridge SELFCLAW</h4>
             <input type="text" class="input" id="bridge-selfclaw-amount" placeholder="Amount (e.g. 1000)">
             <button class="action-btn" onclick="doBridgeTransfer('0x9ae5f51d81ff510bf961218f833f79d57bfbab07', 'bridge-selfclaw-amount', this)">Bridge to Celo</button>
             <div class="action-result" id="result-bridge-selfclaw"></div>
-          </div>
-
-          <div class="action-card">
-            <h4>Bridge WETH</h4>
-            <input type="text" class="input" id="bridge-weth-amount" placeholder="Amount (e.g. 0.1)">
-            <button class="action-btn" onclick="doBridgeTransfer('0x4200000000000000000000000000000000000006', 'bridge-weth-amount', this)">Bridge to Celo</button>
-            <div class="action-result" id="result-bridge-weth"></div>
           </div>
 
           <div class="action-card">
@@ -649,7 +636,6 @@
               '</div>' +
               '<div class="balance-row"><span class="balance-label">ETH</span><span class="balance-value">' + (base.eth != null ? base.eth : '\u2014') + '</span></div>' +
               '<div class="balance-row"><span class="balance-label">SELFCLAW</span><span class="balance-value">' + (base.selfclaw != null ? base.selfclaw : '\u2014') + '</span></div>' +
-              '<div class="balance-row"><span class="balance-label">WETH</span><span class="balance-value">' + (base.weth != null ? base.weth : '\u2014') + '</span></div>' +
             '</div>' +
             '<div class="wallet-panel">' +
               '<div class="wallet-panel-title">Celo</div>' +
@@ -659,7 +645,6 @@
               '</div>' +
               '<div class="balance-row"><span class="balance-label">CELO</span><span class="balance-value">' + (celo.celo != null ? celo.celo : '\u2014') + '</span></div>' +
               '<div class="balance-row"><span class="balance-label">Wrapped SELFCLAW</span><span class="balance-value">' + (celo.wrappedSelfclaw != null ? celo.wrappedSelfclaw : (celo.selfclaw != null ? celo.selfclaw : '\u2014')) + '</span></div>' +
-              '<div class="balance-row"><span class="balance-label">Wrapped WETH</span><span class="balance-value">' + (celo.wrappedWeth != null ? celo.wrappedWeth : (celo.weth != null ? celo.weth : '\u2014')) + '</span></div>' +
             '</div>';
         })
         .catch(function(e) {
@@ -682,11 +667,9 @@
           content.style.display = 'grid';
 
           var selfclaw = data.selfclaw || data.SELFCLAW || {};
-          var weth = data.weth || data.WETH || {};
 
           content.innerHTML =
-            renderBridgeCard('SELFCLAW', selfclaw) +
-            renderBridgeCard('WETH', weth);
+            renderBridgeCard('SELFCLAW', selfclaw);
         })
         .catch(function(e) {
           loading.style.display = 'none';
@@ -721,7 +704,7 @@
     }
 
     function doAttest(tokenAddress, btn) {
-      var resultId = tokenAddress === '0x9ae5f51d81ff510bf961218f833f79d57bfbab07' ? 'result-attest-selfclaw' : 'result-attest-weth';
+      var resultId = 'result-attest-selfclaw';
       btn.disabled = true;
       setActionResult(resultId, 'Attesting...', 'loading');
 
@@ -749,7 +732,7 @@
     function doBridgeTransfer(tokenAddress, inputId, btn) {
       var amount = document.getElementById(inputId).value.trim();
       if (!amount) return;
-      var resultId = tokenAddress === '0x9ae5f51d81ff510bf961218f833f79d57bfbab07' ? 'result-bridge-selfclaw' : 'result-bridge-weth';
+      var resultId = 'result-bridge-selfclaw';
       btn.disabled = true;
       setActionResult(resultId, 'Bridging...', 'loading');
 

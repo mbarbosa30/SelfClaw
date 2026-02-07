@@ -99,14 +99,12 @@ router.get("/bridge-status", async (req: Request, res: Response) => {
   }
 });
 
+const SELFCLAW_TOKEN = "0x9ae5f51d81ff510bf961218f833f79d57bfbab07";
+
 router.post("/bridge/attest", async (req: Request, res: Response) => {
   if (!requireAdmin(req, res)) return;
   try {
-    const { tokenAddress } = req.body;
-    if (!tokenAddress) {
-      return res.status(400).json({ error: "tokenAddress required" });
-    }
-    const result = await attestToken(tokenAddress);
+    const result = await attestToken(SELFCLAW_TOKEN);
     res.json(result);
   } catch (error: any) {
     console.error("[admin] bridge/attest error:", error);
@@ -132,11 +130,11 @@ router.post("/bridge/complete-attestation", async (req: Request, res: Response) 
 router.post("/bridge/transfer", async (req: Request, res: Response) => {
   if (!requireAdmin(req, res)) return;
   try {
-    const { tokenAddress, amount } = req.body;
-    if (!tokenAddress || !amount) {
-      return res.status(400).json({ error: "tokenAddress and amount required" });
+    const { amount } = req.body;
+    if (!amount) {
+      return res.status(400).json({ error: "amount required" });
     }
-    const result = await bridgeTokens(tokenAddress, amount);
+    const result = await bridgeTokens(SELFCLAW_TOKEN, amount);
     res.json(result);
   } catch (error: any) {
     console.error("[admin] bridge/transfer error:", error);
@@ -159,10 +157,10 @@ router.post("/bridge/complete-transfer", async (req: Request, res: Response) => 
   }
 });
 
-router.get("/bridge/wrapped/:tokenAddress", async (req: Request, res: Response) => {
+router.get("/bridge/wrapped", async (req: Request, res: Response) => {
   if (!requireAdmin(req, res)) return;
   try {
-    const result = await getWrappedTokenAddress(req.params.tokenAddress as string);
+    const result = await getWrappedTokenAddress(SELFCLAW_TOKEN);
     res.json(result);
   } catch (error: any) {
     console.error("[admin] bridge/wrapped error:", error);

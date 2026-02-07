@@ -3,7 +3,6 @@ import { base, celo } from 'viem/chains';
 import { privateKeyToAccount } from 'viem/accounts';
 
 const SELFCLAW_TOKEN_BASE = '0x9ae5f51d81ff510bf961218f833f79d57bfbab07' as `0x${string}`;
-const WETH_BASE = '0x4200000000000000000000000000000000000006' as `0x${string}`;
 
 const TOKEN_BRIDGE_BASE = '0x8d2de8d2f73F1F4cAB472AC9A881C9b123C79627' as `0x${string}`;
 const TOKEN_BRIDGE_CELO = '0x796Dff6D74F3E27060B71255Fe517BFb23C93eed' as `0x${string}`;
@@ -107,9 +106,7 @@ export interface BridgeResult {
 
 export interface BridgeStatus {
   selfclawAttested: boolean;
-  wethAttested: boolean;
   selfclawWrappedAddress: string | null;
-  wethWrappedAddress: string | null;
   sponsorWalletAddress: string | null;
   configured: boolean;
   error?: string;
@@ -120,12 +117,10 @@ export interface WalletBalances {
   base: {
     native: string;
     selfclaw: string;
-    weth: string;
   };
   celo: {
     native: string;
     wrappedSelfclaw: string | null;
-    wrappedWeth: string | null;
   };
   error?: string;
 }
@@ -445,13 +440,10 @@ export async function getBridgeStatus(): Promise<BridgeStatus> {
     }
 
     const selfclawResult = await getWrappedTokenAddress(SELFCLAW_TOKEN_BASE);
-    const wethResult = await getWrappedTokenAddress(WETH_BASE);
 
     return {
       selfclawAttested: !!selfclawResult.data?.isAttested,
-      wethAttested: !!wethResult.data?.isAttested,
       selfclawWrappedAddress: selfclawResult.wrappedAddress || null,
-      wethWrappedAddress: wethResult.wrappedAddress || null,
       sponsorWalletAddress,
       configured,
     };
@@ -459,9 +451,7 @@ export async function getBridgeStatus(): Promise<BridgeStatus> {
     console.error('[wormhole-bridge] getBridgeStatus error:', error);
     return {
       selfclawAttested: false,
-      wethAttested: false,
       selfclawWrappedAddress: null,
-      wethWrappedAddress: null,
       sponsorWalletAddress: null,
       configured: !!PRIVATE_KEY,
       error: error.message || 'Failed to get bridge status',
@@ -472,8 +462,8 @@ export async function getBridgeStatus(): Promise<BridgeStatus> {
 export async function getWalletBalances(): Promise<WalletBalances> {
   const defaultBalances: WalletBalances = {
     sponsorAddress: '',
-    base: { native: '0', selfclaw: '0', weth: '0' },
-    celo: { native: '0', wrappedSelfclaw: null, wrappedWeth: null },
+    base: { native: '0', selfclaw: '0' },
+    celo: { native: '0', wrappedSelfclaw: null },
   };
 
   try {
@@ -484,17 +474,11 @@ export async function getWalletBalances(): Promise<WalletBalances> {
     const account = getAccount();
     const address = account.address;
 
-    const [baseNative, celoNative, selfclawBalance, wethBalance] = await Promise.all([
+    const [baseNative, celoNative, selfclawBalance] = await Promise.all([
       baseClient.getBalance({ address }),
       celoClient.getBalance({ address }),
       baseClient.readContract({
         address: SELFCLAW_TOKEN_BASE,
-        abi: ERC20_ABI,
-        functionName: 'balanceOf',
-        args: [address],
-      }).catch(() => BigInt(0)),
-      baseClient.readContract({
-        address: WETH_BASE,
         abi: ERC20_ABI,
         functionName: 'balanceOf',
         args: [address],
@@ -504,7 +488,6 @@ export async function getWalletBalances(): Promise<WalletBalances> {
     const status = await getBridgeStatus();
 
     let wrappedSelfclawBalance: string | null = null;
-    let wrappedWethBalance: string | null = null;
 
     if (status.selfclawWrappedAddress) {
       try {
@@ -520,31 +503,15 @@ export async function getWalletBalances(): Promise<WalletBalances> {
       }
     }
 
-    if (status.wethWrappedAddress) {
-      try {
-        const bal = await celoClient.readContract({
-          address: status.wethWrappedAddress as `0x${string}`,
-          abi: ERC20_ABI,
-          functionName: 'balanceOf',
-          args: [address],
-        });
-        wrappedWethBalance = formatUnits(bal, 18);
-      } catch {
-        wrappedWethBalance = '0';
-      }
-    }
-
     return {
       sponsorAddress: address,
       base: {
         native: formatUnits(baseNative, 18),
         selfclaw: formatUnits(selfclawBalance, 18),
-        weth: formatUnits(wethBalance, 18),
       },
       celo: {
         native: formatUnits(celoNative, 18),
         wrappedSelfclaw: wrappedSelfclawBalance,
-        wrappedWeth: wrappedWethBalance,
       },
     };
   } catch (error: any) {
