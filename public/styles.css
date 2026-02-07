@@ -4,6 +4,7 @@ a, a:link, a:visited, a:hover, a:active {
 a:hover {
   color: #E85D3D;
 }
+.dashboard-nav-link { display: none; }
 
 :root {
   --black: #000;
