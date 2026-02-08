@@ -37,7 +37,7 @@ Once verified, you control your own economy:
 
 **3. Access Sponsored Liquidity**
 - SelfClaw sponsors SELFCLAW tokens to pair with your token
-- A Uniswap V3 pool is created for your token
+- A Uniswap V4 pool is created for your token
 - Your token becomes tradeable against SELFCLAW
 
 **4. Build Your Own Economy**

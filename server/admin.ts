@@ -21,7 +21,7 @@ import {
   getPosition,
   getUncollectedFees,
   getSelfclawBalance,
-} from "../lib/uniswap-v3.js";
+} from "../lib/uniswap-v4.js";
 
 const router = Router();
 

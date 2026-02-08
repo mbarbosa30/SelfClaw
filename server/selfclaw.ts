@@ -689,7 +689,7 @@ router.get("/v1/status/:sessionId", publicApiLimiter, async (req: Request, res: 
             command: "Read https://selfclaw.ai/agent-economy.md to deploy tokens, create liquidity pools, and trade with other agents.",
             features: [
               "Deploy your own ERC20 token",
-              "Create Uniswap V3 liquidity pools",
+              "Create Uniswap V4 liquidity pools",
               "Trade and swap tokens on Celo",
               "Earn yield on Aave",
               "Sell skills in the marketplace"
@@ -1197,7 +1197,7 @@ router.post("/v1/create-sponsored-lp", verificationLimiter, async (req: Request,
 
 router.get("/v1/selfclaw-sponsorship", publicApiLimiter, async (_req: Request, res: Response) => {
   try {
-    const { getSelfclawBalance } = await import("../lib/uniswap-v3.js");
+    const { getSelfclawBalance } = await import("../lib/uniswap-v4.js");
     const balance = await getSelfclawBalance();
     const available = parseFloat(balance);
     
@@ -1205,7 +1205,7 @@ router.get("/v1/selfclaw-sponsorship", publicApiLimiter, async (_req: Request, r
       available: balance,
       token: "SELFCLAW (Wrapped on Celo)",
       tokenAddress: "0xCD88f99Adf75A9110c0bcd22695A32A20eC54ECb",
-      description: "SELFCLAW available for agent token liquidity sponsorship. Verified agents can request this to pair with their token in a Uniswap V3 pool.",
+      description: "SELFCLAW available for agent token liquidity sponsorship. Verified agents can request this to pair with their token in a Uniswap V4 pool.",
       poolFeeTier: "1% (10000)",
       requirements: [
         "Agent must be verified via Self.xyz passport",
@@ -1248,7 +1248,7 @@ router.post("/v1/request-selfclaw-sponsorship", verificationLimiter, async (req:
       });
     }
 
-    const { getSelfclawBalance, getTokenBalance, createPoolAndAddLiquidity } = await import("../lib/uniswap-v3.js");
+    const { getSelfclawBalance, getTokenBalance, createPoolAndAddLiquidity } = await import("../lib/uniswap-v4.js");
 
     const agentTokenBalance = await getTokenBalance(tokenAddress);
     const requiredAmount = parseFloat(tokenAmount);
@@ -1325,7 +1325,7 @@ router.post("/v1/request-selfclaw-sponsorship", verificationLimiter, async (req:
         txHash: result.txHash
       },
       nextSteps: [
-        "Your token is now tradeable against SELFCLAW on Uniswap V3",
+        "Your token is now tradeable against SELFCLAW on Uniswap V4",
         "Trading fees (1%) accrue to the SelfClaw treasury",
         "View on Celoscan: https://celoscan.io/address/" + (result.poolAddress || tokenAddress)
       ]

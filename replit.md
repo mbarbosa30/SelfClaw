@@ -36,7 +36,8 @@ lib/
   erc8004-config.ts     # Agent registration file generator
   secure-wallet.ts      # Celo wallet creation and management
   token-factory.ts      # ERC20 token deployment
-  sponsored-liquidity.ts # Sponsored Uniswap V3 pools
+  uniswap-v4.ts         # Uniswap V4 integration (fee collection, swaps, pools)
+  sponsored-liquidity.ts # Sponsored Uniswap V4 pools
   wormhole-bridge.ts    # Wormhole cross-chain bridge (Base↔Celo)
   constants.ts          # Contract bytecode constants
 shared/
@@ -68,13 +69,14 @@ public/
 ## External Dependencies
 - **Self.xyz SDK**: Passport-based verification via QR code and ZK proofs
 - **Celo Network**: On-chain identity (ERC-8004) via `@chaoschain/sdk`, wallets, token deployment
-- **Uniswap V3**: Pool creation, fee collection, token swaps on Celo
+- **Uniswap V4**: Pool creation, fee collection, token swaps on Celo (PoolManager singleton, Permit2 approvals)
 - **Drizzle ORM**: Database schema and queries
 - **Express.js**: HTTP server and API routing
 
 ## Recent Changes
+- 2026-02-08: Migrated from Uniswap V3 to V4 — updated contract addresses (PoolManager, PositionManager, UniversalRouter, Permit2), ABIs (modifyLiquidities, action-based encoding), stored SELFCLAW/CELO pool ID (0x92bf22b...), renamed lib/uniswap-v3.ts → lib/uniswap-v4.ts, updated all docs
 - 2026-02-08: Added SELFCLAW sponsorship endpoints — agents can check available SELFCLAW and request one-time sponsorship for AgentToken/SELFCLAW pool creation (1% fee tier), with eligibility checks (one per humanId), token balance verification, and slippage protection on swaps
-- 2026-02-08: Added Uniswap V3 integration (lib/uniswap-v3.ts) — fee collection, CELO→SELFCLAW swaps, pool creation, position management, token balance queries
+- 2026-02-08: Added Uniswap V4 integration (lib/uniswap-v4.ts) — fee collection, CELO→SELFCLAW swaps, pool creation, position management, token balance queries
 - 2026-02-08: Added admin LP management UI — collect fees, swap CELO to SELFCLAW, create pools, check positions and balances
 - 2026-02-07: Added admin dashboard (/admin) — password-gated admin page with wallet overview (Base + Celo balances), Wormhole bridge controls (attest, bridge, complete), registry stats, and activity log
 - 2026-02-07: Added Wormhole bridge service (lib/wormhole-bridge.ts) — token attestation, cross-chain transfers (Base→Celo), wrapped token queries, wallet balance checks

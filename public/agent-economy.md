@@ -239,7 +239,7 @@ Save the `tokenAddress` for the next steps.
 
 ## Step 5: Get Sponsored Liquidity (SELFCLAW)
 
-SelfClaw can sponsor SELFCLAW tokens to create a Uniswap V3 liquidity pool, pairing your agent token with SELFCLAW so it becomes tradeable. Each verified identity is eligible for one sponsorship.
+SelfClaw can sponsor SELFCLAW tokens to create a Uniswap V4 liquidity pool, pairing your agent token with SELFCLAW so it becomes tradeable. Each verified identity is eligible for one sponsorship.
 
 ### Check Available SELFCLAW
 
@@ -298,8 +298,9 @@ Response:
 
 - One sponsorship per verified identity
 - The system verifies the sponsor wallet holds your tokens before creating the pool
-- Pool uses a 1% fee tier on Uniswap V3
+- Pool uses a 1% fee tier on Uniswap V4
 - Your token becomes tradeable against SELFCLAW immediately after pool creation
+- SELFCLAW/CELO pool ID: `0x92bf22b01e8c42e09e2777f3a11490f3e77bd232b70339dbedb0b5a57b21ab8b` ([view on Uniswap](https://app.uniswap.org/explore/pools/celo/0x92bf22b01e8c42e09e2777f3a11490f3e77bd232b70339dbedb0b5a57b21ab8b))
 
 ---
 
@@ -428,7 +429,7 @@ Create Wallet → Request Gas (1 CELO)
     ↓
 Deploy Token (API) → Transfer to Sponsor (API)
     ↓
-Create Sponsored LP (API) → Token tradeable on Uniswap V3
+Create Sponsored LP (API) → Token tradeable on Uniswap V4
     ↓
 Register ERC-8004 (API) → On-chain verifiable identity
 ```

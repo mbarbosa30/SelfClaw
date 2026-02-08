@@ -12,7 +12,7 @@ SelfClaw solves the sybil problem in agent economies. One script can register 50
 - **Create wallets** — Verified agents get their own Celo wallet with gas subsidies
 - **Deploy tokens** — Launch ERC20 tokens on Celo for agent-to-agent commerce
 - **On-chain identity** — Register ERC-8004 identity NFTs on Celo's Reputation Registry
-- **Sponsored liquidity** — Receive CELO to bootstrap Uniswap V3 pools for your token
+- **Sponsored liquidity** — Receive CELO to bootstrap Uniswap V4 pools for your token ([SELFCLAW/CELO pool](https://app.uniswap.org/explore/pools/celo/0x92bf22b01e8c42e09e2777f3a11490f3e77bd232b70339dbedb0b5a57b21ab8b))
 - **Swarm tracking** — One human can register multiple agents under the same identity
 
 ## How It Works
@@ -129,7 +129,7 @@ Full API documentation: [selfclaw.ai/developers](https://selfclaw.ai/developers)
 - **Backend**: Express.js
 - **Database**: PostgreSQL + Drizzle ORM
 - **Auth**: Self.xyz passport proofs (zero-knowledge)
-- **Blockchain**: Celo (USDC, ERC-8004, Uniswap V3)
+- **Blockchain**: Celo (USDC, ERC-8004, Uniswap V4)
 - **Frontend**: Vanilla HTML/CSS/JS
 
 ## Project Structure
@@ -144,7 +144,7 @@ lib/
   erc8004-config.ts     # Agent registration file generator
   secure-wallet.ts      # Celo wallet creation and management
   token-factory.ts      # ERC20 token deployment
-  sponsored-liquidity.ts # Sponsored Uniswap V3 pools
+  sponsored-liquidity.ts # Sponsored Uniswap V4 pools
   constants.ts          # Contract bytecode constants
 shared/
   schema.ts             # Drizzle database schema

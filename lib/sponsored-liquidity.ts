@@ -1,4 +1,4 @@
-import { createPublicClient, createWalletClient, http, parseUnits, formatUnits, encodeFunctionData, maxUint256 } from 'viem';
+import { createPublicClient, createWalletClient, http, parseUnits, formatUnits, encodeFunctionData, encodePacked, encodeAbiParameters, parseAbiParameters, maxUint256 } from 'viem';
 import { celo } from 'viem/chains';
 import { privateKeyToAccount } from 'viem/accounts';
 import { db } from '../server/db.js';
@@ -401,49 +401,59 @@ export async function getSponsorWalletInfo(): Promise<{
   }
 }
 
-const UNISWAP_V3_POSITION_MANAGER = '0x3d79EdAaBC0EaB6F08ED885C05Fc0B014290D95A' as `0x${string}`;
+const UNISWAP_V4_POSITION_MANAGER = '0xf7965f3981e4d5bc383bfbcb61501763e9068ca9' as `0x${string}`;
+const POOL_MANAGER = '0x288dc841A52FCA2707c6947B3A777c5E56cd87BC' as `0x${string}`;
+const PERMIT2 = '0x000000000022D473030F116dDEE9F6B43aC78BA3' as `0x${string}`;
 const WRAPPED_CELO = '0x471EcE3750Da237f93B8E339c536989b8978a438' as `0x${string}`;
 
-const POSITION_MANAGER_ABI = [
+const POOL_MANAGER_ABI = [
   {
-    name: 'mint',
+    name: 'initialize',
     type: 'function',
-    stateMutability: 'payable',
-    inputs: [{
-      name: 'params',
-      type: 'tuple',
-      components: [
-        { name: 'token0', type: 'address' },
-        { name: 'token1', type: 'address' },
-        { name: 'fee', type: 'uint24' },
-        { name: 'tickLower', type: 'int24' },
-        { name: 'tickUpper', type: 'int24' },
-        { name: 'amount0Desired', type: 'uint256' },
-        { name: 'amount1Desired', type: 'uint256' },
-        { name: 'amount0Min', type: 'uint256' },
-        { name: 'amount1Min', type: 'uint256' },
-        { name: 'recipient', type: 'address' },
-        { name: 'deadline', type: 'uint256' },
-      ]
-    }],
-    outputs: [
-      { name: 'tokenId', type: 'uint256' },
-      { name: 'liquidity', type: 'uint128' },
-      { name: 'amount0', type: 'uint256' },
-      { name: 'amount1', type: 'uint256' },
-    ]
+    stateMutability: 'nonpayable',
+    inputs: [
+      {
+        name: 'key',
+        type: 'tuple',
+        components: [
+          { name: 'currency0', type: 'address' },
+          { name: 'currency1', type: 'address' },
+          { name: 'fee', type: 'uint24' },
+          { name: 'tickSpacing', type: 'int24' },
+          { name: 'hooks', type: 'address' },
+        ],
+      },
+      { name: 'sqrtPriceX96', type: 'uint160' },
+    ],
+    outputs: [{ name: 'tick', type: 'int24' }],
   },
+] as const;
+
+const V4_POSITION_MANAGER_ABI = [
   {
-    name: 'createAndInitializePoolIfNecessary',
+    name: 'modifyLiquidities',
     type: 'function',
     stateMutability: 'payable',
     inputs: [
-      { name: 'token0', type: 'address' },
-      { name: 'token1', type: 'address' },
-      { name: 'fee', type: 'uint24' },
-      { name: 'sqrtPriceX96', type: 'uint160' },
+      { name: 'unlockData', type: 'bytes' },
+      { name: 'deadline', type: 'uint256' },
     ],
-    outputs: [{ name: 'pool', type: 'address' }]
+    outputs: [],
+  },
+] as const;
+
+const PERMIT2_ABI = [
+  {
+    name: 'approve',
+    type: 'function',
+    stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'token', type: 'address' },
+      { name: 'spender', type: 'address' },
+      { name: 'amount', type: 'uint160' },
+      { name: 'expiration', type: 'uint48' },
+    ],
+    outputs: [],
   },
 ] as const;
 
@@ -483,6 +493,18 @@ function getTickSpacing(fee: number): number {
 
 function alignTickToSpacing(tick: number, spacing: number): number {
   return Math.floor(tick / spacing) * spacing;
+}
+
+function bigintSqrt(value: bigint): bigint {
+  if (value < 0n) throw new Error('Square root of negative number');
+  if (value === 0n) return 0n;
+  let z = value;
+  let x = value / 2n + 1n;
+  while (x < z) {
+    z = x;
+    x = (value / x + x) / 2n;
+  }
+  return z;
 }
 
 function priceToTick(price: number): number {
@@ -637,62 +659,99 @@ export async function createSponsoredLP(request: SponsoredLPRequest): Promise<Sp
     const sqrtPriceX96 = priceToSqrtPriceX96(adjustedPrice);
     
     try {
-      const createPoolData = encodeFunctionData({
-        abi: POSITION_MANAGER_ABI,
-        functionName: 'createAndInitializePoolIfNecessary',
-        args: [addr0, addr1, fee, sqrtPriceX96]
+      const poolKey = {
+        currency0: addr0,
+        currency1: addr1,
+        fee,
+        tickSpacing,
+        hooks: '0x0000000000000000000000000000000000000000' as `0x${string}`,
+      };
+
+      const initData = encodeFunctionData({
+        abi: POOL_MANAGER_ABI,
+        functionName: 'initialize',
+        args: [poolKey, sqrtPriceX96]
       });
-      
+
       const createPoolHash = await walletClient.sendTransaction({
-        to: UNISWAP_V3_POSITION_MANAGER,
-        data: createPoolData,
+        to: POOL_MANAGER,
+        data: initData,
         value: 0n
       });
       await publicClient.waitForTransactionReceipt({ hash: createPoolHash });
-      
-      const approveData = encodeFunctionData({
+
+      const approvePermit2Data = encodeFunctionData({
         abi: ERC20_ABI,
         functionName: 'approve',
-        args: [UNISWAP_V3_POSITION_MANAGER, maxUint256]
+        args: [PERMIT2, maxUint256]
       });
-      
-      const approveHash = await walletClient.sendTransaction({
+
+      const approvePermit2Hash = await walletClient.sendTransaction({
         to: tokenAddr,
-        data: approveData
+        data: approvePermit2Data
       });
-      await publicClient.waitForTransactionReceipt({ hash: approveHash });
-      
+      await publicClient.waitForTransactionReceipt({ hash: approvePermit2Hash });
+
+      const maxUint160 = (2n ** 160n) - 1n;
+      const permit2Expiration = Math.floor(Date.now() / 1000) + 86400 * 30;
+      const permit2ApproveData = encodeFunctionData({
+        abi: PERMIT2_ABI,
+        functionName: 'approve',
+        args: [tokenAddr, UNISWAP_V4_POSITION_MANAGER, maxUint160, permit2Expiration]
+      });
+
+      const permit2ApproveHash = await walletClient.sendTransaction({
+        to: PERMIT2,
+        data: permit2ApproveData
+      });
+      await publicClient.waitForTransactionReceipt({ hash: permit2ApproveHash });
+
       const currentTick = priceToTick(adjustedPrice);
       const tickRange = 6000;
       const tickLower = alignTickToSpacing(currentTick - tickRange, tickSpacing);
       const tickUpper = alignTickToSpacing(currentTick + tickRange, tickSpacing);
       const deadline = BigInt(Math.floor(Date.now() / 1000) + 3600);
-      
-      const mintParams = {
-        token0: addr0,
-        token1: addr1,
-        fee,
-        tickLower,
-        tickUpper,
-        amount0Desired: amt0,
-        amount1Desired: amt1,
-        amount0Min: 0n,
-        amount1Min: 0n,
-        recipient: account.address,
-        deadline
-      };
-      
-      const mintData = encodeFunctionData({
-        abi: POSITION_MANAGER_ABI,
-        functionName: 'mint',
-        args: [mintParams]
-      });
-      
+
+      const liquidity = bigintSqrt(amt0 * amt1);
+
+      const actions = encodePacked(
+        ['uint8', 'uint8'],
+        [0x02, 0x0d]
+      );
+
+      const mintParams = encodeAbiParameters(
+        parseAbiParameters('(address, address, uint24, int24, address), int24, int24, uint256, uint128, uint128, address, bytes'),
+        [
+          [poolKey.currency0, poolKey.currency1, poolKey.fee, poolKey.tickSpacing, poolKey.hooks],
+          tickLower,
+          tickUpper,
+          liquidity,
+          amt0,
+          amt1,
+          account.address,
+          '0x',
+        ]
+      );
+
+      const settlePairParams = encodeAbiParameters(
+        parseAbiParameters('address, address'),
+        [addr0, addr1]
+      );
+
+      const unlockData = encodeAbiParameters(
+        parseAbiParameters('bytes, bytes[]'),
+        [actions, [mintParams, settlePairParams]]
+      );
+
       const celoValue = addr0 === WRAPPED_CELO ? amt0 : (addr1 === WRAPPED_CELO ? amt1 : 0n);
-      
+
       const mintHash = await walletClient.sendTransaction({
-        to: UNISWAP_V3_POSITION_MANAGER,
-        data: mintData,
+        to: UNISWAP_V4_POSITION_MANAGER,
+        data: encodeFunctionData({
+          abi: V4_POSITION_MANAGER_ABI,
+          functionName: 'modifyLiquidities',
+          args: [unlockData, deadline]
+        }),
         value: celoValue
       });
       
