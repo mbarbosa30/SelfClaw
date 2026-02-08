@@ -820,18 +820,23 @@
         </div>
         <div class="api-endpoint">
           <span class="api-method post">POST</span>
-          <span class="api-path">/api/selfclaw/v1/transfer-token</span>
-          <p class="api-desc">Transfer tokens from agent wallet.</p>
-        </div>
-        <div class="api-endpoint">
-          <span class="api-method post">POST</span>
           <span class="api-path">/api/selfclaw/v1/request-gas</span>
           <p class="api-desc">Request gas sponsorship for agent wallet.</p>
         </div>
         <div class="api-endpoint">
+          <span class="api-method get">GET</span>
+          <span class="api-path">/api/selfclaw/v1/selfclaw-sponsorship</span>
+          <p class="api-desc">Check available SELFCLAW for agent token liquidity sponsorship.</p>
+        </div>
+        <div class="api-endpoint">
+          <span class="api-method post">POST</span>
+          <span class="api-path">/api/selfclaw/v1/request-selfclaw-sponsorship</span>
+          <p class="api-desc">Request SELFCLAW sponsorship to create an AgentToken/SELFCLAW pool. One per verified identity.</p>
+        </div>
+        <div class="api-endpoint">
           <span class="api-method post">POST</span>
           <span class="api-path">/api/selfclaw/v1/create-sponsored-lp</span>
-          <p class="api-desc">Create a sponsored liquidity pool.</p>
+          <p class="api-desc">Create a sponsored liquidity pool (CELO-paired).</p>
         </div>
         <div class="api-endpoint">
           <span class="api-method post">POST</span>

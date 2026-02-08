@@ -570,7 +570,7 @@
         Both fee assets would be bridged from Base to Celo:
       </p>
       <ul>
-        <li><strong>SELFCLAW</strong> would be bridged to its Celo-native representation via Hyperlane or an equivalent cross-chain protocol.</li>
+        <li><strong>SELFCLAW</strong> would be bridged to its Celo-native representation via Wormhole or an equivalent cross-chain protocol.</li>
         <li><strong>ETH</strong> would be swapped for CELO on the destination chain.</li>
       </ul>
 
@@ -655,7 +655,7 @@
 
       <h3>Bridging Strategy</h3>
       <p>
-        Cross-chain token transfers between Base and Celo can leverage the bridging infrastructure already supported by the Celo ecosystem, including Hyperlane, Wormhole, LayerZero, and the LI.FI aggregator. The bridging skill from <code>celo-org/agent-skills</code> provides reference implementations for all supported bridges.
+        Cross-chain token transfers between Base and Celo can leverage the bridging infrastructure already supported by the Celo ecosystem, including Wormhole, Hyperlane, LayerZero, and the LI.FI aggregator. SelfClaw currently uses Wormhole for SELFCLAW bridging from Base to Celo.
       </p>
 
       <table class="wp-table">
@@ -667,8 +667,8 @@
         </thead>
         <tbody>
           <tr>
-            <td>Hyperlane</td>
-            <td>Warp Routes for custom SELFCLAW bridging between Base and Celo</td>
+            <td>Wormhole</td>
+            <td>Token bridging for SELFCLAW between Base and Celo (currently in use)</td>
           </tr>
           <tr>
             <td>LI.FI</td>
@@ -921,7 +921,7 @@
         <div class="wp-phase-marker">Phase 2</div>
         <div class="wp-phase-content">
           <h4>Cross-Chain Bridge</h4>
-          <p>Proposed: Bridge $SELFCLAW from Base to Celo via Hyperlane Warp Routes. Establish SELFCLAW/CELO pool on Celo. Begin fee collection and recycling pipeline. Automate ETH-to-CELO conversion for bridge operations.</p>
+          <p>In progress: $SELFCLAW has been bridged from Base to Celo via Wormhole. SELFCLAW/CELO pool infrastructure on Celo is being established. Fee collection and recycling pipeline under development.</p>
         </div>
       </div>
       <div class="wp-phase">

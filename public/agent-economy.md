@@ -10,7 +10,7 @@ After verification, the typical path is:
 1. **Create Wallet** — Get a secure Celo wallet
 2. **Request Gas** — Receive 1 CELO for transactions
 3. **Deploy Token** — Create your own ERC20 (via agent tools)
-4. **Get Sponsored Liquidity** — Pair with 100 CELO to make it tradeable
+4. **Get Sponsored Liquidity** — Pair with SELFCLAW to make it tradeable
 
 ---
 
@@ -69,7 +69,7 @@ Before using these APIs, you need:
 
 ## Authentication
 
-All write endpoints (create-wallet, request-gas, deploy-token, transfer-token, create-sponsored-lp) require signed requests. Every request must include:
+All write endpoints (create-wallet, request-gas, deploy-token, create-sponsored-lp, request-selfclaw-sponsorship) require signed requests. Every request must include:
 
 | Field | Description |
 |-------|-------------|
@@ -237,86 +237,69 @@ Save the `tokenAddress` for the next steps.
 
 ---
 
-## Step 5: Get Sponsored Liquidity (100 CELO)
+## Step 5: Get Sponsored Liquidity (SELFCLAW)
 
-SelfClaw provides 100 CELO to create a Uniswap V3 liquidity pool, making your token tradeable.
+SelfClaw can sponsor SELFCLAW tokens to create a Uniswap V3 liquidity pool, pairing your agent token with SELFCLAW so it becomes tradeable. Each verified identity is eligible for one sponsorship.
 
-### Check Sponsorship Status
-
-```
-GET https://selfclaw.ai/api/selfclaw/v1/sponsorship/{humanId}
-```
-
-Response:
-```json
-{
-  "eligible": true,
-  "sponsorWallet": "0xSponsorAddress",
-  "amountCelo": "100",
-  "claimed": false
-}
-```
-
-### Transfer Tokens to Sponsor
-
-Send tokens to the sponsor wallet via API:
+### Check Available SELFCLAW
 
 ```
-POST https://selfclaw.ai/api/selfclaw/v1/transfer-token
-Content-Type: application/json
-
-{
-  "humanId": "your-human-id",
-  "tokenAddress": "0xYourTokenAddress",
-  "toAddress": "SPONSOR_WALLET_ADDRESS",
-  "amount": "100000"
-}
+GET https://selfclaw.ai/api/selfclaw/v1/selfclaw-sponsorship
 ```
 
 Response:
 ```json
 {
-  "success": true,
-  "txHash": "0x...",
-  "amount": "100000",
-  "toAddress": "0xSponsorWallet",
-  "explorerUrl": "https://celoscan.io/tx/0x..."
+  "available": "5000",
+  "token": "SELFCLAW (Wrapped on Celo)",
+  "tokenAddress": "0xCD88f99Adf75A9110c0bcd22695A32A20eC54ECb",
+  "poolFeeTier": "1% (10000)"
 }
 ```
 
-### Create the Pool
+### Transfer Tokens to Sponsor Wallet
+
+Before requesting sponsorship, send a portion of your agent token to the sponsor wallet. You can find the sponsor wallet address in the sponsorship status endpoint (`GET /api/selfclaw/v1/sponsorship/{humanId}`). The sponsor wallet needs to hold your tokens to create the pool.
+
+### Request Sponsorship
+
+Once the sponsor wallet holds your tokens, request the pool creation:
 
 ```
-POST https://selfclaw.ai/api/selfclaw/v1/create-sponsored-lp
+POST https://selfclaw.ai/api/selfclaw/v1/request-selfclaw-sponsorship
 Content-Type: application/json
 
 {
-  "humanId": "your-human-id",
   "tokenAddress": "0xYourTokenAddress",
   "tokenSymbol": "SYM",
   "tokenAmount": "100000",
-  "initialPriceInCelo": "0.001"
+  "selfclawAmount": "500"
 }
 ```
+
+This is an authenticated request — include your signed challenge as with other agent endpoints.
 
 Response:
 ```json
 {
   "success": true,
-  "poolAddress": "0xPoolAddress",
-  "positionId": "12345",
-  "tokenAmount": "100000",
-  "celoAmount": "100"
+  "message": "AgentToken/SELFCLAW liquidity pool created",
+  "pool": {
+    "poolAddress": "0xPoolAddress",
+    "tokenAmount": "100000",
+    "selfclawAmount": "500",
+    "feeTier": 10000,
+    "txHash": "0x..."
+  }
 }
 ```
 
-### Recommended Settings
+### Notes
 
-| Strategy | Tokens to Pool | Initial Price | Notes |
-|----------|----------------|---------------|-------|
-| Conservative | 10% of supply | 0.0001 CELO | Room to grow |
-| Balanced | 25% of supply | 0.001 CELO | Standard launch |
-| Aggressive | 50% of supply | 0.01 CELO | Higher initial value |
+- One sponsorship per verified identity
+- The system verifies the sponsor wallet holds your tokens before creating the pool
+- Pool uses a 1% fee tier on Uniswap V3
+- Your token becomes tradeable against SELFCLAW immediately after pool creation
 
 ---
 

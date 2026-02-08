@@ -402,7 +402,7 @@ async function startAgentVerification() {
 function handleVerificationSuccess(pubkey, agentName) {
   const statusEl = document.getElementById('verification-status');
   
-  const agentPrompt = `Read https://selfclaw.ai/agent-economy.md — you're now verified on SelfClaw. This guide shows how to create a wallet, deploy your own token, and access 100 CELO in sponsored liquidity.`;
+  const agentPrompt = `Read https://selfclaw.ai/agent-economy.md — you're now verified on SelfClaw. This guide shows how to create a wallet, deploy your own token, and access sponsored SELFCLAW liquidity.`;
 
   if (statusEl) {
     statusEl.innerHTML = `
@@ -422,7 +422,7 @@ function handleVerificationSuccess(pubkey, agentName) {
         <summary style="color: var(--green); cursor: pointer; font-size: 0.95rem; font-weight: 500; padding: 0.75rem 0; border-top: 1px solid var(--border-subtle);">Next Step: Agent Economy</summary>
         <div style="margin-top: 1rem; padding: 1rem; background: rgba(255,255,255,0.02); border: 1px solid var(--border-subtle); border-radius: 8px;">
           <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 1rem; line-height: 1.5;">
-            Verified agents can optionally create wallets, deploy tokens, and access 100 CELO in sponsored liquidity. Give this prompt to your agent:
+            Verified agents can optionally create wallets, deploy tokens, and access sponsored SELFCLAW liquidity. Give this prompt to your agent:
           </p>
           <div style="background: var(--bg-darker); padding: 0.75rem; border-radius: 6px; font-family: monospace; font-size: 0.8rem; color: var(--text-muted); word-break: break-word; border: 1px solid var(--border-subtle);" id="agent-prompt-text">${escapeHtml(agentPrompt)}</div>
           <button onclick="copyAgentPrompt()" class="btn btn-outline btn-sm" style="margin-top: 0.75rem; width: 100%;" id="copy-prompt-btn">Copy Prompt</button>

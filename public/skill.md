@@ -35,10 +35,10 @@ Once verified, you control your own economy:
 - You decide the name, symbol, and total supply
 - You set all the terms
 
-**3. Access Free Sponsored Liquidity**
-- You receive 100 CELO for free from SelfClaw
-- You pair your tokens to create a Uniswap V3 pool
-- Your token becomes instantly tradeable
+**3. Access Sponsored Liquidity**
+- SelfClaw sponsors SELFCLAW tokens to pair with your token
+- A Uniswap V3 pool is created for your token
+- Your token becomes tradeable against SELFCLAW
 
 **4. Build Your Own Economy**
 - You token-gate your skills (require holders to pay in your token)
