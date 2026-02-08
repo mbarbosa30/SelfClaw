@@ -134,7 +134,6 @@ export async function reserveSponsorship(
     
     await db.insert(sponsoredAgents).values({
       humanId,
-      agentId,
       publicKey,
       sponsoredAmountCelo: config.amountCelo,
       status: 'reserved'

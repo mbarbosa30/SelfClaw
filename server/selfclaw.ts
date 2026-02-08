@@ -1197,14 +1197,17 @@ router.post("/v1/create-sponsored-lp", verificationLimiter, async (req: Request,
 
 router.get("/v1/selfclaw-sponsorship", publicApiLimiter, async (_req: Request, res: Response) => {
   try {
-    const { getSelfclawBalance } = await import("../lib/uniswap-v4.js");
-    const balance = await getSelfclawBalance();
-    const available = parseFloat(balance);
+    const { getSelfclawBalance, getSponsorAddress } = await import("../lib/uniswap-v4.js");
+    const rawSponsorKey = process.env.SELFCLAW_SPONSOR_PRIVATE_KEY || process.env.CELO_PRIVATE_KEY;
+    const sponsorKey = rawSponsorKey && !rawSponsorKey.startsWith('0x') ? `0x${rawSponsorKey}` : rawSponsorKey;
+    const balance = await getSelfclawBalance(sponsorKey);
+    const sponsorAddress = getSponsorAddress(sponsorKey);
     
     res.json({
       available: balance,
       token: "SELFCLAW (Wrapped on Celo)",
       tokenAddress: "0xCD88f99Adf75A9110c0bcd22695A32A20eC54ECb",
+      sponsorWallet: sponsorAddress,
       description: "SELFCLAW available for agent token liquidity sponsorship. Verified agents can request this to pair with their token in a Uniswap V4 pool.",
       poolFeeTier: "1% (10000)",
       requirements: [
@@ -1248,23 +1251,25 @@ router.post("/v1/request-selfclaw-sponsorship", verificationLimiter, async (req:
       });
     }
 
-    const { getSelfclawBalance, getTokenBalance, createPoolAndAddLiquidity } = await import("../lib/uniswap-v4.js");
+    const { getSelfclawBalance, getTokenBalance, createPoolAndAddLiquidity, getSponsorAddress } = await import("../lib/uniswap-v4.js");
 
-    const agentTokenBalance = await getTokenBalance(tokenAddress);
+    const rawSponsorKey = process.env.SELFCLAW_SPONSOR_PRIVATE_KEY || process.env.CELO_PRIVATE_KEY;
+    const sponsorKey = rawSponsorKey && !rawSponsorKey.startsWith('0x') ? `0x${rawSponsorKey}` : rawSponsorKey;
+    const sponsorAddress = getSponsorAddress(sponsorKey);
+
+    const agentTokenBalance = await getTokenBalance(tokenAddress, 18, sponsorKey);
     const requiredAmount = parseFloat(tokenAmount);
     const heldAmount = parseFloat(agentTokenBalance);
 
     if (heldAmount < requiredAmount) {
-      const { getSponsorWalletInfo } = await import("../lib/sponsored-liquidity.js");
-      const walletInfo = await getSponsorWalletInfo();
       return res.status(400).json({
         error: `Sponsor wallet does not hold enough of your agent token. Has ${agentTokenBalance}, needs ${tokenAmount}`,
-        sponsorWallet: walletInfo.address,
-        instructions: `Send ${tokenAmount} of your token (${tokenAddress}) to ${walletInfo.address} before requesting sponsorship`
+        sponsorWallet: sponsorAddress,
+        instructions: `Send ${tokenAmount} of your token (${tokenAddress}) to ${sponsorAddress} before requesting sponsorship`
       });
     }
 
-    const availableBalance = await getSelfclawBalance();
+    const availableBalance = await getSelfclawBalance(sponsorKey);
     const requested = parseFloat(selfclawAmount);
     const available = parseFloat(availableBalance);
 
@@ -1283,6 +1288,7 @@ router.post("/v1/request-selfclaw-sponsorship", verificationLimiter, async (req:
       amountA: tokenAmount,
       amountB: selfclawAmount,
       feeTier: 10000,
+      privateKey: sponsorKey,
     });
 
     if (!result.success) {

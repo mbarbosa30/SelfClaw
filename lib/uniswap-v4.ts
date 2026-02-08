@@ -201,6 +201,7 @@ export interface CreatePoolParams {
   amountA: string;
   amountB: string;
   feeTier?: number;
+  privateKey?: string;
 }
 
 export interface CreatePoolResult {
@@ -501,9 +502,13 @@ export async function swapExactInput(
 
 export async function createPoolAndAddLiquidity(params: CreatePoolParams): Promise<CreatePoolResult> {
   try {
-    const { tokenA, tokenB, amountA, amountB, feeTier = 10000 } = params;
-    const account = getAccount();
-    const walletClient = getWalletClient();
+    const { tokenA, tokenB, amountA, amountB, feeTier = 10000, privateKey: overrideKey } = params;
+    const account = overrideKey
+      ? privateKeyToAccount(overrideKey as `0x${string}`)
+      : getAccount();
+    const walletClient = overrideKey
+      ? createWalletClient({ account, chain: celo, transport: http(CELO_RPC) })
+      : getWalletClient();
     const amountAWei = parseUnits(amountA, 18);
     const amountBWei = parseUnits(amountB, 18);
     const { token0, token1, amount0, amount1 } = sortTokens(tokenA, tokenB, amountAWei, amountBWei);
@@ -673,8 +678,10 @@ export async function getUncollectedFees(positionTokenId: bigint): Promise<{ tok
   }
 }
 
-export async function getSelfclawBalance(): Promise<string> {
-  const account = getAccount();
+export async function getSelfclawBalance(overrideKey?: string): Promise<string> {
+  const account = overrideKey
+    ? privateKeyToAccount(overrideKey as `0x${string}`)
+    : getAccount();
 
   const balance = await publicClient.readContract({
     address: WRAPPED_SELFCLAW_CELO,
@@ -686,8 +693,10 @@ export async function getSelfclawBalance(): Promise<string> {
   return formatUnits(balance, 18);
 }
 
-export async function getTokenBalance(tokenAddress: string, decimals: number = 18): Promise<string> {
-  const account = getAccount();
+export async function getTokenBalance(tokenAddress: string, decimals: number = 18, overrideKey?: string): Promise<string> {
+  const account = overrideKey
+    ? privateKeyToAccount(overrideKey as `0x${string}`)
+    : getAccount();
 
   const balance = await publicClient.readContract({
     address: tokenAddress as `0x${string}`,
@@ -697,4 +706,11 @@ export async function getTokenBalance(tokenAddress: string, decimals: number = 1
   });
 
   return formatUnits(balance, decimals);
+}
+
+export function getSponsorAddress(overrideKey?: string): string {
+  const account = overrideKey
+    ? privateKeyToAccount(overrideKey as `0x${string}`)
+    : getAccount();
+  return account.address;
 }

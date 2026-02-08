@@ -1,7 +1,7 @@
 import { createPublicClient, createWalletClient, http, parseUnits, formatUnits, encodeDeployData, encodeFunctionData, getContractAddress } from 'viem';
 import { celo } from 'viem/chains';
 import { privateKeyToAccount } from 'viem/accounts';
-import { deriveAgentPrivateKey, createAgentWallet } from './agent-wallet.js';
+import { recoverWalletClient } from './secure-wallet.js';
 
 const publicClient = createPublicClient({
   chain: celo,
