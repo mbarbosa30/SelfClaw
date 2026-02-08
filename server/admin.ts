@@ -128,6 +128,33 @@ router.post("/bridge/complete-attestation", async (req: Request, res: Response) 
   }
 });
 
+router.post("/bridge/complete-attestation-by-tx", async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    const { txHash } = req.body;
+    if (!txHash) {
+      return res.status(400).json({ error: "txHash required" });
+    }
+
+    console.log(`[admin] Fetching VAA for attestation tx: ${txHash}`);
+    const vaaResult = await fetchVaaForTx(txHash);
+
+    if (!vaaResult.vaaBytes) {
+      const msg = vaaResult.status === 'pending'
+        ? 'VAA not yet available — guardians may still be signing. Try again shortly.'
+        : vaaResult.error || 'Could not retrieve VAA from Wormholescan';
+      return res.status(422).json({ error: msg, status: vaaResult.status });
+    }
+
+    console.log(`[admin] VAA fetched, completing attestation on Celo...`);
+    const result = await completeAttestation(vaaResult.vaaBytes);
+    res.json(result);
+  } catch (error: any) {
+    console.error("[admin] bridge/complete-attestation-by-tx error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 router.post("/bridge/transfer", async (req: Request, res: Response) => {
   if (!requireAdmin(req, res)) return;
   try {

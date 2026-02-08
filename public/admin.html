@@ -480,6 +480,14 @@
           </div>
 
           <div class="action-card">
+            <h4>Complete Existing Attestation</h4>
+            <p style="color:#777;font-size:0.7rem;margin-bottom:0.75rem;line-height:1.4;">Have a pending attestation tx? Paste the Base tx hash here to fetch the VAA and finalize on Celo.</p>
+            <input type="text" class="input" id="attest-tx-hash" placeholder="0x... Base tx hash">
+            <button class="action-btn" id="btn-complete-attest" onclick="doCompleteAttestByTx(this)">Complete on Celo</button>
+            <div class="action-result" id="result-complete-attest"></div>
+          </div>
+
+          <div class="action-card">
             <h4>Bridge SELFCLAW</h4>
             <p style="color:#777;font-size:0.7rem;margin-bottom:0.75rem;line-height:1.4;">Locks SELFCLAW on Base and mints wrapped SELFCLAW on Celo. The system handles the full flow automatically.</p>
             <input type="text" class="input" id="bridge-selfclaw-amount" placeholder="Amount (e.g. 1000)">
@@ -735,6 +743,41 @@
       var el = document.getElementById(id);
       el.className = 'action-result ' + type;
       el.textContent = msg;
+    }
+
+    function doCompleteAttestByTx(btn) {
+      var txHash = document.getElementById('attest-tx-hash').value.trim();
+      if (!txHash) return;
+      btn.disabled = true;
+      setActionResult('result-complete-attest', 'Fetching VAA and completing attestation on Celo...', 'loading');
+
+      fetch('/api/admin/bridge/complete-attestation-by-tx', {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({ txHash: txHash })
+      })
+      .then(function(r) {
+        if (handleAuthError(r)) throw new Error('auth');
+        return r.json();
+      })
+      .then(function(data) {
+        btn.disabled = false;
+        if (data.error) {
+          setActionResult('result-complete-attest', data.error, 'error');
+          return;
+        }
+        var msg = 'Attestation complete on Celo!';
+        if (data.txHash) msg += '\nTx: ' + data.txHash;
+        if (data.wrappedAddress) msg += '\nWrapped SELFCLAW: ' + data.wrappedAddress;
+        setActionResult('result-complete-attest', msg, 'success');
+        loadBridgeStatus();
+        loadWalletBalances();
+      })
+      .catch(function(e) {
+        btn.disabled = false;
+        if (e.message === 'auth') return;
+        setActionResult('result-complete-attest', 'Request failed: ' + e.message, 'error');
+      });
     }
 
     function doFullAttest(btn) {
