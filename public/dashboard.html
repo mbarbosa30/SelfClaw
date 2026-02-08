@@ -291,15 +291,11 @@
     </section>
 
     <section class="wallet-section">
-      <h2 class="section-title">Wallet Breakdown</h2>
+      <h2 class="section-title">Wallet Overview</h2>
       <div class="wallet-grid">
         <div class="wallet-card">
-          <span class="stat-label">Managed Wallets</span>
-          <span class="stat-value" id="w-managed">&mdash;</span>
-        </div>
-        <div class="wallet-card">
-          <span class="stat-label">External Wallets</span>
-          <span class="stat-value" id="w-external">&mdash;</span>
+          <span class="stat-label">Registered Wallets</span>
+          <span class="stat-value" id="w-total">&mdash;</span>
         </div>
         <div class="wallet-card">
           <span class="stat-label">Gas Subsidies</span>
@@ -472,8 +468,7 @@
           setText('s-wallets', data.wallets ? data.wallets.total : '\u2014');
           setText('s-sponsored', data.tokenEconomy ? data.tokenEconomy.sponsoredAgents : '\u2014');
 
-          setText('w-managed', data.wallets ? data.wallets.managed : '\u2014');
-          setText('w-external', data.wallets ? data.wallets.external : '\u2014');
+          setText('w-total', data.wallets ? data.wallets.total : '\u2014');
           setText('w-gas', data.wallets ? data.wallets.gasSubsidies : '\u2014');
 
           if (data.verificationFunnel) renderFunnel(data.verificationFunnel);
@@ -489,8 +484,7 @@
           setText('s-humans', '\u2014');
           setText('s-wallets', '\u2014');
           setText('s-sponsored', '\u2014');
-          setText('w-managed', '\u2014');
-          setText('w-external', '\u2014');
+          setText('w-total', '\u2014');
           setText('w-gas', '\u2014');
         });
     }

@@ -69,7 +69,7 @@ Before using these APIs, you need:
 
 ## Authentication
 
-All write endpoints (create-wallet, request-gas, deploy-token, create-sponsored-lp, request-selfclaw-sponsorship) require signed requests. Every request must include:
+All write endpoints (create-wallet, request-gas, deploy-token, request-selfclaw-sponsorship) require signed requests. Every request must include:
 
 | Field | Description |
 |-------|-------------|
@@ -218,27 +218,32 @@ Content-Type: application/json
 }
 ```
 
-Response:
+Response (unsigned transaction data for you to sign and submit):
 ```json
 {
   "success": true,
-  "tokenAddress": "0xYourTokenContract",
-  "txHash": "0x...",
+  "unsignedTx": {
+    "to": null,
+    "data": "0x60806040...",
+    "gas": "2000000",
+    "gasPrice": "5000000000",
+    "chainId": 42220,
+    "nonce": 0,
+    "from": "0xYourWallet"
+  },
   "name": "Your Token Name",
   "symbol": "SYM",
-  "supply": "1000000",
-  "creatorAddress": "0xYourWallet",
-  "explorerUrl": "https://celoscan.io/token/0x..."
+  "supply": "1000000"
 }
 ```
 
-Save the `tokenAddress` for the next steps.
+Sign and submit this transaction with your wallet. After confirmation, save the deployed `tokenAddress` for the next steps.
 
 ---
 
 ## Step 5: Get Sponsored Liquidity (SELFCLAW)
 
-SelfClaw can sponsor SELFCLAW tokens to create a Uniswap V4 liquidity pool, pairing your agent token with SELFCLAW so it becomes tradeable. Each verified identity is eligible for one sponsorship.
+SelfClaw can sponsor SELFCLAW tokens to create a Uniswap V3 liquidity pool, pairing your agent token with SELFCLAW so it becomes tradeable. Each verified identity is eligible for one sponsorship.
 
 ### Check Available SELFCLAW
 
@@ -297,7 +302,7 @@ Response:
 
 - One sponsorship per verified identity
 - The system verifies the sponsor wallet holds your tokens before creating the pool
-- Pool uses a 1% fee tier on Uniswap V4
+- Pool uses a 1% fee tier on Uniswap V3
 - Your token becomes tradeable against SELFCLAW immediately after pool creation
 - SELFCLAW/CELO pool ID: `0x92bf22b01e8c42e09e2777f3a11490f3e77bd232b70339dbedb0b5a57b21ab8b` ([view on Uniswap](https://app.uniswap.org/explore/pools/celo/0x92bf22b01e8c42e09e2777f3a11490f3e77bd232b70339dbedb0b5a57b21ab8b))
 
@@ -424,11 +429,11 @@ Response:
 ```
 Verify (passport scan) → humanId assigned
     ↓
-Create Wallet → Request Gas (1 CELO)
+Register Wallet → Request Gas (1 CELO)
     ↓
-Deploy Token (API) → Transfer to Sponsor (API)
+Deploy Token (sign & submit) → Transfer to Sponsor
     ↓
-Create Sponsored LP (API) → Token tradeable on Uniswap V4
+Request Sponsorship (API) → Token tradeable on Uniswap V3
     ↓
 Register ERC-8004 (API) → On-chain verifiable identity
 ```
