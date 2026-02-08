@@ -136,5 +136,25 @@ export const agentActivity = pgTable("agent_activity", {
 export type AgentActivity = typeof agentActivity.$inferSelect;
 export type InsertAgentActivity = typeof agentActivity.$inferInsert;
 
+export const bridgeTransactions = pgTable("bridge_transactions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  type: varchar("type").notNull(),
+  sourceTxHash: varchar("source_tx_hash").notNull(),
+  destTxHash: varchar("dest_tx_hash"),
+  tokenAddress: varchar("token_address").notNull(),
+  amount: varchar("amount").notNull(),
+  status: varchar("status").notNull().default("submitted"),
+  vaaBytes: text("vaa_bytes"),
+  error: text("error"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("IDX_bridge_status").on(table.status),
+  index("IDX_bridge_created_at").on(table.createdAt),
+]);
+
+export type BridgeTransaction = typeof bridgeTransactions.$inferSelect;
+export type InsertBridgeTransaction = typeof bridgeTransactions.$inferInsert;
+
 export type User = typeof users.$inferSelect;
 export type UpsertUser = typeof users.$inferInsert;

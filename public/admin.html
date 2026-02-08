@@ -489,13 +489,28 @@
 
           <div class="action-card">
             <h4>Bridge SELFCLAW</h4>
-            <p style="color:#777;font-size:0.7rem;margin-bottom:0.75rem;line-height:1.4;">Locks SELFCLAW on Base and mints wrapped SELFCLAW on Celo. The system handles the full flow automatically.</p>
+            <p style="color:#777;font-size:0.7rem;margin-bottom:0.75rem;line-height:1.4;">Locks SELFCLAW on Base. Once guardians sign (~15 min), claim the tokens below.</p>
             <input type="text" class="input" id="bridge-selfclaw-amount" placeholder="Amount (e.g. 1000)">
             <button class="action-btn" id="btn-bridge" onclick="doFullBridge(this)">Bridge to Celo</button>
             <div class="action-result" id="result-bridge"></div>
           </div>
 
+          <div class="action-card">
+            <h4>Track Existing Bridge</h4>
+            <p style="color:#777;font-size:0.7rem;margin-bottom:0.75rem;line-height:1.4;">Have a pending bridge tx from before? Paste the Base tx hash to track and claim it.</p>
+            <input type="text" class="input" id="track-bridge-tx" placeholder="0x... Base tx hash">
+            <button class="action-btn" onclick="doTrackBridge(this)">Track Bridge</button>
+            <div class="action-result" id="result-track-bridge"></div>
+          </div>
+
         </div>
+      </section>
+
+      <section class="admin-section">
+        <h2 class="admin-section-title">Pending Bridge Claims</h2>
+        <div id="pending-claims-loading" style="text-align:center;padding:1rem;color:#555;"><span class="spinner"></span> Checking for pending claims...</div>
+        <div id="pending-claims-content" style="display:none;"></div>
+        <div id="pending-claims-empty" style="display:none;text-align:center;padding:1.5rem;color:#777;font-size:0.8rem;">No pending bridge claims</div>
       </section>
 
       <section class="admin-section">
@@ -629,6 +644,7 @@
       loadStats();
       loadWalletBalances();
       loadBridgeStatus();
+      loadPendingClaims();
       loadSelfclawBalance();
       loadActivityLog();
       document.getElementById('last-refresh').textContent = 'Last refresh: ' + new Date().toLocaleTimeString();
@@ -867,7 +883,7 @@
       var amount = document.getElementById('bridge-selfclaw-amount').value.trim();
       if (!amount) return;
       btn.disabled = true;
-      setActionResult('result-bridge', 'Step 1/3: Locking SELFCLAW on Base...', 'loading');
+      setActionResult('result-bridge', 'Locking SELFCLAW on Base...', 'loading');
 
       fetch('/api/admin/bridge/transfer', {
         method: 'POST',
@@ -876,18 +892,149 @@
       })
       .then(function(r) { return r.json(); })
       .then(function(data) {
+        btn.disabled = false;
         if (data.error) {
-          btn.disabled = false;
           setActionResult('result-bridge', data.error, 'error');
           return;
         }
         var txHash = data.sourceTxHash || data.txHash;
-        setActionResult('result-bridge', 'Step 2/3: Waiting for Wormhole guardians (~15 min)...\nTx: ' + txHash, 'loading');
-        pollVaaAndComplete(txHash, 'transfer', btn);
+        setActionResult('result-bridge', 'Submitted! Tx: ' + txHash + '\nTokens locked on Base. Check "Pending Bridge Claims" below to track progress and claim when ready.', 'success');
+        loadPendingClaims();
       })
       .catch(function(e) {
         btn.disabled = false;
         setActionResult('result-bridge', 'Request failed: ' + e.message, 'error');
+      });
+    }
+
+    function doTrackBridge(btn) {
+      var txHash = document.getElementById('track-bridge-tx').value.trim();
+      if (!txHash) return;
+      btn.disabled = true;
+      setActionResult('result-track-bridge', 'Adding to tracking...', 'loading');
+
+      fetch('/api/admin/bridge/add-pending', {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({ sourceTxHash: txHash })
+      })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        btn.disabled = false;
+        if (data.error) {
+          setActionResult('result-track-bridge', data.error, 'error');
+          return;
+        }
+        if (data.existing) {
+          setActionResult('result-track-bridge', 'Already tracked. Check "Pending Bridge Claims" below.', 'success');
+        } else {
+          setActionResult('result-track-bridge', 'Added to tracking. Check "Pending Bridge Claims" below.', 'success');
+        }
+        document.getElementById('track-bridge-tx').value = '';
+        loadPendingClaims();
+      })
+      .catch(function(e) {
+        btn.disabled = false;
+        setActionResult('result-track-bridge', 'Request failed: ' + e.message, 'error');
+      });
+    }
+
+    function loadPendingClaims() {
+      var loading = document.getElementById('pending-claims-loading');
+      var content = document.getElementById('pending-claims-content');
+      var empty = document.getElementById('pending-claims-empty');
+      loading.style.display = 'block';
+      content.style.display = 'none';
+      empty.style.display = 'none';
+
+      fetch('/api/admin/bridge/pending', { headers: authHeaders() })
+      .then(function(r) {
+        if (handleAuthError(r)) throw new Error('auth');
+        return r.json();
+      })
+      .then(function(data) {
+        loading.style.display = 'none';
+        if (!data.pending || data.pending.length === 0) {
+          empty.style.display = 'block';
+          return;
+        }
+        content.style.display = 'block';
+        var html = '<div style="display:flex;flex-direction:column;gap:0.75rem;">';
+        data.pending.forEach(function(tx) {
+          var statusColor = tx.status === 'vaa_ready' ? '#4AFF6B' : '#f59e0b';
+          var statusLabel = tx.status === 'vaa_ready' ? 'READY TO CLAIM' : 'WAITING FOR GUARDIANS';
+          var age = tx.createdAt ? getTimeAgo(new Date(tx.createdAt)) : '';
+          html += '<div style="background:#1a1a1a;border:1px solid #333;border-radius:6px;padding:1rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;">';
+          html += '<div style="flex:1;min-width:200px;">';
+          html += '<div style="font-size:0.85rem;color:#fff;margin-bottom:0.3rem;">' + (tx.type === 'transfer' ? 'Bridge Transfer' : tx.type) + ' — ' + tx.amount + ' SELFCLAW</div>';
+          html += '<div style="font-size:0.65rem;color:#777;word-break:break-all;">Tx: ' + tx.sourceTxHash + '</div>';
+          if (age) html += '<div style="font-size:0.6rem;color:#555;margin-top:0.2rem;">' + age + '</div>';
+          html += '</div>';
+          html += '<div style="display:flex;align-items:center;gap:0.75rem;">';
+          html += '<span style="font-size:0.7rem;color:' + statusColor + ';font-weight:bold;">' + statusLabel + '</span>';
+          if (tx.status === 'vaa_ready') {
+            html += '<button class="action-btn" style="padding:0.4rem 1rem;font-size:0.75rem;" onclick="claimBridge(\'' + tx.id + '\', this)">Claim Tokens</button>';
+          } else {
+            html += '<button class="action-btn" style="padding:0.4rem 1rem;font-size:0.7rem;background:#333;color:#999;" onclick="loadPendingClaims()">Refresh</button>';
+          }
+          html += '</div>';
+          html += '</div>';
+        });
+        html += '</div>';
+        content.innerHTML = html;
+      })
+      .catch(function(e) {
+        loading.style.display = 'none';
+        if (e.message === 'auth') return;
+        content.style.display = 'block';
+        content.innerHTML = '<div style="text-align:center;color:#ef4444;padding:1rem;">Failed to load pending claims</div>';
+      });
+    }
+
+    function getTimeAgo(date) {
+      var seconds = Math.floor((new Date() - date) / 1000);
+      if (seconds < 60) return seconds + 's ago';
+      var minutes = Math.floor(seconds / 60);
+      if (minutes < 60) return minutes + 'm ago';
+      var hours = Math.floor(minutes / 60);
+      if (hours < 24) return hours + 'h ago';
+      var days = Math.floor(hours / 24);
+      return days + 'd ago';
+    }
+
+    function claimBridge(bridgeId, btn) {
+      btn.disabled = true;
+      btn.textContent = 'Claiming...';
+
+      fetch('/api/admin/bridge/claim', {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({ bridgeId: bridgeId })
+      })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        btn.disabled = false;
+        if (data.error) {
+          btn.textContent = 'Failed';
+          btn.style.background = '#ef4444';
+          setTimeout(function() {
+            btn.textContent = 'Claim Tokens';
+            btn.style.background = '';
+          }, 3000);
+          alert('Claim failed: ' + data.error);
+          return;
+        }
+        btn.textContent = 'Claimed!';
+        btn.style.background = '#4AFF6B';
+        btn.style.color = '#000';
+        loadPendingClaims();
+        loadWalletBalances();
+        loadBridgeStatus();
+      })
+      .catch(function(e) {
+        btn.disabled = false;
+        btn.textContent = 'Claim Tokens';
+        alert('Claim request failed: ' + e.message);
       });
     }
 

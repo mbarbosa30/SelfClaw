@@ -2,8 +2,8 @@ import { Router, Request, Response } from "express";
 import rateLimit from "express-rate-limit";
 import crypto from "crypto";
 import { db } from "./db.js";
-import { agentActivity, verifiedBots, agentWallets } from "../shared/schema.js";
-import { sql, desc } from "drizzle-orm";
+import { agentActivity, verifiedBots, agentWallets, bridgeTransactions } from "../shared/schema.js";
+import { sql, desc, eq, inArray } from "drizzle-orm";
 import {
   attestToken,
   completeAttestation,
@@ -171,6 +171,17 @@ router.post("/bridge/transfer", async (req: Request, res: Response) => {
       return res.status(400).json({ error: "amount required" });
     }
     const result = await bridgeTokens(SELFCLAW_TOKEN, amount);
+
+    if (result.success && result.sourceTxHash) {
+      await db.insert(bridgeTransactions).values({
+        type: 'transfer',
+        sourceTxHash: result.sourceTxHash,
+        tokenAddress: SELFCLAW_TOKEN,
+        amount,
+        status: 'submitted',
+      });
+    }
+
     res.json(result);
   } catch (error: any) {
     console.error("[admin] bridge/transfer error:", error);
@@ -189,6 +200,141 @@ router.post("/bridge/complete-transfer", async (req: Request, res: Response) => 
     res.json(result);
   } catch (error: any) {
     console.error("[admin] bridge/complete-transfer error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get("/bridge/pending", async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    const pending = await db.select()
+      .from(bridgeTransactions)
+      .where(inArray(bridgeTransactions.status, ['submitted', 'vaa_ready']))
+      .orderBy(desc(bridgeTransactions.createdAt));
+
+    for (const tx of pending) {
+      if (tx.status === 'submitted') {
+        try {
+          const vaaResult = await fetchVaaForTx(tx.sourceTxHash);
+          if (vaaResult.vaaBytes) {
+            await db.update(bridgeTransactions)
+              .set({ status: 'vaa_ready', vaaBytes: vaaResult.vaaBytes, updatedAt: new Date() })
+              .where(eq(bridgeTransactions.id, tx.id));
+            tx.status = 'vaa_ready';
+            tx.vaaBytes = vaaResult.vaaBytes;
+          }
+        } catch (e) {
+        }
+      }
+    }
+
+    res.json({ pending: pending.map(tx => ({
+      id: tx.id,
+      type: tx.type,
+      sourceTxHash: tx.sourceTxHash,
+      destTxHash: tx.destTxHash,
+      tokenAddress: tx.tokenAddress,
+      amount: tx.amount,
+      status: tx.status,
+      hasVaa: !!tx.vaaBytes,
+      createdAt: tx.createdAt,
+    }))});
+  } catch (error: any) {
+    console.error("[admin] bridge/pending error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post("/bridge/claim", async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    const { bridgeId } = req.body;
+    if (!bridgeId) {
+      return res.status(400).json({ error: "bridgeId required" });
+    }
+
+    const records = await db.select()
+      .from(bridgeTransactions)
+      .where(eq(bridgeTransactions.id, bridgeId))
+      .limit(1);
+
+    if (records.length === 0) {
+      return res.status(404).json({ error: "Bridge transaction not found" });
+    }
+
+    const record = records[0];
+
+    if (record.status === 'claimed') {
+      return res.status(400).json({ error: "Already claimed", destTxHash: record.destTxHash });
+    }
+
+    let vaaBytes = record.vaaBytes;
+
+    if (!vaaBytes) {
+      const vaaResult = await fetchVaaForTx(record.sourceTxHash);
+      if (!vaaResult.vaaBytes) {
+        return res.status(422).json({
+          error: "VAA not ready yet — guardians may still be signing. Try again shortly.",
+          status: vaaResult.status,
+        });
+      }
+      vaaBytes = vaaResult.vaaBytes;
+      await db.update(bridgeTransactions)
+        .set({ status: 'vaa_ready', vaaBytes, updatedAt: new Date() })
+        .where(eq(bridgeTransactions.id, bridgeId));
+    }
+
+    const result = await completeTransfer(vaaBytes);
+
+    if (result.success) {
+      await db.update(bridgeTransactions)
+        .set({
+          status: 'claimed',
+          destTxHash: result.destTxHash || result.txHash || '',
+          updatedAt: new Date(),
+        })
+        .where(eq(bridgeTransactions.id, bridgeId));
+    } else {
+      await db.update(bridgeTransactions)
+        .set({ error: result.error || 'Claim failed', updatedAt: new Date() })
+        .where(eq(bridgeTransactions.id, bridgeId));
+    }
+
+    res.json(result);
+  } catch (error: any) {
+    console.error("[admin] bridge/claim error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post("/bridge/add-pending", async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    const { sourceTxHash, amount, type } = req.body;
+    if (!sourceTxHash) {
+      return res.status(400).json({ error: "sourceTxHash required" });
+    }
+
+    const existing = await db.select()
+      .from(bridgeTransactions)
+      .where(eq(bridgeTransactions.sourceTxHash, sourceTxHash))
+      .limit(1);
+
+    if (existing.length > 0) {
+      return res.json({ id: existing[0].id, existing: true });
+    }
+
+    const [record] = await db.insert(bridgeTransactions).values({
+      type: type || 'transfer',
+      sourceTxHash,
+      tokenAddress: SELFCLAW_TOKEN,
+      amount: amount || 'unknown',
+      status: 'submitted',
+    }).returning();
+
+    res.json({ id: record.id, existing: false });
+  } catch (error: any) {
+    console.error("[admin] bridge/add-pending error:", error);
     res.status(500).json({ error: error.message });
   }
 });
