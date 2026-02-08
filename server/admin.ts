@@ -14,6 +14,14 @@ import {
   getWalletBalances,
   fetchVaaForTx,
 } from "../lib/wormhole-bridge.js";
+import {
+  collectFees,
+  swapExactInput,
+  createPoolAndAddLiquidity,
+  getPosition,
+  getUncollectedFees,
+  getSelfclawBalance,
+} from "../lib/uniswap-v3.js";
 
 const router = Router();
 
@@ -232,7 +240,7 @@ router.get("/registry-stats", async (req: Request, res: Response) => {
     const [wallets] = await db.select({ count: sql<number>`count(*)` }).from(agentWallets);
     const [gasReceived] = await db.select({ count: sql<number>`count(*)` }).from(agentWallets).where(sql`gas_received = true`);
     const tokensResult = await db.execute(sql`SELECT count(*)::int as count FROM agent_tokens`);
-    const tokensCount = tokensResult.rows?.[0]?.count ?? tokensResult[0]?.count ?? 0;
+    const tokensCount = (tokensResult as any).rows?.[0]?.count ?? 0;
     
     res.json({
       verifiedAgents: Number(verified.count),
@@ -242,6 +250,86 @@ router.get("/registry-stats", async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     console.error("[admin] registry-stats error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+const WRAPPED_SELFCLAW_CELO = "0xCD88f99Adf75A9110c0bcd22695A32A20eC54ECb";
+const CELO_NATIVE = "0x471EcE3750Da237f93B8E339c536989b8978a438";
+
+router.post("/uniswap/collect-fees", async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    const { positionTokenId } = req.body;
+    if (!positionTokenId) {
+      return res.status(400).json({ error: "positionTokenId required" });
+    }
+    const result = await collectFees(BigInt(positionTokenId));
+    res.json(result);
+  } catch (error: any) {
+    console.error("[admin] uniswap/collect-fees error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post("/uniswap/swap-celo-to-selfclaw", async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    const { amount, fee } = req.body;
+    if (!amount) {
+      return res.status(400).json({ error: "amount required (in CELO)" });
+    }
+    const result = await swapExactInput(CELO_NATIVE, WRAPPED_SELFCLAW_CELO, amount, fee || 3000);
+    res.json(result);
+  } catch (error: any) {
+    console.error("[admin] uniswap/swap error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get("/uniswap/position/:tokenId", async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    const tokenId = BigInt(req.params.tokenId);
+    const [position, fees] = await Promise.all([
+      getPosition(tokenId),
+      getUncollectedFees(tokenId),
+    ]);
+    res.json({ position, uncollectedFees: fees });
+  } catch (error: any) {
+    console.error("[admin] uniswap/position error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get("/uniswap/selfclaw-balance", async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    const balance = await getSelfclawBalance();
+    res.json({ balance, token: WRAPPED_SELFCLAW_CELO });
+  } catch (error: any) {
+    console.error("[admin] uniswap/selfclaw-balance error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post("/uniswap/create-pool", async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    const { tokenA, tokenB, amountA, amountB, feeTier } = req.body;
+    if (!tokenA || !tokenB || !amountA || !amountB) {
+      return res.status(400).json({ error: "tokenA, tokenB, amountA, amountB required" });
+    }
+    const result = await createPoolAndAddLiquidity({
+      tokenA,
+      tokenB,
+      amountA,
+      amountB,
+      feeTier: feeTier || 10000,
+    });
+    res.json(result);
+  } catch (error: any) {
+    console.error("[admin] uniswap/create-pool error:", error);
     res.status(500).json({ error: error.message });
   }
 });

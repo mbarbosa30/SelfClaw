@@ -499,6 +499,63 @@
       </section>
 
       <section class="admin-section">
+        <h2 class="admin-section-title">Liquidity Pool Management</h2>
+        <div id="lp-loading" style="text-align:center;padding:1rem;color:#555;"><span class="spinner"></span> Loading SELFCLAW balance...</div>
+        <div id="lp-info" style="display:none;margin-bottom:1rem;">
+          <div style="display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:1rem;">
+            <div class="bridge-status-card" style="flex:1;min-width:200px;">
+              <div class="bridge-token-name">SELFCLAW on Celo</div>
+              <div style="font-size:1.2rem;color:#4AFF6B;font-weight:bold;" id="lp-selfclaw-balance">—</div>
+              <div style="font-size:0.65rem;color:#777;margin-top:0.25rem;">Available for sponsorship</div>
+            </div>
+          </div>
+        </div>
+        <div class="actions-grid">
+
+          <div class="action-card">
+            <h4>Collect LP Fees</h4>
+            <p style="color:#777;font-size:0.7rem;margin-bottom:0.75rem;line-height:1.4;">Collect trading fees from your LP position. Enter the NFT position token ID.</p>
+            <input type="text" class="input" id="lp-position-id" placeholder="Position Token ID">
+            <button class="action-btn" onclick="doCollectFees(this)">Collect Fees</button>
+            <div class="action-result" id="result-collect-fees"></div>
+          </div>
+
+          <div class="action-card">
+            <h4>Swap CELO to SELFCLAW</h4>
+            <p style="color:#777;font-size:0.7rem;margin-bottom:0.75rem;line-height:1.4;">Swap collected CELO fees into SELFCLAW for treasury.</p>
+            <input type="text" class="input" id="swap-celo-amount" placeholder="CELO amount (e.g. 10)">
+            <button class="action-btn" onclick="doSwapCeloToSelfclaw(this)">Swap to SELFCLAW</button>
+            <div class="action-result" id="result-swap"></div>
+          </div>
+
+          <div class="action-card">
+            <h4>Check Position</h4>
+            <p style="color:#777;font-size:0.7rem;margin-bottom:0.75rem;line-height:1.4;">View position details and uncollected fees.</p>
+            <input type="text" class="input" id="check-position-id" placeholder="Position Token ID">
+            <button class="action-btn" onclick="doCheckPosition(this)">Check Position</button>
+            <div class="action-result" id="result-check-position"></div>
+          </div>
+
+          <div class="action-card">
+            <h4>Create Pool</h4>
+            <p style="color:#777;font-size:0.7rem;margin-bottom:0.75rem;line-height:1.4;">Create a new Uniswap V3 pool with liquidity. Used for AgentToken/SELFCLAW pairs.</p>
+            <input type="text" class="input" id="pool-token-a" placeholder="Token A address">
+            <input type="text" class="input" id="pool-token-b" placeholder="Token B address" value="0xCD88f99Adf75A9110c0bcd22695A32A20eC54ECb" style="margin-top:0.4rem;">
+            <input type="text" class="input" id="pool-amount-a" placeholder="Amount A" style="margin-top:0.4rem;">
+            <input type="text" class="input" id="pool-amount-b" placeholder="Amount B (SELFCLAW)" style="margin-top:0.4rem;">
+            <select class="input" id="pool-fee-tier" style="margin-top:0.4rem;">
+              <option value="10000">1% fee tier</option>
+              <option value="3000">0.3% fee tier</option>
+              <option value="500">0.05% fee tier</option>
+            </select>
+            <button class="action-btn" onclick="doCreatePool(this)" style="margin-top:0.5rem;">Create Pool + Add Liquidity</button>
+            <div class="action-result" id="result-create-pool"></div>
+          </div>
+
+        </div>
+      </section>
+
+      <section class="admin-section">
         <h2 class="admin-section-title">Activity Log</h2>
         <div class="activity-log" id="activity-log">
           <div class="log-empty"><span class="spinner"></span> Loading...</div>
@@ -572,6 +629,7 @@
       loadStats();
       loadWalletBalances();
       loadBridgeStatus();
+      loadSelfclawBalance();
       loadActivityLog();
       document.getElementById('last-refresh').textContent = 'Last refresh: ' + new Date().toLocaleTimeString();
     }
@@ -891,6 +949,155 @@
       }
 
       setTimeout(poll, interval);
+    }
+
+    function loadSelfclawBalance() {
+      var loading = document.getElementById('lp-loading');
+      var info = document.getElementById('lp-info');
+      fetch('/api/admin/uniswap/selfclaw-balance', { headers: authHeaders() })
+        .then(function(r) {
+          if (handleAuthError(r)) throw new Error('auth');
+          if (!r.ok) throw new Error('Server error');
+          return r.json();
+        })
+        .then(function(data) {
+          loading.style.display = 'none';
+          info.style.display = 'block';
+          var bal = parseFloat(data.balance || '0');
+          document.getElementById('lp-selfclaw-balance').textContent = bal.toLocaleString(undefined, {maximumFractionDigits: 2}) + ' SELFCLAW';
+        })
+        .catch(function(e) {
+          if (e.message === 'auth') return;
+          loading.style.display = 'none';
+          info.style.display = 'block';
+          document.getElementById('lp-selfclaw-balance').textContent = 'Error loading';
+        });
+    }
+
+    function doCollectFees(btn) {
+      var posId = document.getElementById('lp-position-id').value.trim();
+      if (!posId) return;
+      btn.disabled = true;
+      setActionResult('result-collect-fees', 'Collecting fees...', 'loading');
+      fetch('/api/admin/uniswap/collect-fees', {
+        method: 'POST', headers: authHeaders(),
+        body: JSON.stringify({ positionTokenId: posId })
+      })
+      .then(function(r) {
+        if (handleAuthError(r)) throw new Error('auth');
+        return r.json();
+      })
+      .then(function(data) {
+        btn.disabled = false;
+        if (data.error) { setActionResult('result-collect-fees', data.error, 'error'); return; }
+        var msg = 'Fees collected!';
+        if (data.amount0) msg += '\nToken0: ' + data.amount0;
+        if (data.amount1) msg += '\nToken1: ' + data.amount1;
+        if (data.txHash) msg += '\nTx: ' + data.txHash;
+        setActionResult('result-collect-fees', msg, 'success');
+        loadSelfclawBalance();
+        loadWalletBalances();
+      })
+      .catch(function(e) {
+        btn.disabled = false;
+        if (e.message === 'auth') return;
+        setActionResult('result-collect-fees', 'Failed: ' + e.message, 'error');
+      });
+    }
+
+    function doSwapCeloToSelfclaw(btn) {
+      var amount = document.getElementById('swap-celo-amount').value.trim();
+      if (!amount) return;
+      btn.disabled = true;
+      setActionResult('result-swap', 'Swapping ' + amount + ' CELO to SELFCLAW...', 'loading');
+      fetch('/api/admin/uniswap/swap-celo-to-selfclaw', {
+        method: 'POST', headers: authHeaders(),
+        body: JSON.stringify({ amount: amount })
+      })
+      .then(function(r) {
+        if (handleAuthError(r)) throw new Error('auth');
+        return r.json();
+      })
+      .then(function(data) {
+        btn.disabled = false;
+        if (data.error) { setActionResult('result-swap', data.error, 'error'); return; }
+        var msg = 'Swap complete!';
+        if (data.amountOut) msg += '\nReceived: ' + data.amountOut + ' SELFCLAW';
+        if (data.txHash) msg += '\nTx: ' + data.txHash;
+        setActionResult('result-swap', msg, 'success');
+        loadSelfclawBalance();
+        loadWalletBalances();
+      })
+      .catch(function(e) {
+        btn.disabled = false;
+        if (e.message === 'auth') return;
+        setActionResult('result-swap', 'Failed: ' + e.message, 'error');
+      });
+    }
+
+    function doCheckPosition(btn) {
+      var posId = document.getElementById('check-position-id').value.trim();
+      if (!posId) return;
+      btn.disabled = true;
+      setActionResult('result-check-position', 'Loading position...', 'loading');
+      fetch('/api/admin/uniswap/position/' + encodeURIComponent(posId), { headers: authHeaders() })
+      .then(function(r) {
+        if (handleAuthError(r)) throw new Error('auth');
+        return r.json();
+      })
+      .then(function(data) {
+        btn.disabled = false;
+        if (data.error) { setActionResult('result-check-position', data.error, 'error'); return; }
+        var p = data.position || {};
+        var f = data.uncollectedFees || {};
+        var msg = 'Token0: ' + (p.token0 || '—') +
+          '\nToken1: ' + (p.token1 || '—') +
+          '\nFee: ' + (p.fee || '—') +
+          '\nLiquidity: ' + (p.liquidity || '—') +
+          '\nUncollected Token0: ' + (f.token0Fees || '0') +
+          '\nUncollected Token1: ' + (f.token1Fees || '0');
+        setActionResult('result-check-position', msg, 'success');
+      })
+      .catch(function(e) {
+        btn.disabled = false;
+        if (e.message === 'auth') return;
+        setActionResult('result-check-position', 'Failed: ' + e.message, 'error');
+      });
+    }
+
+    function doCreatePool(btn) {
+      var tokenA = document.getElementById('pool-token-a').value.trim();
+      var tokenB = document.getElementById('pool-token-b').value.trim();
+      var amountA = document.getElementById('pool-amount-a').value.trim();
+      var amountB = document.getElementById('pool-amount-b').value.trim();
+      var feeTier = parseInt(document.getElementById('pool-fee-tier').value);
+      if (!tokenA || !tokenB || !amountA || !amountB) return;
+      btn.disabled = true;
+      setActionResult('result-create-pool', 'Creating pool and adding liquidity...', 'loading');
+      fetch('/api/admin/uniswap/create-pool', {
+        method: 'POST', headers: authHeaders(),
+        body: JSON.stringify({ tokenA: tokenA, tokenB: tokenB, amountA: amountA, amountB: amountB, feeTier: feeTier })
+      })
+      .then(function(r) {
+        if (handleAuthError(r)) throw new Error('auth');
+        return r.json();
+      })
+      .then(function(data) {
+        btn.disabled = false;
+        if (data.error) { setActionResult('result-create-pool', data.error, 'error'); return; }
+        var msg = 'Pool created!';
+        if (data.poolAddress) msg += '\nPool: ' + data.poolAddress;
+        if (data.positionTokenId) msg += '\nPosition ID: ' + data.positionTokenId;
+        if (data.txHash) msg += '\nTx: ' + data.txHash;
+        setActionResult('result-create-pool', msg, 'success');
+        loadSelfclawBalance();
+        loadWalletBalances();
+      })
+      .catch(function(e) {
+        btn.disabled = false;
+        if (e.message === 'auth') return;
+        setActionResult('result-create-pool', 'Failed: ' + e.message, 'error');
+      });
     }
 
     function loadActivityLog() {

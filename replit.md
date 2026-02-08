@@ -60,16 +60,22 @@ public/
 - `GET /api/selfclaw/v1/wallet-verify/{address}` — Public wallet verification lookup
 - `POST /api/selfclaw/v1/create-wallet` — Create Celo wallet for verified agent
 - `POST /api/selfclaw/v1/deploy-token` — Deploy ERC20 token
+- `GET /api/selfclaw/v1/selfclaw-sponsorship` — Check available SELFCLAW for sponsorship
+- `POST /api/selfclaw/v1/request-selfclaw-sponsorship` — Request SELFCLAW sponsorship + auto-create AgentToken/SELFCLAW pool (one-time per humanId)
 - `GET /.well-known/agent-registration.json` — Agent registration discovery
 - `GET /api/erc8004/config` — On-chain identity configuration
 
 ## External Dependencies
 - **Self.xyz SDK**: Passport-based verification via QR code and ZK proofs
 - **Celo Network**: On-chain identity (ERC-8004) via `@chaoschain/sdk`, wallets, token deployment
+- **Uniswap V3**: Pool creation, fee collection, token swaps on Celo
 - **Drizzle ORM**: Database schema and queries
 - **Express.js**: HTTP server and API routing
 
 ## Recent Changes
+- 2026-02-08: Added SELFCLAW sponsorship endpoints — agents can check available SELFCLAW and request one-time sponsorship for AgentToken/SELFCLAW pool creation (1% fee tier), with eligibility checks (one per humanId), token balance verification, and slippage protection on swaps
+- 2026-02-08: Added Uniswap V3 integration (lib/uniswap-v3.ts) — fee collection, CELO→SELFCLAW swaps, pool creation, position management, token balance queries
+- 2026-02-08: Added admin LP management UI — collect fees, swap CELO to SELFCLAW, create pools, check positions and balances
 - 2026-02-07: Added admin dashboard (/admin) — password-gated admin page with wallet overview (Base + Celo balances), Wormhole bridge controls (attest, bridge, complete), registry stats, and activity log
 - 2026-02-07: Added Wormhole bridge service (lib/wormhole-bridge.ts) — token attestation, cross-chain transfers (Base→Celo), wrapped token queries, wallet balance checks
 - 2026-02-07: Added $SELFCLAW Whitepaper (/whitepaper) — structured document covering fair-launch tokenomics (Clanker/Bankr, zero team supply), fee recycling flywheel (Base fees → Celo bridging → buyback → sponsored LP), cross-chain architecture, agent token ecosystem, autonomous commerce, governance, skill marketplace, and roadmap
