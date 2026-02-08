@@ -3017,3 +3017,81 @@ h2 {
   font-size: 0.95rem;
   margin: 0;
 }
+
+.token-section {
+  margin: 3.5rem 0;
+  text-align: center;
+}
+
+.token-section h2 {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: var(--green);
+  margin-bottom: 0.75rem;
+}
+
+.token-desc {
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  max-width: 600px;
+  margin: 0 auto 1.5rem;
+  line-height: 1.6;
+}
+
+.token-chains {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  max-width: 520px;
+  margin: 0 auto 1.5rem;
+}
+
+.token-chain-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 1.25rem 1rem;
+  background: var(--gray-800);
+  border: 1px solid var(--gray-300);
+  border-radius: 8px;
+  text-decoration: none;
+  transition: border-color 0.2s;
+}
+
+.token-chain-card:hover {
+  border-color: var(--green);
+}
+
+.token-chain-name {
+  font-family: 'IBM Plex Mono', monospace;
+  font-weight: 600;
+  font-size: 1.1rem;
+  color: var(--text-primary);
+}
+
+.token-address {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.8rem;
+  color: var(--green);
+  background: none;
+  padding: 0;
+}
+
+.token-chain-note {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.token-links {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center;
+}
+
+@media (max-width: 480px) {
+  .token-chains {
+    grid-template-columns: 1fr;
+  }
+}
