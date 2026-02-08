@@ -21,6 +21,8 @@ import {
   getPosition,
   getUncollectedFees,
   getSelfclawBalance,
+  getPoolState,
+  SELFCLAW_CELO_POOL_ID,
 } from "../lib/uniswap-v4.js";
 
 const router = Router();
@@ -549,6 +551,129 @@ router.post("/uniswap/create-pool", async (req: Request, res: Response) => {
     res.json(result);
   } catch (error: any) {
     console.error("[admin] uniswap/create-pool error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get("/pool-info", async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    const poolState = await getPoolState(SELFCLAW_CELO_POOL_ID);
+    res.json({
+      poolId: SELFCLAW_CELO_POOL_ID,
+      token0: CELO_NATIVE,
+      token1: WRAPPED_SELFCLAW_CELO,
+      ...poolState,
+    });
+  } catch (error: any) {
+    console.error("[admin] pool-info error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get("/token-prices", async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    const SELFCLAW_BASE_ADDR = SELFCLAW_TOKEN;
+
+    const [dexScreenerBase, dexScreenerCelo, poolState] = await Promise.all([
+      fetch(`https://api.dexscreener.com/latest/dex/tokens/${SELFCLAW_BASE_ADDR}`)
+        .then(r => r.json())
+        .catch(() => null),
+      fetch(`https://api.dexscreener.com/latest/dex/tokens/${WRAPPED_SELFCLAW_CELO}`)
+        .then(r => r.json())
+        .catch(() => null),
+      getPoolState(SELFCLAW_CELO_POOL_ID).catch(() => null),
+    ]);
+
+    let basePriceUsd: string | null = null;
+    let basePriceNative: string | null = null;
+    let baseLiquidity: string | null = null;
+    let baseVolume24h: string | null = null;
+    let basePriceChange24h: string | null = null;
+    let baseDex: string | null = null;
+    let basePairAddress: string | null = null;
+    let basePairUrl: string | null = null;
+
+    if (dexScreenerBase?.pairs?.length) {
+      const basePairs = dexScreenerBase.pairs.filter((p: any) => p.chainId === 'base');
+      if (basePairs.length > 0) {
+        const topPair = basePairs.sort((a: any, b: any) =>
+          (b.liquidity?.usd || 0) - (a.liquidity?.usd || 0)
+        )[0];
+        basePriceUsd = topPair.priceUsd || null;
+        basePriceNative = topPair.priceNative || null;
+        baseLiquidity = topPair.liquidity?.usd?.toString() || null;
+        baseVolume24h = topPair.volume?.h24?.toString() || null;
+        basePriceChange24h = topPair.priceChange?.h24?.toString() || null;
+        baseDex = topPair.dexId || null;
+        basePairAddress = topPair.pairAddress || null;
+        basePairUrl = topPair.url || null;
+      }
+    }
+
+    let celoPriceUsd: string | null = null;
+    let celoPriceNative: string | null = null;
+    let celoLiquidity: string | null = null;
+    let celoVolume24h: string | null = null;
+    let celoPriceChange24h: string | null = null;
+    let celoDex: string | null = null;
+    let celoPairUrl: string | null = null;
+
+    if (dexScreenerCelo?.pairs?.length) {
+      const celoPairs = dexScreenerCelo.pairs.filter((p: any) => p.chainId === 'celo');
+      if (celoPairs.length > 0) {
+        const topPair = celoPairs.sort((a: any, b: any) =>
+          (b.liquidity?.usd || 0) - (a.liquidity?.usd || 0)
+        )[0];
+        celoPriceUsd = topPair.priceUsd || null;
+        celoPriceNative = topPair.priceNative || null;
+        celoLiquidity = topPair.liquidity?.usd?.toString() || null;
+        celoVolume24h = topPair.volume?.h24?.toString() || null;
+        celoPriceChange24h = topPair.priceChange?.h24?.toString() || null;
+        celoDex = topPair.dexId || null;
+        celoPairUrl = topPair.url || null;
+      }
+    }
+
+    let onChainCeloPrice: string | null = null;
+    if (poolState) {
+      onChainCeloPrice = poolState.price;
+    }
+
+    res.json({
+      base: {
+        token: SELFCLAW_BASE_ADDR,
+        chain: 'base',
+        priceUsd: basePriceUsd,
+        priceNative: basePriceNative,
+        liquidity: baseLiquidity,
+        volume24h: baseVolume24h,
+        priceChange24h: basePriceChange24h,
+        dex: baseDex,
+        pairAddress: basePairAddress,
+        pairUrl: basePairUrl,
+      },
+      celo: {
+        token: WRAPPED_SELFCLAW_CELO,
+        chain: 'celo',
+        priceUsd: celoPriceUsd,
+        priceNative: celoPriceNative,
+        liquidity: celoLiquidity,
+        volume24h: celoVolume24h,
+        priceChange24h: celoPriceChange24h,
+        dex: celoDex,
+        pairUrl: celoPairUrl,
+        onChainPrice: onChainCeloPrice,
+      },
+      poolState: poolState ? {
+        tick: poolState.tick,
+        liquidity: poolState.liquidity,
+        lpFee: poolState.lpFee,
+      } : null,
+    });
+  } catch (error: any) {
+    console.error("[admin] token-prices error:", error);
     res.status(500).json({ error: error.message });
   }
 });

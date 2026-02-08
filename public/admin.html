@@ -462,6 +462,116 @@
       </section>
 
       <section class="admin-section">
+        <h2 class="admin-section-title">Token Prices</h2>
+        <div id="prices-loading" style="text-align:center;padding:2rem;color:#555;"><span class="spinner"></span> Loading prices...</div>
+        <div id="prices-content" style="display:none;">
+          <div class="wallet-overview">
+            <div class="wallet-panel" style="border-bottom:2px solid #FF6B4A;">
+              <div class="wallet-panel-title">SELFCLAW on Base</div>
+              <div style="display:flex;align-items:baseline;gap:0.5rem;margin-bottom:0.5rem;">
+                <span style="font-size:1.8rem;font-weight:700;color:#E8E8E8;" id="price-base-usd">--</span>
+                <span style="font-size:0.8rem;color:#777;">USD</span>
+              </div>
+              <div id="price-base-change" style="font-size:0.8rem;margin-bottom:0.75rem;"></div>
+              <div class="balance-row">
+                <span class="balance-label">Native Price</span>
+                <span class="balance-value" id="price-base-native" style="font-size:0.85rem;">--</span>
+              </div>
+              <div class="balance-row">
+                <span class="balance-label">Liquidity</span>
+                <span class="balance-value" id="price-base-liq" style="font-size:0.85rem;">--</span>
+              </div>
+              <div class="balance-row">
+                <span class="balance-label">24h Volume</span>
+                <span class="balance-value" id="price-base-vol" style="font-size:0.85rem;">--</span>
+              </div>
+              <div class="balance-row">
+                <span class="balance-label">DEX</span>
+                <span class="balance-value" id="price-base-dex" style="font-size:0.85rem;">--</span>
+              </div>
+              <div id="price-base-link" style="margin-top:0.5rem;"></div>
+            </div>
+            <div class="wallet-panel" style="border-bottom:2px solid #4AFF6B;">
+              <div class="wallet-panel-title">SELFCLAW on Celo</div>
+              <div style="display:flex;align-items:baseline;gap:0.5rem;margin-bottom:0.5rem;">
+                <span style="font-size:1.8rem;font-weight:700;color:#E8E8E8;" id="price-celo-usd">--</span>
+                <span style="font-size:0.8rem;color:#777;">USD</span>
+              </div>
+              <div id="price-celo-change" style="font-size:0.8rem;margin-bottom:0.75rem;"></div>
+              <div class="balance-row">
+                <span class="balance-label">Native Price</span>
+                <span class="balance-value" id="price-celo-native" style="font-size:0.85rem;">--</span>
+              </div>
+              <div class="balance-row">
+                <span class="balance-label">Liquidity</span>
+                <span class="balance-value" id="price-celo-liq" style="font-size:0.85rem;">--</span>
+              </div>
+              <div class="balance-row">
+                <span class="balance-label">24h Volume</span>
+                <span class="balance-value" id="price-celo-vol" style="font-size:0.85rem;">--</span>
+              </div>
+              <div class="balance-row">
+                <span class="balance-label">DEX</span>
+                <span class="balance-value" id="price-celo-dex" style="font-size:0.85rem;">--</span>
+              </div>
+              <div id="price-celo-link" style="margin-top:0.5rem;"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="admin-section">
+        <h2 class="admin-section-title">SELFCLAW/CELO Pool (Uniswap V4)</h2>
+        <div id="pool-loading" style="text-align:center;padding:2rem;color:#555;"><span class="spinner"></span> Loading pool data...</div>
+        <div id="pool-content" style="display:none;">
+          <div class="wallet-overview">
+            <div class="wallet-panel">
+              <div class="wallet-panel-title">Pool State</div>
+              <div class="balance-row">
+                <span class="balance-label">Pool ID</span>
+                <span class="balance-value" id="pool-id" style="font-size:0.65rem;word-break:break-all;">--</span>
+              </div>
+              <div class="balance-row">
+                <span class="balance-label">Current Tick</span>
+                <span class="balance-value" id="pool-tick" style="font-size:0.85rem;">--</span>
+              </div>
+              <div class="balance-row">
+                <span class="balance-label">Active Liquidity</span>
+                <span class="balance-value" id="pool-liquidity" style="font-size:0.85rem;">--</span>
+              </div>
+              <div class="balance-row">
+                <span class="balance-label">LP Fee</span>
+                <span class="balance-value" id="pool-fee" style="font-size:0.85rem;">--</span>
+              </div>
+            </div>
+            <div class="wallet-panel">
+              <div class="wallet-panel-title">On-Chain Price</div>
+              <div class="balance-row">
+                <span class="balance-label">CELO per SELFCLAW</span>
+                <span class="balance-value" id="pool-price" style="font-size:1rem;">--</span>
+              </div>
+              <div class="balance-row">
+                <span class="balance-label">SELFCLAW per CELO</span>
+                <span class="balance-value" id="pool-inverse-price" style="font-size:1rem;">--</span>
+              </div>
+              <div class="balance-row">
+                <span class="balance-label">sqrtPriceX96</span>
+                <span class="balance-value" id="pool-sqrt" style="font-size:0.65rem;word-break:break-all;">--</span>
+              </div>
+              <div class="balance-row">
+                <span class="balance-label">Token0 (CELO)</span>
+                <span class="balance-value" id="pool-token0" style="font-size:0.6rem;word-break:break-all;">--</span>
+              </div>
+              <div class="balance-row">
+                <span class="balance-label">Token1 (SELFCLAW)</span>
+                <span class="balance-value" id="pool-token1" style="font-size:0.6rem;word-break:break-all;">--</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="admin-section">
         <h2 class="admin-section-title">Wallet Overview</h2>
         <div id="wallet-loading" style="text-align:center;padding:2rem;color:#555;"><span class="spinner"></span> Loading balances...</div>
         <div id="wallet-content" class="wallet-overview" style="display:none;"></div>
@@ -648,6 +758,8 @@
 
     function refreshAll() {
       loadStats();
+      loadTokenPrices();
+      loadPoolInfo();
       loadWalletBalances();
       loadBridgeStatus();
       loadPendingClaims();
@@ -1193,6 +1305,144 @@
       }
 
       setTimeout(poll, interval);
+    }
+
+    function formatUsd(val) {
+      if (!val) return '--';
+      var n = parseFloat(val);
+      if (isNaN(n)) return val;
+      if (n < 0.0001) return '$' + n.toExponential(4);
+      if (n < 1) return '$' + n.toFixed(6);
+      return '$' + n.toLocaleString(undefined, {maximumFractionDigits: 4});
+    }
+
+    function formatVolume(val) {
+      if (!val) return '--';
+      var n = parseFloat(val);
+      if (isNaN(n)) return val;
+      if (n >= 1e6) return '$' + (n / 1e6).toFixed(2) + 'M';
+      if (n >= 1e3) return '$' + (n / 1e3).toFixed(2) + 'K';
+      return '$' + n.toFixed(2);
+    }
+
+    function loadTokenPrices() {
+      var loading = document.getElementById('prices-loading');
+      var content = document.getElementById('prices-content');
+      loading.style.display = 'block';
+      content.style.display = 'none';
+
+      fetch('/api/admin/token-prices', { headers: authHeaders() })
+        .then(function(r) {
+          if (handleAuthError(r)) throw new Error('auth');
+          return r.json();
+        })
+        .then(function(data) {
+          loading.style.display = 'none';
+          content.style.display = 'block';
+
+          var b = data.base || {};
+          document.getElementById('price-base-usd').textContent = formatUsd(b.priceUsd);
+          document.getElementById('price-base-native').textContent = b.priceNative ? b.priceNative + ' ETH' : '--';
+          document.getElementById('price-base-liq').textContent = formatVolume(b.liquidity);
+          document.getElementById('price-base-vol').textContent = formatVolume(b.volume24h);
+          document.getElementById('price-base-dex').textContent = b.dex || '--';
+
+          var changeEl = document.getElementById('price-base-change');
+          if (b.priceChange24h != null) {
+            var ch = parseFloat(b.priceChange24h);
+            changeEl.textContent = (ch >= 0 ? '+' : '') + ch.toFixed(2) + '% (24h)';
+            changeEl.style.color = ch >= 0 ? '#4AFF6B' : '#ef4444';
+          } else {
+            changeEl.textContent = '';
+          }
+
+          var baseLinkEl = document.getElementById('price-base-link');
+          if (b.pairUrl) {
+            baseLinkEl.innerHTML = '<a href="' + b.pairUrl + '" target="_blank" style="color:#FF6B4A;font-size:0.7rem;text-decoration:none;">View on DexScreener</a>';
+          } else {
+            baseLinkEl.innerHTML = '';
+          }
+
+          var c = data.celo || {};
+          document.getElementById('price-celo-usd').textContent = formatUsd(c.priceUsd);
+          document.getElementById('price-celo-native').textContent = c.priceNative ? c.priceNative + ' CELO' : (c.onChainPrice ? parseFloat(c.onChainPrice).toFixed(8) + ' CELO (on-chain)' : '--');
+          document.getElementById('price-celo-liq').textContent = formatVolume(c.liquidity);
+          document.getElementById('price-celo-vol').textContent = formatVolume(c.volume24h);
+          document.getElementById('price-celo-dex').textContent = c.dex || '--';
+
+          var celoChangeEl = document.getElementById('price-celo-change');
+          if (c.priceChange24h != null) {
+            var cch = parseFloat(c.priceChange24h);
+            celoChangeEl.textContent = (cch >= 0 ? '+' : '') + cch.toFixed(2) + '% (24h)';
+            celoChangeEl.style.color = cch >= 0 ? '#4AFF6B' : '#ef4444';
+          } else {
+            celoChangeEl.textContent = '';
+          }
+
+          var celoLinkEl = document.getElementById('price-celo-link');
+          if (c.pairUrl) {
+            celoLinkEl.innerHTML = '<a href="' + c.pairUrl + '" target="_blank" style="color:#4AFF6B;font-size:0.7rem;text-decoration:none;">View on DexScreener</a>';
+          } else {
+            celoLinkEl.innerHTML = '';
+          }
+        })
+        .catch(function(e) {
+          if (e.message === 'auth') return;
+          loading.style.display = 'none';
+          content.style.display = 'block';
+          document.getElementById('price-base-usd').textContent = 'Error';
+          document.getElementById('price-celo-usd').textContent = 'Error';
+        });
+    }
+
+    function loadPoolInfo() {
+      var loading = document.getElementById('pool-loading');
+      var content = document.getElementById('pool-content');
+      loading.style.display = 'block';
+      content.style.display = 'none';
+
+      fetch('/api/admin/pool-info', { headers: authHeaders() })
+        .then(function(r) {
+          if (handleAuthError(r)) throw new Error('auth');
+          return r.json();
+        })
+        .then(function(data) {
+          loading.style.display = 'none';
+          content.style.display = 'block';
+
+          document.getElementById('pool-id').textContent = data.poolId || '--';
+          document.getElementById('pool-tick').textContent = data.tick != null ? data.tick.toLocaleString() : '--';
+
+          var liq = data.liquidity;
+          if (liq && liq !== '0') {
+            var liqNum = BigInt(liq);
+            var liqFormatted = (Number(liqNum) / 1e18).toFixed(4);
+            document.getElementById('pool-liquidity').textContent = liqNum > 1000000000000000000n ? liqFormatted : liq;
+          } else {
+            document.getElementById('pool-liquidity').textContent = liq || '--';
+          }
+
+          if (data.lpFee != null) {
+            var feePercent = (data.lpFee / 10000).toFixed(2);
+            document.getElementById('pool-fee').textContent = feePercent + '% (' + data.lpFee + ')';
+          } else {
+            document.getElementById('pool-fee').textContent = '--';
+          }
+
+          var price = parseFloat(data.price || '0');
+          var invPrice = parseFloat(data.inversePrice || '0');
+          document.getElementById('pool-price').textContent = price > 0 ? price.toFixed(8) : '--';
+          document.getElementById('pool-inverse-price').textContent = invPrice > 0 ? invPrice.toFixed(4) : '--';
+          document.getElementById('pool-sqrt').textContent = data.sqrtPriceX96 || '--';
+          document.getElementById('pool-token0').textContent = data.token0 || '--';
+          document.getElementById('pool-token1').textContent = data.token1 || '--';
+        })
+        .catch(function(e) {
+          if (e.message === 'auth') return;
+          loading.style.display = 'none';
+          content.style.display = 'block';
+          document.getElementById('pool-tick').textContent = 'Error';
+        });
     }
 
     function loadSelfclawBalance() {

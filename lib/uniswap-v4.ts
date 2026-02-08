@@ -180,6 +180,73 @@ const PERMIT2_ABI = [
   },
 ] as const;
 
+const STATE_VIEW_ABI = [
+  {
+    name: 'getSlot0',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [{ name: 'poolId', type: 'bytes32' }],
+    outputs: [
+      { name: 'sqrtPriceX96', type: 'uint160' },
+      { name: 'tick', type: 'int24' },
+      { name: 'protocolFee', type: 'uint24' },
+      { name: 'lpFee', type: 'uint24' },
+    ],
+  },
+  {
+    name: 'getLiquidity',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [{ name: 'poolId', type: 'bytes32' }],
+    outputs: [{ name: 'liquidity', type: 'uint128' }],
+  },
+] as const;
+
+export interface PoolState {
+  sqrtPriceX96: string;
+  tick: number;
+  protocolFee: number;
+  lpFee: number;
+  liquidity: string;
+  price: string;
+  inversePrice: string;
+}
+
+export async function getPoolState(poolId: `0x${string}`): Promise<PoolState> {
+  const [slot0Result, liquidityResult] = await Promise.all([
+    publicClient.readContract({
+      address: STATE_VIEW,
+      abi: STATE_VIEW_ABI,
+      functionName: 'getSlot0',
+      args: [poolId],
+    }),
+    publicClient.readContract({
+      address: STATE_VIEW,
+      abi: STATE_VIEW_ABI,
+      functionName: 'getLiquidity',
+      args: [poolId],
+    }),
+  ]);
+
+  const [sqrtPriceX96, tick, protocolFee, lpFee] = slot0Result;
+  const liquidity = liquidityResult;
+
+  const Q96 = 2n ** 96n;
+  const priceRaw = Number(sqrtPriceX96) / Number(Q96);
+  const price = priceRaw * priceRaw;
+  const inversePrice = price > 0 ? 1 / price : 0;
+
+  return {
+    sqrtPriceX96: sqrtPriceX96.toString(),
+    tick,
+    protocolFee,
+    lpFee,
+    liquidity: liquidity.toString(),
+    price: price.toFixed(18),
+    inversePrice: inversePrice.toFixed(18),
+  };
+}
+
 export interface CollectFeesResult {
   success: boolean;
   txHash?: string;
