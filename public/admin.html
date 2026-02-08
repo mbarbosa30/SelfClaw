@@ -497,7 +497,12 @@
                 <span style="font-size:1.8rem;font-weight:700;color:#E8E8E8;" id="price-celo-usd">--</span>
                 <span style="font-size:0.8rem;color:#777;">USD</span>
               </div>
+              <div id="price-celo-computed" style="font-size:0.65rem;color:#888;margin-bottom:0.25rem;"></div>
               <div id="price-celo-change" style="font-size:0.8rem;margin-bottom:0.75rem;"></div>
+              <div class="balance-row">
+                <span class="balance-label">CELO Price</span>
+                <span class="balance-value" id="price-celo-ref" style="font-size:0.85rem;">--</span>
+              </div>
               <div class="balance-row">
                 <span class="balance-label">Native Price</span>
                 <span class="balance-value" id="price-celo-native" style="font-size:0.85rem;">--</span>
@@ -517,6 +522,7 @@
               <div id="price-celo-link" style="margin-top:0.5rem;"></div>
             </div>
           </div>
+          <div id="price-gap-banner" style="display:none;margin-top:1rem;padding:0.75rem 1rem;border:1px solid #333;background:#1a1a1a;text-align:center;font-size:0.85rem;"></div>
         </div>
       </section>
 
@@ -1365,10 +1371,17 @@
 
           var c = data.celo || {};
           document.getElementById('price-celo-usd').textContent = formatUsd(c.priceUsd);
+          var computedEl = document.getElementById('price-celo-computed');
+          if (c.computedFromCelo) {
+            computedEl.textContent = '(computed from CELO × on-chain ratio)';
+          } else {
+            computedEl.textContent = '';
+          }
+          document.getElementById('price-celo-ref').textContent = data.celoUsdPrice ? '$' + data.celoUsdPrice.toFixed(4) : '--';
           document.getElementById('price-celo-native').textContent = c.priceNative ? c.priceNative + ' CELO' : (c.onChainPrice ? parseFloat(c.onChainPrice).toFixed(8) + ' CELO (on-chain)' : '--');
           document.getElementById('price-celo-liq').textContent = formatVolume(c.liquidity);
           document.getElementById('price-celo-vol').textContent = formatVolume(c.volume24h);
-          document.getElementById('price-celo-dex').textContent = c.dex || '--';
+          document.getElementById('price-celo-dex').textContent = c.dex || (c.computedFromCelo ? 'Uniswap V4 (on-chain)' : '--');
 
           var celoChangeEl = document.getElementById('price-celo-change');
           if (c.priceChange24h != null) {
@@ -1384,6 +1397,17 @@
             celoLinkEl.innerHTML = '<a href="' + c.pairUrl + '" target="_blank" style="color:#4AFF6B;font-size:0.7rem;text-decoration:none;">View on DexScreener</a>';
           } else {
             celoLinkEl.innerHTML = '';
+          }
+
+          var gapBanner = document.getElementById('price-gap-banner');
+          if (data.priceGapPercent != null) {
+            var gap = parseFloat(data.priceGapPercent);
+            var gapColor = Math.abs(gap) > 10 ? '#ef4444' : (Math.abs(gap) > 5 ? '#f59e0b' : '#4AFF6B');
+            var arrow = gap > 0 ? 'Celo premium' : 'Celo discount';
+            gapBanner.style.display = 'block';
+            gapBanner.innerHTML = '<span style="color:' + gapColor + ';font-weight:700;">' + (gap >= 0 ? '+' : '') + gap + '%</span> <span style="color:#888;">cross-chain price gap (' + arrow + ' vs Base)</span>';
+          } else {
+            gapBanner.style.display = 'none';
           }
         })
         .catch(function(e) {

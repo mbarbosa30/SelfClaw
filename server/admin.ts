@@ -576,7 +576,7 @@ router.get("/token-prices", async (req: Request, res: Response) => {
   try {
     const SELFCLAW_BASE_ADDR = SELFCLAW_TOKEN;
 
-    const [dexScreenerBase, dexScreenerCelo, poolState] = await Promise.all([
+    const [dexScreenerBase, dexScreenerCelo, poolState, celoUsdData] = await Promise.all([
       fetch(`https://api.dexscreener.com/latest/dex/tokens/${SELFCLAW_BASE_ADDR}`)
         .then(r => r.json())
         .catch(() => null),
@@ -584,6 +584,9 @@ router.get("/token-prices", async (req: Request, res: Response) => {
         .then(r => r.json())
         .catch(() => null),
       getPoolState(SELFCLAW_CELO_POOL_ID).catch(() => null),
+      fetch('https://api.coingecko.com/api/v3/simple/price?ids=celo&vs_currencies=usd')
+        .then(r => r.json())
+        .catch(() => null),
     ]);
 
     let basePriceUsd: string | null = null;
@@ -641,6 +644,25 @@ router.get("/token-prices", async (req: Request, res: Response) => {
       onChainCeloPrice = poolState.price;
     }
 
+    const celoUsdPrice: number | null = celoUsdData?.celo?.usd ?? null;
+
+    let selfclawCeloUsd: string | null = null;
+    if (celoUsdPrice && poolState) {
+      const selfclawPerCelo = parseFloat(poolState.price);
+      if (selfclawPerCelo > 0) {
+        selfclawCeloUsd = (celoUsdPrice / selfclawPerCelo).toFixed(12);
+      }
+    }
+
+    let priceGapPercent: string | null = null;
+    if (selfclawCeloUsd && basePriceUsd) {
+      const baseP = parseFloat(basePriceUsd);
+      const celoP = parseFloat(selfclawCeloUsd);
+      if (baseP > 0) {
+        priceGapPercent = (((celoP - baseP) / baseP) * 100).toFixed(2);
+      }
+    }
+
     res.json({
       base: {
         token: SELFCLAW_BASE_ADDR,
@@ -657,7 +679,7 @@ router.get("/token-prices", async (req: Request, res: Response) => {
       celo: {
         token: WRAPPED_SELFCLAW_CELO,
         chain: 'celo',
-        priceUsd: celoPriceUsd,
+        priceUsd: celoPriceUsd || selfclawCeloUsd,
         priceNative: celoPriceNative,
         liquidity: celoLiquidity,
         volume24h: celoVolume24h,
@@ -665,7 +687,10 @@ router.get("/token-prices", async (req: Request, res: Response) => {
         dex: celoDex,
         pairUrl: celoPairUrl,
         onChainPrice: onChainCeloPrice,
+        computedFromCelo: celoPriceUsd ? false : !!selfclawCeloUsd,
       },
+      celoUsdPrice: celoUsdPrice,
+      priceGapPercent: priceGapPercent,
       poolState: poolState ? {
         tick: poolState.tick,
         liquidity: poolState.liquidity,
