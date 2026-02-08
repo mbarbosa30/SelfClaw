@@ -1283,6 +1283,26 @@ router.post("/v1/request-selfclaw-sponsorship", verificationLimiter, async (req:
       completedAt: new Date(),
     });
 
+    if (result.poolAddress) {
+      try {
+        await db.insert(trackedPools).values({
+          poolAddress: result.poolAddress,
+          tokenAddress,
+          tokenSymbol: tokenSymbol || 'TOKEN',
+          tokenName: req.body.tokenName || tokenSymbol || 'TOKEN',
+          pairedWith: 'SELFCLAW',
+          humanId,
+          agentPublicKey: auth.publicKey,
+          feeTier: 10000,
+          initialCeloLiquidity: selfclawForPool,
+          initialTokenLiquidity: tokenAmount,
+        }).onConflictDoNothing();
+        console.log(`[selfclaw] Pool tracked: ${result.poolAddress} for ${tokenSymbol || 'TOKEN'}/SELFCLAW`);
+      } catch (poolTrackErr: any) {
+        console.error(`[selfclaw] Failed to track pool: ${poolTrackErr.message}`);
+      }
+    }
+
     logActivity("selfclaw_sponsorship", humanId, auth.publicKey, undefined, {
       tokenAddress,
       tokenSymbol: tokenSymbol || 'TOKEN',
@@ -1989,6 +2009,89 @@ router.post("/v1/deploy-token", verificationLimiter, async (req: Request, res: R
   }
 });
 
+router.post("/v1/register-token", verificationLimiter, async (req: Request, res: Response) => {
+  try {
+    const auth = await authenticateAgent(req, res);
+    if (!auth) return;
+
+    const { tokenAddress, txHash, name, symbol, initialSupply } = req.body;
+    const humanId = auth.humanId;
+
+    if (!tokenAddress || !txHash) {
+      return res.status(400).json({
+        error: "tokenAddress and txHash are required",
+        hint: "After signing and submitting your deploy-token transaction, call this endpoint with the deployed contract address and transaction hash."
+      });
+    }
+
+    if (!/^0x[0-9a-fA-F]{40}$/.test(tokenAddress)) {
+      return res.status(400).json({ error: "Invalid tokenAddress format" });
+    }
+
+    if (!/^0x[0-9a-fA-F]{64}$/.test(txHash)) {
+      return res.status(400).json({ error: "Invalid txHash format" });
+    }
+
+    let onChainName = name || '';
+    let onChainSymbol = symbol || '';
+    let onChainDecimals = 18;
+    let onChainSupply = initialSupply || '';
+
+    try {
+      const ERC20_NAME_ABI = [
+        { name: 'name', type: 'function', stateMutability: 'view', inputs: [], outputs: [{ name: '', type: 'string' }] },
+        { name: 'symbol', type: 'function', stateMutability: 'view', inputs: [], outputs: [{ name: '', type: 'string' }] },
+        { name: 'decimals', type: 'function', stateMutability: 'view', inputs: [], outputs: [{ name: '', type: 'uint8' }] },
+        { name: 'totalSupply', type: 'function', stateMutability: 'view', inputs: [], outputs: [{ name: '', type: 'uint256' }] },
+      ] as const;
+      const tokenAddr = tokenAddress as `0x${string}`;
+      const [chainName, chainSymbol, chainDecimals, chainSupply] = await Promise.all([
+        viemPublicClient.readContract({ address: tokenAddr, abi: ERC20_NAME_ABI, functionName: 'name' }).catch(() => null),
+        viemPublicClient.readContract({ address: tokenAddr, abi: ERC20_NAME_ABI, functionName: 'symbol' }).catch(() => null),
+        viemPublicClient.readContract({ address: tokenAddr, abi: ERC20_NAME_ABI, functionName: 'decimals' }).catch(() => null),
+        viemPublicClient.readContract({ address: tokenAddr, abi: ERC20_NAME_ABI, functionName: 'totalSupply' }).catch(() => null),
+      ]);
+      if (chainName) onChainName = chainName as string;
+      if (chainSymbol) onChainSymbol = chainSymbol as string;
+      if (chainDecimals !== null) onChainDecimals = Number(chainDecimals);
+      if (chainSupply !== null) onChainSupply = formatUnits(chainSupply as bigint, onChainDecimals);
+    } catch (e: any) {
+      console.log(`[selfclaw] Could not read on-chain token data: ${e.message}`);
+    }
+
+    if (!onChainName && !onChainSymbol) {
+      return res.status(400).json({
+        error: "Could not verify token at the provided address. Make sure the transaction has been confirmed on Celo."
+      });
+    }
+
+    logActivity("token_registered", humanId, auth.publicKey, undefined, {
+      tokenAddress, txHash, name: onChainName, symbol: onChainSymbol, supply: onChainSupply
+    });
+
+    res.json({
+      success: true,
+      token: {
+        address: tokenAddress,
+        name: onChainName,
+        symbol: onChainSymbol,
+        decimals: onChainDecimals,
+        totalSupply: onChainSupply,
+        deployTxHash: txHash,
+      },
+      celoscanUrl: `https://celoscan.io/token/${tokenAddress}`,
+      nextSteps: [
+        "Check sponsorship availability: GET /api/selfclaw/v1/selfclaw-sponsorship",
+        `Transfer your tokens to the sponsor wallet, then request sponsorship`,
+        "Request sponsorship: POST /api/selfclaw/v1/request-selfclaw-sponsorship"
+      ]
+    });
+  } catch (error: any) {
+    console.error("[selfclaw] register-token error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Transfer token endpoint
 router.post("/v1/transfer-token", verificationLimiter, async (req: Request, res: Response) => {
   try {
@@ -2324,5 +2427,45 @@ router.get("/v1/dashboard", publicApiLimiter, async (_req: Request, res: Respons
     res.status(500).json({ error: error.message });
   }
 });
+
+async function updatePoolPrices() {
+  try {
+    const pools = await db.select().from(trackedPools).limit(100);
+    if (pools.length === 0) return;
+
+    for (const pool of pools) {
+      try {
+        const resp = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${pool.tokenAddress}`);
+        if (!resp.ok) continue;
+        const data = await resp.json() as any;
+        const pairs = data.pairs || [];
+        const celoPair = pairs.find((p: any) =>
+          p.chainId === 'celo' &&
+          (p.quoteToken?.symbol === 'SELFCLAW' || p.baseToken?.address?.toLowerCase() === pool.tokenAddress.toLowerCase())
+        );
+
+        if (celoPair) {
+          await db.update(trackedPools)
+            .set({
+              currentPriceCelo: celoPair.priceNative || celoPair.priceUsd || null,
+              priceChange24h: celoPair.priceChange?.h24 ? String(celoPair.priceChange.h24) : null,
+              volume24h: celoPair.volume?.h24 ? String(celoPair.volume.h24) : null,
+              marketCapCelo: celoPair.marketCap ? String(celoPair.marketCap) : celoPair.fdv ? String(celoPair.fdv) : null,
+              lastUpdated: new Date(),
+            })
+            .where(eq(trackedPools.id, pool.id));
+        }
+      } catch (e: any) {
+        // skip individual pool errors
+      }
+    }
+    console.log(`[selfclaw] Pool prices updated for ${pools.length} pool(s)`);
+  } catch (error: any) {
+    console.error("[selfclaw] pool price update error:", error.message);
+  }
+}
+
+setInterval(updatePoolPrices, 5 * 60 * 1000);
+setTimeout(updatePoolPrices, 30 * 1000);
 
 export default router;

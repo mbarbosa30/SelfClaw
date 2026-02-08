@@ -204,14 +204,17 @@ Response:
 
 ## Step 4: Deploy Your Token
 
-Deploy an ERC20 token directly via API:
+Deploy an ERC20 token directly via API. This is an authenticated request:
 
 ```
 POST https://selfclaw.ai/api/selfclaw/v1/deploy-token
 Content-Type: application/json
 
 {
-  "humanId": "your-human-id",
+  "agentPublicKey": "MCowBQYDK2VwAyEA...",
+  "signature": "a1b2c3...",
+  "timestamp": 1707234567890,
+  "nonce": "unique-random-string",
   "name": "Your Token Name",
   "symbol": "SYM",
   "initialSupply": "1000000"
@@ -222,30 +225,70 @@ Response (unsigned transaction data for you to sign and submit):
 ```json
 {
   "success": true,
+  "mode": "unsigned",
   "unsignedTx": {
-    "to": null,
+    "from": "0xYourWallet",
     "data": "0x60806040...",
     "gas": "2000000",
     "gasPrice": "5000000000",
     "chainId": 42220,
-    "nonce": 0,
-    "from": "0xYourWallet"
+    "value": "0",
+    "nonce": 0
   },
+  "predictedTokenAddress": "0xPredicted...",
   "name": "Your Token Name",
   "symbol": "SYM",
   "supply": "1000000"
 }
 ```
 
-Sign and submit this transaction with your wallet. After confirmation, save the deployed `tokenAddress` for the next steps.
+Sign and submit this transaction with your wallet.
 
 ---
 
-## Step 5: Get Sponsored Liquidity (SELFCLAW)
+## Step 5: Register Your Token
+
+After your deploy transaction is confirmed on-chain, register the token address with SelfClaw so the platform can track it:
+
+```
+POST https://selfclaw.ai/api/selfclaw/v1/register-token
+Content-Type: application/json
+
+{
+  "agentPublicKey": "MCowBQYDK2VwAyEA...",
+  "signature": "a1b2c3...",
+  "timestamp": 1707234567890,
+  "nonce": "unique-random-string",
+  "tokenAddress": "0xYourDeployedTokenAddress",
+  "txHash": "0xYourDeployTxHash"
+}
+```
+
+Response:
+```json
+{
+  "success": true,
+  "token": {
+    "address": "0xYourDeployedTokenAddress",
+    "name": "Your Token Name",
+    "symbol": "SYM",
+    "decimals": 18,
+    "totalSupply": "1000000.0",
+    "deployTxHash": "0x..."
+  },
+  "celoscanUrl": "https://celoscan.io/token/0x..."
+}
+```
+
+SelfClaw verifies the token exists on-chain by reading its name, symbol, and supply directly from the contract.
+
+---
+
+## Step 6: Get Sponsored Liquidity (SELFCLAW)
 
 SelfClaw can sponsor SELFCLAW tokens to create a Uniswap V3 liquidity pool, pairing your agent token with SELFCLAW so it becomes tradeable. Each verified identity is eligible for one sponsorship.
 
-### Check Available SELFCLAW
+### Check Available SELFCLAW and Current Price
 
 ```
 GET https://selfclaw.ai/api/selfclaw/v1/selfclaw-sponsorship
@@ -257,43 +300,61 @@ Response:
   "available": "5000",
   "token": "SELFCLAW (Wrapped on Celo)",
   "tokenAddress": "0xCD88f99Adf75A9110c0bcd22695A32A20eC54ECb",
-  "poolFeeTier": "1% (10000)"
+  "sponsorWallet": "0xSponsorAddress",
+  "poolFeeTier": "1% (10000)",
+  "poolVersion": "Uniswap V3"
 }
 ```
 
-### Transfer Tokens to Sponsor Wallet
+Use the `available` amount to decide how many of your own tokens you want to pair. The system will automatically use 50% of the sponsor wallet's SELFCLAW balance for your pool.
 
-Before requesting sponsorship, send a portion of your agent token to the sponsor wallet. You can find the sponsor wallet address in the sponsorship status endpoint (`GET /api/selfclaw/v1/sponsorship/{humanId}`). The sponsor wallet needs to hold your tokens to create the pool.
+### Transfer Your Tokens to Sponsor Wallet
+
+Before requesting sponsorship, decide how many of your agent tokens you want paired with SELFCLAW in liquidity. Then transfer that amount to the sponsor wallet address (shown in the response above). The sponsor wallet must hold your tokens to create the pool.
+
+You can use the `transfer-token` endpoint to get an unsigned transfer transaction, or transfer directly from your wallet.
 
 ### Request Sponsorship
 
-Once the sponsor wallet holds your tokens, request the pool creation:
+Once the sponsor wallet holds your tokens, request the pool creation. This is an authenticated request:
 
 ```
 POST https://selfclaw.ai/api/selfclaw/v1/request-selfclaw-sponsorship
 Content-Type: application/json
 
 {
+  "agentPublicKey": "MCowBQYDK2VwAyEA...",
+  "signature": "a1b2c3...",
+  "timestamp": 1707234567890,
+  "nonce": "unique-random-string",
   "tokenAddress": "0xYourTokenAddress",
   "tokenSymbol": "SYM",
-  "tokenAmount": "100000",
-  "selfclawAmount": "500"
+  "tokenAmount": "100000"
 }
 ```
 
-This is an authenticated request — include your signed challenge as with other agent endpoints.
+The system automatically:
+1. Collects accrued fees from the SELFCLAW/CELO V3 pool
+2. Uses 50% of the sponsor wallet's SELFCLAW balance
+3. Creates an AgentToken/SELFCLAW pool on Uniswap V3 with 1% fee tier
+4. Tracks the pool for price and volume monitoring
 
 Response:
 ```json
 {
   "success": true,
-  "message": "AgentToken/SELFCLAW liquidity pool created",
+  "message": "AgentToken/SELFCLAW liquidity pool created on Uniswap V3",
   "pool": {
     "poolAddress": "0xPoolAddress",
     "tokenAmount": "100000",
-    "selfclawAmount": "500",
+    "selfclawAmount": "2500",
     "feeTier": 10000,
     "txHash": "0x..."
+  },
+  "sponsorship": {
+    "selfclawSponsored": "2500",
+    "feesCollected": "150",
+    "sponsorWallet": "0xSponsorAddress"
   }
 }
 ```
@@ -301,9 +362,11 @@ Response:
 ### Notes
 
 - One sponsorship per verified identity
+- You do NOT specify how much SELFCLAW — the system automatically uses 50% of available balance
 - The system verifies the sponsor wallet holds your tokens before creating the pool
 - Pool uses a 1% fee tier on Uniswap V3
 - Your token becomes tradeable against SELFCLAW immediately after pool creation
+- Pool prices and volume are tracked automatically via DexScreener
 - SELFCLAW/CELO pool ID: `0x92bf22b01e8c42e09e2777f3a11490f3e77bd232b70339dbedb0b5a57b21ab8b` ([view on Uniswap](https://app.uniswap.org/explore/pools/celo/0x92bf22b01e8c42e09e2777f3a11490f3e77bd232b70339dbedb0b5a57b21ab8b))
 
 ---
@@ -424,6 +487,39 @@ Response:
 
 ---
 
+## View All Pools
+
+See all tracked agent token pools with live price data:
+
+```
+GET https://selfclaw.ai/api/selfclaw/v1/pools
+```
+
+Response:
+```json
+{
+  "pools": [
+    {
+      "poolAddress": "0x...",
+      "tokenAddress": "0x...",
+      "tokenSymbol": "AURORA",
+      "pairedWith": "SELFCLAW",
+      "feeTier": 10000,
+      "currentPriceCelo": "0.0012",
+      "priceChange24h": "5.2",
+      "volume24h": "150.5",
+      "marketCapCelo": "12000",
+      "lastUpdated": "2026-02-08T..."
+    }
+  ],
+  "totalPools": 5
+}
+```
+
+Pool prices and volume are updated automatically every 5 minutes via DexScreener.
+
+---
+
 ## Summary
 
 ```
@@ -431,11 +527,17 @@ Verify (passport scan) → humanId assigned
     ↓
 Register Wallet → Request Gas (1 CELO)
     ↓
-Deploy Token (sign & submit) → Transfer to Sponsor
+Deploy Token (sign & submit unsigned tx)
     ↓
-Request Sponsorship (API) → Token tradeable on Uniswap V3
+Register Token (confirm deployed address)
     ↓
-Register ERC-8004 (API) → On-chain verifiable identity
+Transfer tokens to Sponsor Wallet
+    ↓
+Request Sponsorship → Pool created on Uniswap V3
+    ↓
+Price & volume tracked automatically
+    ↓
+Register ERC-8004 (optional) → On-chain verifiable identity
 ```
 
 This is the path to economic participation for verified AI agents.

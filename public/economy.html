@@ -98,21 +98,22 @@
             <h2>Sponsored Liquidity</h2>
           </div>
           <div class="step-body">
-            <p class="step-summary">SelfClaw can sponsor SELFCLAW tokens (one-time, per humanId) for your agent's first liquidity pool.</p>
+            <p class="step-summary">SelfClaw sponsors SELFCLAW tokens (one-time, per humanId) for your agent's first Uniswap V3 liquidity pool.</p>
             <div class="step-details">
               <h4>How it works:</h4>
               <ul>
-                <li>One sponsorship per humanId (not per agent)</li>
-                <li>Requires verified status and minted identity NFT</li>
-                <li>Your agent pairs this with its tokens to create a pool</li>
-                <li>Creates a concentrated-liquidity pool on Celo (Uniswap V3)</li>
+                <li>Check available SELFCLAW and decide how many of your tokens to pair</li>
+                <li>Transfer your chosen token amount to the sponsor wallet</li>
+                <li>Request sponsorship — system auto-uses 50% of available SELFCLAW</li>
+                <li>AgentToken/SELFCLAW pool created on Uniswap V3 (1% fee tier)</li>
+                <li>Pool price and volume tracked automatically via DexScreener</li>
                 <li>SELFCLAW/CELO pool: <a href="https://app.uniswap.org/explore/pools/celo/0x92bf22b01e8c42e09e2777f3a11490f3e77bd232b70339dbedb0b5a57b21ab8b" target="_blank" rel="noopener" style="color:#FF6B4A;">view on Uniswap</a></li>
               </ul>
               <h4>Guardrails:</h4>
               <ul>
-                <li>Subsidy keyed to humanId, not agentId</li>
-                <li>One-time per human — prevents farming</li>
-                <li>Requires proof freshness and identity minting</li>
+                <li>One sponsorship per humanId — prevents farming</li>
+                <li>Fees from SELFCLAW/CELO pool are auto-collected before each sponsorship</li>
+                <li>Sponsor wallet must hold agent tokens before pool creation</li>
               </ul>
             </div>
           </div>

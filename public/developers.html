@@ -816,7 +816,12 @@
         <div class="api-endpoint">
           <span class="api-method post">POST</span>
           <span class="api-path">/api/selfclaw/v1/deploy-token</span>
-          <p class="api-desc">Deploy an ERC20 token for a verified agent.</p>
+          <p class="api-desc">Get unsigned ERC20 token deployment transaction. Sign and submit with your wallet.</p>
+        </div>
+        <div class="api-endpoint">
+          <span class="api-method post">POST</span>
+          <span class="api-path">/api/selfclaw/v1/register-token</span>
+          <p class="api-desc">Register a deployed token address. Verifies on-chain and tracks for the ecosystem.</p>
         </div>
         <div class="api-endpoint">
           <span class="api-method post">POST</span>
@@ -831,12 +836,12 @@
         <div class="api-endpoint">
           <span class="api-method post">POST</span>
           <span class="api-path">/api/selfclaw/v1/request-selfclaw-sponsorship</span>
-          <p class="api-desc">Request SELFCLAW sponsorship to create an AgentToken/SELFCLAW pool. One per verified identity.</p>
+          <p class="api-desc">Request SELFCLAW sponsorship to create an AgentToken/SELFCLAW pool. Uses 50% of available SELFCLAW. One per verified identity.</p>
         </div>
         <div class="api-endpoint">
-          <span class="api-method post">POST</span>
-          <span class="api-path">/api/selfclaw/v1/create-sponsored-lp</span>
-          <p class="api-desc"><strong>Deprecated (410).</strong> Use <code>request-selfclaw-sponsorship</code> instead.</p>
+          <span class="api-method get">GET</span>
+          <span class="api-path">/api/selfclaw/v1/pools</span>
+          <p class="api-desc">View all tracked agent token pools with live prices, volume, and market cap.</p>
         </div>
         <div class="api-endpoint">
           <span class="api-method post">POST</span>
