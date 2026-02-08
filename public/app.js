@@ -8,7 +8,7 @@ async function loadEcosystemStats() {
     const statsSection = document.querySelector('.ecosystem-stats-section');
     if (!statsSection) return;
     
-    if ((data.verifiedAgents ?? 0) < 10) {
+    if ((data.tokensDeployed ?? 0) < 3) {
       statsSection.style.display = 'none';
       return;
     }

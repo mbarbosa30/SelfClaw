@@ -68,8 +68,6 @@ export const agentWallets = pgTable("agent_wallets", {
   humanId: varchar("human_id").notNull().unique(),
   publicKey: varchar("public_key").notNull(),
   address: varchar("address").notNull().unique(),
-  encryptedPrivateKey: text("encrypted_private_key").notNull(),
-  salt: varchar("salt").notNull(),
   gasReceived: boolean("gas_received").default(false),
   gasTxHash: varchar("gas_tx_hash"),
   createdAt: timestamp("created_at").defaultNow(),

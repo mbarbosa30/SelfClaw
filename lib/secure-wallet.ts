@@ -1,68 +1,18 @@
 import { createPublicClient, createWalletClient, http, formatUnits, parseUnits } from 'viem';
 import { celo } from 'viem/chains';
-import { privateKeyToAccount, generatePrivateKey } from 'viem/accounts';
-import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from 'crypto';
+import { privateKeyToAccount } from 'viem/accounts';
 import { db } from '../server/db.js';
 import { agentWallets, verifiedBots } from '../shared/schema.js';
 import { eq, sql } from 'drizzle-orm';
 
-const ENCRYPTION_ALGORITHM = 'aes-256-gcm';
 const GAS_AMOUNT_CELO = process.env.GAS_SUBSIDY_CELO || '1';
 const rawGasKey = process.env.SELFCLAW_SPONSOR_PRIVATE_KEY || process.env.CELO_PRIVATE_KEY;
 const SELFCLAW_GAS_PRIVATE_KEY = rawGasKey && !rawGasKey.startsWith('0x') ? `0x${rawGasKey}` : rawGasKey;
-
-function getWalletEncryptionSecret(): string {
-  const secret = process.env.WALLET_ENCRYPTION_SECRET || process.env.SESSION_SECRET;
-  if (!secret) {
-    throw new Error('WALLET_ENCRYPTION_SECRET or SESSION_SECRET must be configured for secure wallet operations');
-  }
-  if (secret.length < 32) {
-    throw new Error('WALLET_ENCRYPTION_SECRET must be at least 32 characters');
-  }
-  return secret;
-}
 
 const publicClient = createPublicClient({
   chain: celo,
   transport: http()
 });
-
-function deriveEncryptionKey(humanId: string, salt: string): Buffer {
-  const secret = getWalletEncryptionSecret();
-  const combinedSecret = `${humanId}:${secret}`;
-  return scryptSync(combinedSecret, salt, 32);
-}
-
-function encryptPrivateKey(privateKey: string, humanId: string): { encrypted: string; salt: string } {
-  const salt = randomBytes(32).toString('hex');
-  const key = deriveEncryptionKey(humanId, salt);
-  const iv = randomBytes(16);
-  const cipher = createCipheriv(ENCRYPTION_ALGORITHM, key, iv);
-  
-  let encrypted = cipher.update(privateKey, 'utf8', 'hex');
-  encrypted += cipher.final('hex');
-  const authTag = cipher.getAuthTag().toString('hex');
-  
-  return {
-    encrypted: `${iv.toString('hex')}:${authTag}:${encrypted}`,
-    salt
-  };
-}
-
-function decryptPrivateKey(encryptedData: string, humanId: string, salt: string): string {
-  const [ivHex, authTagHex, encrypted] = encryptedData.split(':');
-  const key = deriveEncryptionKey(humanId, salt);
-  const iv = Buffer.from(ivHex, 'hex');
-  const authTag = Buffer.from(authTagHex, 'hex');
-  
-  const decipher = createDecipheriv(ENCRYPTION_ALGORITHM, key, iv);
-  decipher.setAuthTag(authTag);
-  
-  let decrypted = decipher.update(encrypted, 'hex', 'utf8');
-  decrypted += decipher.final('utf8');
-  
-  return decrypted;
-}
 
 export interface WalletCreationResult {
   success: boolean;
@@ -70,10 +20,9 @@ export interface WalletCreationResult {
   publicKey?: string;
   error?: string;
   alreadyExists?: boolean;
-  isExternalWallet?: boolean;
 }
 
-export async function createAgentWallet(humanId: string, agentPublicKey: string, existingWalletAddress?: string): Promise<WalletCreationResult> {
+export async function createAgentWallet(humanId: string, agentPublicKey: string, walletAddress: string): Promise<WalletCreationResult> {
   try {
     const verified = await db.select()
       .from(verifiedBots)
@@ -83,7 +32,7 @@ export async function createAgentWallet(humanId: string, agentPublicKey: string,
     if (verified.length === 0) {
       return {
         success: false,
-        error: 'Only verified agents can create wallets'
+        error: 'Only verified agents can register wallets'
       };
     }
     
@@ -108,58 +57,32 @@ export async function createAgentWallet(humanId: string, agentPublicKey: string,
       };
     }
 
-    if (existingWalletAddress) {
-      const addressRegex = /^0x[0-9a-fA-F]{40}$/;
-      if (!addressRegex.test(existingWalletAddress)) {
-        return {
-          success: false,
-          error: 'Invalid wallet address format. Must be a valid Ethereum/Celo address (0x + 40 hex characters)'
-        };
-      }
-
-      await db.insert(agentWallets).values({
-        humanId,
-        publicKey: agentPublicKey,
-        address: existingWalletAddress,
-        encryptedPrivateKey: 'external',
-        salt: 'external'
-      });
-
-      console.log(`[secure-wallet] Linked external wallet ${existingWalletAddress} for humanId ${humanId.substring(0, 16)}...`);
-
+    const addressRegex = /^0x[0-9a-fA-F]{40}$/;
+    if (!addressRegex.test(walletAddress)) {
       return {
-        success: true,
-        address: existingWalletAddress,
-        publicKey: agentPublicKey,
-        isExternalWallet: true
+        success: false,
+        error: 'Invalid wallet address format. Must be a valid Ethereum/Celo address (0x + 40 hex characters)'
       };
     }
-    
-    const privateKey = generatePrivateKey();
-    const account = privateKeyToAccount(privateKey);
-    
-    const { encrypted, salt } = encryptPrivateKey(privateKey, humanId);
-    
+
     await db.insert(agentWallets).values({
       humanId,
       publicKey: agentPublicKey,
-      address: account.address,
-      encryptedPrivateKey: encrypted,
-      salt
+      address: walletAddress,
     });
-    
-    console.log(`[secure-wallet] Created wallet ${account.address} for humanId ${humanId.substring(0, 16)}...`);
-    
+
+    console.log(`[secure-wallet] Registered wallet ${walletAddress} for humanId ${humanId.substring(0, 16)}...`);
+
     return {
       success: true,
-      address: account.address,
-      publicKey: agentPublicKey
+      address: walletAddress,
+      publicKey: agentPublicKey,
     };
   } catch (error: any) {
-    console.error('[secure-wallet] Wallet creation error:', error);
+    console.error('[secure-wallet] Wallet registration error:', error);
     return {
       success: false,
-      error: error.message || 'Failed to create wallet'
+      error: error.message || 'Failed to register wallet'
     };
   }
 }
@@ -168,15 +91,13 @@ export interface WalletSwitchResult {
   success: boolean;
   address?: string;
   previousAddress?: string;
-  isExternalWallet?: boolean;
-  drainTxHash?: string;
   error?: string;
 }
 
 export async function switchWallet(
   humanId: string,
   agentPublicKey: string,
-  newExternalAddress?: string
+  newAddress: string
 ): Promise<WalletSwitchResult> {
   try {
     const verified = await db.select()
@@ -198,127 +119,36 @@ export async function switchWallet(
       .limit(1);
 
     if (existing.length === 0) {
-      return { success: false, error: 'No wallet found. Create a wallet first.' };
+      return { success: false, error: 'No wallet found. Register a wallet first.' };
     }
 
-    const wallet = existing[0];
-
-    const previousAddress = wallet.address;
-    const wasExternal = wallet.encryptedPrivateKey === 'external';
-
-    if (newExternalAddress) {
-      const addressRegex = /^0x[0-9a-fA-F]{40}$/;
-      if (!addressRegex.test(newExternalAddress)) {
-        return { success: false, error: 'Invalid wallet address format' };
-      }
-
-      if (!wasExternal) {
-        let drainTxHash: string | undefined;
-        try {
-          const privateKey = decryptPrivateKey(wallet.encryptedPrivateKey, humanId, wallet.salt);
-          const account = privateKeyToAccount(privateKey as `0x${string}`);
-          const balance = await publicClient.getBalance({ address: account.address });
-
-          if (balance > parseUnits('0.001', 18)) {
-            const gasEstimate = 21000n;
-            const gasPrice = await publicClient.getGasPrice();
-            const gasCost = gasEstimate * gasPrice;
-            const sendAmount = balance - gasCost;
-
-            if (sendAmount > 0n) {
-              const walletClient = createWalletClient({
-                account,
-                chain: celo,
-                transport: http()
-              });
-              drainTxHash = await walletClient.sendTransaction({
-                account,
-                chain: celo,
-                to: newExternalAddress as `0x${string}`,
-                value: sendAmount,
-                gas: gasEstimate,
-              });
-              console.log(`[secure-wallet] Drained ${formatUnits(sendAmount, 18)} CELO from managed wallet to ${newExternalAddress}: ${drainTxHash}`);
-            }
-          }
-        } catch (drainErr: any) {
-          console.error(`[secure-wallet] Failed to drain managed wallet: ${drainErr.message}`);
-        }
-
-        await db.update(agentWallets)
-          .set({
-            address: newExternalAddress,
-            encryptedPrivateKey: 'external',
-            salt: 'external',
-            updatedAt: new Date(),
-          })
-          .where(eq(agentWallets.humanId, humanId));
-
-        console.log(`[secure-wallet] Switched humanId ${humanId.substring(0, 16)}... from managed → external wallet ${newExternalAddress}`);
-        return {
-          success: true,
-          address: newExternalAddress,
-          previousAddress,
-          isExternalWallet: true,
-          drainTxHash,
-        };
-      } else {
-        await db.update(agentWallets)
-          .set({
-            address: newExternalAddress,
-            updatedAt: new Date(),
-          })
-          .where(eq(agentWallets.humanId, humanId));
-
-        console.log(`[secure-wallet] Updated external wallet for humanId ${humanId.substring(0, 16)}... to ${newExternalAddress}`);
-        return {
-          success: true,
-          address: newExternalAddress,
-          previousAddress,
-          isExternalWallet: true,
-        };
-      }
-    } else {
-      if (!wasExternal) {
-        return { success: false, error: 'Wallet is already a SelfClaw-managed wallet' };
-      }
-
-      const privateKey = generatePrivateKey();
-      const account = privateKeyToAccount(privateKey);
-      const { encrypted, salt } = encryptPrivateKey(privateKey, humanId);
-
-      await db.update(agentWallets)
-        .set({
-          address: account.address,
-          encryptedPrivateKey: encrypted,
-          salt,
-          updatedAt: new Date(),
-        })
-        .where(eq(agentWallets.humanId, humanId));
-
-      console.log(`[secure-wallet] Switched humanId ${humanId.substring(0, 16)}... from external → managed wallet ${account.address}`);
-      return {
-        success: true,
-        address: account.address,
-        previousAddress,
-        isExternalWallet: false,
-      };
+    const addressRegex = /^0x[0-9a-fA-F]{40}$/;
+    if (!addressRegex.test(newAddress)) {
+      return { success: false, error: 'Invalid wallet address format' };
     }
+
+    const previousAddress = existing[0].address;
+
+    if (previousAddress === newAddress) {
+      return { success: false, error: 'New address is the same as the current one' };
+    }
+
+    await db.update(agentWallets)
+      .set({
+        address: newAddress,
+        updatedAt: new Date(),
+      })
+      .where(eq(agentWallets.humanId, humanId));
+
+    console.log(`[secure-wallet] Updated wallet for humanId ${humanId.substring(0, 16)}... from ${previousAddress} to ${newAddress}`);
+    return {
+      success: true,
+      address: newAddress,
+      previousAddress,
+    };
   } catch (error: any) {
     console.error('[secure-wallet] Switch wallet error:', error);
     return { success: false, error: error.message || 'Failed to switch wallet' };
-  }
-}
-
-export async function isExternalWallet(humanId: string): Promise<boolean> {
-  try {
-    const wallets = await db.select()
-      .from(agentWallets)
-      .where(eq(agentWallets.humanId, humanId))
-      .limit(1);
-    return wallets.length > 0 && wallets[0].encryptedPrivateKey === 'external';
-  } catch {
-    return false;
   }
 }
 
@@ -356,48 +186,6 @@ export async function getAgentWalletByHumanId(humanId: string): Promise<{
   }
 }
 
-export async function recoverWalletClient(humanId: string): Promise<{
-  walletClient: ReturnType<typeof createWalletClient>;
-  address: string;
-  account: ReturnType<typeof privateKeyToAccount>;
-} | null> {
-  try {
-    const wallets = await db.select()
-      .from(agentWallets)
-      .where(eq(agentWallets.humanId, humanId))
-      .limit(1);
-    
-    if (wallets.length === 0) {
-      return null;
-    }
-    
-    const wallet = wallets[0];
-    
-    if (wallet.encryptedPrivateKey === 'external') {
-      console.log(`[secure-wallet] Cannot recover external wallet ${wallet.address} — agent manages their own keys`);
-      return null;
-    }
-
-    const privateKey = decryptPrivateKey(wallet.encryptedPrivateKey, humanId, wallet.salt);
-    const account = privateKeyToAccount(privateKey as `0x${string}`);
-    
-    const walletClient = createWalletClient({
-      account,
-      chain: celo,
-      transport: http()
-    });
-    
-    return {
-      walletClient,
-      address: wallet.address,
-      account
-    };
-  } catch (error) {
-    console.error('[secure-wallet] Recover wallet error:', error);
-    return null;
-  }
-}
-
 export interface GasSubsidyResult {
   success: boolean;
   txHash?: string;
@@ -416,7 +204,7 @@ export async function sendGasSubsidy(humanId: string): Promise<GasSubsidyResult>
     if (wallets.length === 0) {
       return {
         success: false,
-        error: 'No wallet found for this humanId. Create a wallet first.'
+        error: 'No wallet found for this humanId. Register a wallet first.'
       };
     }
     

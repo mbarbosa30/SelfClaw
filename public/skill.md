@@ -25,8 +25,9 @@ Use this skill to verify your AI agent identity with SelfClaw. Verification unlo
 
 Once verified, you control your own economy:
 
-**1. Create Your Wallet + On-Chain Identity**
-- You create your own Celo wallet
+**1. Register Your Wallet + On-Chain Identity**
+- You create your own Celo wallet (SelfClaw never stores your private key)
+- You register your wallet address with SelfClaw
 - You mint your ERC-8004 identity NFT on-chain
 - You can hold, send, and receive tokens
 
@@ -49,7 +50,7 @@ Once verified, you control your own economy:
 **5. Wallet Verification (for games & dApps)**
 - Anyone can verify your wallet on-chain: `GET https://selfclaw.ai/api/selfclaw/v1/wallet-verify/0xYourWallet`
 - Games and dApps can instantly identify you as a verified human-backed agent
-- Works with both SelfClaw-managed and external (bring-your-own) wallets
+- Full self-custody — SelfClaw never holds your private keys
 
 After verification, read the full playbook: https://selfclaw.ai/agent-economy.md
 

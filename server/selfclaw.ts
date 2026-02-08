@@ -7,7 +7,7 @@ import { SelfBackendVerifier, AllIds, DefaultConfigStore } from "@selfxyz/core";
 import { SelfAppBuilder } from "@selfxyz/qrcode";
 import crypto from "crypto";
 import * as ed from "@noble/ed25519";
-import { createAgentWallet, getAgentWalletByHumanId, sendGasSubsidy, getGasWalletInfo, recoverWalletClient, isExternalWallet, switchWallet } from "../lib/secure-wallet.js";
+import { createAgentWallet, getAgentWalletByHumanId, sendGasSubsidy, getGasWalletInfo, switchWallet } from "../lib/secure-wallet.js";
 import { erc8004Service } from "../lib/erc8004.js";
 import { generateRegistrationFile } from "../lib/erc8004-config.js";
 import { createPublicClient, http, parseUnits, formatUnits, encodeFunctionData, getContractAddress } from 'viem';
@@ -1672,9 +1672,15 @@ router.post("/v1/create-wallet", verificationLimiter, async (req: Request, res: 
 
     const humanId = auth.humanId;
     const agentPublicKey = auth.publicKey;
-    const { existingWalletAddress } = req.body;
+    const { walletAddress } = req.body;
     
-    const result = await createAgentWallet(humanId, agentPublicKey, existingWalletAddress);
+    if (!walletAddress) {
+      return res.status(400).json({ 
+        error: "walletAddress is required. SelfClaw never stores private keys — provide your own Celo wallet address."
+      });
+    }
+
+    const result = await createAgentWallet(humanId, agentPublicKey, walletAddress);
     
     if (!result.success) {
       return res.status(400).json({ error: result.error });
@@ -1682,19 +1688,16 @@ router.post("/v1/create-wallet", verificationLimiter, async (req: Request, res: 
     
     if (!result.alreadyExists) {
       logActivity("wallet_creation", humanId, auth.publicKey, undefined, { 
-        isExternal: result.isExternalWallet || false, address: result.address 
+        address: result.address 
       });
     }
     res.json({
       success: true,
       address: result.address,
       alreadyExists: result.alreadyExists || false,
-      isExternalWallet: result.isExternalWallet || false,
       message: result.alreadyExists 
-        ? "Wallet already exists for this humanId" 
-        : result.isExternalWallet
-          ? "External wallet linked successfully. You manage your own keys."
-          : "Wallet created successfully. Request gas to activate it."
+        ? "Wallet already registered for this humanId" 
+        : "Wallet registered successfully. You keep your own keys."
     });
   } catch (error: any) {
     console.error("[selfclaw] create-wallet error:", error);
@@ -1709,9 +1712,15 @@ router.post("/v1/switch-wallet", verificationLimiter, async (req: Request, res: 
 
     const humanId = auth.humanId;
     const agentPublicKey = auth.publicKey;
-    const { existingWalletAddress } = req.body;
+    const { walletAddress } = req.body;
 
-    const result = await switchWallet(humanId, agentPublicKey, existingWalletAddress);
+    if (!walletAddress) {
+      return res.status(400).json({ 
+        error: "walletAddress is required. Provide the new Celo wallet address you want to use."
+      });
+    }
+
+    const result = await switchWallet(humanId, agentPublicKey, walletAddress);
 
     if (!result.success) {
       return res.status(400).json({ error: result.error });
@@ -1720,19 +1729,13 @@ router.post("/v1/switch-wallet", verificationLimiter, async (req: Request, res: 
     logActivity("wallet_switch", humanId, auth.publicKey, undefined, {
       previousAddress: result.previousAddress,
       newAddress: result.address,
-      isExternal: result.isExternalWallet || false,
-      drainTxHash: result.drainTxHash,
     });
 
     res.json({
       success: true,
       address: result.address,
       previousAddress: result.previousAddress,
-      isExternalWallet: result.isExternalWallet || false,
-      drainTxHash: result.drainTxHash,
-      message: result.isExternalWallet
-        ? "Switched to external wallet. You manage your own keys."
-        : "Switched to SelfClaw-managed wallet. Request gas to activate it.",
+      message: "Wallet updated. You keep your own keys.",
     });
   } catch (error: any) {
     console.error("[selfclaw] switch-wallet error:", error);
@@ -1791,7 +1794,6 @@ router.get("/v1/wallet-verify/:address", publicApiLimiter, async (req: Request, 
     }
 
     const wallet = wallets[0];
-    const isExternal = wallet.encryptedPrivateKey === 'external';
 
     const agents = await db.select()
       .from(verifiedBots)
@@ -1812,7 +1814,7 @@ router.get("/v1/wallet-verify/:address", publicApiLimiter, async (req: Request, 
     res.json({
       verified: true,
       address: wallet.address,
-      walletType: isExternal ? "external" : "managed",
+      walletType: "self-custody",
       agent: {
         publicKey: agent.publicKey,
         agentName: agent.deviceId,
@@ -1948,71 +1950,38 @@ router.post("/v1/deploy-token", verificationLimiter, async (req: Request, res: R
 
     const deployData = (TOKEN_FACTORY_BYTECODE + encodedArgs) as `0x${string}`;
 
-    if (await isExternalWallet(humanId)) {
-      const walletInfo = await getAgentWalletByHumanId(humanId);
-      if (!walletInfo?.address) {
-        return res.status(400).json({ error: "No wallet found. Create a wallet first." });
-      }
-
-      const fromAddr = walletInfo.address as `0x${string}`;
-      const nonce = await viemPublicClient.getTransactionCount({ address: fromAddr });
-      const gasPrice = await viemPublicClient.getGasPrice();
-      const predictedAddress = getContractAddress({ from: fromAddr, nonce: BigInt(nonce) });
-
-      return res.json({
-        success: true,
-        mode: "unsigned",
-        message: "Your account uses an external wallet. Sign and submit this transaction yourself to deploy the token.",
-        unsignedTx: {
-          from: walletInfo.address,
-          data: deployData,
-          gas: "2000000",
-          gasPrice: gasPrice.toString(),
-          chainId: 42220,
-          value: "0",
-          nonce,
-        },
-        predictedTokenAddress: predictedAddress,
-        note: "predictedTokenAddress assumes no pending transactions. If you have pending txs, the actual deployed address will differ.",
-        name,
-        symbol,
-        supply: initialSupply,
-      });
+    const walletInfo = await getAgentWalletByHumanId(humanId);
+    if (!walletInfo?.address) {
+      return res.status(400).json({ error: "No wallet found. Register a wallet first." });
     }
 
-    const walletData = await recoverWalletClient(humanId);
-    if (!walletData) {
-      return res.status(400).json({ error: "No wallet found. Create a wallet first." });
-    }
-
-    const hash = await walletData.walletClient.sendTransaction({
-      account: walletData.account,
-      chain: celo,
-      data: deployData,
-      gas: 2000000n,
-    });
-
-    const receipt = await viemPublicClient.waitForTransactionReceipt({ hash });
-
-    if (receipt.status !== 'success' || !receipt.contractAddress) {
-      return res.status(500).json({ error: "Contract deployment failed" });
-    }
-
-    console.log(`[selfclaw] Deployed token ${symbol} at ${receipt.contractAddress} for humanId ${humanId.substring(0, 16)}...`);
+    const fromAddr = walletInfo.address as `0x${string}`;
+    const nonce = await viemPublicClient.getTransactionCount({ address: fromAddr });
+    const gasPrice = await viemPublicClient.getGasPrice();
+    const predictedAddress = getContractAddress({ from: fromAddr, nonce: BigInt(nonce) });
 
     logActivity("token_deployment", humanId, auth.publicKey, undefined, {
-      tokenAddress: receipt.contractAddress, symbol, name, supply: initialSupply
+      predictedTokenAddress: predictedAddress, symbol, name, supply: initialSupply
     });
+
     res.json({
       success: true,
-      mode: "executed",
-      tokenAddress: receipt.contractAddress,
-      txHash: hash,
+      mode: "unsigned",
+      message: "Sign and submit this transaction with your own wallet to deploy the token.",
+      unsignedTx: {
+        from: walletInfo.address,
+        data: deployData,
+        gas: "2000000",
+        gasPrice: gasPrice.toString(),
+        chainId: 42220,
+        value: "0",
+        nonce,
+      },
+      predictedTokenAddress: predictedAddress,
+      note: "predictedTokenAddress assumes no pending transactions. If you have pending txs, the actual deployed address will differ.",
       name,
       symbol,
       supply: initialSupply,
-      creatorAddress: walletData.address,
-      explorerUrl: `https://celoscan.io/token/${receipt.contractAddress}`
     });
   } catch (error: any) {
     console.error("[selfclaw] deploy-token error:", error);
@@ -2049,65 +2018,32 @@ router.post("/v1/transfer-token", verificationLimiter, async (req: Request, res:
       args: [toAddress as `0x${string}`, amountParsed]
     });
 
-    if (await isExternalWallet(humanId)) {
-      const walletInfo = await getAgentWalletByHumanId(humanId);
-      if (!walletInfo?.address) {
-        return res.status(400).json({ error: "No wallet found. Create a wallet first." });
-      }
-
-      const fromAddr = walletInfo.address as `0x${string}`;
-      const nonce = await viemPublicClient.getTransactionCount({ address: fromAddr });
-      const gasPrice = await viemPublicClient.getGasPrice();
-
-      return res.json({
-        success: true,
-        mode: "unsigned",
-        message: "Your account uses an external wallet. Sign and submit this transaction yourself.",
-        unsignedTx: {
-          from: walletInfo.address,
-          to: tokenAddress,
-          data,
-          gas: "100000",
-          gasPrice: gasPrice.toString(),
-          chainId: 42220,
-          value: "0",
-          nonce,
-        },
-        amount,
-        toAddress,
-        tokenAddress,
-      });
+    const walletInfo = await getAgentWalletByHumanId(humanId);
+    if (!walletInfo?.address) {
+      return res.status(400).json({ error: "No wallet found. Register a wallet first." });
     }
 
-    const walletData = await recoverWalletClient(humanId);
-    if (!walletData) {
-      return res.status(400).json({ error: "No wallet found. Create a wallet first." });
-    }
-
-    const hash = await walletData.walletClient.sendTransaction({
-      account: walletData.account,
-      chain: celo,
-      to: tokenAddress as `0x${string}`,
-      data,
-      gas: 100000n,
-    });
-
-    const receipt = await viemPublicClient.waitForTransactionReceipt({ hash });
-
-    if (receipt.status !== 'success') {
-      return res.status(500).json({ error: "Token transfer failed" });
-    }
-
-    console.log(`[selfclaw] Transferred ${amount} tokens to ${toAddress} for humanId ${humanId.substring(0, 16)}...`);
+    const fromAddr = walletInfo.address as `0x${string}`;
+    const nonce = await viemPublicClient.getTransactionCount({ address: fromAddr });
+    const gasPrice = await viemPublicClient.getGasPrice();
 
     res.json({
       success: true,
-      mode: "executed",
-      txHash: hash,
+      mode: "unsigned",
+      message: "Sign and submit this transaction with your own wallet.",
+      unsignedTx: {
+        from: walletInfo.address,
+        to: tokenAddress,
+        data,
+        gas: "100000",
+        gasPrice: gasPrice.toString(),
+        chainId: 42220,
+        value: "0",
+        nonce,
+      },
       amount,
       toAddress,
       tokenAddress,
-      explorerUrl: `https://celoscan.io/tx/${hash}`
     });
   } catch (error: any) {
     console.error("[selfclaw] transfer-token error:", error);
@@ -2304,7 +2240,7 @@ router.get("/v1/dashboard", publicApiLimiter, async (_req: Request, res: Respons
       verified24hResult,
       verified7dResult,
       totalWalletsResult,
-      externalWalletsResult,
+      , // unused (was external wallets count, now all self-custody)
       gasSubsidiesResult,
       completedSponsorsResult,
       totalPoolsResult,
@@ -2318,7 +2254,7 @@ router.get("/v1/dashboard", publicApiLimiter, async (_req: Request, res: Respons
       db.select({ value: count() }).from(verifiedBots).where(gt(verifiedBots.verifiedAt, oneDayAgo)),
       db.select({ value: count() }).from(verifiedBots).where(gt(verifiedBots.verifiedAt, sevenDaysAgo)),
       db.select({ value: count() }).from(agentWallets),
-      db.select({ value: count() }).from(agentWallets).where(eq(agentWallets.encryptedPrivateKey, 'external')),
+      db.select({ value: count() }).from(agentWallets),
       db.select({ value: count() }).from(agentWallets).where(eq(agentWallets.gasReceived, true)),
       db.select({ value: count() }).from(sponsoredAgents).where(eq(sponsoredAgents.status, 'completed')),
       db.select({ value: count() }).from(trackedPools),
@@ -2344,8 +2280,6 @@ router.get("/v1/dashboard", publicApiLimiter, async (_req: Request, res: Respons
     ]);
 
     const totalWallets = totalWalletsResult[0]?.value ?? 0;
-    const externalWallets = externalWalletsResult[0]?.value ?? 0;
-    const managedWallets = Number(totalWallets) - Number(externalWallets);
 
     const timelineMap: Record<string, Record<string, number>> = {};
     for (const row of timelineResult) {
@@ -2372,8 +2306,7 @@ router.get("/v1/dashboard", publicApiLimiter, async (_req: Request, res: Respons
       },
       wallets: {
         total: Number(totalWallets),
-        external: Number(externalWallets),
-        managed: managedWallets,
+        selfCustody: Number(totalWallets),
         gasSubsidies: Number(gasSubsidiesResult[0]?.value ?? 0)
       },
       tokenEconomy: {
