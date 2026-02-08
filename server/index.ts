@@ -4,7 +4,7 @@ import { db } from "./db.js";
 import { verifiedBots } from "../shared/schema.js";
 import { sql } from "drizzle-orm";
 import selfclawRouter from "./selfclaw.js";
-import adminRouter from "./admin.js";
+import adminRouter, { runAutoClaimPendingBridges } from "./admin.js";
 import { erc8004Service } from "../lib/erc8004.js";
 
 const app = express();
@@ -110,6 +110,12 @@ async function main() {
 ╚════════════════════════════════════════════════════════════╝
 `);
     console.log(`Access at: http://0.0.0.0:${PORT}`);
+
+    setTimeout(() => {
+      runAutoClaimPendingBridges().catch(err =>
+        console.error('[auto-bridge] Startup auto-claim error:', err.message)
+      );
+    }, 5000);
   });
 }
 

@@ -366,6 +366,11 @@
     @keyframes spin {
       to { transform: rotate(360deg); }
     }
+    @keyframes bridgePulse {
+      0% { width: 5%; opacity: 0.7; }
+      50% { width: 60%; opacity: 1; }
+      100% { width: 5%; opacity: 0.7; }
+    }
     .refresh-info {
       display: flex;
       justify-content: space-between;
@@ -489,10 +494,11 @@
 
           <div class="action-card">
             <h4>Bridge SELFCLAW</h4>
-            <p style="color:#777;font-size:0.7rem;margin-bottom:0.75rem;line-height:1.4;">Locks SELFCLAW on Base. Once guardians sign (~15 min), claim the tokens below.</p>
+            <p style="color:#777;font-size:0.7rem;margin-bottom:0.75rem;line-height:1.4;">Fully automatic: locks SELFCLAW on Base, waits for guardian signatures, and completes transfer on Celo. No manual steps needed.</p>
             <input type="text" class="input" id="bridge-selfclaw-amount" placeholder="Amount (e.g. 1000)">
-            <button class="action-btn" id="btn-bridge" onclick="doFullBridge(this)">Bridge to Celo</button>
+            <button class="action-btn" id="btn-bridge" onclick="doAutoBridge(this)">Bridge to Celo</button>
             <div class="action-result" id="result-bridge"></div>
+            <div id="bridge-progress" style="display:none;margin-top:0.75rem;"></div>
           </div>
 
           <div class="action-card">
@@ -879,32 +885,104 @@
       });
     }
 
-    function doFullBridge(btn) {
+    function doAutoBridge(btn) {
       var amount = document.getElementById('bridge-selfclaw-amount').value.trim();
       if (!amount) return;
       btn.disabled = true;
+      var progressDiv = document.getElementById('bridge-progress');
+      progressDiv.style.display = 'block';
       setActionResult('result-bridge', 'Locking SELFCLAW on Base...', 'loading');
+      updateBridgeProgress('transfer', 'Submitting transfer on Base...');
 
-      fetch('/api/admin/bridge/transfer', {
+      fetch('/api/admin/bridge/auto-bridge', {
         method: 'POST',
         headers: authHeaders(),
         body: JSON.stringify({ amount: amount })
       })
       .then(function(r) { return r.json(); })
       .then(function(data) {
-        btn.disabled = false;
         if (data.error) {
+          btn.disabled = false;
+          progressDiv.style.display = 'none';
           setActionResult('result-bridge', data.error, 'error');
           return;
         }
-        var txHash = data.sourceTxHash || data.txHash;
-        setActionResult('result-bridge', 'Submitted! Tx: ' + txHash + '\nTokens locked on Base. Check "Pending Bridge Claims" below to track progress and claim when ready.', 'success');
-        loadPendingClaims();
+        setActionResult('result-bridge', 'Transfer confirmed on Base! Tx: ' + data.sourceTxHash, 'success');
+        updateBridgeProgress('polling', 'Waiting for Wormhole guardians to sign (~5-15 min)...');
+        pollBridgeStatus(data.bridgeId, btn, progressDiv);
       })
       .catch(function(e) {
         btn.disabled = false;
+        progressDiv.style.display = 'none';
         setActionResult('result-bridge', 'Request failed: ' + e.message, 'error');
       });
+    }
+
+    function updateBridgeProgress(phase, message) {
+      var progressDiv = document.getElementById('bridge-progress');
+      var phases = [
+        { id: 'transfer', label: 'Lock on Base' },
+        { id: 'polling', label: 'Guardian Signatures' },
+        { id: 'completing', label: 'Complete on Celo' },
+        { id: 'done', label: 'Done' }
+      ];
+      var phaseOrder = { transfer: 0, polling: 1, completing: 2, done: 3 };
+      var currentIdx = phaseOrder[phase] || 0;
+
+      var html = '<div style="background:#111;border:1px solid #333;border-radius:6px;padding:0.75rem;">';
+      html += '<div style="display:flex;gap:0.5rem;margin-bottom:0.5rem;">';
+      phases.forEach(function(p, i) {
+        var color = i < currentIdx ? '#4AFF6B' : (i === currentIdx ? '#f59e0b' : '#555');
+        var icon = i < currentIdx ? '\u2713' : (i === currentIdx ? '\u25CF' : '\u25CB');
+        html += '<span style="font-size:0.65rem;color:' + color + ';">' + icon + ' ' + p.label + '</span>';
+        if (i < phases.length - 1) html += '<span style="color:#333;font-size:0.65rem;">\u2192</span>';
+      });
+      html += '</div>';
+      html += '<div style="font-size:0.7rem;color:#ccc;">' + message + '</div>';
+      if (phase === 'polling') {
+        html += '<div style="margin-top:0.4rem;height:3px;background:#333;border-radius:2px;overflow:hidden;">';
+        html += '<div style="height:100%;background:#f59e0b;width:0%;animation:bridgePulse 2s ease-in-out infinite;"></div>';
+        html += '</div>';
+      }
+      html += '</div>';
+      progressDiv.innerHTML = html;
+    }
+
+    var bridgePollTimer = null;
+    function pollBridgeStatus(bridgeId, btn, progressDiv) {
+      if (bridgePollTimer) clearInterval(bridgePollTimer);
+      var pollCount = 0;
+      bridgePollTimer = setInterval(function() {
+        pollCount++;
+        fetch('/api/admin/bridge/status/' + bridgeId, { headers: authHeaders() })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (data.status === 'claimed') {
+            clearInterval(bridgePollTimer);
+            bridgePollTimer = null;
+            btn.disabled = false;
+            updateBridgeProgress('done', 'Bridge complete! Tokens received on Celo. Tx: ' + (data.destTxHash || ''));
+            setActionResult('result-bridge', 'Bridge complete! SELFCLAW tokens are now on Celo.\nCelo Tx: ' + (data.destTxHash || ''), 'success');
+            loadPendingClaims();
+            loadBridgeStatus();
+            return;
+          }
+          if (data.status === 'vaa_ready') {
+            updateBridgeProgress('completing', 'VAA received! Completing transfer on Celo...');
+          } else if (data.status === 'polling' || data.status === 'submitted') {
+            var elapsed = Math.floor(pollCount * 10 / 60);
+            updateBridgeProgress('polling', 'Waiting for guardians... (~' + elapsed + ' min elapsed)');
+          }
+          if (data.error && data.status !== 'polling' && data.status !== 'submitted') {
+            clearInterval(bridgePollTimer);
+            bridgePollTimer = null;
+            btn.disabled = false;
+            setActionResult('result-bridge', 'Error: ' + data.error, 'error');
+            progressDiv.style.display = 'none';
+          }
+        })
+        .catch(function() {});
+      }, 10000);
     }
 
     function doTrackBridge(btn) {
@@ -939,6 +1017,7 @@
       });
     }
 
+    var pendingClaimsTimer = null;
     function loadPendingClaims() {
       var loading = document.getElementById('pending-claims-loading');
       var content = document.getElementById('pending-claims-content');
@@ -956,32 +1035,50 @@
         loading.style.display = 'none';
         if (!data.pending || data.pending.length === 0) {
           empty.style.display = 'block';
+          if (pendingClaimsTimer) { clearInterval(pendingClaimsTimer); pendingClaimsTimer = null; }
           return;
         }
         content.style.display = 'block';
+        var hasPending = false;
         var html = '<div style="display:flex;flex-direction:column;gap:0.75rem;">';
         data.pending.forEach(function(tx) {
-          var statusColor = tx.status === 'vaa_ready' ? '#4AFF6B' : '#f59e0b';
-          var statusLabel = tx.status === 'vaa_ready' ? 'READY TO CLAIM' : 'WAITING FOR GUARDIANS';
+          var statusColor, statusLabel;
+          if (tx.status === 'vaa_ready') {
+            statusColor = '#4AFF6B'; statusLabel = 'READY TO CLAIM';
+          } else if (tx.status === 'polling') {
+            statusColor = '#f59e0b'; statusLabel = 'AUTO-COMPLETING...';
+            hasPending = true;
+          } else {
+            statusColor = '#f59e0b'; statusLabel = 'WAITING FOR GUARDIANS';
+            hasPending = true;
+          }
           var age = tx.createdAt ? getTimeAgo(new Date(tx.createdAt)) : '';
           html += '<div style="background:#1a1a1a;border:1px solid #333;border-radius:6px;padding:1rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;">';
           html += '<div style="flex:1;min-width:200px;">';
           html += '<div style="font-size:0.85rem;color:#fff;margin-bottom:0.3rem;">' + (tx.type === 'transfer' ? 'Bridge Transfer' : tx.type) + ' — ' + tx.amount + ' SELFCLAW</div>';
           html += '<div style="font-size:0.65rem;color:#777;word-break:break-all;">Tx: ' + tx.sourceTxHash + '</div>';
+          if (tx.error) html += '<div style="font-size:0.6rem;color:#ef4444;margin-top:0.2rem;">' + tx.error + '</div>';
           if (age) html += '<div style="font-size:0.6rem;color:#555;margin-top:0.2rem;">' + age + '</div>';
           html += '</div>';
           html += '<div style="display:flex;align-items:center;gap:0.75rem;">';
           html += '<span style="font-size:0.7rem;color:' + statusColor + ';font-weight:bold;">' + statusLabel + '</span>';
           if (tx.status === 'vaa_ready') {
             html += '<button class="action-btn" style="padding:0.4rem 1rem;font-size:0.75rem;" onclick="claimBridge(\'' + tx.id + '\', this)">Claim Tokens</button>';
-          } else {
-            html += '<button class="action-btn" style="padding:0.4rem 1rem;font-size:0.7rem;background:#333;color:#999;" onclick="loadPendingClaims()">Refresh</button>';
+          } else if (tx.status === 'polling') {
+            html += '<span class="spinner" style="width:14px;height:14px;border-width:2px;"></span>';
           }
           html += '</div>';
           html += '</div>';
         });
         html += '</div>';
         content.innerHTML = html;
+
+        if (hasPending && !pendingClaimsTimer) {
+          pendingClaimsTimer = setInterval(loadPendingClaims, 10000);
+        } else if (!hasPending && pendingClaimsTimer) {
+          clearInterval(pendingClaimsTimer);
+          pendingClaimsTimer = null;
+        }
       })
       .catch(function(e) {
         loading.style.display = 'none';
