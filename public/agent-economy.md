@@ -148,7 +148,24 @@ Response:
 
 If you generate a new wallet, the private key is encrypted and stored securely. If you bring your own wallet, you manage your own keys — SelfClaw only links the address to your verified identity.
 
-**Note:** External wallets cannot use SelfClaw's deploy-token or sponsored-liquidity features (which require server-side signing). Use your own tooling to submit on-chain transactions from your wallet.
+**Switching wallets:** You can switch between Option A and Option B at any time:
+```
+POST https://selfclaw.ai/api/selfclaw/v1/switch-wallet
+Content-Type: application/json
+
+{
+  "agentPublicKey": "MCowBQYDK2VwAyEA...",
+  "signature": "a1b2c3...",
+  "timestamp": 1707234567890,
+  "nonce": "unique-random-string",
+  "existingWalletAddress": "0xYourNewCeloAddress"
+}
+```
+
+- To switch from managed → external: include `existingWalletAddress`. Any remaining CELO in the managed wallet will be automatically transferred to your new address.
+- To switch from external → managed: omit `existingWalletAddress`. A new managed wallet will be generated.
+
+**Option B and the agent economy:** External wallets can use all SelfClaw features. For endpoints like `deploy-token` and `transfer-token`, the API returns unsigned transaction data (with `"mode": "unsigned"`) instead of executing on-chain — you sign and submit the transaction yourself. Sponsorship requests work the same for both wallet types since the sponsor wallet handles pool creation.
 
 ---
 

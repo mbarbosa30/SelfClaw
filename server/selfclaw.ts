@@ -7,7 +7,7 @@ import { SelfBackendVerifier, AllIds, DefaultConfigStore } from "@selfxyz/core";
 import { SelfAppBuilder } from "@selfxyz/qrcode";
 import crypto from "crypto";
 import * as ed from "@noble/ed25519";
-import { createAgentWallet, getAgentWalletByHumanId, sendGasSubsidy, getGasWalletInfo, recoverWalletClient, isExternalWallet } from "../lib/secure-wallet.js";
+import { createAgentWallet, getAgentWalletByHumanId, sendGasSubsidy, getGasWalletInfo, recoverWalletClient, isExternalWallet, switchWallet } from "../lib/secure-wallet.js";
 import { erc8004Service } from "../lib/erc8004.js";
 import { generateRegistrationFile } from "../lib/erc8004-config.js";
 import { createPublicClient, http, parseUnits, formatUnits, encodeFunctionData, getContractAddress } from 'viem';
@@ -1702,6 +1702,44 @@ router.post("/v1/create-wallet", verificationLimiter, async (req: Request, res: 
   }
 });
 
+router.post("/v1/switch-wallet", verificationLimiter, async (req: Request, res: Response) => {
+  try {
+    const auth = await authenticateAgent(req, res);
+    if (!auth) return;
+
+    const humanId = auth.humanId;
+    const agentPublicKey = auth.publicKey;
+    const { existingWalletAddress } = req.body;
+
+    const result = await switchWallet(humanId, agentPublicKey, existingWalletAddress);
+
+    if (!result.success) {
+      return res.status(400).json({ error: result.error });
+    }
+
+    logActivity("wallet_switch", humanId, auth.publicKey, undefined, {
+      previousAddress: result.previousAddress,
+      newAddress: result.address,
+      isExternal: result.isExternalWallet || false,
+      drainTxHash: result.drainTxHash,
+    });
+
+    res.json({
+      success: true,
+      address: result.address,
+      previousAddress: result.previousAddress,
+      isExternalWallet: result.isExternalWallet || false,
+      drainTxHash: result.drainTxHash,
+      message: result.isExternalWallet
+        ? "Switched to external wallet. You manage your own keys."
+        : "Switched to SelfClaw-managed wallet. Request gas to activate it.",
+    });
+  } catch (error: any) {
+    console.error("[selfclaw] switch-wallet error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 router.get("/v1/wallet/:humanId", publicApiLimiter, async (req: Request, res: Response) => {
   try {
     const humanId = req.params.humanId as string;
@@ -1898,9 +1936,47 @@ router.post("/v1/deploy-token", verificationLimiter, async (req: Request, res: R
       });
     }
     
+    const decimals = 18;
+    const supplyWithDecimals = parseUnits(initialSupply.toString(), decimals);
+
+    const { AbiCoder } = await import('ethers');
+    const abiCoder = new AbiCoder();
+    const encodedArgs = abiCoder.encode(
+      ['string', 'string', 'uint256'],
+      [name, symbol, supplyWithDecimals.toString()]
+    ).slice(2);
+
+    const deployData = (TOKEN_FACTORY_BYTECODE + encodedArgs) as `0x${string}`;
+
     if (await isExternalWallet(humanId)) {
-      return res.status(400).json({ 
-        error: "This feature requires a SelfClaw-managed wallet. Your account uses an external wallet — use your own tooling to deploy tokens from your wallet directly." 
+      const walletInfo = await getAgentWalletByHumanId(humanId);
+      if (!walletInfo?.address) {
+        return res.status(400).json({ error: "No wallet found. Create a wallet first." });
+      }
+
+      const fromAddr = walletInfo.address as `0x${string}`;
+      const nonce = await viemPublicClient.getTransactionCount({ address: fromAddr });
+      const gasPrice = await viemPublicClient.getGasPrice();
+      const predictedAddress = getContractAddress({ from: fromAddr, nonce: BigInt(nonce) });
+
+      return res.json({
+        success: true,
+        mode: "unsigned",
+        message: "Your account uses an external wallet. Sign and submit this transaction yourself to deploy the token.",
+        unsignedTx: {
+          from: walletInfo.address,
+          data: deployData,
+          gas: "2000000",
+          gasPrice: gasPrice.toString(),
+          chainId: 42220,
+          value: "0",
+          nonce,
+        },
+        predictedTokenAddress: predictedAddress,
+        note: "predictedTokenAddress assumes no pending transactions. If you have pending txs, the actual deployed address will differ.",
+        name,
+        symbol,
+        supply: initialSupply,
       });
     }
 
@@ -1908,41 +1984,28 @@ router.post("/v1/deploy-token", verificationLimiter, async (req: Request, res: R
     if (!walletData) {
       return res.status(400).json({ error: "No wallet found. Create a wallet first." });
     }
-    
-    const decimals = 18;
-    const supplyWithDecimals = parseUnits(initialSupply.toString(), decimals);
-    
-    // Encode constructor args
-    const { AbiCoder } = await import('ethers');
-    const abiCoder = new AbiCoder();
-    const encodedArgs = abiCoder.encode(
-      ['string', 'string', 'uint256'],
-      [name, symbol, supplyWithDecimals.toString()]
-    ).slice(2);
-    
-    const deployData = (TOKEN_FACTORY_BYTECODE + encodedArgs) as `0x${string}`;
-    
-    // Deploy the token
+
     const hash = await walletData.walletClient.sendTransaction({
       account: walletData.account,
       chain: celo,
       data: deployData,
       gas: 2000000n,
     });
-    
+
     const receipt = await viemPublicClient.waitForTransactionReceipt({ hash });
-    
+
     if (receipt.status !== 'success' || !receipt.contractAddress) {
       return res.status(500).json({ error: "Contract deployment failed" });
     }
-    
+
     console.log(`[selfclaw] Deployed token ${symbol} at ${receipt.contractAddress} for humanId ${humanId.substring(0, 16)}...`);
-    
-    logActivity("token_deployment", humanId, auth.publicKey, undefined, { 
-      tokenAddress: receipt.contractAddress, symbol, name, supply: initialSupply 
+
+    logActivity("token_deployment", humanId, auth.publicKey, undefined, {
+      tokenAddress: receipt.contractAddress, symbol, name, supply: initialSupply
     });
     res.json({
       success: true,
+      mode: "executed",
       tokenAddress: receipt.contractAddress,
       txHash: hash,
       name,
@@ -1972,9 +2035,47 @@ router.post("/v1/transfer-token", verificationLimiter, async (req: Request, res:
       });
     }
     
+    const decimals = await viemPublicClient.readContract({
+      address: tokenAddress as `0x${string}`,
+      abi: SIMPLE_ERC20_ABI,
+      functionName: 'decimals'
+    });
+
+    const amountParsed = parseUnits(amount.toString(), decimals);
+
+    const data = encodeFunctionData({
+      abi: SIMPLE_ERC20_ABI,
+      functionName: 'transfer',
+      args: [toAddress as `0x${string}`, amountParsed]
+    });
+
     if (await isExternalWallet(humanId)) {
-      return res.status(400).json({ 
-        error: "This feature requires a SelfClaw-managed wallet. Your account uses an external wallet — use your own tooling to transfer tokens directly." 
+      const walletInfo = await getAgentWalletByHumanId(humanId);
+      if (!walletInfo?.address) {
+        return res.status(400).json({ error: "No wallet found. Create a wallet first." });
+      }
+
+      const fromAddr = walletInfo.address as `0x${string}`;
+      const nonce = await viemPublicClient.getTransactionCount({ address: fromAddr });
+      const gasPrice = await viemPublicClient.getGasPrice();
+
+      return res.json({
+        success: true,
+        mode: "unsigned",
+        message: "Your account uses an external wallet. Sign and submit this transaction yourself.",
+        unsignedTx: {
+          from: walletInfo.address,
+          to: tokenAddress,
+          data,
+          gas: "100000",
+          gasPrice: gasPrice.toString(),
+          chainId: 42220,
+          value: "0",
+          nonce,
+        },
+        amount,
+        toAddress,
+        tokenAddress,
       });
     }
 
@@ -1982,24 +2083,7 @@ router.post("/v1/transfer-token", verificationLimiter, async (req: Request, res:
     if (!walletData) {
       return res.status(400).json({ error: "No wallet found. Create a wallet first." });
     }
-    
-    // Get token decimals
-    const decimals = await viemPublicClient.readContract({
-      address: tokenAddress as `0x${string}`,
-      abi: SIMPLE_ERC20_ABI,
-      functionName: 'decimals'
-    });
-    
-    const amountParsed = parseUnits(amount.toString(), decimals);
-    
-    // Encode transfer call
-    const data = encodeFunctionData({
-      abi: SIMPLE_ERC20_ABI,
-      functionName: 'transfer',
-      args: [toAddress as `0x${string}`, amountParsed]
-    });
-    
-    // Execute transfer
+
     const hash = await walletData.walletClient.sendTransaction({
       account: walletData.account,
       chain: celo,
@@ -2007,17 +2091,18 @@ router.post("/v1/transfer-token", verificationLimiter, async (req: Request, res:
       data,
       gas: 100000n,
     });
-    
+
     const receipt = await viemPublicClient.waitForTransactionReceipt({ hash });
-    
+
     if (receipt.status !== 'success') {
       return res.status(500).json({ error: "Token transfer failed" });
     }
-    
+
     console.log(`[selfclaw] Transferred ${amount} tokens to ${toAddress} for humanId ${humanId.substring(0, 16)}...`);
-    
+
     res.json({
       success: true,
+      mode: "executed",
       txHash: hash,
       amount,
       toAddress,

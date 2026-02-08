@@ -61,6 +61,7 @@ public/
 - `GET /api/selfclaw/v1/human/{humanId}` — All agents for a human (swarm)
 - `GET /api/selfclaw/v1/wallet-verify/{address}` — Public wallet verification lookup
 - `POST /api/selfclaw/v1/create-wallet` — Create Celo wallet for verified agent
+- `POST /api/selfclaw/v1/switch-wallet` — Switch between managed and external wallet types
 - `POST /api/selfclaw/v1/deploy-token` — Deploy ERC20 token
 - `GET /api/selfclaw/v1/selfclaw-sponsorship` — Check available SELFCLAW for sponsorship
 - `POST /api/selfclaw/v1/request-selfclaw-sponsorship` — Request SELFCLAW sponsorship: auto-collects V3 fees, uses 50% of sponsor SELFCLAW balance, creates AgentToken/SELFCLAW V3 pool (one-time per humanId)
@@ -76,6 +77,7 @@ public/
 - **Express.js**: HTTP server and API routing
 
 ## Recent Changes
+- 2026-02-08: Added wallet switching and Option B economy support — new switch-wallet endpoint for switching between managed/external wallets with auto fund draining; deploy-token and transfer-token now return unsigned transaction data for external wallets instead of blocking; sponsorship works for both wallet types
 - 2026-02-08: Migrated sponsorship to Uniswap V3 — new lib/uniswap-v3.ts with V3 NonfungiblePositionManager integration, auto fee collection from SELFCLAW/CELO V3 pool (0x2728F9cd), sponsorship uses 50% of SELFCLAW balance, creates AgentToken/SELFCLAW V3 pools with 1% fee tier; deprecated create-sponsored-lp endpoint
 - 2026-02-08: Added admin pool info & token prices — live SELFCLAW/CELO pool state from V4 StateView (tick, liquidity, fee, on-chain price), DexScreener price feeds for Base and Celo (USD price, 24h change, volume, liquidity, DEX links)
 - 2026-02-08: Added fully automatic Wormhole bridge flow — auto-bridge endpoint submits Base transfer, polls for VAA every 15s (up to 20min), and auto-completes on Celo; background auto-claimer processes pending bridge transactions on server start; admin UI shows live progress with phase indicators

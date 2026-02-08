@@ -164,6 +164,152 @@ export async function createAgentWallet(humanId: string, agentPublicKey: string,
   }
 }
 
+export interface WalletSwitchResult {
+  success: boolean;
+  address?: string;
+  previousAddress?: string;
+  isExternalWallet?: boolean;
+  drainTxHash?: string;
+  error?: string;
+}
+
+export async function switchWallet(
+  humanId: string,
+  agentPublicKey: string,
+  newExternalAddress?: string
+): Promise<WalletSwitchResult> {
+  try {
+    const verified = await db.select()
+      .from(verifiedBots)
+      .where(eq(verifiedBots.humanId, humanId))
+      .limit(1);
+
+    if (verified.length === 0) {
+      return { success: false, error: 'Only verified agents can switch wallets' };
+    }
+
+    if (verified[0].publicKey !== agentPublicKey) {
+      return { success: false, error: 'Agent public key does not match the verified agent for this humanId' };
+    }
+
+    const existing = await db.select()
+      .from(agentWallets)
+      .where(eq(agentWallets.humanId, humanId))
+      .limit(1);
+
+    if (existing.length === 0) {
+      return { success: false, error: 'No wallet found. Create a wallet first.' };
+    }
+
+    const wallet = existing[0];
+
+    const previousAddress = wallet.address;
+    const wasExternal = wallet.encryptedPrivateKey === 'external';
+
+    if (newExternalAddress) {
+      const addressRegex = /^0x[0-9a-fA-F]{40}$/;
+      if (!addressRegex.test(newExternalAddress)) {
+        return { success: false, error: 'Invalid wallet address format' };
+      }
+
+      if (!wasExternal) {
+        let drainTxHash: string | undefined;
+        try {
+          const privateKey = decryptPrivateKey(wallet.encryptedPrivateKey, humanId, wallet.salt);
+          const account = privateKeyToAccount(privateKey as `0x${string}`);
+          const balance = await publicClient.getBalance({ address: account.address });
+
+          if (balance > parseUnits('0.001', 18)) {
+            const gasEstimate = 21000n;
+            const gasPrice = await publicClient.getGasPrice();
+            const gasCost = gasEstimate * gasPrice;
+            const sendAmount = balance - gasCost;
+
+            if (sendAmount > 0n) {
+              const walletClient = createWalletClient({
+                account,
+                chain: celo,
+                transport: http()
+              });
+              drainTxHash = await walletClient.sendTransaction({
+                account,
+                chain: celo,
+                to: newExternalAddress as `0x${string}`,
+                value: sendAmount,
+                gas: gasEstimate,
+              });
+              console.log(`[secure-wallet] Drained ${formatUnits(sendAmount, 18)} CELO from managed wallet to ${newExternalAddress}: ${drainTxHash}`);
+            }
+          }
+        } catch (drainErr: any) {
+          console.error(`[secure-wallet] Failed to drain managed wallet: ${drainErr.message}`);
+        }
+
+        await db.update(agentWallets)
+          .set({
+            address: newExternalAddress,
+            encryptedPrivateKey: 'external',
+            salt: 'external',
+            updatedAt: new Date(),
+          })
+          .where(eq(agentWallets.humanId, humanId));
+
+        console.log(`[secure-wallet] Switched humanId ${humanId.substring(0, 16)}... from managed → external wallet ${newExternalAddress}`);
+        return {
+          success: true,
+          address: newExternalAddress,
+          previousAddress,
+          isExternalWallet: true,
+          drainTxHash,
+        };
+      } else {
+        await db.update(agentWallets)
+          .set({
+            address: newExternalAddress,
+            updatedAt: new Date(),
+          })
+          .where(eq(agentWallets.humanId, humanId));
+
+        console.log(`[secure-wallet] Updated external wallet for humanId ${humanId.substring(0, 16)}... to ${newExternalAddress}`);
+        return {
+          success: true,
+          address: newExternalAddress,
+          previousAddress,
+          isExternalWallet: true,
+        };
+      }
+    } else {
+      if (!wasExternal) {
+        return { success: false, error: 'Wallet is already a SelfClaw-managed wallet' };
+      }
+
+      const privateKey = generatePrivateKey();
+      const account = privateKeyToAccount(privateKey);
+      const { encrypted, salt } = encryptPrivateKey(privateKey, humanId);
+
+      await db.update(agentWallets)
+        .set({
+          address: account.address,
+          encryptedPrivateKey: encrypted,
+          salt,
+          updatedAt: new Date(),
+        })
+        .where(eq(agentWallets.humanId, humanId));
+
+      console.log(`[secure-wallet] Switched humanId ${humanId.substring(0, 16)}... from external → managed wallet ${account.address}`);
+      return {
+        success: true,
+        address: account.address,
+        previousAddress,
+        isExternalWallet: false,
+      };
+    }
+  } catch (error: any) {
+    console.error('[secure-wallet] Switch wallet error:', error);
+    return { success: false, error: error.message || 'Failed to switch wallet' };
+  }
+}
+
 export async function isExternalWallet(humanId: string): Promise<boolean> {
   try {
     const wallets = await db.select()
