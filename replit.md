@@ -74,6 +74,7 @@ public/
 - **Express.js**: HTTP server and API routing
 
 ## Recent Changes
+- 2026-02-08: Added admin pool info & token prices — live SELFCLAW/CELO pool state from V4 StateView (tick, liquidity, fee, on-chain price), DexScreener price feeds for Base and Celo (USD price, 24h change, volume, liquidity, DEX links)
 - 2026-02-08: Added fully automatic Wormhole bridge flow — auto-bridge endpoint submits Base transfer, polls for VAA every 15s (up to 20min), and auto-completes on Celo; background auto-claimer processes pending bridge transactions on server start; admin UI shows live progress with phase indicators
 - 2026-02-08: Migrated from Uniswap V3 to V4 — updated contract addresses (PoolManager, PositionManager, UniversalRouter, Permit2), ABIs (modifyLiquidities, action-based encoding), stored SELFCLAW/CELO pool ID (0x92bf22b...), renamed lib/uniswap-v3.ts → lib/uniswap-v4.ts, updated all docs
 - 2026-02-08: Added SELFCLAW sponsorship endpoints — agents can check available SELFCLAW and request one-time sponsorship for AgentToken/SELFCLAW pool creation (1% fee tier), with eligibility checks (one per humanId), token balance verification, and slippage protection on swaps
