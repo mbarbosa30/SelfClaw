@@ -596,15 +596,21 @@
     }
 
     function loadStats() {
-      fetch('/api/selfclaw/v1/stats')
-        .then(function(r) { return r.json(); })
-        .then(function(data) {
-          document.getElementById('stat-verified').textContent = data.verifiedAgents != null ? data.verifiedAgents : (data.verified_agents != null ? data.verified_agents : '\u2014');
-          document.getElementById('stat-wallets').textContent = data.walletsCreated != null ? data.walletsCreated : (data.wallets_created != null ? data.wallets_created : '\u2014');
-          document.getElementById('stat-gas').textContent = data.gasSent != null ? data.gasSent : (data.gas_sent != null ? data.gas_sent : '\u2014');
-          document.getElementById('stat-tokens').textContent = data.tokensDeployed != null ? data.tokensDeployed : (data.tokens_deployed != null ? data.tokens_deployed : '\u2014');
+      fetch('/api/admin/registry-stats', { headers: authHeaders() })
+        .then(function(r) {
+          if (handleAuthError(r)) throw new Error('auth');
+          if (!r.ok) throw new Error('Server error (' + r.status + ')');
+          return r.json();
         })
-        .catch(function() {});
+        .then(function(data) {
+          document.getElementById('stat-verified').textContent = data.verifiedAgents != null ? data.verifiedAgents : 0;
+          document.getElementById('stat-wallets').textContent = data.walletsCreated != null ? data.walletsCreated : 0;
+          document.getElementById('stat-gas').textContent = data.gasSent != null ? data.gasSent : 0;
+          document.getElementById('stat-tokens').textContent = data.tokensDeployed != null ? data.tokensDeployed : 0;
+        })
+        .catch(function(e) {
+          if (e.message === 'auth') return;
+        });
     }
 
     function loadWalletBalances() {
