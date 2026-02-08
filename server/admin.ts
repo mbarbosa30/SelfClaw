@@ -493,6 +493,35 @@ router.post("/uniswap/collect-fees", async (req: Request, res: Response) => {
   }
 });
 
+router.post("/v3/collect-all-fees", async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    const { collectAllV3Fees, getOwnedV3PositionIds, getV3PositionInfo } = await import("../lib/uniswap-v3.js");
+    const rawSponsorKey = process.env.SELFCLAW_SPONSOR_PRIVATE_KEY || process.env.CELO_PRIVATE_KEY;
+    const sponsorKey = rawSponsorKey && !rawSponsorKey.startsWith('0x') ? `0x${rawSponsorKey}` : rawSponsorKey;
+    const result = await collectAllV3Fees(sponsorKey);
+    res.json(result);
+  } catch (error: any) {
+    console.error("[admin] v3/collect-all-fees error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get("/v3/positions", async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    const { getOwnedV3PositionIds, getV3PositionInfo } = await import("../lib/uniswap-v3.js");
+    const rawSponsorKey = process.env.SELFCLAW_SPONSOR_PRIVATE_KEY || process.env.CELO_PRIVATE_KEY;
+    const sponsorKey = rawSponsorKey && !rawSponsorKey.startsWith('0x') ? `0x${rawSponsorKey}` : rawSponsorKey;
+    const positionIds = await getOwnedV3PositionIds(sponsorKey);
+    const positions = await Promise.all(positionIds.map((id: bigint) => getV3PositionInfo(id)));
+    res.json({ count: positions.length, positions });
+  } catch (error: any) {
+    console.error("[admin] v3/positions error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 router.post("/uniswap/swap-celo-to-selfclaw", async (req: Request, res: Response) => {
   if (!requireAdmin(req, res)) return;
   try {

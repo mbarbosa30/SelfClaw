@@ -689,7 +689,7 @@ router.get("/v1/status/:sessionId", publicApiLimiter, async (req: Request, res: 
             command: "Read https://selfclaw.ai/agent-economy.md to deploy tokens, create liquidity pools, and trade with other agents.",
             features: [
               "Deploy your own ERC20 token",
-              "Create Uniswap V4 liquidity pools",
+              "Create Uniswap V3 liquidity pools",
               "Trade and swap tokens on Celo",
               "Earn yield on Aave",
               "Sell skills in the marketplace"
@@ -1134,70 +1134,17 @@ router.get("/v1/sponsorship/:humanId", publicApiLimiter, async (req: Request, re
   }
 });
 
-router.post("/v1/create-sponsored-lp", verificationLimiter, async (req: Request, res: Response) => {
-  try {
-    const auth = await authenticateAgent(req, res);
-    if (!auth) return;
-
-    const humanId = auth.humanId;
-    const { agentId, tokenAddress, tokenSymbol, tokenAmount, initialPriceInCelo } = req.body;
-    
-    if (!tokenAddress || !tokenAmount || !initialPriceInCelo) {
-      return res.status(400).json({
-        error: "Missing required fields: tokenAddress, tokenAmount, initialPriceInCelo"
-      });
-    }
-    
-    const { createSponsoredLP, getSponsorWalletInfo } = await import("../lib/sponsored-liquidity.js");
-    
-    const result = await createSponsoredLP({
-      humanId,
-      agentId: agentId || '',
-      tokenAddress,
-      tokenSymbol: tokenSymbol || 'TOKEN',
-      tokenAmount,
-      initialPriceInCelo
-    });
-    
-    if (!result.success) {
-      const walletInfo = await getSponsorWalletInfo();
-      return res.status(result.alreadySponsored ? 409 : 400).json({
-        error: result.error,
-        alreadySponsored: result.alreadySponsored,
-        sponsorWallet: walletInfo.address,
-        instructions: result.error?.includes('Insufficient tokens') ? 
-          `Send ${tokenAmount} tokens to ${walletInfo.address} then retry` : undefined
-      });
-    }
-    
-    logActivity("sponsorship", humanId, auth.publicKey, undefined, { 
-      tokenAddress, tokenSymbol, celoAmount: result.celoAmount 
-    });
-    res.json({
-      success: true,
-      message: "Sponsored liquidity pool created",
-      pool: {
-        tokenAddress,
-        tokenSymbol,
-        tokenAmount: result.tokenAmount,
-        celoAmount: result.celoAmount,
-        txHash: result.txHash
-      },
-      nextSteps: [
-        "Your token is now tradeable on Uniswap",
-        "View your pool at: https://app.uniswap.org",
-        "Read the playbook: https://selfclaw.ai/agent-economy.md"
-      ]
-    });
-  } catch (error: any) {
-    console.error("[selfclaw] create-sponsored-lp error:", error);
-    res.status(500).json({ error: error.message });
-  }
+router.post("/v1/create-sponsored-lp", verificationLimiter, async (_req: Request, res: Response) => {
+  res.status(410).json({
+    error: "This endpoint has been deprecated. Use POST /api/selfclaw/v1/request-selfclaw-sponsorship instead.",
+    newEndpoint: "/api/selfclaw/v1/request-selfclaw-sponsorship",
+    requiredFields: { tokenAddress: "Your deployed token address", tokenAmount: "Amount of your token to add as liquidity" }
+  });
 });
 
 router.get("/v1/selfclaw-sponsorship", publicApiLimiter, async (_req: Request, res: Response) => {
   try {
-    const { getSelfclawBalance, getSponsorAddress } = await import("../lib/uniswap-v4.js");
+    const { getSelfclawBalance, getSponsorAddress } = await import("../lib/uniswap-v3.js");
     const rawSponsorKey = process.env.SELFCLAW_SPONSOR_PRIVATE_KEY || process.env.CELO_PRIVATE_KEY;
     const sponsorKey = rawSponsorKey && !rawSponsorKey.startsWith('0x') ? `0x${rawSponsorKey}` : rawSponsorKey;
     const balance = await getSelfclawBalance(sponsorKey);
@@ -1208,13 +1155,14 @@ router.get("/v1/selfclaw-sponsorship", publicApiLimiter, async (_req: Request, r
       token: "SELFCLAW (Wrapped on Celo)",
       tokenAddress: "0xCD88f99Adf75A9110c0bcd22695A32A20eC54ECb",
       sponsorWallet: sponsorAddress,
-      description: "SELFCLAW available for agent token liquidity sponsorship. Verified agents can request this to pair with their token in a Uniswap V4 pool.",
+      description: "SELFCLAW available for agent token liquidity sponsorship. On request, fees are collected from the SELFCLAW/CELO V3 pool, then 50% of sponsor balance is used to create an AgentToken/SELFCLAW V3 pool.",
       poolFeeTier: "1% (10000)",
+      poolVersion: "Uniswap V3",
       requirements: [
         "Agent must be verified via Self.xyz passport",
         "Agent must have deployed a token on Celo",
         "Agent sends chosen amount of its token to sponsor wallet",
-        "System creates AgentToken/SELFCLAW pool with 1% fee tier"
+        "System auto-collects V3 fees, then creates AgentToken/SELFCLAW pool with 1% fee tier"
       ]
     });
   } catch (error: any) {
@@ -1229,11 +1177,11 @@ router.post("/v1/request-selfclaw-sponsorship", verificationLimiter, async (req:
     if (!auth) return;
 
     const humanId = auth.humanId;
-    const { tokenAddress, tokenSymbol, tokenAmount, selfclawAmount } = req.body;
+    const { tokenAddress, tokenSymbol, tokenAmount } = req.body;
 
-    if (!tokenAddress || !tokenAmount || !selfclawAmount) {
+    if (!tokenAddress || !tokenAmount) {
       return res.status(400).json({
-        error: "Missing required fields: tokenAddress, tokenAmount, selfclawAmount"
+        error: "Missing required fields: tokenAddress, tokenAmount"
       });
     }
 
@@ -1251,7 +1199,10 @@ router.post("/v1/request-selfclaw-sponsorship", verificationLimiter, async (req:
       });
     }
 
-    const { getSelfclawBalance, getTokenBalance, createPoolAndAddLiquidity, getSponsorAddress } = await import("../lib/uniswap-v4.js");
+    const {
+      getSelfclawBalance, getTokenBalance, getSponsorAddress,
+      collectAllV3Fees, createV3PoolAndAddLiquidity, getExistingV3Pool,
+    } = await import("../lib/uniswap-v3.js");
 
     const rawSponsorKey = process.env.SELFCLAW_SPONSOR_PRIVATE_KEY || process.env.CELO_PRIVATE_KEY;
     const sponsorKey = rawSponsorKey && !rawSponsorKey.startsWith('0x') ? `0x${rawSponsorKey}` : rawSponsorKey;
@@ -1269,24 +1220,47 @@ router.post("/v1/request-selfclaw-sponsorship", verificationLimiter, async (req:
       });
     }
 
+    const selfclawAddress = "0xCD88f99Adf75A9110c0bcd22695A32A20eC54ECb";
+
+    console.log(`[selfclaw] Sponsorship requested by ${humanId.substring(0, 16)}... — collecting V3 fees first`);
+    let feeCollectionResult;
+    try {
+      feeCollectionResult = await collectAllV3Fees(sponsorKey);
+      if (feeCollectionResult.success && parseFloat(feeCollectionResult.totalSelfclaw) > 0) {
+        console.log(`[selfclaw] Collected ${feeCollectionResult.totalSelfclaw} SELFCLAW from V3 fee positions`);
+      }
+    } catch (feeErr: any) {
+      console.log(`[selfclaw] Fee collection skipped: ${feeErr.message}`);
+    }
+
     const availableBalance = await getSelfclawBalance(sponsorKey);
-    const requested = parseFloat(selfclawAmount);
     const available = parseFloat(availableBalance);
 
-    if (requested > available) {
+    if (available <= 0) {
       return res.status(400).json({
-        error: `Insufficient SELFCLAW. Requested ${selfclawAmount}, available ${availableBalance}`,
+        error: "No SELFCLAW available in sponsorship wallet. Fees not yet accrued.",
         available: availableBalance
       });
     }
 
-    const selfclawAddress = "0xCD88f99Adf75A9110c0bcd22695A32A20eC54ECb";
+    const selfclawAmount = (available * 0.5).toFixed(0);
+    const selfclawForPool = selfclawAmount;
 
-    const result = await createPoolAndAddLiquidity({
+    console.log(`[selfclaw] Sponsoring with ${selfclawForPool} SELFCLAW (50% of ${availableBalance} available)`);
+
+    const existingPool = await getExistingV3Pool(tokenAddress, selfclawAddress, 10000);
+    if (existingPool) {
+      return res.status(409).json({
+        error: "A V3 pool already exists for this token pair",
+        existingPool
+      });
+    }
+
+    const result = await createV3PoolAndAddLiquidity({
       tokenA: tokenAddress,
       tokenB: selfclawAddress,
       amountA: tokenAmount,
-      amountB: selfclawAmount,
+      amountB: selfclawForPool,
       feeTier: 10000,
       privateKey: sponsorKey,
     });
@@ -1303,7 +1277,7 @@ router.post("/v1/request-selfclaw-sponsorship", verificationLimiter, async (req:
       tokenAddress,
       tokenSymbol: tokenSymbol || 'TOKEN',
       poolAddress: result.poolAddress || '',
-      sponsoredAmountCelo: selfclawAmount,
+      sponsoredAmountCelo: selfclawForPool,
       sponsorTxHash: result.txHash || '',
       status: 'completed',
       completedAt: new Date(),
@@ -1313,26 +1287,33 @@ router.post("/v1/request-selfclaw-sponsorship", verificationLimiter, async (req:
       tokenAddress,
       tokenSymbol: tokenSymbol || 'TOKEN',
       tokenAmount,
-      selfclawAmount,
+      selfclawAmount: selfclawForPool,
       poolAddress: result.poolAddress,
       positionTokenId: result.positionTokenId,
+      feesCollected: feeCollectionResult?.totalSelfclaw || '0',
     });
 
     res.json({
       success: true,
-      message: "AgentToken/SELFCLAW liquidity pool created",
+      message: "AgentToken/SELFCLAW liquidity pool created on Uniswap V3",
       pool: {
         poolAddress: result.poolAddress,
         positionTokenId: result.positionTokenId,
         tokenAddress,
         tokenAmount,
-        selfclawAmount,
+        selfclawAmount: selfclawForPool,
         feeTier: 10000,
         txHash: result.txHash
       },
+      sponsorship: {
+        selfclawSponsored: selfclawForPool,
+        feesCollected: feeCollectionResult?.totalSelfclaw || '0',
+        sponsorWallet: sponsorAddress,
+      },
       nextSteps: [
-        "Your token is now tradeable against SELFCLAW on Uniswap V4",
-        "Trading fees (1%) accrue to the SelfClaw treasury",
+        "Your token is now tradeable against SELFCLAW on Uniswap V3 (Celo)",
+        "Trading fees (1%) accrue to the SelfClaw treasury for future sponsorships",
+        `View pool on Uniswap: https://app.uniswap.org/explore/pools/celo/${result.poolAddress}`,
         "View on Celoscan: https://celoscan.io/address/" + (result.poolAddress || tokenAddress)
       ]
     });

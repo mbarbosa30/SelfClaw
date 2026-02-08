@@ -36,8 +36,9 @@ lib/
   erc8004-config.ts     # Agent registration file generator
   secure-wallet.ts      # Celo wallet creation and management
   token-factory.ts      # ERC20 token deployment
-  uniswap-v4.ts         # Uniswap V4 integration (fee collection, swaps, pools)
-  sponsored-liquidity.ts # Sponsored Uniswap V4 pools
+  uniswap-v3.ts         # Uniswap V3 integration (pool creation, fee collection, sponsored LP)
+  uniswap-v4.ts         # Uniswap V4 integration (admin pool monitoring, swaps)
+  sponsored-liquidity.ts # Legacy sponsored liquidity (deprecated)
   wormhole-bridge.ts    # Wormhole cross-chain bridge (Base↔Celo)
   constants.ts          # Contract bytecode constants
 shared/
@@ -62,18 +63,20 @@ public/
 - `POST /api/selfclaw/v1/create-wallet` — Create Celo wallet for verified agent
 - `POST /api/selfclaw/v1/deploy-token` — Deploy ERC20 token
 - `GET /api/selfclaw/v1/selfclaw-sponsorship` — Check available SELFCLAW for sponsorship
-- `POST /api/selfclaw/v1/request-selfclaw-sponsorship` — Request SELFCLAW sponsorship + auto-create AgentToken/SELFCLAW pool (one-time per humanId)
+- `POST /api/selfclaw/v1/request-selfclaw-sponsorship` — Request SELFCLAW sponsorship: auto-collects V3 fees, uses 50% of sponsor SELFCLAW balance, creates AgentToken/SELFCLAW V3 pool (one-time per humanId)
 - `GET /.well-known/agent-registration.json` — Agent registration discovery
 - `GET /api/erc8004/config` — On-chain identity configuration
 
 ## External Dependencies
 - **Self.xyz SDK**: Passport-based verification via QR code and ZK proofs
 - **Celo Network**: On-chain identity (ERC-8004) via `@chaoschain/sdk`, wallets, token deployment
-- **Uniswap V4**: Pool creation, fee collection, token swaps on Celo (PoolManager singleton, Permit2 approvals)
+- **Uniswap V3**: Pool creation, fee collection, sponsored liquidity on Celo (NonfungiblePositionManager, V3Factory)
+- **Uniswap V4**: StateView for pool monitoring, admin LP management on Celo (PoolManager singleton, Permit2 approvals)
 - **Drizzle ORM**: Database schema and queries
 - **Express.js**: HTTP server and API routing
 
 ## Recent Changes
+- 2026-02-08: Migrated sponsorship to Uniswap V3 — new lib/uniswap-v3.ts with V3 NonfungiblePositionManager integration, auto fee collection from SELFCLAW/CELO V3 pool (0x2728F9cd), sponsorship uses 50% of SELFCLAW balance, creates AgentToken/SELFCLAW V3 pools with 1% fee tier; deprecated create-sponsored-lp endpoint
 - 2026-02-08: Added admin pool info & token prices — live SELFCLAW/CELO pool state from V4 StateView (tick, liquidity, fee, on-chain price), DexScreener price feeds for Base and Celo (USD price, 24h change, volume, liquidity, DEX links)
 - 2026-02-08: Added fully automatic Wormhole bridge flow — auto-bridge endpoint submits Base transfer, polls for VAA every 15s (up to 20min), and auto-completes on Celo; background auto-claimer processes pending bridge transactions on server start; admin UI shows live progress with phase indicators
 - 2026-02-08: Migrated from Uniswap V3 to V4 — updated contract addresses (PoolManager, PositionManager, UniversalRouter, Permit2), ABIs (modifyLiquidities, action-based encoding), stored SELFCLAW/CELO pool ID (0x92bf22b...), renamed lib/uniswap-v3.ts → lib/uniswap-v4.ts, updated all docs
