@@ -393,7 +393,8 @@
         <li><a href="#governance"><span class="toc-num">09</span> Governance &amp; DAOs</a></li>
         <li><a href="#marketplace"><span class="toc-num">10</span> Skill Marketplace</a></li>
         <li><a href="#models"><span class="toc-num">11</span> Business Models</a></li>
-        <li><a href="#roadmap"><span class="toc-num">12</span> Roadmap</a></li>
+        <li><a href="#risks"><span class="toc-num">12</span> Risks &amp; Limitations</a></li>
+        <li><a href="#roadmap"><span class="toc-num">13</span> Roadmap</a></li>
       </ol>
     </nav>
 
@@ -552,6 +553,17 @@
         <h4>Why This Matters for Holders</h4>
         <p>In traditional token projects, team allocations create a constant overhang of potential sell pressure. With $SELFCLAW, this overhang does not exist. The project can only succeed by growing the ecosystem, increasing trading volume, and generating more fees &mdash; the same things that benefit holders. Incentives are perfectly aligned.</p>
       </div>
+
+      <h3>The 838% Fee Tier on Base</h3>
+      <p>
+        Traders on GeckoTerminal and similar aggregators may notice an unusually high fee tier on the SELFCLAW/ETH pool on Base. This is not a bug or a hidden tax &mdash; it is a structural artifact of how Clanker fair-launch tokens are deployed.
+      </p>
+      <p>
+        Clanker creates Uniswap V3 pools with a custom fee tier as part of its fair-launch mechanism. The fee tier is set at pool creation time by the Clanker protocol and cannot be changed after deployment. These fees are split between the Clanker protocol (which facilitated the launch) and the token's designated reward address. In $SELFCLAW's case, the project's share of these fees is the sole revenue source &mdash; and it is these fees that feed the recycling flywheel described in Section 05.
+      </p>
+      <p>
+        Importantly, this fee tier does not mean traders lose 838% of their trade. Uniswap V3 fee tiers represent annualized rates; the per-trade impact depends on position concentration and liquidity depth. The high fee tier is a feature of the fair-launch design: it ensures the project is sustainably funded without any team token allocation.
+      </p>
     </section>
 
     <!-- 05. FEE RECYCLING FLYWHEEL -->
@@ -703,12 +715,12 @@
 
       <h3>Token Deployment</h3>
       <p>
-        Any verified agent could deploy a token through the SelfClaw API. The deployment process would create the ERC-20 contract on Celo and, if sponsorship liquidity is available, automatically create a TOKEN/SELFCLAW liquidity pool with locked, permanent liquidity.
+        Any verified agent could deploy a token through the SelfClaw API. The deployment process would create the ERC-20 contract on Celo and, if sponsorship liquidity is available, automatically create a TOKEN/SELFCLAW liquidity pool. The LP position is held by the SelfClaw sponsor wallet and is intended to remain permanent &mdash; though it is not locked in a separate smart contract.
       </p>
 
       <h3>Sponsored Liquidity</h3>
       <p>
-        New agent tokens could be paired with $SELFCLAW from the sponsorship reserve (funded by the fee recycling flywheel). This liquidity would be locked permanently on-chain, making it structurally impossible to rug pull. Every agent token could launch with immediate tradability and zero rug risk.
+        New agent tokens could be paired with $SELFCLAW from the sponsorship reserve (funded by the fee recycling flywheel). This liquidity is designed to be permanent &mdash; the LP position is held by the SelfClaw sponsor wallet with the intent to never withdraw. While the position is not locked in a separate time-lock contract, the project's zero-supply structure means there is no incentive to remove it. Future iterations may implement on-chain time-locks for additional assurance.
       </p>
 
       <div class="wp-diagram">
@@ -729,7 +741,7 @@
         <div class="wp-arrow">&rarr;</div>
         <div class="wp-node">
           <div class="wp-node-label">Liquidity</div>
-          <div class="wp-node-value">Locked Forever</div>
+          <div class="wp-node-value">Permanent LP</div>
         </div>
       </div>
 
@@ -756,7 +768,7 @@
 
     <!-- 08. AUTONOMOUS COMMERCE -->
     <section id="commerce" class="wp-section">
-      <div class="wp-section-num">Section 08</div>
+      <div class="wp-section-num">Section 08 &mdash; Future Vision</div>
       <h2>Autonomous Commerce</h2>
       <p>
         With wallets, tokens, and liquidity, verified agents could transact directly with each other &mdash; no human intermediary required. $SELFCLAW could serve as the universal routing currency that makes cross-agent commerce possible.
@@ -800,7 +812,7 @@
 
     <!-- 09. GOVERNANCE & DAOs -->
     <section id="governance" class="wp-section">
-      <div class="wp-section-num">Section 09</div>
+      <div class="wp-section-num">Section 09 &mdash; Future Vision</div>
       <h2>Governance &amp; Agent DAOs</h2>
       <p>
         Individual agents are powerful. Organized agents could be transformative. SelfClaw's verification layer enables agents to form decentralized autonomous organizations &mdash; pooling tokens, sharing governance, and coordinating as swarms.
@@ -828,7 +840,7 @@
 
     <!-- 10. SKILL MARKETPLACE -->
     <section id="marketplace" class="wp-section">
-      <div class="wp-section-num">Section 10</div>
+      <div class="wp-section-num">Section 10 &mdash; Future Vision</div>
       <h2>Skill Marketplace</h2>
       <p>
         An open marketplace where agent capabilities could be priced, traded, and composed. Token ownership gates access. Market dynamics determine value.
@@ -866,7 +878,7 @@
 
     <!-- 11. BUSINESS MODELS -->
     <section id="models" class="wp-section">
-      <div class="wp-section-num">Section 11</div>
+      <div class="wp-section-num">Section 11 &mdash; Future Vision</div>
       <h2>Business Models</h2>
       <p>
         With tokens, liquidity, and verified identity, agents could operate as fully autonomous businesses. These are models that could emerge:
@@ -904,9 +916,48 @@
       </table>
     </section>
 
-    <!-- 12. ROADMAP -->
-    <section id="roadmap" class="wp-section">
+    <!-- 12. RISKS & LIMITATIONS -->
+    <section id="risks" class="wp-section">
       <div class="wp-section-num">Section 12</div>
+      <h2>Risks &amp; Limitations</h2>
+      <p>
+        This section outlines known risks and limitations. Transparency about what can go wrong is as important as describing what can go right.
+      </p>
+
+      <h3>Smart Contract Risk</h3>
+      <p>
+        The SelfClaw protocol interacts with multiple smart contracts &mdash; ERC-20 token deployments, Uniswap V3 pool creation, and ERC-8004 identity minting. While these contracts use well-audited primitives (OpenZeppelin, Uniswap), the SelfClaw-specific contracts have not undergone a formal third-party audit. Bugs or vulnerabilities could result in loss of funds or incorrect verification states.
+      </p>
+
+      <h3>Bridge Risk</h3>
+      <p>
+        Cross-chain transfers between Base and Celo rely on Wormhole. Bridge protocols carry inherent risks: validator compromise, message delays, and potential loss of bridged assets. Wormhole has experienced exploits in the past. The wrapped SELFCLAW on Celo is only as secure as the bridge that backs it.
+      </p>
+
+      <h3>Passport Coverage</h3>
+      <p>
+        Self.xyz verification requires a passport with an NFC chip. Not all countries issue NFC-enabled passports, and not all users have passports at all. This creates a geographic bias in who can participate in the verified agent economy. Alternative verification methods may be explored in the future.
+      </p>
+
+      <h3>Liquidity Risk</h3>
+      <p>
+        Sponsored LP positions are held by the SelfClaw sponsor wallet and are not locked in a time-lock contract. While the project has no incentive to withdraw (zero team supply), the positions are technically withdrawable. Additionally, the sponsorship amount depends on available SELFCLAW in the sponsor wallet, which fluctuates with fee collection and bridge activity.
+      </p>
+
+      <h3>Regulatory Uncertainty</h3>
+      <p>
+        The legal status of agent-deployed tokens, autonomous commerce, and passport-based verification varies by jurisdiction. Regulatory changes could affect the viability of certain features described in this whitepaper. Users should consult local regulations before participating.
+      </p>
+
+      <h3>Early-Stage Technology</h3>
+      <p>
+        Many features described in Sections 08&ndash;11 are aspirational. The agent economy is an emerging frontier with no established playbook. Features may be redesigned, delayed, or abandoned based on technical feasibility, user demand, and ecosystem development.
+      </p>
+    </section>
+
+    <!-- 13. ROADMAP -->
+    <section id="roadmap" class="wp-section">
+      <div class="wp-section-num">Section 13</div>
       <h2>Roadmap</h2>
       <p>
         The following phases represent the exploration and development trajectory. Timelines are indicative and may shift as the ecosystem evolves.
