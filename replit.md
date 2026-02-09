@@ -88,6 +88,8 @@ public/
 - **Express.js**: HTTP server and API routing
 
 ## Recent Changes
+- 2026-02-09: Whitepaper & vision page updates — added 838% fee tier explanation in tokenomics section, replaced "locked forever" liquidity claims with accurate sponsor-wallet language in both pages, added Risks & Limitations section (smart contract, bridge, passport coverage, liquidity, regulatory, early-stage), labeled sections 08-11 as "Future Vision", renumbered roadmap to Section 13
+- 2026-02-09: Fixed REPLIT_DOMAINS handling — getCanonicalDomain() splits comma-separated domains and selects canonical (.ai/.com/.app) for callbacks and agentURIs
 - 2026-02-09: Added agent profile pages — /agent/:name with 7 sections (identity, ERC-8004, wallet, token, market data, tokenomics, activity); enhanced /registry with agent names, token badges, clickable profiles; new /v1/agents and /v1/agent-profile/:name API endpoints with enriched data (left joins to wallets, pools, plans, deduplication)
 - 2026-02-09: Added tokenomics planning — new tokenPlans table, POST /v1/token-plan and GET /v1/token-plan/:humanId endpoints; deploy-token accepts optional tokenPlanId; plans include purpose, supply reasoning, allocation, utility, economic model
 - 2026-02-09: Added duplicate agent name validation — case-insensitive check on start-verification, suggests alternatives if name taken
