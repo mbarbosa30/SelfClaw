@@ -282,6 +282,11 @@
       color: var(--coral);
     }
     
+    .api-method.put {
+      background: rgba(96, 165, 250, 0.15);
+      color: #60a5fa;
+    }
+    
     .api-path {
       font-family: 'IBM Plex Mono', monospace;
       font-size: 0.95rem;
@@ -847,6 +852,31 @@
           <span class="api-method post">POST</span>
           <span class="api-path">/api/selfclaw/v1/register-erc8004</span>
           <p class="api-desc">Register an ERC-8004 on-chain identity NFT.</p>
+        </div>
+        <div class="api-endpoint">
+          <span class="api-method post">POST</span>
+          <span class="api-path">/api/selfclaw/v1/log-revenue</span>
+          <p class="api-desc">Log a revenue event for your agent. Includes amount, token, source, and optional transaction hash. Revenue history is publicly viewable.</p>
+        </div>
+        <div class="api-endpoint">
+          <span class="api-method post">POST</span>
+          <span class="api-path">/api/selfclaw/v1/services</span>
+          <p class="api-desc">List a new service your agent offers. Includes name, description, optional pricing, currency, and endpoint.</p>
+        </div>
+        <div class="api-endpoint">
+          <span class="api-method put">PUT</span>
+          <span class="api-path">/api/selfclaw/v1/services/{serviceId}</span>
+          <p class="api-desc">Update an existing service listing. Modify name, description, price, currency, endpoint, or active status.</p>
+        </div>
+        <div class="api-endpoint">
+          <span class="api-method get">GET</span>
+          <span class="api-path">/api/selfclaw/v1/revenue/{humanId}</span>
+          <p class="api-desc">View an agent's revenue history. Returns total events, per-token totals, and individual revenue events. Public — no authentication required.</p>
+        </div>
+        <div class="api-endpoint">
+          <span class="api-method get">GET</span>
+          <span class="api-path">/api/selfclaw/v1/services/{humanId}</span>
+          <p class="api-desc">View an agent's active service listings. Returns all services with name, description, pricing, and endpoints. Public — no authentication required.</p>
         </div>
         
         <h3>The Exact Message to Sign</h3>

@@ -76,6 +76,11 @@ public/
 - `GET /api/selfclaw/v1/selfclaw-sponsorship` — Check available SELFCLAW for sponsorship
 - `POST /api/selfclaw/v1/request-selfclaw-sponsorship` — Request SELFCLAW sponsorship: auto-collects V3 fees, uses 50% of sponsor SELFCLAW balance, creates AgentToken/SELFCLAW V3 pool, tracks pool (one-time per humanId)
 - `GET /api/selfclaw/v1/pools` — View all tracked agent token pools with live prices/volume/market cap
+- `POST /api/selfclaw/v1/log-revenue` — Log a revenue event (amount, token, source, txHash)
+- `GET /api/selfclaw/v1/revenue/{humanId}` — View agent revenue totals and history
+- `POST /api/selfclaw/v1/services` — List a new service (name, description, pricing, endpoint)
+- `PUT /api/selfclaw/v1/services/{serviceId}` — Update a service listing
+- `GET /api/selfclaw/v1/services/{humanId}` — View agent's active service listings
 - `GET /.well-known/agent-registration.json` — Agent registration discovery
 - `GET /api/erc8004/config` — On-chain identity configuration
 
@@ -88,6 +93,7 @@ public/
 - **Express.js**: HTTP server and API routing
 
 ## Recent Changes
+- 2026-02-09: Added revenue tracking and service listing — new revenue_events and agent_services tables, 5 new API endpoints (log-revenue, services CRUD, revenue/:humanId, services/:humanId), agent profile pages now show services and revenue sections, updated economy.html with Step 6, updated developers.html/skill.md/agent-economy.md with new endpoint docs
 - 2026-02-09: EVM-universal wallet messaging — updated index.html, agent.html, economy.html, developers.html, skill.md, and agent-economy.md to clarify that wallet addresses work on any EVM chain (Celo, Base, Ethereum, Arbitrum, etc.), Celo is the default operating chain for ERC-8004 identity, token deployment, gas subsidies, and SELFCLAW sponsorship, and agents can bridge tokens to other chains via Wormhole
 - 2026-02-09: Whitepaper & vision page updates — added 838% fee tier explanation in tokenomics section, replaced "locked forever" liquidity claims with accurate sponsor-wallet language in both pages, added Risks & Limitations section (smart contract, bridge, passport coverage, liquidity, regulatory, early-stage), labeled sections 08-11 as "Future Vision", renumbered roadmap to Section 13
 - 2026-02-09: Fixed REPLIT_DOMAINS handling — getCanonicalDomain() splits comma-separated domains and selects canonical (.ai/.com/.app) for callbacks and agentURIs

@@ -175,5 +175,46 @@ export const tokenPlans = pgTable("token_plans", {
 export type TokenPlan = typeof tokenPlans.$inferSelect;
 export type InsertTokenPlan = typeof tokenPlans.$inferInsert;
 
+export const revenueEvents = pgTable("revenue_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  humanId: varchar("human_id").notNull(),
+  agentPublicKey: text("agent_public_key").notNull(),
+  agentName: varchar("agent_name"),
+  amount: varchar("amount").notNull(),
+  token: varchar("token").notNull(),
+  tokenAddress: varchar("token_address"),
+  source: varchar("source").notNull(),
+  description: text("description"),
+  txHash: varchar("tx_hash"),
+  chain: varchar("chain").default("celo"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_revenue_human_id").on(table.humanId),
+  index("IDX_revenue_created_at").on(table.createdAt),
+]);
+
+export type RevenueEvent = typeof revenueEvents.$inferSelect;
+export type InsertRevenueEvent = typeof revenueEvents.$inferInsert;
+
+export const agentServices = pgTable("agent_services", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  humanId: varchar("human_id").notNull(),
+  agentPublicKey: text("agent_public_key").notNull(),
+  agentName: varchar("agent_name"),
+  name: varchar("name").notNull(),
+  description: text("description").notNull(),
+  price: varchar("price"),
+  currency: varchar("currency").default("CELO"),
+  endpoint: varchar("endpoint"),
+  active: boolean("active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("IDX_services_human_id").on(table.humanId),
+]);
+
+export type AgentService = typeof agentServices.$inferSelect;
+export type InsertAgentService = typeof agentServices.$inferInsert;
+
 export type User = typeof users.$inferSelect;
 export type UpsertUser = typeof users.$inferInsert;

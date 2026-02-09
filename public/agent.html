@@ -378,6 +378,8 @@
         token: raw.token,
         pool: raw.pool,
         tokenPlan: raw.tokenPlan,
+        revenue: raw.revenue || null,
+        services: raw.services || [],
         activity: raw.activity || []
       };
       var html = '';
@@ -385,6 +387,8 @@
       html += renderIdentity(data);
       html += renderErc8004(data);
       html += renderWallet(data);
+      html += renderServices(data);
+      html += renderRevenue(data);
       html += renderToken(data);
       html += renderMarketData(data);
       html += renderTokenomics(data);
@@ -477,6 +481,67 @@
         html += '</div>';
       } else {
         html += '<p class="empty-state-text">No wallet registered</p>';
+      }
+
+      html += '</div>';
+      return html;
+    }
+
+    function renderServices(data) {
+      var html = '<div class="section-card">';
+      html += '<div class="section-card-title">Services</div>';
+
+      if (data.services && data.services.length > 0) {
+        for (var i = 0; i < data.services.length; i++) {
+          var s = data.services[i];
+          html += '<div style="border-bottom: 1px solid rgba(255,255,255,0.05); padding: 0.75rem 0;' + (i === 0 ? 'padding-top:0;' : '') + '">';
+          html += '<div style="font-weight: 600; color: #fff;">' + escapeHtml(s.name) + '</div>';
+          html += '<div style="font-size: 0.85rem; opacity: 0.7; margin-top: 0.25rem;">' + escapeHtml(s.description) + '</div>';
+          if (s.price) {
+            html += '<div style="margin-top: 0.25rem;"><span style="color: #00FFB6; font-weight: 500;">' + escapeHtml(s.price) + ' ' + escapeHtml(s.currency || 'CELO') + '</span></div>';
+          }
+          if (s.endpoint) {
+            html += '<div style="font-size: 0.8rem; margin-top: 0.25rem; opacity: 0.5;">' + escapeHtml(s.endpoint) + '</div>';
+          }
+          html += '</div>';
+        }
+      } else {
+        html += '<p class="empty-state-text">No services listed</p>';
+      }
+
+      html += '</div>';
+      return html;
+    }
+
+    function renderRevenue(data) {
+      var html = '<div class="section-card">';
+      html += '<div class="section-card-title">Revenue</div>';
+
+      if (data.revenue && data.revenue.totalEvents > 0) {
+        var totals = data.revenue.totals;
+        var keys = Object.keys(totals);
+        for (var i = 0; i < keys.length; i++) {
+          html += '<div class="field-row">';
+          html += '<span class="field-label">Total ' + escapeHtml(keys[i]) + '</span>';
+          html += '<span class="field-value-text" style="color: #00FFB6; font-weight: 600;">' + escapeHtml(String(totals[keys[i]])) + '</span>';
+          html += '</div>';
+        }
+        html += '<div class="field-row">';
+        html += '<span class="field-label">Events logged</span>';
+        html += '<span class="field-value-text">' + data.revenue.totalEvents + '</span>';
+        html += '</div>';
+
+        if (data.revenue.recent && data.revenue.recent.length > 0) {
+          html += '<div style="margin-top: 0.75rem; font-size: 0.8rem; opacity: 0.6;">Recent:</div>';
+          for (var j = 0; j < data.revenue.recent.length; j++) {
+            var r = data.revenue.recent[j];
+            html += '<div style="font-size: 0.8rem; opacity: 0.5; margin-top: 0.25rem;">';
+            html += escapeHtml(r.amount) + ' ' + escapeHtml(r.token) + ' from ' + escapeHtml(r.source);
+            html += '</div>';
+          }
+        }
+      } else {
+        html += '<p class="empty-state-text">No revenue logged yet</p>';
       }
 
       html += '</div>';

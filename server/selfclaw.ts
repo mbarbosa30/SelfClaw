@@ -1,7 +1,7 @@
 import { Router, Request, Response } from "express";
 import rateLimit from "express-rate-limit";
 import { db } from "./db.js";
-import { verifiedBots, verificationSessions, sponsoredAgents, trackedPools, agentWallets, agentActivity, tokenPlans, type InsertVerifiedBot, type InsertVerificationSession } from "../shared/schema.js";
+import { verifiedBots, verificationSessions, sponsoredAgents, trackedPools, agentWallets, agentActivity, tokenPlans, revenueEvents, agentServices, type InsertVerifiedBot, type InsertVerificationSession } from "../shared/schema.js";
 import { eq, and, gt, lt, sql, desc, count } from "drizzle-orm";
 import { SelfBackendVerifier, AllIds, DefaultConfigStore } from "@selfxyz/core";
 import { SelfAppBuilder } from "@selfxyz/qrcode";
@@ -1517,7 +1517,7 @@ router.get("/v1/agent-profile/:name", publicApiLimiter, async (req: Request, res
     const agent = agents[0];
     const humanId = agent.humanId;
     
-    const [walletResults, poolResults, planResults, activityResults] = await Promise.all([
+    const [walletResults, poolResults, planResults, activityResults, revenueResults, serviceResults] = await Promise.all([
       humanId ? db.select().from(agentWallets).where(sql`${agentWallets.humanId} = ${humanId}`).limit(1) : Promise.resolve([]),
       humanId ? db.select().from(trackedPools).where(sql`${trackedPools.humanId} = ${humanId}`) : Promise.resolve([]),
       humanId ? db.select().from(tokenPlans).where(sql`${tokenPlans.humanId} = ${humanId}`).limit(1) : Promise.resolve([]),
@@ -1527,13 +1527,20 @@ router.get("/v1/agent-profile/:name", publicApiLimiter, async (req: Request, res
         agentName: agentActivity.agentName,
         metadata: agentActivity.metadata,
         createdAt: agentActivity.createdAt
-      }).from(agentActivity).where(sql`${agentActivity.humanId} = ${humanId}`).orderBy(desc(agentActivity.createdAt)).limit(20) : Promise.resolve([])
+      }).from(agentActivity).where(sql`${agentActivity.humanId} = ${humanId}`).orderBy(desc(agentActivity.createdAt)).limit(20) : Promise.resolve([]),
+      humanId ? db.select().from(revenueEvents).where(sql`${revenueEvents.humanId} = ${humanId}`).orderBy(desc(revenueEvents.createdAt)).limit(20) : Promise.resolve([]),
+      humanId ? db.select().from(agentServices).where(sql`${agentServices.humanId} = ${humanId} AND ${agentServices.active} = true`).orderBy(desc(agentServices.createdAt)) : Promise.resolve([])
     ]);
     
     const wallet = walletResults[0] || null;
     const pool = poolResults[0] || null;
     const plan = planResults[0] || null;
     const metadata = agent.metadata as any;
+
+    const revenueTotals: Record<string, number> = {};
+    for (const e of revenueResults) {
+      revenueTotals[e.token] = (revenueTotals[e.token] || 0) + parseFloat(e.amount);
+    }
     
     res.json({
       agent: {
@@ -1572,6 +1579,24 @@ router.get("/v1/agent-profile/:name", publicApiLimiter, async (req: Request, res
         economicModel: plan.economicModel,
         status: plan.status,
       } : null,
+      revenue: {
+        totalEvents: revenueResults.length,
+        totals: revenueTotals,
+        recent: revenueResults.slice(0, 5).map(e => ({
+          amount: e.amount,
+          token: e.token,
+          source: e.source,
+          createdAt: e.createdAt,
+        })),
+      },
+      services: serviceResults.map(s => ({
+        id: s.id,
+        name: s.name,
+        description: s.description,
+        price: s.price,
+        currency: s.currency,
+        endpoint: s.endpoint,
+      })),
       activity: activityResults,
     });
   } catch (error: any) {
@@ -2845,5 +2870,259 @@ async function updatePoolPrices() {
 
 setInterval(updatePoolPrices, 5 * 60 * 1000);
 setTimeout(updatePoolPrices, 30 * 1000);
+
+// ===================== REVENUE TRACKING =====================
+
+router.post("/v1/log-revenue", verificationLimiter, async (req: Request, res: Response) => {
+  try {
+    const auth = await authenticateAgent(req, res);
+    if (!auth) return;
+
+    const { amount, token, tokenAddress, source, description, txHash, chain } = req.body;
+    const humanId = auth.humanId;
+
+    if (!amount || !token || !source) {
+      return res.status(400).json({
+        error: "amount, token, and source are required",
+        hint: "amount: string (e.g. '100'), token: symbol (e.g. 'CELO'), source: what generated this revenue (e.g. 'skill-payment', 'service-fee')"
+      });
+    }
+
+    const parsed = parseFloat(amount);
+    if (isNaN(parsed) || parsed <= 0) {
+      return res.status(400).json({ error: "amount must be a positive number" });
+    }
+
+    const agentName = auth.agent.deviceId || null;
+
+    const [event] = await db.insert(revenueEvents).values({
+      humanId,
+      agentPublicKey: auth.publicKey,
+      agentName,
+      amount: String(amount),
+      token: String(token),
+      tokenAddress: tokenAddress || null,
+      source: String(source),
+      description: description || null,
+      txHash: txHash || null,
+      chain: chain || "celo",
+    }).returning();
+
+    await db.insert(agentActivity).values({
+      eventType: "revenue_logged",
+      humanId,
+      agentPublicKey: auth.publicKey,
+      agentName,
+      metadata: { amount, token, source, txHash: txHash || null },
+    });
+
+    res.json({
+      success: true,
+      event: {
+        id: event.id,
+        amount: event.amount,
+        token: event.token,
+        source: event.source,
+        chain: event.chain,
+        createdAt: event.createdAt,
+      },
+      message: "Revenue event logged successfully."
+    });
+  } catch (error: any) {
+    console.error("[selfclaw] log-revenue error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get("/v1/revenue/:humanId", publicApiLimiter, async (req: Request, res: Response) => {
+  try {
+    const humanId = req.params.humanId as string;
+
+    const events = await db.select()
+      .from(revenueEvents)
+      .where(sql`${revenueEvents.humanId} = ${humanId}`)
+      .orderBy(desc(revenueEvents.createdAt))
+      .limit(100);
+
+    const totals: Record<string, number> = {};
+    for (const e of events) {
+      const key = e.token;
+      totals[key] = (totals[key] || 0) + parseFloat(e.amount);
+    }
+
+    res.json({
+      humanId,
+      totalEvents: events.length,
+      totals,
+      events: events.map(e => ({
+        id: e.id,
+        amount: e.amount,
+        token: e.token,
+        tokenAddress: e.tokenAddress,
+        source: e.source,
+        description: e.description,
+        txHash: e.txHash,
+        chain: e.chain,
+        createdAt: e.createdAt,
+      })),
+    });
+  } catch (error: any) {
+    console.error("[selfclaw] get-revenue error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ===================== AGENT SERVICES =====================
+
+router.post("/v1/services", verificationLimiter, async (req: Request, res: Response) => {
+  try {
+    const auth = await authenticateAgent(req, res);
+    if (!auth) return;
+
+    const { name, description, price, currency, endpoint } = req.body;
+    const humanId = auth.humanId;
+
+    if (!name || !description) {
+      return res.status(400).json({
+        error: "name and description are required",
+        hint: "name: short service name, description: what the service does, price: optional (e.g. '10'), currency: optional (default 'CELO'), endpoint: optional URL"
+      });
+    }
+
+    if (String(name).length > 100) {
+      return res.status(400).json({ error: "Service name must be 100 characters or less" });
+    }
+    if (String(description).length > 1000) {
+      return res.status(400).json({ error: "Description must be 1000 characters or less" });
+    }
+
+    const existingServices = await db.select()
+      .from(agentServices)
+      .where(sql`${agentServices.humanId} = ${humanId}`);
+
+    if (existingServices.length >= 10) {
+      return res.status(400).json({ error: "Maximum 10 services per agent" });
+    }
+
+    const agentName = auth.agent.deviceId || null;
+
+    const [service] = await db.insert(agentServices).values({
+      humanId,
+      agentPublicKey: auth.publicKey,
+      agentName,
+      name: String(name),
+      description: String(description),
+      price: price ? String(price) : null,
+      currency: currency ? String(currency) : "CELO",
+      endpoint: endpoint || null,
+    }).returning();
+
+    await db.insert(agentActivity).values({
+      eventType: "service_listed",
+      humanId,
+      agentPublicKey: auth.publicKey,
+      agentName,
+      metadata: { serviceName: name, price: price || null, currency: currency || "CELO" },
+    });
+
+    res.json({
+      success: true,
+      service: {
+        id: service.id,
+        name: service.name,
+        description: service.description,
+        price: service.price,
+        currency: service.currency,
+        endpoint: service.endpoint,
+        active: service.active,
+        createdAt: service.createdAt,
+      },
+      message: "Service listed successfully."
+    });
+  } catch (error: any) {
+    console.error("[selfclaw] create-service error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.put("/v1/services/:serviceId", verificationLimiter, async (req: Request, res: Response) => {
+  try {
+    const auth = await authenticateAgent(req, res);
+    if (!auth) return;
+
+    const serviceId = req.params.serviceId as string;
+    const { name, description, price, currency, endpoint, active } = req.body;
+    const humanId = auth.humanId;
+
+    const existing = await db.select()
+      .from(agentServices)
+      .where(sql`${agentServices.id} = ${serviceId} AND ${agentServices.humanId} = ${humanId}`)
+      .limit(1);
+
+    if (existing.length === 0) {
+      return res.status(404).json({ error: "Service not found or does not belong to your agent" });
+    }
+
+    const updates: any = { updatedAt: new Date() };
+    if (name !== undefined) updates.name = String(name);
+    if (description !== undefined) updates.description = String(description);
+    if (price !== undefined) updates.price = price ? String(price) : null;
+    if (currency !== undefined) updates.currency = String(currency);
+    if (endpoint !== undefined) updates.endpoint = endpoint || null;
+    if (active !== undefined) updates.active = Boolean(active);
+
+    const [updated] = await db.update(agentServices)
+      .set(updates)
+      .where(sql`${agentServices.id} = ${serviceId}`)
+      .returning();
+
+    res.json({
+      success: true,
+      service: {
+        id: updated.id,
+        name: updated.name,
+        description: updated.description,
+        price: updated.price,
+        currency: updated.currency,
+        endpoint: updated.endpoint,
+        active: updated.active,
+        updatedAt: updated.updatedAt,
+      },
+      message: "Service updated successfully."
+    });
+  } catch (error: any) {
+    console.error("[selfclaw] update-service error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get("/v1/services/:humanId", publicApiLimiter, async (req: Request, res: Response) => {
+  try {
+    const humanId = req.params.humanId as string;
+
+    const services = await db.select()
+      .from(agentServices)
+      .where(sql`${agentServices.humanId} = ${humanId} AND ${agentServices.active} = true`)
+      .orderBy(desc(agentServices.createdAt));
+
+    res.json({
+      humanId,
+      totalServices: services.length,
+      services: services.map(s => ({
+        id: s.id,
+        name: s.name,
+        description: s.description,
+        price: s.price,
+        currency: s.currency,
+        endpoint: s.endpoint,
+        agentName: s.agentName,
+        createdAt: s.createdAt,
+      })),
+    });
+  } catch (error: any) {
+    console.error("[selfclaw] get-services error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
 
 export default router;
