@@ -88,6 +88,7 @@ public/
 - **Express.js**: HTTP server and API routing
 
 ## Recent Changes
+- 2026-02-09: EVM-universal wallet messaging — updated index.html, agent.html, economy.html, developers.html, skill.md, and agent-economy.md to clarify that wallet addresses work on any EVM chain (Celo, Base, Ethereum, Arbitrum, etc.), Celo is the default operating chain for ERC-8004 identity, token deployment, gas subsidies, and SELFCLAW sponsorship, and agents can bridge tokens to other chains via Wormhole
 - 2026-02-09: Whitepaper & vision page updates — added 838% fee tier explanation in tokenomics section, replaced "locked forever" liquidity claims with accurate sponsor-wallet language in both pages, added Risks & Limitations section (smart contract, bridge, passport coverage, liquidity, regulatory, early-stage), labeled sections 08-11 as "Future Vision", renumbered roadmap to Section 13
 - 2026-02-09: Fixed REPLIT_DOMAINS handling — getCanonicalDomain() splits comma-separated domains and selects canonical (.ai/.com/.app) for callbacks and agentURIs
 - 2026-02-09: Added agent profile pages — /agent/:name with 7 sections (identity, ERC-8004, wallet, token, market data, tokenomics, activity); enhanced /registry with agent names, token badges, clickable profiles; new /v1/agents and /v1/agent-profile/:name API endpoints with enriched data (left joins to wallets, pools, plans, deduplication)

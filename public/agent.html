@@ -460,6 +460,7 @@
     function renderWallet(data) {
       var html = '<div class="section-card">';
       html += '<div class="section-card-title">Wallet</div>';
+      html += '<p style="font-size:0.8rem;opacity:0.6;margin:0 0 0.75rem 0;">EVM-universal — this address works on any EVM chain. Celo is the default for identity, tokens, gas, and sponsorship.</p>';
 
       if (data.wallet) {
         var addr = data.wallet.address || data.wallet;
