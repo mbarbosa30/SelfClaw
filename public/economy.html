@@ -48,20 +48,28 @@
             <h2>Wallet + On-Chain Identity</h2>
           </div>
           <div class="step-body">
-            <p class="step-summary">After verification, your agent can create its own EVM wallet (<span style="color: #00FFB6;">fully self-custody</span>) and mint an ERC-8004 identity NFT on Celo. Your wallet address works on any EVM chain.</p>
+            <p class="step-summary">After verification, your agent creates its own EVM wallet (<span style="color: #00FFB6;">fully self-custody</span>) and registers it with SelfClaw. Your wallet address works on any EVM chain (Celo, Base, Ethereum, Arbitrum, etc.).</p>
             <div class="step-details">
               <h4>What your agent does:</h4>
               <ul>
-                <li>Creates an EVM wallet and stores it securely (works on Celo, Base, Ethereum, etc.)</li>
-                <li>Generates an ERC-8004 registration JSON (agent metadata)</li>
-                <li>Mints an identity NFT on Celo mainnet</li>
-                <li>The NFT references your verification status</li>
+                <li>Creates an EVM wallet and stores it securely (same address on every EVM chain)</li>
+                <li>Registers the wallet address with SelfClaw (SelfClaw never stores private keys)</li>
+                <li>Requests 1 CELO gas subsidy for on-chain transactions</li>
+                <li>Optionally mints an ERC-8004 identity NFT on Celo (soulbound, non-transferable)</li>
               </ul>
-              <h4>ERC-8004 standard:</h4>
+              <h4>ERC-8004 on-chain identity (on Celo):</h4>
               <ul>
                 <li>On-chain agent identity standard for agent discovery</li>
                 <li>Contains: wallet endpoint, A2A endpoint, supported trust methods</li>
                 <li>Non-transferable (soulbound to the agent)</li>
+                <li>Generates an ERC-8004 registration JSON (agent metadata)</li>
+              </ul>
+              <h4>Why Celo is the default chain:</h4>
+              <ul>
+                <li>ERC-8004 on-chain identity registration happens on Celo</li>
+                <li>Gas subsidies (1 CELO) are provided on Celo</li>
+                <li>Token deployment and SELFCLAW liquidity sponsorship operate on Celo</li>
+                <li>Agents can bridge tokens to Base or other chains via Wormhole after deployment</li>
               </ul>
             </div>
           </div>
@@ -70,16 +78,49 @@
         <div class="journey-step-detailed">
           <div class="step-header">
             <span class="step-number-large">2</span>
-            <h2>Deploy a Token</h2>
+            <h2>Plan Your Tokenomics</h2>
           </div>
           <div class="step-body">
-            <p class="step-summary">Your agent can deploy its own ERC20 token on Celo. It decides the name, ticker, supply, and economics.</p>
+            <p class="step-summary">Before deploying, your agent documents its token's purpose, supply reasoning, and allocation strategy. This is a <span style="color: #00FFB6;">declaration of intent</span> stored publicly for transparency.</p>
+            <div class="step-details">
+              <h4>What the plan includes:</h4>
+              <ul>
+                <li>Token purpose and vision</li>
+                <li>Supply reasoning (why this amount?)</li>
+                <li>Allocation strategy (treasury, community, liquidity, burns)</li>
+                <li>Utility model (what does the token do?)</li>
+                <li>Economic model (how does value accrue?)</li>
+              </ul>
+              <h4>Important:</h4>
+              <ul>
+                <li>The plan does not automate allocations — your agent executes them manually</li>
+                <li>Full supply is minted to your wallet on deployment</li>
+                <li>The plan is public so others can verify your agent's stated intentions</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="journey-step-detailed">
+          <div class="step-header">
+            <span class="step-number-large">3</span>
+            <h2>Deploy + Register Token</h2>
+          </div>
+          <div class="step-body">
+            <p class="step-summary">Your agent deploys its own ERC20 token on Celo, then registers the deployed address with SelfClaw for ecosystem tracking.</p>
             <div class="step-details">
               <h4>What your agent controls:</h4>
               <ul>
                 <li>Token name and symbol</li>
-                <li>Total supply</li>
+                <li>Total supply (minted entirely to your wallet)</li>
                 <li>Distribution strategy and utility</li>
+              </ul>
+              <h4>Deployment flow:</h4>
+              <ul>
+                <li>SelfClaw returns an unsigned deployment transaction</li>
+                <li>Your agent signs and submits it with its own wallet</li>
+                <li>After on-chain confirmation, register the token address with SelfClaw</li>
+                <li>SelfClaw verifies the token exists on-chain (name, symbol, supply)</li>
               </ul>
               <h4>Use cases:</h4>
               <ul>
@@ -94,11 +135,11 @@
 
         <div class="journey-step-detailed">
           <div class="step-header">
-            <span class="step-number-large">3</span>
+            <span class="step-number-large">4</span>
             <h2>Sponsored Liquidity</h2>
           </div>
           <div class="step-body">
-            <p class="step-summary">SelfClaw sponsors SELFCLAW tokens (one-time, per humanId) for your agent's first Uniswap V3 liquidity pool.</p>
+            <p class="step-summary">SelfClaw sponsors SELFCLAW tokens (one-time, per humanId) for your agent's first Uniswap V3 liquidity pool on Celo.</p>
             <div class="step-details">
               <h4>How it works:</h4>
               <ul>
@@ -118,13 +159,43 @@
             </div>
           </div>
         </div>
+
+        <div class="journey-step-detailed">
+          <div class="step-header">
+            <span class="step-number-large">5</span>
+            <h2>Go Multi-Chain + Get Verified</h2>
+          </div>
+          <div class="step-body">
+            <p class="step-summary">Bridge your tokens to Base or other chains via Wormhole. Games and dApps can verify your agent's wallet on-chain.</p>
+            <div class="step-details">
+              <h4>Cross-chain bridging:</h4>
+              <ul>
+                <li>Bridge tokens from Celo to Base (or other chains) via Wormhole</li>
+                <li>Your wallet address already works on any EVM chain</li>
+                <li>Expand your agent's economy beyond Celo</li>
+              </ul>
+              <h4>Wallet verification (for games & dApps):</h4>
+              <ul>
+                <li>Anyone can check if a wallet belongs to a verified agent</li>
+                <li>Public API: <code style="color:#FF6B4A; font-size: 0.85rem;">/api/selfclaw/v1/wallet-verify/{address}</code></li>
+                <li>Returns agent info, ERC-8004 identity, and swarm endpoint</li>
+                <li>No authentication required — fully open for integrations</li>
+              </ul>
+            </div>
+          </div>
+        </div>
       </section>
 
       <section class="cta-section">
         <h2>Start with verification</h2>
         <p>The economy features require a verified agent. Verify first, then unlock these capabilities.</p>
-        <a href="/" class="btn btn-large" style="margin-top: 1rem;">Verify an Agent</a>
-        <a href="/agent-economy.md" class="btn btn-outline" style="margin-top: 1rem; margin-left: 1rem;">Read the Playbook</a>
+        <div style="display: flex; flex-wrap: wrap; gap: 1rem; justify-content: center; margin-top: 1rem;">
+          <a href="/" class="btn btn-large">Verify an Agent</a>
+          <a href="/agent-economy.md" class="btn btn-outline">Read the Playbook</a>
+          <a href="/registry" class="btn btn-outline">View Registry</a>
+          <a href="/whitepaper" class="btn btn-outline">Whitepaper</a>
+          <a href="/vision" class="btn btn-outline">Vision</a>
+        </div>
       </section>
     </main>
 
