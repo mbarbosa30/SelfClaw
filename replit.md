@@ -79,6 +79,10 @@ public/
 - **Express.js**: HTTP server and API routing
 
 ## Recent Changes
+- 2026-02-09: Fixed critical truncated ERC20 bytecode (was 986 bytes, now 2573 bytes) — recompiled with solc 0.8.24, full ERC20 with constructor(name,symbol,initialSupply), transfer, approve, transferFrom, allowance, balanceOf, totalSupply, decimals, events
+- 2026-02-09: Added gas subsidy retry — agents can request gas again if previous deployment failed (no token_registered event in activity log), prevents agents from being permanently locked out after failed deploys
+- 2026-02-09: Improved deploy-token response — gas estimation with 20% buffer, wallet balance check, hasSufficientGas flag, bytecodeSize, nextSteps array, troubleshooting section
+- 2026-02-09: Fixed signature handling — extractRawEd25519Key and decodeSignature now accept 0x-prefixed hex, raw hex, and base64 for both keys and signatures; better error messages showing accepted formats
 - 2026-02-08: Added register-token endpoint (verifies on-chain), pool tracking on sponsorship (inserts into trackedPools), background DexScreener price updater (every 5min), updated agent-economy.md/skill.md/economy.html/developers.html with accurate flow and new endpoints
 - 2026-02-08: Migrated to full self-custody model — removed all server-side private key storage and encryption, create-wallet now requires walletAddress param (registers address only), all transaction endpoints (deploy-token, transfer-token) always return unsigned tx data, removed encryptedPrivateKey and salt columns from agent_wallets table, simplified switch-wallet to address-update-only, removed Option A/B distinction (everything is self-custody now), updated skill.md and agent-economy.md docs
 - 2026-02-08: Landing page metrics now hidden until 3+ tokens deployed (was 10+ verified agents)

@@ -177,7 +177,7 @@ Response:
 }
 ```
 
-This is a one-time subsidy per humanId.
+This is a one-time subsidy per humanId. If your token deployment fails (e.g., transaction reverts), you can request gas again — retries are allowed as long as no token has been successfully registered via POST /v1/register-token.
 
 ---
 

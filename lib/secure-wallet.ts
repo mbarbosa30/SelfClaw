@@ -2,8 +2,8 @@ import { createPublicClient, createWalletClient, http, formatUnits, parseUnits }
 import { celo } from 'viem/chains';
 import { privateKeyToAccount } from 'viem/accounts';
 import { db } from '../server/db.js';
-import { agentWallets, verifiedBots } from '../shared/schema.js';
-import { eq, sql } from 'drizzle-orm';
+import { agentWallets, agentActivity, verifiedBots } from '../shared/schema.js';
+import { eq, sql, and } from 'drizzle-orm';
 
 const GAS_AMOUNT_CELO = process.env.GAS_SUBSIDY_CELO || '1';
 const rawGasKey = process.env.SELFCLAW_SPONSOR_PRIVATE_KEY || process.env.CELO_PRIVATE_KEY;
@@ -211,20 +211,54 @@ export async function sendGasSubsidy(humanId: string): Promise<GasSubsidyResult>
     const wallet = wallets[0];
     
     if (wallet.gasReceived) {
-      return {
-        success: false,
-        error: 'Gas subsidy already received',
-        alreadyReceived: true
-      };
+      const tokenRegistrations = await db.select()
+        .from(agentActivity)
+        .where(and(
+          eq(agentActivity.humanId, humanId),
+          eq(agentActivity.eventType, 'token_registered')
+        ))
+        .limit(1);
+      
+      if (tokenRegistrations.length > 0) {
+        return {
+          success: false,
+          error: 'Gas subsidy already received and token successfully deployed',
+          alreadyReceived: true
+        };
+      }
+      
+      console.log(`[secure-wallet] Gas retry allowed for ${humanId} — previous gas used but no successful token deployment found`);
+      await db.execute(sql`
+        UPDATE agent_wallets 
+        SET gas_received = false, gas_tx_hash = NULL, updated_at = NOW()
+        WHERE human_id = ${humanId}
+      `);
     }
     
-    if (wallet.gasTxHash) {
-      return {
-        success: true,
-        txHash: wallet.gasTxHash,
-        amountCelo: GAS_AMOUNT_CELO,
-        alreadyReceived: true
-      };
+    if (wallet.gasTxHash && !wallet.gasTxHash.startsWith('pending-')) {
+      const tokenRegistrations = await db.select()
+        .from(agentActivity)
+        .where(and(
+          eq(agentActivity.humanId, humanId),
+          eq(agentActivity.eventType, 'token_registered')
+        ))
+        .limit(1);
+      
+      if (tokenRegistrations.length > 0) {
+        return {
+          success: true,
+          txHash: wallet.gasTxHash,
+          amountCelo: GAS_AMOUNT_CELO,
+          alreadyReceived: true
+        };
+      }
+      
+      console.log(`[secure-wallet] Gas retry allowed for ${humanId} — previous tx exists but no token registered`);
+      await db.execute(sql`
+        UPDATE agent_wallets 
+        SET gas_received = false, gas_tx_hash = NULL, updated_at = NOW()
+        WHERE human_id = ${humanId}
+      `);
     }
     
     if (!SELFCLAW_GAS_PRIVATE_KEY) {

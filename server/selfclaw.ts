@@ -124,26 +124,43 @@ function generateChallenge(sessionId: string, agentKeyHash: string): string {
   });
 }
 
-function extractRawEd25519Key(publicKeyBase64: string): Uint8Array {
-  const bytes = Buffer.from(publicKeyBase64, "base64");
+function extractRawEd25519Key(publicKeyInput: string): Uint8Array {
+  let input = publicKeyInput.trim();
+  if (input.startsWith('0x') || input.startsWith('0X')) {
+    const hexStr = input.slice(2);
+    if (/^[0-9a-fA-F]+$/.test(hexStr) && hexStr.length === 64) {
+      return Buffer.from(hexStr, "hex");
+    }
+  }
+  const bytes = Buffer.from(input, "base64");
   if (bytes.length === 32) {
     return bytes;
   }
   if (bytes.length === 44 && bytes[0] === 0x30 && bytes[1] === 0x2a) {
     return bytes.subarray(12);
   }
+  if (/^[0-9a-fA-F]{64}$/.test(input)) {
+    return Buffer.from(input, "hex");
+  }
   return bytes;
 }
 
 function decodeSignature(signature: string): Uint8Array {
-  if (/^[0-9a-fA-F]{128}$/.test(signature)) {
-    return Buffer.from(signature, "hex");
+  let sig = signature.trim();
+  if (sig.startsWith('0x') || sig.startsWith('0X')) {
+    sig = sig.slice(2);
   }
-  const b64 = Buffer.from(signature, "base64");
+  if (/^[0-9a-fA-F]{128}$/.test(sig)) {
+    return Buffer.from(sig, "hex");
+  }
+  const b64 = Buffer.from(sig, "base64");
   if (b64.length === 64) {
     return b64;
   }
-  return Buffer.from(signature, "hex");
+  if (/^[0-9a-fA-F]+$/.test(sig) && sig.length >= 128) {
+    return Buffer.from(sig.slice(0, 128), "hex");
+  }
+  return Buffer.from(sig, "hex");
 }
 
 async function verifyEd25519Signature(
@@ -220,7 +237,11 @@ async function authenticateAgent(req: Request, res: Response): Promise<{ publicK
   const isValid = await verifyEd25519Signature(agentPublicKey, signature, messageToSign);
 
   if (!isValid) {
-    res.status(401).json({ error: "Invalid signature. Sign the exact JSON: " + messageToSign });
+    res.status(401).json({
+      error: "Invalid signature",
+      signedMessage: messageToSign,
+      hint: "Sign the exact JSON string above with your Ed25519 private key. Accepted formats: signature as hex (128 chars, with or without 0x prefix) or base64 (88 chars). Public key as base64 (raw 32-byte or SPKI DER MCowBQYDK2VwAyEA...) or hex (64 chars, with or without 0x prefix).",
+    });
     return null;
   }
 
@@ -1980,8 +2001,26 @@ router.post("/v1/deploy-token", verificationLimiter, async (req: Request, res: R
     const gasPrice = await viemPublicClient.getGasPrice();
     const predictedAddress = getContractAddress({ from: fromAddr, nonce: BigInt(nonce) });
 
+    let estimatedGas = BigInt(2000000);
+    try {
+      estimatedGas = await viemPublicClient.estimateGas({
+        account: fromAddr,
+        data: deployData,
+        value: BigInt(0),
+      });
+      estimatedGas = estimatedGas * BigInt(120) / BigInt(100);
+    } catch (estimateErr: any) {
+      console.warn(`[selfclaw] Gas estimation failed, using default 2M: ${estimateErr.message}`);
+    }
+
+    const balance = await viemPublicClient.getBalance({ address: fromAddr });
+    const txCost = estimatedGas * gasPrice;
+    const hasSufficientGas = balance >= txCost;
+
     logActivity("token_deployment", humanId, auth.publicKey, undefined, {
-      predictedTokenAddress: predictedAddress, symbol, name, supply: initialSupply
+      predictedTokenAddress: predictedAddress, symbol, name, supply: initialSupply,
+      bytecodeSize: Math.floor(deployData.length / 2),
+      estimatedGas: estimatedGas.toString(),
     });
 
     res.json({
@@ -1991,7 +2030,7 @@ router.post("/v1/deploy-token", verificationLimiter, async (req: Request, res: R
       unsignedTx: {
         from: walletInfo.address,
         data: deployData,
-        gas: "2000000",
+        gas: estimatedGas.toString(),
         gasPrice: gasPrice.toString(),
         chainId: 42220,
         value: "0",
@@ -2002,10 +2041,32 @@ router.post("/v1/deploy-token", verificationLimiter, async (req: Request, res: R
       name,
       symbol,
       supply: initialSupply,
+      deployment: {
+        bytecodeSize: Math.floor(deployData.length / 2),
+        estimatedGas: estimatedGas.toString(),
+        estimatedCost: formatUnits(txCost, 18) + " CELO",
+        walletBalance: formatUnits(balance, 18) + " CELO",
+        hasSufficientGas,
+      },
+      nextSteps: [
+        "1. Sign the unsignedTx with your wallet private key",
+        "2. Submit the signed transaction to Celo mainnet (chainId 42220)",
+        "3. Wait for confirmation (typically 5 seconds on Celo)",
+        "4. Call POST /v1/register-token with {tokenAddress: predictedTokenAddress, txHash: <your_tx_hash>}",
+        "5. After registering, call POST /v1/request-selfclaw-sponsorship to create your liquidity pool",
+      ],
+      troubleshooting: {
+        gasErrors: "If you get 'out of gas', request more CELO via POST /v1/request-gas (retries allowed if no token deployed yet)",
+        revertErrors: "If the transaction reverts, check that you have enough CELO for gas and that the contract data is not corrupted",
+        nonceMismatch: "If nonce is wrong, wait for any pending transactions to confirm first",
+      },
     });
   } catch (error: any) {
     console.error("[selfclaw] deploy-token error:", error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({
+      error: error.message,
+      hint: "Token deployment preparation failed. Common causes: wallet not registered, insufficient gas balance, or RPC connectivity issues. If gas was burned on a previous failed attempt, you can request gas again via POST /v1/request-gas."
+    });
   }
 });
 
