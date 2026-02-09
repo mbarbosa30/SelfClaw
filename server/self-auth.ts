@@ -16,10 +16,15 @@ const router = Router();
 // Self.xyz Configuration for Authentication
 const SELF_AUTH_SCOPE = "selfclaw-auth";
 const SELF_STAGING = process.env.SELFCLAW_STAGING === "true";
+function getCanonicalDomain(): string {
+  const domains = process.env.REPLIT_DOMAINS;
+  if (!domains) return "localhost:5000";
+  const parts = domains.split(",").map(d => d.trim()).filter(Boolean);
+  const custom = parts.find(d => d.endsWith(".ai") || d.endsWith(".com") || d.endsWith(".app"));
+  return custom || parts[parts.length - 1] || domains;
+}
 const SELF_ENDPOINT = process.env.SELFCLAW_CALLBACK_URL
-  || (process.env.REPLIT_DOMAINS
-    ? `https://${process.env.REPLIT_DOMAINS}/api/auth/self/callback`
-    : "http://localhost:5000/api/auth/self/callback");
+  || `https://${getCanonicalDomain()}/api/auth/self/callback`;
 
 console.log(`[self-auth] Callback endpoint: ${SELF_ENDPOINT}`);
 console.log(`[self-auth] Staging mode: ${SELF_STAGING}`);

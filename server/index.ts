@@ -74,7 +74,9 @@ async function main() {
         .from(verifiedBots)
         .where(sql`(${verifiedBots.metadata}->>'erc8004Minted')::boolean = true`);
 
-      const domain = process.env.REPLIT_DOMAINS || "selfclaw.ai";
+      const rawDomains = process.env.REPLIT_DOMAINS || "selfclaw.ai";
+      const domainParts = rawDomains.split(",").map(d => d.trim()).filter(Boolean);
+      const domain = domainParts.find(d => d.endsWith(".ai") || d.endsWith(".com") || d.endsWith(".app")) || domainParts[domainParts.length - 1] || rawDomains;
       const registrations = minted.map((a: any) => {
         const meta = (a.metadata as Record<string, any>) || {};
         return {

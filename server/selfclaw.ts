@@ -42,10 +42,16 @@ async function logActivity(eventType: string, humanId?: string, agentPublicKey?:
 
 const SELFCLAW_SCOPE = "selfclaw-verify";
 const SELFCLAW_STAGING = process.env.SELFCLAW_STAGING === "true";
+function getCanonicalDomain(): string {
+  const domains = process.env.REPLIT_DOMAINS;
+  if (!domains) return "localhost:5000";
+  const parts = domains.split(",").map(d => d.trim()).filter(Boolean);
+  const custom = parts.find(d => d.endsWith(".ai") || d.endsWith(".com") || d.endsWith(".app"));
+  return custom || parts[parts.length - 1] || domains;
+}
+const CANONICAL_DOMAIN = getCanonicalDomain();
 const SELFCLAW_ENDPOINT = process.env.SELFCLAW_CALLBACK_URL 
-  || (process.env.REPLIT_DOMAINS 
-    ? `https://${process.env.REPLIT_DOMAINS}/api/selfclaw/v1/callback`
-    : "http://localhost:5000/api/selfclaw/v1/callback");
+  || `https://${CANONICAL_DOMAIN}/api/selfclaw/v1/callback`;
 
 console.log(`[selfclaw] Callback endpoint: ${SELFCLAW_ENDPOINT}`);
 console.log(`[selfclaw] Staging mode: ${SELFCLAW_STAGING}`);
