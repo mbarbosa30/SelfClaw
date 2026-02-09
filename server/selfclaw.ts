@@ -150,15 +150,14 @@ function decodeSignature(signature: string): Uint8Array {
   if (sig.startsWith('0x') || sig.startsWith('0X')) {
     sig = sig.slice(2);
   }
-  if (/^[0-9a-fA-F]{128}$/.test(sig)) {
-    return Buffer.from(sig, "hex");
+  if (/^[0-9a-fA-F]+$/.test(sig)) {
+    const padded = sig.length % 2 === 1 ? '0' + sig : sig;
+    const buf = Buffer.from(padded, "hex");
+    if (buf.length === 64) return buf;
   }
   const b64 = Buffer.from(sig, "base64");
   if (b64.length === 64) {
     return b64;
-  }
-  if (/^[0-9a-fA-F]+$/.test(sig) && sig.length >= 128) {
-    return Buffer.from(sig.slice(0, 128), "hex");
   }
   return Buffer.from(sig, "hex");
 }
@@ -1498,11 +1497,11 @@ router.get("/v1/agents", publicApiLimiter, async (req: Request, res: Response) =
 
 router.get("/v1/agent-profile/:name", publicApiLimiter, async (req: Request, res: Response) => {
   try {
-    const name = req.params.name;
+    const name = req.params.name as string;
     
     const agents = await db.select()
       .from(verifiedBots)
-      .where(sql`lower(${verifiedBots.deviceId}) = ${name.toLowerCase()}`)
+      .where(sql`lower(${verifiedBots.deviceId}) = ${(name || '').toLowerCase()}`)
       .limit(1);
     
     if (agents.length === 0) {

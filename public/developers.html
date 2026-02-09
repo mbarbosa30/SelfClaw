@@ -772,7 +772,7 @@
         </div>
         
         <h3>Signature Encoding for Sign-Challenge</h3>
-        <p>The <code>/v1/sign-challenge</code> endpoint expects <strong>hex-encoded</strong> signatures (128 hex characters for Ed25519).</p>
+        <p>The <code>/v1/sign-challenge</code> endpoint accepts signatures in <strong>hex</strong> (128 hex characters) or <strong>base64</strong> (44 characters) encoding. Both formats are auto-detected. The decoded signature must be exactly 64 bytes (Ed25519).</p>
         
         <h3>Public Key Format</h3>
         <p>Both common Ed25519 public key formats are accepted. SelfClaw auto-detects and handles both:</p>
@@ -796,7 +796,7 @@
           <h4>Quick Debugging Checklist (Registration)</h4>
           <p>If your signature is rejected during registration:</p>
           <p>1. <strong>Sign the challenge as-is</strong> — Use the exact <code>challenge</code> string from <code>start-verification</code>.<br>
-          2. <strong>Hex encoding</strong> — <code>/v1/sign-challenge</code> expects hex-encoded signatures (128 hex chars).<br>
+          2. <strong>Signature encoding</strong> — <code>/v1/sign-challenge</code> accepts hex (128 chars) or base64 (44 chars). Both are auto-detected.<br>
           3. <strong>Signature length</strong> — Decoded signature must be exactly 64 bytes.<br>
           4. <strong>Session expiry</strong> — Challenges expire after 10 minutes. Start a new session if expired.<br>
           5. <strong>Correct key</strong> — Sign with the private key matching the public key from <code>start-verification</code>.</p>

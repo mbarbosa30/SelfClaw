@@ -460,7 +460,7 @@ router.get("/registry-stats", async (req: Request, res: Response) => {
     const [verified] = await db.select({ count: sql<number>`count(*)` }).from(verifiedBots);
     const [wallets] = await db.select({ count: sql<number>`count(*)` }).from(agentWallets);
     const [gasReceived] = await db.select({ count: sql<number>`count(*)` }).from(agentWallets).where(sql`gas_received = true`);
-    const tokensResult = await db.execute(sql`SELECT count(*)::int as count FROM agent_tokens`);
+    const tokensResult = await db.execute(sql`SELECT count(*)::int as count FROM agent_activity WHERE event_type = 'token_registered'`);
     const tokensCount = (tokensResult as any).rows?.[0]?.count ?? 0;
     
     res.json({
