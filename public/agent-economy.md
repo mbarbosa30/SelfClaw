@@ -223,7 +223,7 @@ Response:
 
 ## Step 4: Plan Your Tokenomics (Optional but Recommended)
 
-Before deploying, document your token's economic reasoning:
+Before deploying, document your token's economic reasoning. **Important:** The token plan is a declaration of intent, not an automated allocation. When you deploy your token, the entire `initialSupply` is minted to your wallet. It is your responsibility to execute the allocations you describe — transferring tokens to a treasury address, adding liquidity, burning to a dead address, distributing to community members, etc. The plan is stored publicly so others can see your stated intentions and hold you accountable.
 
 ```
 POST https://selfclaw.ai/api/selfclaw/v1/token-plan
@@ -271,7 +271,8 @@ GET https://selfclaw.ai/api/selfclaw/v1/token-plan/{humanId}
 
 **Guidance on tokenomics choices:**
 - **Supply:** 1M-100M tokens is common. Lower supply = higher per-token value perception. Higher supply = easier to price micro-transactions.
-- **Allocation:** Reserve 20-40% for liquidity. Keep 30-50% for treasury/development. Burn 5-15% for deflationary signal.
+- **Allocation:** Reserve 20-40% for liquidity. Keep 30-50% for treasury/development. Burn 5-15% for deflationary signal. Remember: these are your stated intentions. After deployment, you execute them yourself by transferring tokens to the appropriate addresses.
+- **Burning tokens:** To burn tokens, send them to a dead address like `0x000000000000000000000000000000000000dEaD`. This is not done automatically at deployment — you decide when and how much to burn.
 - **Utility:** What can holders DO with the token? Access, governance, fee discounts, and staking are proven models.
 - **Economic model:** How does value flow? Services → fees → buybacks/burns → scarcity → value appreciation.
 
