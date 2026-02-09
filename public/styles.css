@@ -71,7 +71,7 @@ a:hover {
   align-items: center;
   padding: var(--space-md) 0;
   border-bottom: 2px solid var(--border-heavy);
-  margin-bottom: var(--space-lg);
+  margin-bottom: var(--space-md);
   flex-wrap: wrap;
   gap: var(--space-sm);
 }
@@ -308,7 +308,7 @@ h4 {
 
 /* ── HERO ── */
 .hero {
-  padding: var(--space-xl) 0 var(--space-lg);
+  padding: var(--space-lg) 0 var(--space-lg);
   border-bottom: 2px solid var(--border-heavy);
   margin-bottom: var(--space-lg);
 }
