@@ -104,12 +104,35 @@
       margin-top: 0.25rem;
     }
     
+    .agent-name {
+      font-size: 1rem;
+      color: #fff;
+      font-weight: 500;
+      margin-bottom: 0.25rem;
+    }
+    
+    .agent-badges {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+    }
+    
     .agent-badge {
       font-size: 0.65rem;
       padding: 0.25rem 0.5rem;
       border-radius: 4px;
       background: rgba(0,255,182,0.1);
       color: var(--green);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    
+    .token-badge {
+      font-size: 0.65rem;
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      background: rgba(234,179,8,0.15);
+      color: #eab308;
       text-transform: uppercase;
       letter-spacing: 0.05em;
     }
@@ -196,7 +219,7 @@
       try {
         const [statsRes, agentsRes] = await Promise.all([
           fetch('/api/selfclaw/v1/stats'),
-          fetch('/api/selfclaw/v1/recent')
+          fetch('/api/selfclaw/v1/agents')
         ]);
         
         const stats = await statsRes.json();
@@ -213,16 +236,47 @@
           return;
         }
         
-        listEl.innerHTML = agents.agents.map(agent => `
-          <div class="registry-item">
-            <div class="agent-icon">🤖</div>
-            <div class="agent-info">
-              <div class="agent-key">${escapeHtml(agent.publicKey.substring(0, 16))}...${escapeHtml(agent.publicKey.slice(-8))}</div>
-              <div class="agent-meta">${agent.deviceId ? escapeHtml(agent.deviceId) + ' · ' : ''}Verified ${formatTimeAgo(agent.verifiedAt)}</div>
-            </div>
-            <span class="agent-badge">${agent.verificationLevel || 'passport'}</span>
-          </div>
-        `).join('');
+        listEl.innerHTML = agents.agents.map(agent => {
+          const agentName = agent.name || agent.agentName;
+          const isClickable = !!agentName;
+          const containerTag = isClickable ? 'a' : 'div';
+          const containerAttrs = isClickable 
+            ? `href="/agent/${encodeURIComponent(agentName)}" class="registry-item" style="text-decoration: none; color: inherit;"`
+            : `class="registry-item"`;
+          
+          const truncatedKey = `${escapeHtml(agent.publicKey.substring(0, 16))}...${escapeHtml(agent.publicKey.slice(-8))}`;
+          const displayName = agentName ? escapeHtml(agentName) : 'Unnamed Agent';
+          
+          const tokenSymbol = agent.token?.symbol || null;
+          
+          let metaParts = [];
+          if (tokenSymbol) {
+            metaParts.push(`<span class="token-badge">$${escapeHtml(tokenSymbol)}</span>`);
+          }
+          metaParts.push(`Verified ${formatTimeAgo(agent.verifiedAt)}`);
+          if (agent.hasErc8004) {
+            metaParts.push('ERC-8004 ✓');
+          }
+          
+          let badgeParts = [`<span class="agent-badge">PASSPORT</span>`];
+          if (tokenSymbol) {
+            badgeParts.push(`<span class="token-badge">$${escapeHtml(tokenSymbol)}</span>`);
+          }
+          
+          return `
+            <${containerTag} ${containerAttrs}>
+              <div class="agent-icon">🤖</div>
+              <div class="agent-info">
+                <div class="agent-name">${displayName}</div>
+                <div class="agent-key">${truncatedKey}</div>
+                <div class="agent-meta">${metaParts.join(' · ')}</div>
+              </div>
+              <div class="agent-badges">
+                ${badgeParts.join('')}
+              </div>
+            </${containerTag}>
+          `;
+        }).join('');
         
       } catch (error) {
         console.error('Failed to load registry:', error);

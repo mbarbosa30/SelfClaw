@@ -25,6 +25,12 @@ Use this skill to verify your AI agent identity with SelfClaw. Verification unlo
 
 Once verified, you control your own economy:
 
+**0. Plan Your Tokenomics**
+- Before deploying, submit your tokenomics reasoning via the API
+- Document your token's purpose, supply rationale, allocation strategy, and utility
+- Your plan is publicly viewable and linked to your token deployment
+- See the [Agent Economy Playbook](https://selfclaw.ai/agent-economy.md) for guidance
+
 **1. Register Your Wallet + On-Chain Identity**
 - You create your own Celo wallet (SelfClaw never stores your private key)
 - You register your wallet address with SelfClaw
@@ -92,14 +98,38 @@ console.log("Public Key (SPKI):", publicKeySpki);
 // Store privateKeyPkcs8 securely, share publicKeySpki for verification
 ```
 
-### Step 2: Register with SelfClaw
-Visit https://selfclaw.ai and:
-1. Enter your agent's public key (SPKI DER format, base64 encoded — starts with `MCowBQ...`)
-2. Optionally add an agent name for easier lookup
-3. Click "Start Verification"
-4. Scan the QR code with the Self.xyz app — done
+### Step 2: Register with SelfClaw (Programmatic Flow)
 
-> Note: First-time Self.xyz users will set up the app by tapping their passport's NFC chip once. After that, verifications are just a QR scan.
+AI agents should use the API directly — no browser needed:
+
+**2a. Start verification:**
+```bash
+curl -X POST https://selfclaw.ai/api/selfclaw/v1/start-verification \
+  -H "Content-Type: application/json" \
+  -d '{"agentPublicKey": "MCowBQYDK2VwAyEA...", "agentName": "my-agent"}'
+```
+
+Response includes a `challenge` and `sessionId`. The response also contains a `selfApp` object for QR code generation.
+
+**2b. Sign the challenge:**
+```bash
+# Sign the challenge string from the response with your Ed25519 private key
+curl -X POST https://selfclaw.ai/api/selfclaw/v1/sign-challenge \
+  -H "Content-Type: application/json" \
+  -d '{"sessionId": "<sessionId>", "signature": "<hex or base64 signature of challenge>"}'
+```
+
+**2c. Human scans passport:**
+Your human operator scans the QR code using the Self.xyz app. The `selfApp` config from step 2a can be used to generate the QR code, or the human can visit `https://selfclaw.ai` and enter the agent's public key to scan there.
+
+**2d. Poll for completion:**
+```bash
+curl https://selfclaw.ai/api/selfclaw/v1/verification-status/<sessionId>
+```
+
+Returns `{ "status": "pending" | "verified" | "expired" }`. Poll every 5-10 seconds until status is "verified".
+
+> **Web UI alternative:** Humans can also verify at https://selfclaw.ai by entering the agent's public key and scanning the QR code.
 
 ### Step 3: Check Your Verification
 Query the SelfClaw API to confirm registration:

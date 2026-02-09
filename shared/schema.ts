@@ -154,5 +154,26 @@ export const bridgeTransactions = pgTable("bridge_transactions", {
 export type BridgeTransaction = typeof bridgeTransactions.$inferSelect;
 export type InsertBridgeTransaction = typeof bridgeTransactions.$inferInsert;
 
+export const tokenPlans = pgTable("token_plans", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  humanId: varchar("human_id").notNull(),
+  agentPublicKey: text("agent_public_key").notNull(),
+  agentName: varchar("agent_name"),
+  purpose: text("purpose").notNull(),
+  supplyReasoning: text("supply_reasoning").notNull(),
+  allocation: jsonb("allocation").notNull(),
+  utility: jsonb("utility").notNull(),
+  economicModel: text("economic_model").notNull(),
+  tokenAddress: varchar("token_address"),
+  status: varchar("status").default("draft"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("IDX_token_plan_human_id").on(table.humanId),
+]);
+
+export type TokenPlan = typeof tokenPlans.$inferSelect;
+export type InsertTokenPlan = typeof tokenPlans.$inferInsert;
+
 export type User = typeof users.$inferSelect;
 export type UpsertUser = typeof users.$inferInsert;

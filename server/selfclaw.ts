@@ -1,7 +1,7 @@
 import { Router, Request, Response } from "express";
 import rateLimit from "express-rate-limit";
 import { db } from "./db.js";
-import { verifiedBots, verificationSessions, sponsoredAgents, trackedPools, agentWallets, agentActivity, type InsertVerifiedBot, type InsertVerificationSession } from "../shared/schema.js";
+import { verifiedBots, verificationSessions, sponsoredAgents, trackedPools, agentWallets, agentActivity, tokenPlans, type InsertVerifiedBot, type InsertVerificationSession } from "../shared/schema.js";
 import { eq, and, gt, lt, sql, desc, count } from "drizzle-orm";
 import { SelfBackendVerifier, AllIds, DefaultConfigStore } from "@selfxyz/core";
 import { SelfAppBuilder } from "@selfxyz/qrcode";
@@ -282,6 +282,19 @@ router.post("/v1/start-verification", verificationLimiter, async (req: Request, 
     if (!agentPublicKey) {
       return res.status(400).json({ error: "agentPublicKey is required" });
     }
+
+    if (agentName) {
+      const existingAgents = await db.select()
+        .from(verifiedBots)
+        .where(sql`LOWER(${verifiedBots.deviceId}) = LOWER(${agentName})`)
+        .limit(1);
+      if (existingAgents.length > 0 && existingAgents[0].publicKey !== agentPublicKey) {
+        return res.status(400).json({
+          error: "Agent name already taken",
+          suggestion: "Try a different name like '" + agentName + "-" + Date.now().toString(36) + "'"
+        });
+      }
+    }
     
     const sessionId = crypto.randomUUID();
     const agentKeyHash = crypto.createHash("sha256").update(agentPublicKey).digest("hex").substring(0, 16);
@@ -365,13 +378,6 @@ router.post("/v1/sign-challenge", verificationLimiter, async (req: Request, res:
       });
     }
     
-    if (!/^[0-9a-fA-F]+$/.test(signature)) {
-      return res.status(400).json({ 
-        error: "Invalid signature format",
-        hint: "Signature must be hex-encoded (128 hex characters for Ed25519)"
-      });
-    }
-    
     const sessions = await db.select()
       .from(verificationSessions)
       .where(and(
@@ -410,6 +416,44 @@ router.post("/v1/sign-challenge", verificationLimiter, async (req: Request, res:
     });
   } catch (error: any) {
     console.error("[selfclaw] sign-challenge error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get("/v1/verification-status/:sessionId", publicApiLimiter, async (req: Request, res: Response) => {
+  try {
+    const { sessionId } = req.params;
+
+    const sessions = await db.select()
+      .from(verificationSessions)
+      .where(sql`${verificationSessions.id} = ${sessionId}`)
+      .limit(1);
+
+    if (sessions.length === 0) {
+      return res.status(404).json({ error: "Session not found" });
+    }
+
+    const session = sessions[0];
+
+    if (session.challengeExpiry && new Date(session.challengeExpiry) < new Date()) {
+      return res.json({
+        status: "expired",
+        sessionId,
+        agentPublicKey: session.agentPublicKey,
+        signatureVerified: session.signatureVerified,
+        agentName: session.agentName
+      });
+    }
+
+    res.json({
+      status: session.status,
+      sessionId,
+      agentPublicKey: session.agentPublicKey,
+      signatureVerified: session.signatureVerified,
+      agentName: session.agentName
+    });
+  } catch (error: any) {
+    console.error("[selfclaw] verification-status error:", error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -1383,6 +1427,154 @@ router.get("/v1/recent", publicApiLimiter, async (_req: Request, res: Response) 
   }
 });
 
+router.get("/v1/agents", publicApiLimiter, async (req: Request, res: Response) => {
+  try {
+    const limitParam = Math.min(Number(req.query.limit) || 50, 100);
+    
+    const agents = await db.select({
+      publicKey: verifiedBots.publicKey,
+      agentName: verifiedBots.deviceId,
+      humanId: verifiedBots.humanId,
+      verificationLevel: verifiedBots.verificationLevel,
+      verifiedAt: verifiedBots.verifiedAt,
+      metadata: verifiedBots.metadata,
+      walletAddress: agentWallets.address,
+      tokenAddress: trackedPools.tokenAddress,
+      tokenSymbol: trackedPools.tokenSymbol,
+      tokenName: trackedPools.tokenName,
+      poolAddress: trackedPools.poolAddress,
+      currentPriceCelo: trackedPools.currentPriceCelo,
+      volume24h: trackedPools.volume24h,
+      marketCapCelo: trackedPools.marketCapCelo,
+      tokenPlanPurpose: tokenPlans.purpose,
+      tokenPlanStatus: tokenPlans.status,
+    })
+    .from(verifiedBots)
+    .leftJoin(agentWallets, sql`${verifiedBots.humanId} = ${agentWallets.humanId}`)
+    .leftJoin(trackedPools, sql`${verifiedBots.humanId} = ${trackedPools.humanId}`)
+    .leftJoin(tokenPlans, sql`${verifiedBots.humanId} = ${tokenPlans.humanId}`)
+    .orderBy(desc(verifiedBots.verifiedAt))
+    .limit(limitParam);
+    
+    const seen = new Set<string>();
+    const formattedAgents = agents
+      .filter(a => {
+        if (seen.has(a.publicKey)) return false;
+        seen.add(a.publicKey);
+        return true;
+      })
+      .map(a => ({
+        agentName: a.agentName || null,
+        publicKey: a.publicKey,
+        humanId: a.humanId,
+        verificationLevel: a.verificationLevel || 'passport',
+        verifiedAt: a.verifiedAt,
+        hasErc8004: !!(a.metadata as any)?.erc8004TokenId,
+        wallet: a.walletAddress ? { address: a.walletAddress } : null,
+        token: a.tokenAddress ? {
+          address: a.tokenAddress,
+          symbol: a.tokenSymbol,
+          name: a.tokenName,
+        } : null,
+        pool: a.poolAddress ? {
+          address: a.poolAddress,
+          priceCelo: a.currentPriceCelo,
+          volume24h: a.volume24h,
+          marketCapCelo: a.marketCapCelo,
+        } : null,
+        tokenPlan: a.tokenPlanPurpose ? {
+          purpose: a.tokenPlanPurpose,
+          status: a.tokenPlanStatus,
+        } : null,
+        profileUrl: a.agentName ? `/agent/${encodeURIComponent(a.agentName)}` : null,
+      }));
+    
+    res.json({ agents: formattedAgents, total: formattedAgents.length });
+  } catch (error: any) {
+    console.error("[selfclaw] agents listing error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get("/v1/agent-profile/:name", publicApiLimiter, async (req: Request, res: Response) => {
+  try {
+    const name = req.params.name;
+    
+    const agents = await db.select()
+      .from(verifiedBots)
+      .where(sql`lower(${verifiedBots.deviceId}) = ${name.toLowerCase()}`)
+      .limit(1);
+    
+    if (agents.length === 0) {
+      return res.status(404).json({ error: "Agent not found" });
+    }
+    
+    const agent = agents[0];
+    const humanId = agent.humanId;
+    
+    const [walletResults, poolResults, planResults, activityResults] = await Promise.all([
+      humanId ? db.select().from(agentWallets).where(sql`${agentWallets.humanId} = ${humanId}`).limit(1) : Promise.resolve([]),
+      humanId ? db.select().from(trackedPools).where(sql`${trackedPools.humanId} = ${humanId}`) : Promise.resolve([]),
+      humanId ? db.select().from(tokenPlans).where(sql`${tokenPlans.humanId} = ${humanId}`).limit(1) : Promise.resolve([]),
+      humanId ? db.select({
+        id: agentActivity.id,
+        eventType: agentActivity.eventType,
+        agentName: agentActivity.agentName,
+        metadata: agentActivity.metadata,
+        createdAt: agentActivity.createdAt
+      }).from(agentActivity).where(sql`${agentActivity.humanId} = ${humanId}`).orderBy(desc(agentActivity.createdAt)).limit(20) : Promise.resolve([])
+    ]);
+    
+    const wallet = walletResults[0] || null;
+    const pool = poolResults[0] || null;
+    const plan = planResults[0] || null;
+    const metadata = agent.metadata as any;
+    
+    res.json({
+      agent: {
+        agentName: agent.deviceId,
+        publicKey: agent.publicKey,
+        humanId: agent.humanId,
+        verificationLevel: agent.verificationLevel || 'passport',
+        verifiedAt: agent.verifiedAt,
+        erc8004: metadata?.erc8004TokenId ? {
+          tokenId: metadata.erc8004TokenId,
+          scanUrl: `https://www.8004scan.io/agents/${metadata.erc8004TokenId}`
+        } : null,
+      },
+      wallet: wallet ? {
+        address: wallet.address,
+        gasReceived: wallet.gasReceived,
+      } : null,
+      token: pool ? {
+        address: pool.tokenAddress,
+        symbol: pool.tokenSymbol,
+        name: pool.tokenName,
+      } : null,
+      pool: pool ? {
+        address: pool.poolAddress,
+        priceCelo: pool.currentPriceCelo,
+        volume24h: pool.volume24h,
+        marketCapCelo: pool.marketCapCelo,
+        feeTier: pool.feeTier,
+        pairedWith: pool.pairedWith,
+      } : null,
+      tokenPlan: plan ? {
+        purpose: plan.purpose,
+        supplyReasoning: plan.supplyReasoning,
+        allocation: plan.allocation,
+        utility: plan.utility,
+        economicModel: plan.economicModel,
+        status: plan.status,
+      } : null,
+      activity: activityResults,
+    });
+  } catch (error: any) {
+    console.error("[selfclaw] agent-profile error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 router.get("/v1/ecosystem-stats", publicApiLimiter, async (_req: Request, res: Response) => {
   try {
     const [verifiedCount] = await db.select({ count: count() }).from(verifiedBots);
@@ -1978,6 +2170,17 @@ router.post("/v1/deploy-token", verificationLimiter, async (req: Request, res: R
         error: "name, symbol, and initialSupply are required" 
       });
     }
+
+    const tokenPlanId = req.body.tokenPlanId;
+    if (tokenPlanId) {
+      const plans = await db.select()
+        .from(tokenPlans)
+        .where(sql`${tokenPlans.id} = ${tokenPlanId} AND ${tokenPlans.humanId} = ${humanId}`)
+        .limit(1);
+      if (plans.length === 0) {
+        return res.status(400).json({ error: "Token plan not found or does not belong to this agent" });
+      }
+    }
     
     const decimals = 18;
     const supplyWithDecimals = parseUnits(initialSupply.toString(), decimals);
@@ -2017,10 +2220,17 @@ router.post("/v1/deploy-token", verificationLimiter, async (req: Request, res: R
     const txCost = estimatedGas * gasPrice;
     const hasSufficientGas = balance >= txCost;
 
+    if (tokenPlanId) {
+      await db.update(tokenPlans)
+        .set({ status: "deploying", tokenAddress: predictedAddress, updatedAt: new Date() })
+        .where(sql`${tokenPlans.id} = ${tokenPlanId}`);
+    }
+
     logActivity("token_deployment", humanId, auth.publicKey, undefined, {
       predictedTokenAddress: predictedAddress, symbol, name, supply: initialSupply,
       bytecodeSize: Math.floor(deployData.length / 2),
       estimatedGas: estimatedGas.toString(),
+      tokenPlanId: tokenPlanId || null,
     });
 
     res.json({
@@ -2037,6 +2247,7 @@ router.post("/v1/deploy-token", verificationLimiter, async (req: Request, res: R
         nonce,
       },
       predictedTokenAddress: predictedAddress,
+      tokenPlanId: tokenPlanId || undefined,
       note: "predictedTokenAddress assumes no pending transactions. If you have pending txs, the actual deployed address will differ.",
       name,
       symbol,
@@ -2153,6 +2364,107 @@ router.post("/v1/register-token", verificationLimiter, async (req: Request, res:
   }
 });
 
+router.post("/v1/token-plan", verificationLimiter, async (req: Request, res: Response) => {
+  try {
+    const auth = await authenticateAgent(req, res);
+    if (!auth) return;
+
+    const { purpose, supplyReasoning, allocation, utility, economicModel } = req.body;
+
+    if (!purpose || !supplyReasoning || !allocation || !utility || !economicModel) {
+      return res.status(400).json({ error: "purpose, supplyReasoning, allocation, utility, and economicModel are required" });
+    }
+
+    if (typeof allocation !== "object" || Array.isArray(allocation)) {
+      return res.status(400).json({ error: "allocation must be an object" });
+    }
+
+    if (!Array.isArray(utility)) {
+      return res.status(400).json({ error: "utility must be an array" });
+    }
+
+    const agentName = (auth.agent.metadata as any)?.agentName || auth.agent.deviceId || null;
+
+    const [plan] = await db.insert(tokenPlans).values({
+      humanId: auth.humanId,
+      agentPublicKey: auth.publicKey,
+      agentName,
+      purpose,
+      supplyReasoning,
+      allocation,
+      utility,
+      economicModel,
+    }).returning();
+
+    logActivity("token_plan_created", auth.humanId, auth.publicKey, agentName || undefined, {
+      planId: plan.id, purpose,
+    });
+
+    res.json({
+      success: true,
+      plan: {
+        id: plan.id,
+        humanId: auth.humanId,
+        purpose: plan.purpose,
+        supplyReasoning: plan.supplyReasoning,
+        allocation: plan.allocation,
+        utility: plan.utility,
+        economicModel: plan.economicModel,
+        status: plan.status,
+        createdAt: plan.createdAt,
+      },
+      publicUrl: `/api/selfclaw/v1/token-plan/${auth.humanId}`,
+    });
+  } catch (error: any) {
+    console.error("[selfclaw] token-plan create error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get("/v1/token-plan/:humanId", publicApiLimiter, async (req: Request, res: Response) => {
+  try {
+    const { humanId } = req.params;
+
+    const plans = await db.select()
+      .from(tokenPlans)
+      .where(sql`${tokenPlans.humanId} = ${humanId}`)
+      .limit(1);
+
+    if (plans.length === 0) {
+      return res.status(404).json({ error: "Token plan not found" });
+    }
+
+    const plan = plans[0];
+
+    const agents = await db.select()
+      .from(verifiedBots)
+      .where(sql`${verifiedBots.humanId} = ${humanId}`)
+      .limit(1);
+
+    const agentName = agents.length > 0 ? agents[0].deviceId : plan.agentName;
+
+    res.json({
+      plan: {
+        id: plan.id,
+        humanId: plan.humanId,
+        agentName,
+        purpose: plan.purpose,
+        supplyReasoning: plan.supplyReasoning,
+        allocation: plan.allocation,
+        utility: plan.utility,
+        economicModel: plan.economicModel,
+        tokenAddress: plan.tokenAddress,
+        status: plan.status,
+        createdAt: plan.createdAt,
+        updatedAt: plan.updatedAt,
+      },
+    });
+  } catch (error: any) {
+    console.error("[selfclaw] token-plan get error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Transfer token endpoint
 router.post("/v1/transfer-token", verificationLimiter, async (req: Request, res: Response) => {
   try {
@@ -2243,7 +2555,7 @@ router.post("/v1/register-erc8004", verificationLimiter, async (req: Request, re
       });
     }
 
-    const domain = process.env.REPLIT_DOMAINS || "selfclaw.ai";
+    const domain = "selfclaw.ai";
     const agentIdentifier = agent.publicKey || agent.deviceId;
 
     const registrationJson = generateRegistrationFile(

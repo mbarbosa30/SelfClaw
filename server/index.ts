@@ -50,6 +50,8 @@ app.get("/dashboard", (_req: Request, res: Response) => sendHtml(res, "dashboard
 app.get("/registry", (_req: Request, res: Response) => sendHtml(res, "registry.html"));
 app.get("/admin", (_req: Request, res: Response) => sendHtml(res, "admin.html", { "X-Robots-Tag": "noindex, nofollow" }));
 app.get("/human/:humanId", (_req: Request, res: Response) => sendHtml(res, "human.html"));
+app.get("/agent/:name", (_req: Request, res: Response) => sendHtml(res, "agent.html"));
+app.get("/agents", (_req: Request, res: Response) => sendHtml(res, "registry.html"));
 
 async function main() {
   try {

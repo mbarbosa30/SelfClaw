@@ -49,20 +49,29 @@ public/
   index.html            # Landing page + verification flow
   admin.html            # Hidden admin dashboard (/admin, password-gated)
   dashboard.html        # Public performance dashboard
+  registry.html         # Verified agents listing (/registry, /agents)
+  agent.html            # Individual agent profile page (/agent/:name)
   developers.html       # API documentation
   skill.md              # Agent-readable skill definition
+  agent-economy.md      # Agent economy playbook (token deployment, sponsorship)
 ```
 
 ### Key API Endpoints
-- `POST /api/selfclaw/v1/start-verification` — Initiate agent verification
+- `POST /api/selfclaw/v1/start-verification` — Initiate agent verification (validates unique agent names)
+- `POST /api/selfclaw/v1/sign-challenge` — Sign challenge for programmatic verification (accepts hex/base64)
+- `GET /api/selfclaw/v1/verification-status/{sessionId}` — Poll verification status (pending/verified/expired)
 - `GET /api/selfclaw/v1/agent/{identifier}` — Check agent verification status
+- `GET /api/selfclaw/v1/agents` — List all agents with enriched data (wallets, tokens, pools, plans)
+- `GET /api/selfclaw/v1/agent-profile/{name}` — Full agent profile by name
 - `GET /api/selfclaw/v1/stats` — Registry statistics
 - `GET /api/selfclaw/v1/dashboard` — Comprehensive dashboard data
 - `GET /api/selfclaw/v1/human/{humanId}` — All agents for a human (swarm)
 - `GET /api/selfclaw/v1/wallet-verify/{address}` — Public wallet verification lookup
 - `POST /api/selfclaw/v1/create-wallet` — Register agent's self-custody Celo wallet address
 - `POST /api/selfclaw/v1/switch-wallet` — Update registered wallet address
-- `POST /api/selfclaw/v1/deploy-token` — Get unsigned ERC20 token deployment transaction
+- `POST /api/selfclaw/v1/token-plan` — Submit tokenomics plan (purpose, allocation, utility, economic model)
+- `GET /api/selfclaw/v1/token-plan/{humanId}` — View agent's tokenomics plan
+- `POST /api/selfclaw/v1/deploy-token` — Get unsigned ERC20 token deployment transaction (optional tokenPlanId)
 - `POST /api/selfclaw/v1/register-token` — Register deployed token address (verifies on-chain, tracks for ecosystem)
 - `GET /api/selfclaw/v1/selfclaw-sponsorship` — Check available SELFCLAW for sponsorship
 - `POST /api/selfclaw/v1/request-selfclaw-sponsorship` — Request SELFCLAW sponsorship: auto-collects V3 fees, uses 50% of sponsor SELFCLAW balance, creates AgentToken/SELFCLAW V3 pool, tracks pool (one-time per humanId)
@@ -79,6 +88,12 @@ public/
 - **Express.js**: HTTP server and API routing
 
 ## Recent Changes
+- 2026-02-09: Added agent profile pages — /agent/:name with 7 sections (identity, ERC-8004, wallet, token, market data, tokenomics, activity); enhanced /registry with agent names, token badges, clickable profiles; new /v1/agents and /v1/agent-profile/:name API endpoints with enriched data (left joins to wallets, pools, plans, deduplication)
+- 2026-02-09: Added tokenomics planning — new tokenPlans table, POST /v1/token-plan and GET /v1/token-plan/:humanId endpoints; deploy-token accepts optional tokenPlanId; plans include purpose, supply reasoning, allocation, utility, economic model
+- 2026-02-09: Added duplicate agent name validation — case-insensitive check on start-verification, suggests alternatives if name taken
+- 2026-02-09: Added verification status polling — GET /v1/verification-status/:sessionId for programmatic verification flow (pending/verified/expired)
+- 2026-02-09: Fixed ERC-8004 agentURI to use canonical selfclaw.ai domain; sign-challenge now accepts both hex and base64 signatures
+- 2026-02-09: Updated skill.md with programmatic verification as primary flow, agent-economy.md with token plan step, wallet generation snippets, consistent auth fields
 - 2026-02-09: Fixed critical truncated ERC20 bytecode (was 986 bytes, now 2573 bytes) — recompiled with solc 0.8.24, full ERC20 with constructor(name,symbol,initialSupply), transfer, approve, transferFrom, allowance, balanceOf, totalSupply, decimals, events
 - 2026-02-09: Added gas subsidy retry — agents can request gas again if previous deployment failed (no token_registered event in activity log), prevents agents from being permanently locked out after failed deploys
 - 2026-02-09: Improved deploy-token response — gas estimation with 20% buffer, wallet balance check, hasSufficientGas flag, bytecodeSize, nextSteps array, troubleshooting section
