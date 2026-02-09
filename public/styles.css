@@ -1150,7 +1150,7 @@ h4 {
 
 .wp-header {
   text-align: center;
-  padding: var(--space-lg) 0;
+  padding: var(--space-sm) 0;
   border-bottom: 2px solid var(--border-heavy);
   margin-bottom: var(--space-lg);
 }
