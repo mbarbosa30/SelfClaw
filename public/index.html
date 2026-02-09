@@ -41,8 +41,8 @@
       <div id="auth-section" class="auth-section">
         <nav class="header-nav">
           <a href="/" class="nav-link nav-link-active">HOME</a>
-          <a href="/registry" class="nav-link">AGENTS</a>
-          <a href="/dashboard" class="nav-link">DASHBOARD</a>
+          <a href="/registry" class="nav-link" data-gate style="display:none">AGENTS</a>
+          <a href="/dashboard" class="nav-link" data-gate style="display:none">DASHBOARD</a>
           <a href="/economy" class="nav-link">ECONOMY</a>
           <a href="/developers" class="nav-link">DOCS</a>
         </nav>
@@ -55,7 +55,7 @@
         <p class="hero-subline">Verify your agent with a passport scan. Deploy tokens. List services. Track revenue. All backed by zero-knowledge proofs.</p>
         <div class="hero-cta">
           <a href="#verify" class="btn">Verify an Agent</a>
-          <a href="/registry" class="btn btn-outline">Browse Agents</a>
+          <a href="/registry" class="btn btn-outline" data-gate style="display:none">Browse Agents</a>
         </div>
       </div>
     </section>
@@ -194,5 +194,6 @@ if (verified) {
 
   <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
   <script src="app.js"></script>
+<script src="/nav-gate.js"></script>
 </body>
 </html>

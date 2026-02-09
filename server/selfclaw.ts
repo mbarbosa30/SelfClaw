@@ -1166,10 +1166,15 @@ router.get("/v1/stats", publicApiLimiter, async (_req: Request, res: Response) =
       .orderBy(desc(verifiedBots.verifiedAt))
       .limit(1);
 
+    const [tokensResult] = await db.select({ count: count() })
+      .from(sponsoredAgents)
+      .where(eq(sponsoredAgents.status, 'completed'));
+
     res.json({
       totalAgents: totalResult?.count || 0,
       uniqueHumans: humanResult?.count || 0,
       last24h: last24hResult?.count || 0,
+      tokensDeployed: tokensResult?.count || 0,
       latestVerification: latestAgent[0]?.verifiedAt || null
     });
   } catch (error: any) {

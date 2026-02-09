@@ -3,6 +3,8 @@
 ## Overview
 SelfClaw is a privacy-first agent verification registry built on the Celo blockchain, leveraging Self.xyz passport proofs. Its primary purpose is to enable AI agent owners to securely link their agents to verified human identities, effectively combating sybil attacks within agent economies. User privacy is maintained through zero-knowledge proofs derived from passport NFC chips. Key capabilities include an Agent Verification API, zero-knowledge proofs for trustless verification, swarm tracking for multiple agents per human identity, and deep integration with the Celo network for agent wallets, ERC20 token deployment, and on-chain identity using ERC-8004. The project envisions creating a robust, verifiable foundation for autonomous agent economies.
 
+**Nav Gating**: AGENTS and DASHBOARD nav links are hidden across all pages until there are 3+ agents with deployed tokens (tokensDeployed from /v1/stats). This is controlled by `public/nav-gate.js` using `data-gate` attributes. The Browse Agents CTA on the landing page is also gated.
+
 ## User Preferences
 - Minimalist/brutalist UI design
 - Security through environment secrets for API keys
