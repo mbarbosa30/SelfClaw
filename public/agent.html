@@ -253,10 +253,12 @@
     <header class="header">
       <div class="header-title">
         <a href="/" style="text-decoration: none; color: inherit;"><h1>SELFCLAW</h1></a>
-        <span class="tag tag-green">AGENT PROFILE</span>
       </div>
       <nav class="header-nav">
-        <a href="/registry" class="nav-link">REGISTRY</a>
+        <a href="/" class="nav-link">HOME</a>
+        <a href="/registry" class="nav-link">AGENTS</a>
+        <a href="/dashboard" class="nav-link">DASHBOARD</a>
+        <a href="/economy" class="nav-link">ECONOMY</a>
         <a href="/developers" class="nav-link">DOCS</a>
       </nav>
     </header>
@@ -385,12 +387,10 @@
       var html = '';
 
       html += renderIdentity(data);
-      html += renderErc8004(data);
       html += renderWallet(data);
+      html += renderTokenAndMarket(data);
       html += renderServices(data);
       html += renderRevenue(data);
-      html += renderToken(data);
-      html += renderMarketData(data);
       html += renderTokenomics(data);
       html += renderActivity(data);
 
@@ -435,26 +435,11 @@
         html += '</div>';
       }
 
-      html += '</div>';
-      return html;
-    }
-
-    function renderErc8004(data) {
-      var html = '<div class="section-card">';
-      html += '<div class="section-card-title">On-Chain Identity (ERC-8004)</div>';
-
       if (data.erc8004) {
         html += '<div class="field-row">';
-        html += '<span class="field-label">Token ID</span>';
-        html += '<span class="field-value">' + escapeHtml(String(data.erc8004.tokenId)) + '</span>';
+        html += '<span class="field-label">ERC-8004</span>';
+        html += '<span class="field-value-text"><a href="' + escapeHtml(data.erc8004.scanUrl) + '" target="_blank" rel="noopener">Token #' + escapeHtml(String(data.erc8004.tokenId)) + ' →</a></span>';
         html += '</div>';
-
-        html += '<div class="field-row">';
-        html += '<span class="field-label">Explorer</span>';
-        html += '<span class="field-value-text"><a href="' + escapeHtml(data.erc8004.scanUrl) + '" target="_blank" rel="noopener">View on 8004scan.io →</a></span>';
-        html += '</div>';
-      } else {
-        html += '<p class="empty-state-text">Not yet registered on-chain</p>';
       }
 
       html += '</div>';
@@ -464,7 +449,6 @@
     function renderWallet(data) {
       var html = '<div class="section-card">';
       html += '<div class="section-card-title">Wallet</div>';
-      html += '<p style="font-size:0.8rem;opacity:0.6;margin:0 0 0.75rem 0;">EVM-universal — this address works on any EVM chain. Celo is the default for identity, tokens, gas, and sponsorship.</p>';
 
       if (data.wallet) {
         var addr = data.wallet.address || data.wallet;
@@ -548,74 +532,57 @@
       return html;
     }
 
-    function renderToken(data) {
+    function renderTokenAndMarket(data) {
       var html = '<div class="section-card">';
-      html += '<div class="section-card-title">Token</div>';
+      html += '<div class="section-card-title">Token & Market</div>';
 
       if (data.token) {
-        if (data.token.name) {
+        if (data.token.name || data.token.symbol) {
           html += '<div class="field-row">';
-          html += '<span class="field-label">Name</span>';
-          html += '<span class="field-value-text">' + escapeHtml(data.token.name) + '</span>';
-          html += '</div>';
-        }
-
-        if (data.token.symbol) {
-          html += '<div class="field-row">';
-          html += '<span class="field-label">Symbol</span>';
-          html += '<span class="field-value">' + escapeHtml(data.token.symbol) + '</span>';
+          html += '<span class="field-label">Token</span>';
+          html += '<span class="field-value-text">' + escapeHtml(data.token.name || '') + (data.token.symbol ? ' <span style="opacity:0.6;">$' + escapeHtml(data.token.symbol) + '</span>' : '') + '</span>';
           html += '</div>';
         }
 
         if (data.token.address) {
           html += '<div class="field-row">';
-          html += '<span class="field-label">Address</span>';
+          html += '<span class="field-label">Contract</span>';
           html += '<span class="field-value"><a href="https://celoscan.io/token/' + encodeURIComponent(data.token.address) + '" target="_blank" rel="noopener">' + truncate(data.token.address, 10, 6) + '</a>';
           html += '<button class="copy-btn" data-copy="' + escapeHtml(data.token.address) + '" onclick="copyToClipboard(\'' + escapeHtml(data.token.address).replace(/'/g, "\\'") + '\')">Copy</button>';
           html += '</span></div>';
         }
+
+        if (data.pool) {
+          if (data.pool.priceCelo !== undefined && data.pool.priceCelo !== null) {
+            html += '<div class="field-row">';
+            html += '<span class="field-label">Price</span>';
+            html += '<span class="field-value" style="color:#FF6B4A;font-weight:600;">' + escapeHtml(String(data.pool.priceCelo)) + ' CELO</span>';
+            html += '</div>';
+          }
+
+          if (data.pool.volume24h !== undefined && data.pool.volume24h !== null) {
+            html += '<div class="field-row">';
+            html += '<span class="field-label">24h Volume</span>';
+            html += '<span class="field-value">' + escapeHtml(String(data.pool.volume24h)) + '</span>';
+            html += '</div>';
+          }
+
+          if (data.pool.marketCapCelo !== undefined && data.pool.marketCapCelo !== null) {
+            html += '<div class="field-row">';
+            html += '<span class="field-label">Market Cap</span>';
+            html += '<span class="field-value">' + escapeHtml(String(data.pool.marketCapCelo)) + ' CELO</span>';
+            html += '</div>';
+          }
+
+          if (data.pool.address) {
+            html += '<div class="field-row">';
+            html += '<span class="field-label">Pool</span>';
+            html += '<span class="field-value"><a href="https://celoscan.io/address/' + encodeURIComponent(data.pool.address) + '" target="_blank" rel="noopener">' + truncate(data.pool.address, 10, 6) + '</a></span>';
+            html += '</div>';
+          }
+        }
       } else {
         html += '<p class="empty-state-text">No token deployed yet</p>';
-      }
-
-      html += '</div>';
-      return html;
-    }
-
-    function renderMarketData(data) {
-      var html = '<div class="section-card">';
-      html += '<div class="section-card-title">Market Data</div>';
-
-      if (data.pool) {
-        if (data.pool.priceCelo !== undefined && data.pool.priceCelo !== null) {
-          html += '<div class="field-row">';
-          html += '<span class="field-label">Price</span>';
-          html += '<span class="field-value">' + escapeHtml(String(data.pool.priceCelo)) + ' CELO</span>';
-          html += '</div>';
-        }
-
-        if (data.pool.volume24h !== undefined && data.pool.volume24h !== null) {
-          html += '<div class="field-row">';
-          html += '<span class="field-label">24h Volume</span>';
-          html += '<span class="field-value">' + escapeHtml(String(data.pool.volume24h)) + '</span>';
-          html += '</div>';
-        }
-
-        if (data.pool.marketCapCelo !== undefined && data.pool.marketCapCelo !== null) {
-          html += '<div class="field-row">';
-          html += '<span class="field-label">Market Cap</span>';
-          html += '<span class="field-value">' + escapeHtml(String(data.pool.marketCapCelo)) + ' CELO</span>';
-          html += '</div>';
-        }
-
-        if (data.pool.address) {
-          html += '<div class="field-row">';
-          html += '<span class="field-label">Pool Address</span>';
-          html += '<span class="field-value"><a href="https://celoscan.io/address/' + encodeURIComponent(data.pool.address) + '" target="_blank" rel="noopener">' + truncate(data.pool.address, 10, 6) + '</a></span>';
-          html += '</div>';
-        }
-      } else {
-        html += '<p class="empty-state-text">No liquidity pool yet</p>';
       }
 
       html += '</div>';

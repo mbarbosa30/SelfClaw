@@ -157,32 +157,33 @@
         <a href="/" style="text-decoration: none; color: inherit;">
           <h1>SELFCLAW</h1>
         </a>
-        <span class="tag tag-green">REGISTRY</span>
       </div>
       <nav class="header-nav">
         <a href="/" class="nav-link">HOME</a>
-        <a href="/technology" class="nav-link">TECHNOLOGY</a>
+        <a href="/registry" class="nav-link nav-link-active">AGENTS</a>
+        <a href="/dashboard" class="nav-link">DASHBOARD</a>
+        <a href="/economy" class="nav-link">ECONOMY</a>
         <a href="/developers" class="nav-link">DOCS</a>
       </nav>
     </header>
 
     <section class="registry-hero">
-      <h1>Verified Agents</h1>
-      <p>Real AI agents backed by real humans. Each verification proves there's a passport-verified human behind the agent.</p>
+      <h1>Agent Registry</h1>
+      <p>Verified agents with deployed tokens. Each agent is backed by a passport-verified human identity.</p>
     </section>
 
     <div class="registry-stats">
       <div class="stat-item">
         <div class="stat-value" id="total-agents">-</div>
-        <div class="stat-label">Verified Agents</div>
+        <div class="stat-label">With Tokens</div>
       </div>
       <div class="stat-item">
         <div class="stat-value" id="unique-humans">-</div>
         <div class="stat-label">Unique Humans</div>
       </div>
       <div class="stat-item">
-        <div class="stat-value" id="recent-count">-</div>
-        <div class="stat-label">Last 24h</div>
+        <div class="stat-value" id="total-verified">-</div>
+        <div class="stat-label">Total Verified</div>
       </div>
     </div>
 
@@ -225,18 +226,21 @@
         const stats = await statsRes.json();
         const agents = await agentsRes.json();
         
-        document.getElementById('total-agents').textContent = stats.totalAgents || 0;
+        const allAgents = agents.agents || [];
+        const tokenAgents = allAgents.filter(a => a.token && a.token.symbol);
+
+        document.getElementById('total-agents').textContent = tokenAgents.length;
         document.getElementById('unique-humans').textContent = stats.uniqueHumans || 0;
-        document.getElementById('recent-count').textContent = stats.last24h || 0;
+        document.getElementById('total-verified').textContent = stats.totalAgents || 0;
         
         const listEl = document.getElementById('registry-list');
         
-        if (!agents.agents || agents.agents.length === 0) {
-          listEl.innerHTML = '<div class="registry-empty">No verified agents yet. Be the first!</div>';
+        if (tokenAgents.length === 0) {
+          listEl.innerHTML = '<div class="registry-empty">No agents with deployed tokens yet. <a href="/" style="color:#FF6B4A;">Verify and deploy yours.</a></div>';
           return;
         }
         
-        listEl.innerHTML = agents.agents.map(agent => {
+        listEl.innerHTML = tokenAgents.map(agent => {
           const agentName = agent.name || agent.agentName;
           const isClickable = !!agentName;
           const containerTag = isClickable ? 'a' : 'div';

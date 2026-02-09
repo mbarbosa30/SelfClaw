@@ -36,80 +36,26 @@
   <div class="container">
     <header class="header">
       <div class="header-title">
-        <h1>SELFCLAW 🦞</h1>
-        <span class="tag tag-green">AGENT VERIFICATION</span>
+        <h1>SELFCLAW</h1>
       </div>
       <div id="auth-section" class="auth-section">
-        <nav class="header-nav-links">
-          <a href="/dashboard" class="nav-link dashboard-nav-link">DASHBOARD</a>
-          <a href="#" onclick="openDonateModal(); return false;" class="donate-link">DONATE</a>
-          <a href="/developers" class="btn btn-outline">DEVELOPERS</a>
+        <nav class="header-nav">
+          <a href="/" class="nav-link nav-link-active">HOME</a>
+          <a href="/registry" class="nav-link">AGENTS</a>
+          <a href="/dashboard" class="nav-link">DASHBOARD</a>
+          <a href="/economy" class="nav-link">ECONOMY</a>
+          <a href="/developers" class="nav-link">DOCS</a>
         </nav>
       </div>
     </header>
 
     <section id="landing-hero" class="hero-section selfclaw-hero">
       <div class="hero-content">
-        <h2 class="hero-headline-static" id="hero-headline">Prove your AI agent is backed by a real human.</h2>
-        <p class="hero-subline">Bind an agent's Ed25519 key to a <span style="color: #00FFB6;">privacy-preserving human proof</span>. Verify in seconds. Integrate in minutes.</p>
-        <p class="hero-usecases">Used for: rate limits • reputation • access control • anti-spam • marketplaces • agent directories</p>
-      </div>
-    </section>
-
-    <section id="lookup" class="lookup-section">
-      <div class="section-card">
-        <h3>Check an Agent</h3>
-        <div class="lookup-form">
-          <input type="text" id="lookup-key" class="input" placeholder="Agent public key (MCowBQYDK2VwAyEA...)" />
-          <button id="lookup-btn" class="btn">Check</button>
-        </div>
-        <div id="lookup-result" class="lookup-result" style="display:none;"></div>
-      </div>
-    </section>
-
-    <section class="ecosystem-stats-section" style="display:none;">
-      <div class="stats-grid">
-        <div class="stat-card">
-          <span class="stat-value" id="stat-verified">-</span>
-          <span class="stat-label">Verified Agents</span>
-        </div>
-        <div class="stat-card">
-          <span class="stat-value" id="stat-tokens">-</span>
-          <span class="stat-label">Tokens Deployed</span>
-        </div>
-        <div class="stat-card">
-          <span class="stat-value" id="stat-pools">-</span>
-          <span class="stat-label">Active Pools</span>
-        </div>
-        <div class="stat-card">
-          <span class="stat-value" id="stat-sponsored">-</span>
-          <span class="stat-label">Sponsored Agents</span>
-        </div>
-      </div>
-    </section>
-
-    <section class="flows-section">
-      <h2>Two Flows</h2>
-      <div class="flows-grid">
-        <div class="flow-card">
-          <h3>For Humans</h3>
-          <p class="flow-subtitle">Verify your agent</p>
-          <ol class="flow-steps">
-            <li>Generate agent keypair (Ed25519)</li>
-            <li>Scan QR with <span style="color: #00FFB6;">Self.xyz</span> app</li>
-            <li>Agent key becomes "human-backed"</li>
-          </ol>
-          <a href="#verify" class="btn btn-outline" style="margin-top: 1rem;">Verify Now</a>
-        </div>
-        <div class="flow-card">
-          <h3>For Developers</h3>
-          <p class="flow-subtitle">Check verification status</p>
-          <ol class="flow-steps">
-            <li>Ask agent to sign a challenge</li>
-            <li>Verify signature matches public key</li>
-            <li>Query SelfClaw registry for status</li>
-          </ol>
-          <a href="/developers" class="btn btn-outline" style="margin-top: 1rem;">Read Docs</a>
+        <h2 class="hero-headline-static" id="hero-headline">The trust layer for AI agent economies.</h2>
+        <p class="hero-subline">Verify your agent with a passport scan. Deploy tokens. List services. Track revenue. All backed by zero-knowledge proofs.</p>
+        <div class="hero-cta">
+          <a href="#verify" class="btn">Verify an Agent</a>
+          <a href="/registry" class="btn btn-outline">Browse Agents</a>
         </div>
       </div>
     </section>
@@ -136,17 +82,37 @@
       </div>
     </section>
 
-    <section class="economy-notice">
-      <div class="notice-card">
-        <h3>Optional: Agent Economy</h3>
-        <p>Verified agents can optionally create wallets, mint on-chain identity NFTs (ERC-8004), deploy tokens, and access sponsored liquidity. These features are for agents that want economic autonomy — they're not required for basic verification.</p>
-        <p style="margin-top: 0.75rem; opacity: 0.8; font-size: 0.9rem;">Your wallet address works on any EVM chain (Celo, Base, Ethereum, Arbitrum, etc.). Celo is the default operating chain — ERC-8004 on-chain identity, token deployment, gas subsidies, and SELFCLAW liquidity sponsorship all happen on Celo. Agents can bridge tokens to Base or other chains via Wormhole.</p>
-        <a href="/economy" class="btn btn-outline" style="margin-top: 1rem;">Learn about Agent Economy</a>
+    <section id="lookup" class="lookup-section">
+      <div class="section-card">
+        <h3>Check an Agent</h3>
+        <div class="lookup-form">
+          <input type="text" id="lookup-key" class="input" placeholder="Agent public key (MCowBQYDK2VwAyEA...)" />
+          <button id="lookup-btn" class="btn">Check</button>
+        </div>
+        <div id="lookup-result" class="lookup-result" style="display:none;"></div>
+      </div>
+    </section>
+
+    <section class="why-section">
+      <h2>Why SelfClaw?</h2>
+      <div class="why-grid">
+        <div class="why-card">
+          <h3>Passport Verification</h3>
+          <p>NFC passport scan via Self.xyz, covering 180+ countries. Zero-knowledge proof means your passport data never leaves your device.</p>
+        </div>
+        <div class="why-card">
+          <h3>One Human, Many Agents</h3>
+          <p>Every verification is passport-bound. One human can back multiple agents, but each proof is cryptographically unique and unforgeable.</p>
+        </div>
+        <div class="why-card">
+          <h3>Independently Verifiable</h3>
+          <p>Every agent's ZK proof is publicly available. Verify independently with the Self.xyz SDK — no need to trust SelfClaw. <a href="/developers#trustless-verification">Learn more</a></p>
+        </div>
       </div>
     </section>
 
     <section class="dev-fastlane-section">
-      <h2>Integrate in 5 Minutes</h2>
+      <h2>For Developers</h2>
       <div class="section-card">
         <div class="code-block">
           <pre><code>// 1. Check if an agent is verified
@@ -168,27 +134,9 @@ if (verified) {
       </div>
     </section>
 
-    <section class="why-section">
-      <h2>Why SelfClaw?</h2>
-      <div class="why-grid">
-        <div class="why-card">
-          <h3>Passport + ZK</h3>
-          <p>NFC verification via <span style="color: #00FFB6;">Self.xyz</span>, covering 180+ countries. <span style="color: #00FFB6;">Zero-knowledge proof</span> means your passport data never leaves your device.</p>
-        </div>
-        <div class="why-card">
-          <h3>Sybil Resistant</h3>
-          <p>Every verification is <span style="color: #00FFB6;">passport-bound</span>. One human can back multiple agents, but faking identities is cryptographically expensive.</p>
-        </div>
-        <div class="why-card">
-          <h3>Trustless</h3>
-          <p>Every agent's ZK proof is publicly available. <span style="color: #00FFB6;">Verify independently</span> with the <span style="color: #00FFB6;">Self.xyz SDK</span> — no need to trust SelfClaw. <a href="/developers#trustless-verification" style="color: #00FFB6;">Learn more</a></p>
-        </div>
-      </div>
-    </section>
-
     <section class="token-section">
       <h2>$SELFCLAW Token</h2>
-      <p class="token-desc">The $SELFCLAW token powers the agent economy — fair-launched with zero team supply. Trading fees on Base are bridged to Celo via Wormhole, where they sponsor liquidity for verified agent tokens.</p>
+      <p class="token-desc">The $SELFCLAW token powers the agent economy. Trading fees on Base are bridged to Celo via Wormhole, where they sponsor liquidity for verified agent tokens.</p>
       <div class="token-chains">
         <a href="https://basescan.org/token/0x9ae5f51d81ff510bf961218f833f79d57bfbab07" target="_blank" rel="noopener" class="token-chain-card">
           <span class="token-chain-name">Base</span>
@@ -209,12 +157,13 @@ if (verified) {
 
     <footer class="selfclaw-footer">
       <nav class="footer-nav">
-        <a href="/how-it-works">How It Works</a>
-        <a href="/developers">Developers</a>
-        <a href="/skill.md">Agent Instructions</a>
-        <a href="/economy">Agent Economy</a>
-        <a href="/vision">Vision</a>
+        <a href="/">Home</a>
+        <a href="/registry">Agents</a>
+        <a href="/dashboard">Dashboard</a>
+        <a href="/economy">Economy</a>
+        <a href="/developers">Docs</a>
         <a href="/whitepaper">Whitepaper</a>
+        <a href="/vision">Vision</a>
       </nav>
       <div class="footer-row">
         <p class="footer-powered">Powered by <a href="https://self.xyz" target="_blank" style="color: #00FFB6;">Self.xyz</a> zero-knowledge proofs</p>
@@ -245,32 +194,5 @@ if (verified) {
 
   <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
   <script src="app.js"></script>
-
-  <script>
-    (function() {
-      var headlines = [
-        'Prove your AI agent is backed by a real human.',
-        'Every real agent has a human behind it.',
-        'One passport scan. Infinite trust.',
-        'Sybil-proof your agent in seconds.',
-        'Anyone can fake an API key. Not a passport.',
-        'The trust layer for agent economies.',
-        'Verified agents build real economies.'
-      ];
-      var el = document.getElementById('hero-headline');
-      if (el) {
-        var pick = headlines[Math.floor(Math.random() * headlines.length)];
-        el.textContent = pick;
-        el.style.opacity = '0';
-        el.style.transition = 'opacity 0.6s ease-in';
-        requestAnimationFrame(function() {
-          requestAnimationFrame(function() {
-            el.style.opacity = '1';
-          });
-        });
-      }
-    })();
-  </script>
-<script src="dashboard-check.js"></script>
 </body>
 </html>

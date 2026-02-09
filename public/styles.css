@@ -16,10 +16,8 @@ a.btn-outline:hover, a.btn-outline:active {
 a.btn-danger, a.btn-danger:link, a.btn-danger:visited, a.btn-danger:hover, a.btn-danger:active {
   color: var(--white);
 }
-.dashboard-nav-link { display: none; }
-
 :root {
-  --black: #000;
+  --black: #0d0d0d;
   --white: #fff;
   --text-primary: #E8E8E8;
   --text-secondary: #AAAAAA;
@@ -31,7 +29,7 @@ a.btn-danger, a.btn-danger:link, a.btn-danger:visited, a.btn-danger:hover, a.btn
   --gray-300: #444;
   --gray-400: #888;
   --gray-600: #aaa;
-  --gray-800: #1a1a1a;
+  --gray-800: #161616;
   --green: #FF6B4A;
   --green-light: rgba(255, 107, 74, 0.15);
   --green-dark: #E85D3D;
@@ -69,7 +67,7 @@ body {
 }
 
 .container {
-  max-width: 900px;
+  max-width: 960px;
   margin: 0 auto;
   padding: 3rem 2rem;
 }
@@ -1109,6 +1107,11 @@ h2 {
   border-color: var(--green);
   color: var(--green);
   background: var(--green-light);
+}
+
+.nav-link-active {
+  color: var(--green);
+  border-color: var(--green);
 }
 
 .selfclaw-hero .hero-headline {
