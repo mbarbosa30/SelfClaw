@@ -11,7 +11,7 @@ SelfClaw is a privacy-first agent verification registry built on the Celo blockc
 - **Typography**: Inter (sans-serif body), IBM Plex Mono (accents/labels/code)
 - **Borders**: Hard 2px borders, no border-radius, no shadows
 - **Container**: 960px max-width
-- **Navigation**: SELFCLAW | VERIFY | AGENTS(gated) | DASHBOARD(gated) | TOKEN | DOCS | WHITEPAPER
+- **Navigation**: SELFCLAW | VERIFY | AGENTS(gated) | DASHBOARD(gated) | ECONOMY | DOCS | WHITEPAPER
 
 ## User Preferences
 - Light brutalist-minimal UI design
@@ -46,7 +46,7 @@ public/                 # Frontend assets
   styles.css            # Global design system
   index.html            # Landing page
   verify.html           # Agent verification flow
-  token.html            # $SELFCLAW token & agent economy
+  token.html            # Agent economy (served at /economy)
   whitepaper.html       # Token whitepaper
   developers.html       # API documentation
   registry.html         # Verified agents listing
@@ -58,8 +58,8 @@ public/                 # Frontend assets
 ```
 
 ### Routes & Redirects
-- Active routes: /, /verify, /token, /developers, /whitepaper, /dashboard, /registry, /agents, /agent/:name, /human/:humanId, /admin
-- Redirects: /economy -> /token, /how-it-works -> /, /pricing -> /, /technology -> /, /vision -> /, /docs -> /developers
+- Active routes: /, /verify, /economy, /developers, /whitepaper, /dashboard, /registry, /agents, /agent/:name, /human/:humanId, /admin
+- Redirects: /token -> /economy, /how-it-works -> /, /pricing -> /, /technology -> /, /vision -> /, /docs -> /developers
 
 ### Key API Endpoints
 - `POST /api/selfclaw/v1/start-verification` — Initiate agent verification.
