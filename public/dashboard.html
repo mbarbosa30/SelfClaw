@@ -12,271 +12,47 @@
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <style>
-    .dashboard-meta {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 2rem;
-      flex-wrap: wrap;
-      gap: 0.5rem;
-    }
-    .dashboard-meta-left {
-      font-family: 'IBM Plex Mono', monospace;
-      font-size: 0.75rem;
-      color: #777;
-    }
-    .refresh-btn {
-      background: transparent;
-      border: 1px solid #444;
-      color: #aaa;
-      padding: 0.4rem 1rem;
-      border-radius: 100px;
-      font-family: 'IBM Plex Mono', monospace;
-      font-size: 0.7rem;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-    .refresh-btn:hover {
-      border-color: #FF6B4A;
-      color: #FF6B4A;
-    }
-    .stats-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 1rem;
-      margin-bottom: 3rem;
-    }
-    .stat-card {
-      background: #0d0d0d;
-      border: 1px solid #333;
-      border-radius: 12px;
-      padding: 1.5rem;
-      border-bottom: 2px solid #FF6B4A;
-    }
-    .stat-label {
-      font-family: 'IBM Plex Mono', monospace;
-      font-size: 0.65rem;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: #777;
-      display: block;
-      margin-bottom: 0.5rem;
-    }
-    .stat-value {
-      font-family: 'Inter', sans-serif;
-      font-size: 2.5rem;
-      font-weight: 700;
-      color: #E8E8E8;
-      line-height: 1;
-    }
-    .section-title {
-      font-size: 0.8rem;
-      font-weight: 700;
-      letter-spacing: 0.15em;
-      text-transform: uppercase;
-      margin-bottom: 1.25rem;
-      padding-bottom: 0.5rem;
-      border-bottom: 1px solid #333;
-      color: #E8E8E8;
-    }
-    .funnel-section {
-      margin-bottom: 3rem;
-    }
-    .funnel-bar {
-      display: flex;
-      height: 36px;
-      border-radius: 8px;
-      overflow: hidden;
-      margin-bottom: 0.75rem;
-    }
-    .funnel-segment {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-family: 'IBM Plex Mono', monospace;
-      font-size: 0.7rem;
-      font-weight: 600;
-      color: #000;
-      min-width: 30px;
-      transition: flex 0.3s ease;
-    }
-    .funnel-legend {
-      display: flex;
-      gap: 1.5rem;
-      flex-wrap: wrap;
-    }
-    .funnel-legend-item {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      font-family: 'IBM Plex Mono', monospace;
-      font-size: 0.7rem;
-      color: #aaa;
-    }
-    .funnel-dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      flex-shrink: 0;
-    }
-    .chart-section {
-      margin-bottom: 3rem;
-    }
-    .chart-wrap {
-      background: #0d0d0d;
-      border: 1px solid #333;
-      border-radius: 12px;
-      padding: 1.5rem;
-    }
-    .wallet-section {
-      margin-bottom: 3rem;
-    }
-    .wallet-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 1rem;
-    }
-    .wallet-card {
-      background: #0d0d0d;
-      border: 1px solid #333;
-      border-radius: 12px;
-      padding: 1.25rem;
-    }
-    .wallet-card .stat-value {
-      font-size: 1.75rem;
-    }
-    .feed-section {
-      margin-bottom: 3rem;
-    }
-    .feed-list {
-      max-height: 400px;
-      overflow-y: auto;
-      border: 1px solid #333;
-      border-radius: 12px;
-      background: #0d0d0d;
-    }
-    .feed-item {
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-      padding: 0.85rem 1.25rem;
-      border-bottom: 1px solid #222;
-      font-size: 0.85rem;
-    }
-    .feed-item:last-child {
-      border-bottom: none;
-    }
-    .feed-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      flex-shrink: 0;
-    }
-    .feed-type {
-      font-family: 'IBM Plex Mono', monospace;
-      font-size: 0.7rem;
-      font-weight: 600;
-      text-transform: uppercase;
-      color: #aaa;
-      min-width: 120px;
-    }
-    .feed-agent {
-      flex: 1;
-      color: #E8E8E8;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .feed-time {
-      font-family: 'IBM Plex Mono', monospace;
-      font-size: 0.65rem;
-      color: #777;
-      white-space: nowrap;
-    }
-    .feed-empty {
-      padding: 2rem;
-      text-align: center;
-      color: #777;
-      font-family: 'IBM Plex Mono', monospace;
-      font-size: 0.8rem;
-    }
-    .selfclaw-footer {
-      border-top: 1px solid #333;
-      padding-top: 2rem;
-      margin-top: 2rem;
-      text-align: center;
-    }
-    .footer-row {
-      display: flex;
-      flex-direction: column;
-      gap: 0.5rem;
-    }
-    .footer-powered, .footer-credit {
-      font-size: 0.8rem;
-      color: #777;
-    }
-    .footer-powered a, .footer-credit a {
-      color: #FF6B4A;
-      text-decoration: none;
-    }
-    .footer-powered a:hover, .footer-credit a:hover {
-      text-decoration: underline;
-    }
-    @media (max-width: 700px) {
-      .stats-grid {
-        grid-template-columns: repeat(2, 1fr);
-      }
-      .wallet-grid {
-        grid-template-columns: 1fr;
-      }
-      .feed-type {
-        min-width: 80px;
-      }
-    }
-  </style>
 </head>
 <body>
-  <div class="container">
-    <header class="header">
-      <div class="header-title">
-        <a href="/" style="text-decoration:none;color:inherit"><h1>SELFCLAW</h1></a>
-      </div>
-      <nav class="header-nav">
-        <a href="/" class="nav-link">HOME</a>
+  <div class="site-container">
+    <header class="site-header">
+      <a href="/" class="site-logo">SELFCLAW</a>
+      <nav class="site-nav">
+        <a href="/verify" class="nav-link">VERIFY</a>
         <a href="/registry" class="nav-link" data-gate style="display:none">AGENTS</a>
-        <a href="/dashboard" class="nav-link nav-link-active" data-gate style="display:none">DASHBOARD</a>
-        <a href="/economy" class="nav-link">ECONOMY</a>
+        <a href="/dashboard" class="nav-link nav-link-active">DASHBOARD</a>
+        <a href="/token" class="nav-link">TOKEN</a>
         <a href="/developers" class="nav-link">DOCS</a>
+        <a href="/whitepaper" class="nav-link">WHITEPAPER</a>
       </nav>
     </header>
 
     <div class="dashboard-meta">
       <span class="dashboard-meta-left" id="last-updated">Loading...</span>
-      <button class="refresh-btn" id="refresh-btn" onclick="loadDashboard()">Refresh</button>
+      <button class="refresh-btn" id="refresh-btn" onclick="loadDashboard()">REFRESH</button>
     </div>
 
-    <div class="stats-grid">
-      <div class="stat-card">
-        <span class="stat-label">Verified Agents</span>
-        <span class="stat-value" id="s-verified">&mdash;</span>
+    <section>
+      <h2 class="section-title">Overview</h2>
+      <div class="grid-4">
+        <div class="stat-card">
+          <span class="stat-value" id="s-verified">&mdash;</span>
+          <span class="stat-label">Verified Agents</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-value" id="s-tokens">&mdash;</span>
+          <span class="stat-label">Tokens Deployed</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-value" id="s-pools">&mdash;</span>
+          <span class="stat-label">Active Pools</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-value" id="s-sponsored">&mdash;</span>
+          <span class="stat-label">Sponsored</span>
+        </div>
       </div>
-      <div class="stat-card">
-        <span class="stat-label">Unique Humans</span>
-        <span class="stat-value" id="s-humans">&mdash;</span>
-      </div>
-      <div class="stat-card">
-        <span class="stat-label">Wallets Created</span>
-        <span class="stat-value" id="s-wallets">&mdash;</span>
-      </div>
-      <div class="stat-card">
-        <span class="stat-label">Tokens Sponsored</span>
-        <span class="stat-value" id="s-sponsored">&mdash;</span>
-      </div>
-    </div>
+    </section>
 
     <section class="funnel-section">
       <h2 class="section-title">Verification Funnel</h2>
@@ -285,22 +61,26 @@
     </section>
 
     <section class="chart-section">
-      <h2 class="section-title">Activity (Last 30 Days)</h2>
+      <h2 class="section-title">Activity Over Time</h2>
       <div class="chart-wrap">
         <canvas id="activity-chart" height="200"></canvas>
       </div>
     </section>
 
     <section class="wallet-section">
-      <h2 class="section-title">Wallet Overview</h2>
+      <h2 class="section-title">Treasury</h2>
       <div class="wallet-grid">
         <div class="wallet-card">
-          <span class="stat-label">Registered Wallets</span>
           <span class="stat-value" id="w-total">&mdash;</span>
+          <span class="stat-label">Registered Wallets</span>
         </div>
         <div class="wallet-card">
-          <span class="stat-label">Gas Subsidies</span>
           <span class="stat-value" id="w-gas">&mdash;</span>
+          <span class="stat-label">Gas Subsidies</span>
+        </div>
+        <div class="wallet-card">
+          <span class="stat-value" id="w-treasury">&mdash;</span>
+          <span class="stat-label">Treasury Balance</span>
         </div>
       </div>
     </section>
@@ -312,10 +92,19 @@
       </div>
     </section>
 
-    <footer class="selfclaw-footer">
-      <div class="footer-row">
-        <p class="footer-powered">Powered by <a href="https://self.xyz" target="_blank" style="color: #00FFB6;">Self.xyz</a> zero-knowledge proofs</p>
-        <p class="footer-credit">built with &lt;3 by <a href="https://zeno.vision" target="_blank" rel="noopener">Zeno</a> | <a href="https://github.com/mbarbosa30/SelfClaw" target="_blank" rel="noopener">Open Source</a> | <a href="https://t.me/+GC2quXBnarw1MzU0" target="_blank" rel="noopener">Telegram</a></p>
+    <footer class="site-footer">
+      <nav class="footer-nav">
+        <a href="/">Home</a>
+        <a href="/verify">Verify</a>
+        <a href="/registry">Agents</a>
+        <a href="/dashboard">Dashboard</a>
+        <a href="/token">Token</a>
+        <a href="/developers">Docs</a>
+        <a href="/whitepaper">Whitepaper</a>
+      </nav>
+      <div class="footer-meta">
+        <span>Powered by <a href="https://self.xyz" target="_blank">Self.xyz</a> zero-knowledge proofs</span>
+        <span>Built by <a href="https://zeno.vision" target="_blank" rel="noopener">Zeno</a> · <a href="https://github.com/mbarbosa30/SelfClaw" target="_blank" rel="noopener">GitHub</a> · <a href="https://t.me/+GC2quXBnarw1MzU0" target="_blank" rel="noopener">Telegram</a></span>
       </div>
     </footer>
   </div>
@@ -333,8 +122,8 @@
 
     var FUNNEL_COLORS = {
       pending: '#FFD700',
-      verified: '#4AFF6B',
-      expired: '#777',
+      verified: '#22c55e',
+      expired: '#8a8a8a',
       failed: '#ef4444'
     };
 
@@ -364,7 +153,13 @@
       bar.innerHTML = '';
       legend.innerHTML = '';
       if (total === 0) {
-        bar.innerHTML = '<div style="flex:1;background:#222;display:flex;align-items:center;justify-content:center;color:#777;font-family:IBM Plex Mono,monospace;font-size:0.75rem;border-radius:8px;">No data</div>';
+        var empty = document.createElement('div');
+        empty.className = 'funnel-segment';
+        empty.style.flex = '1';
+        empty.style.background = '#ddd';
+        empty.style.color = '#999';
+        empty.textContent = 'No data';
+        bar.appendChild(empty);
         return;
       }
       var keys = ['pending', 'verified', 'expired', 'failed'];
@@ -382,7 +177,11 @@
 
         var li = document.createElement('div');
         li.className = 'funnel-legend-item';
-        li.innerHTML = '<span class="funnel-dot" style="background:' + FUNNEL_COLORS[k] + '"></span>' + k + ': ' + v;
+        var dot = document.createElement('span');
+        dot.className = 'funnel-dot';
+        dot.style.background = FUNNEL_COLORS[k];
+        li.appendChild(dot);
+        li.appendChild(document.createTextNode(k + ': ' + v));
         legend.appendChild(li);
       }
     }
@@ -413,7 +212,7 @@
             legend: {
               position: 'bottom',
               labels: {
-                color: '#aaa',
+                color: '#5a5a5a',
                 font: { family: 'IBM Plex Mono', size: 10 },
                 boxWidth: 12,
                 padding: 16
@@ -423,14 +222,14 @@
           scales: {
             x: {
               stacked: true,
-              ticks: { color: '#777', font: { family: 'IBM Plex Mono', size: 9 }, maxRotation: 45 },
-              grid: { color: '#222' }
+              ticks: { color: '#8a8a8a', font: { family: 'IBM Plex Mono', size: 9 }, maxRotation: 45 },
+              grid: { color: '#e8e8e8' }
             },
             y: {
               stacked: true,
               beginAtZero: true,
-              ticks: { color: '#777', font: { family: 'IBM Plex Mono', size: 10 }, stepSize: 1 },
-              grid: { color: '#222' }
+              ticks: { color: '#8a8a8a', font: { family: 'IBM Plex Mono', size: 10 }, stepSize: 1 },
+              grid: { color: '#e8e8e8' }
             }
           }
         }
@@ -446,7 +245,7 @@
       var html = '';
       for (var i = 0; i < items.length; i++) {
         var item = items[i];
-        var color = EVENT_COLORS[item.eventType] || '#777';
+        var color = EVENT_COLORS[item.eventType] || '#8a8a8a';
         var name = item.agentName || 'Unknown';
         var time = item.createdAt ? timeAgo(item.createdAt) : '';
         var typeLabel = (item.eventType || '').replace(/_/g, ' ');
@@ -465,12 +264,13 @@
         .then(function(r) { return r.json(); })
         .then(function(data) {
           setText('s-verified', data.registry ? data.registry.totalVerifiedAgents : '\u2014');
-          setText('s-humans', data.registry ? data.registry.uniqueHumans : '\u2014');
-          setText('s-wallets', data.wallets ? data.wallets.total : '\u2014');
+          setText('s-tokens', data.tokenEconomy ? data.tokenEconomy.tokensDeployed : '\u2014');
+          setText('s-pools', data.tokenEconomy ? data.tokenEconomy.activePools : '\u2014');
           setText('s-sponsored', data.tokenEconomy ? data.tokenEconomy.sponsoredAgents : '\u2014');
 
           setText('w-total', data.wallets ? data.wallets.total : '\u2014');
           setText('w-gas', data.wallets ? data.wallets.gasSubsidies : '\u2014');
+          setText('w-treasury', data.wallets ? data.wallets.treasuryBalance : '\u2014');
 
           if (data.verificationFunnel) renderFunnel(data.verificationFunnel);
           if (data.activityTimeline) renderChart(data.activityTimeline);
@@ -482,17 +282,19 @@
         .catch(function() {
           document.getElementById('last-updated').textContent = 'Error loading data';
           setText('s-verified', '\u2014');
-          setText('s-humans', '\u2014');
-          setText('s-wallets', '\u2014');
+          setText('s-tokens', '\u2014');
+          setText('s-pools', '\u2014');
           setText('s-sponsored', '\u2014');
           setText('w-total', '\u2014');
           setText('w-gas', '\u2014');
+          setText('w-treasury', '\u2014');
         });
     }
 
     loadDashboard();
     setInterval(loadDashboard, 30000);
   </script>
-<script src="/nav-gate.js"></script>
+  <script src="/nav-gate.js"></script>
+  <script src="/dashboard-check.js"></script>
 </body>
 </html>

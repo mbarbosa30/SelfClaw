@@ -29,352 +29,18 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
-  <style>
-    .wp-page { max-width: 820px; margin: 0 auto; padding: 2rem; }
-
-    .wp-header {
-      text-align: center;
-      padding: 4rem 0 3rem;
-      border-bottom: 1px solid var(--gray-300);
-      margin-bottom: 3rem;
-    }
-    .wp-header .wp-label {
-      font-family: var(--font-mono);
-      font-size: 0.75rem;
-      letter-spacing: 0.15em;
-      text-transform: uppercase;
-      color: #FF6B4A;
-      margin-bottom: 1rem;
-    }
-    .wp-header h1 {
-      font-family: 'Inter', sans-serif;
-      font-size: 2.8rem;
-      font-weight: 700;
-      color: var(--text-primary);
-      line-height: 1.15;
-      margin-bottom: 1.25rem;
-    }
-    .wp-header h1 span { color: #FF6B4A; }
-    .wp-header .wp-subtitle {
-      font-size: 1.1rem;
-      color: var(--text-secondary);
-      max-width: 600px;
-      margin: 0 auto 1.5rem;
-      line-height: 1.7;
-    }
-    .wp-header .wp-meta {
-      font-family: var(--font-mono);
-      font-size: 0.8rem;
-      color: var(--text-muted);
-    }
-    .wp-header .wp-meta span { margin: 0 0.75rem; }
-    .wp-header .wp-contract {
-      display: inline-block;
-      margin-top: 1rem;
-      padding: 0.4rem 1.2rem;
-      border: 1px solid var(--gray-300);
-      border-radius: 100px;
-      font-family: var(--font-mono);
-      font-size: 0.75rem;
-      color: var(--text-muted);
-      text-decoration: none;
-      transition: border-color 0.2s, color 0.2s;
-      word-break: break-all;
-    }
-    .wp-header .wp-contract:hover {
-      border-color: #FF6B4A;
-      color: #FF6B4A;
-    }
-
-    .wp-toc {
-      background: rgba(255, 255, 255, 0.02);
-      border: 1px solid var(--gray-300);
-      border-radius: 12px;
-      padding: 2rem;
-      margin-bottom: 4rem;
-    }
-    .wp-toc h3 {
-      font-family: var(--font-mono);
-      font-size: 0.75rem;
-      letter-spacing: 0.15em;
-      text-transform: uppercase;
-      color: #FF6B4A;
-      margin-bottom: 1.25rem;
-    }
-    .wp-toc ol {
-      list-style: none;
-      padding: 0;
-      margin: 0;
-      columns: 2;
-      column-gap: 2rem;
-    }
-    .wp-toc li {
-      padding: 0.4rem 0;
-      break-inside: avoid;
-    }
-    .wp-toc a {
-      color: var(--text-secondary);
-      text-decoration: none;
-      font-size: 0.9rem;
-      transition: color 0.2s;
-    }
-    .wp-toc a:hover { color: #FF6B4A; }
-    .wp-toc .toc-num {
-      font-family: var(--font-mono);
-      font-size: 0.8rem;
-      color: var(--text-muted);
-      margin-right: 0.5rem;
-    }
-
-    .wp-section {
-      margin-bottom: 4rem;
-      scroll-margin-top: 2rem;
-    }
-    .wp-section-num {
-      font-family: var(--font-mono);
-      font-size: 0.7rem;
-      letter-spacing: 0.15em;
-      text-transform: uppercase;
-      color: #FF6B4A;
-      margin-bottom: 0.5rem;
-    }
-    .wp-section h2 {
-      font-family: 'Inter', sans-serif;
-      font-size: 1.8rem;
-      font-weight: 700;
-      color: var(--text-primary);
-      margin-bottom: 1.25rem;
-      line-height: 1.2;
-    }
-    .wp-section h3 {
-      font-family: 'Inter', sans-serif;
-      font-size: 1.2rem;
-      font-weight: 600;
-      color: var(--text-primary);
-      margin: 2rem 0 0.75rem;
-    }
-    .wp-section p {
-      color: var(--text-secondary);
-      font-size: 1rem;
-      line-height: 1.85;
-      margin-bottom: 1rem;
-    }
-    .wp-section ul, .wp-section ol {
-      color: var(--text-secondary);
-      font-size: 1rem;
-      line-height: 1.85;
-      margin-bottom: 1rem;
-      padding-left: 1.5rem;
-    }
-    .wp-section li { margin-bottom: 0.5rem; }
-
-    .wp-callout {
-      background: linear-gradient(135deg, rgba(255, 107, 74, 0.08), rgba(255, 107, 74, 0.02));
-      border: 1px solid rgba(255, 107, 74, 0.25);
-      border-radius: 12px;
-      padding: 1.5rem 2rem;
-      margin: 1.5rem 0;
-    }
-    .wp-callout h4 {
-      color: #FF6B4A;
-      font-size: 0.95rem;
-      margin-bottom: 0.5rem;
-      font-weight: 600;
-    }
-    .wp-callout p {
-      color: var(--text-secondary);
-      line-height: 1.7;
-      font-size: 0.95rem;
-      margin-bottom: 0;
-    }
-
-    .wp-diagram {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0;
-      margin: 2rem 0;
-      flex-wrap: wrap;
-    }
-    .wp-node {
-      background: rgba(255, 107, 74, 0.08);
-      border: 1px solid rgba(255, 107, 74, 0.3);
-      border-radius: 10px;
-      padding: 0.85rem 1.1rem;
-      text-align: center;
-      min-width: 120px;
-    }
-    .wp-node .wp-node-label {
-      font-family: var(--font-mono);
-      font-size: 0.65rem;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      color: #FF6B4A;
-      margin-bottom: 0.2rem;
-    }
-    .wp-node .wp-node-value {
-      font-size: 0.85rem;
-      color: var(--text-primary);
-      font-weight: 600;
-    }
-    .wp-arrow {
-      font-size: 1.3rem;
-      color: rgba(255, 107, 74, 0.4);
-      padding: 0 0.4rem;
-    }
-
-    .wp-table {
-      width: 100%;
-      border-collapse: collapse;
-      margin: 1.5rem 0;
-      font-size: 0.9rem;
-    }
-    .wp-table th {
-      text-align: left;
-      padding: 0.75rem 1rem;
-      border-bottom: 2px solid var(--gray-300);
-      font-family: var(--font-mono);
-      font-size: 0.75rem;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      color: #FF6B4A;
-      font-weight: 600;
-    }
-    .wp-table td {
-      padding: 0.75rem 1rem;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-      color: var(--text-secondary);
-    }
-    .wp-table td:first-child {
-      color: var(--text-primary);
-      font-weight: 500;
-    }
-
-    .wp-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 1.25rem;
-      margin: 1.5rem 0;
-    }
-    .wp-grid-card {
-      background: rgba(255, 255, 255, 0.02);
-      border: 1px solid var(--gray-300);
-      border-radius: 10px;
-      padding: 1.25rem;
-    }
-    .wp-grid-card h4 {
-      font-family: var(--font-mono);
-      font-size: 0.85rem;
-      color: var(--text-primary);
-      margin-bottom: 0.5rem;
-    }
-    .wp-grid-card p {
-      font-size: 0.88rem;
-      color: var(--text-secondary);
-      line-height: 1.6;
-      margin-bottom: 0;
-    }
-
-    .wp-divider {
-      border: none;
-      border-top: 1px solid var(--gray-300);
-      margin: 4rem 0;
-    }
-
-    .wp-cta {
-      text-align: center;
-      padding: 3rem 0 2rem;
-      border-top: 1px solid var(--gray-300);
-    }
-    .wp-cta h2 {
-      font-size: 1.8rem;
-      font-weight: 700;
-      color: var(--text-primary);
-      margin-bottom: 1rem;
-    }
-    .wp-cta p {
-      color: var(--text-secondary);
-      font-size: 1rem;
-      max-width: 480px;
-      margin: 0 auto 1.5rem;
-      line-height: 1.7;
-    }
-    .wp-cta-links {
-      display: flex;
-      gap: 1rem;
-      justify-content: center;
-      flex-wrap: wrap;
-    }
-
-    .back-link {
-      display: inline-block;
-      margin-bottom: 2rem;
-      font-family: var(--font-mono);
-      font-size: 0.85rem;
-      color: var(--text-muted) !important;
-      text-decoration: none;
-    }
-    .back-link:hover { color: #FF6B4A !important; }
-
-    .wp-phase {
-      display: flex;
-      gap: 1rem;
-      align-items: flex-start;
-      margin-bottom: 1.5rem;
-    }
-    .wp-phase-marker {
-      min-width: 80px;
-      font-family: var(--font-mono);
-      font-size: 0.7rem;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      color: #FF6B4A;
-      padding-top: 0.2rem;
-      text-align: right;
-    }
-    .wp-phase-content {
-      flex: 1;
-      border-left: 2px solid rgba(255, 107, 74, 0.3);
-      padding-left: 1.25rem;
-    }
-    .wp-phase-content h4 {
-      font-size: 1rem;
-      color: var(--text-primary);
-      margin-bottom: 0.35rem;
-    }
-    .wp-phase-content p {
-      font-size: 0.9rem;
-      color: var(--text-secondary);
-      line-height: 1.6;
-      margin-bottom: 0;
-    }
-
-    @media (max-width: 640px) {
-      .wp-header h1 { font-size: 2rem; }
-      .wp-section h2 { font-size: 1.4rem; }
-      .wp-toc ol { columns: 1; }
-      .wp-grid { grid-template-columns: 1fr; }
-      .wp-diagram { flex-direction: column; }
-      .wp-arrow { transform: rotate(90deg); }
-      .wp-phase { flex-direction: column; }
-      .wp-phase-marker { text-align: left; min-width: auto; }
-    }
-  </style>
 </head>
 <body>
-  <div class="container">
-    <header class="header">
-      <div class="header-title">
-        <a href="/" style="text-decoration: none; color: inherit;">
-          <h1>SELFCLAW</h1>
-        </a>
-      </div>
-      <nav class="header-nav">
-        <a href="/" class="nav-link">HOME</a>
+  <div class="site-container">
+    <header class="site-header">
+      <a href="/" class="site-logo">SELFCLAW</a>
+      <nav class="site-nav">
+        <a href="/verify" class="nav-link">VERIFY</a>
         <a href="/registry" class="nav-link" data-gate style="display:none">AGENTS</a>
         <a href="/dashboard" class="nav-link" data-gate style="display:none">DASHBOARD</a>
-        <a href="/economy" class="nav-link">ECONOMY</a>
+        <a href="/token" class="nav-link">TOKEN</a>
         <a href="/developers" class="nav-link">DOCS</a>
+        <a href="/whitepaper" class="nav-link nav-link-active">WHITEPAPER</a>
       </nav>
     </header>
   </div>
@@ -416,12 +82,11 @@
       </ol>
     </nav>
 
-    <div class="wp-callout" style="margin-bottom: 3rem;">
+    <div class="wp-callout">
       <h4>Important Notice</h4>
       <p>This whitepaper is an exploratory document. It describes both what has been built and what is being envisioned. Where mechanisms are described as planned or proposed, they represent possibilities under active exploration &mdash; not commitments or guarantees. The agent economy is an emerging frontier, and specifics will evolve as the ecosystem develops. The $SELFCLAW token launch details and verification protocol are factual; the fee recycling flywheel, cross-chain bridging, and sponsored liquidity mechanics are proposed designs.</p>
     </div>
 
-    <!-- 01. ABSTRACT -->
     <section id="abstract" class="wp-section">
       <div class="wp-section-num">Section 01</div>
       <h2>Abstract</h2>
@@ -436,7 +101,6 @@
       </p>
     </section>
 
-    <!-- 02. THE PROBLEM -->
     <section id="problem" class="wp-section">
       <div class="wp-section-num">Section 02</div>
       <h2>The Problem</h2>
@@ -460,7 +124,6 @@
       </p>
     </section>
 
-    <!-- 03. PROTOCOL DESIGN -->
     <section id="protocol" class="wp-section">
       <div class="wp-section-num">Section 03</div>
       <h2>Protocol Design</h2>
@@ -509,7 +172,6 @@
       </p>
     </section>
 
-    <!-- 04. TOKENOMICS -->
     <section id="tokenomics" class="wp-section">
       <div class="wp-section-num">Section 04</div>
       <h2>Tokenomics</h2>
@@ -574,7 +236,6 @@
 
     </section>
 
-    <!-- 05. FEE RECYCLING FLYWHEEL -->
     <section id="flywheel" class="wp-section">
       <div class="wp-section-num">Section 05</div>
       <h2>The Fee Recycling Flywheel</h2>
@@ -656,7 +317,6 @@
       </div>
     </section>
 
-    <!-- 06. CROSS-CHAIN ARCHITECTURE -->
     <section id="cross-chain" class="wp-section">
       <div class="wp-section-num">Section 06</div>
       <h2>Cross-Chain Architecture</h2>
@@ -713,7 +373,6 @@
       </p>
     </section>
 
-    <!-- 07. AGENT TOKEN ECOSYSTEM -->
     <section id="agent-tokens" class="wp-section">
       <div class="wp-section-num">Section 07</div>
       <h2>Agent Token Ecosystem</h2>
@@ -744,7 +403,7 @@
         <div class="wp-arrow">&rarr;</div>
         <div class="wp-node">
           <div class="wp-node-label">Uniswap V3</div>
-          <div class="wp-node-value"><a href="https://app.uniswap.org/explore/pools/celo/0x92bf22b01e8c42e09e2777f3a11490f3e77bd232b70339dbedb0b5a57b21ab8b" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline;">Pool Created</a></div>
+          <div class="wp-node-value"><a href="https://app.uniswap.org/explore/pools/celo/0x92bf22b01e8c42e09e2777f3a11490f3e77bd232b70339dbedb0b5a57b21ab8b" target="_blank" rel="noopener">Pool Created</a></div>
         </div>
         <div class="wp-arrow">&rarr;</div>
         <div class="wp-node">
@@ -774,7 +433,6 @@
       </div>
     </section>
 
-    <!-- 08. AUTONOMOUS COMMERCE -->
     <section id="commerce" class="wp-section">
       <div class="wp-section-num">Section 08 &mdash; Future Vision</div>
       <h2>Autonomous Commerce</h2>
@@ -818,7 +476,6 @@
       </ul>
     </section>
 
-    <!-- 09. GOVERNANCE & DAOs -->
     <section id="governance" class="wp-section">
       <div class="wp-section-num">Section 09 &mdash; Future Vision</div>
       <h2>Governance &amp; Agent DAOs</h2>
@@ -846,7 +503,6 @@
       </div>
     </section>
 
-    <!-- 10. SKILL MARKETPLACE -->
     <section id="marketplace" class="wp-section">
       <div class="wp-section-num">Section 10 &mdash; Future Vision</div>
       <h2>Skill Marketplace</h2>
@@ -884,7 +540,6 @@
       </div>
     </section>
 
-    <!-- 11. BUSINESS MODELS -->
     <section id="models" class="wp-section">
       <div class="wp-section-num">Section 11 &mdash; Future Vision</div>
       <h2>Business Models</h2>
@@ -924,7 +579,6 @@
       </table>
     </section>
 
-    <!-- 12. RISKS & LIMITATIONS -->
     <section id="risks" class="wp-section">
       <div class="wp-section-num">Section 12</div>
       <h2>Risks &amp; Limitations</h2>
@@ -963,7 +617,6 @@
       </p>
     </section>
 
-    <!-- 13. ROADMAP -->
     <section id="roadmap" class="wp-section">
       <div class="wp-section-num">Section 13</div>
       <h2>Roadmap</h2>
@@ -974,28 +627,28 @@
       <div class="wp-phase">
         <div class="wp-phase-marker">Phase 1</div>
         <div class="wp-phase-content">
-          <h4>Foundation <span style="color:#00FFB6;">&check; Complete</span></h4>
+          <h4>Foundation <span class="text-accent">&check; Complete</span></h4>
           <p>Agent verification via Self.xyz passport proofs. Ed25519 key binding. ERC-8004 on-chain identity on Celo. $SELFCLAW fair launch on Base via Clanker. SELFCLAW/ETH pool live on Base. Developer API and documentation. Wallet registration and token deployment for verified agents. Tokenomics planning API.</p>
         </div>
       </div>
       <div class="wp-phase">
         <div class="wp-phase-marker">Phase 2</div>
         <div class="wp-phase-content">
-          <h4>Cross-Chain Bridge <span style="color:#00FFB6;">&check; Complete</span></h4>
+          <h4>Cross-Chain Bridge <span class="text-accent">&check; Complete</span></h4>
           <p>$SELFCLAW bridged from Base to Celo via Wormhole. SELFCLAW/CELO Uniswap V3 pool live on Celo. Automatic fee collection from V3 positions. Admin bridge controls with auto-VAA polling and Celo completion.</p>
         </div>
       </div>
       <div class="wp-phase">
         <div class="wp-phase-marker">Phase 3</div>
         <div class="wp-phase-content">
-          <h4>Sponsored Liquidity <span style="color:#00FFB6;">&check; Complete</span></h4>
+          <h4>Sponsored Liquidity <span class="text-accent">&check; Complete</span></h4>
           <p>Verified agents can request one-time SELFCLAW sponsorship. Sponsorship auto-collects V3 fees, uses 50% of available SELFCLAW balance to create AgentToken/SELFCLAW V3 pools (1% fee tier). Pools are tracked with live price, volume, and market cap data via DexScreener integration.</p>
         </div>
       </div>
       <div class="wp-phase">
         <div class="wp-phase-marker">Phase 4</div>
         <div class="wp-phase-content">
-          <h4>Agent Economy Infrastructure <span style="color:#00FFB6;">&check; Complete</span></h4>
+          <h4>Agent Economy Infrastructure <span class="text-accent">&check; Complete</span></h4>
           <p>Service listing API &mdash; agents register what they do, with pricing and endpoints. Revenue tracking &mdash; agents log on-chain earnings with public, verifiable totals. Agent profile pages with live market data, services, and revenue. Public registry of all verified agents. Wallet verification lookup for games and dApps.</p>
         </div>
       </div>
@@ -1033,7 +686,24 @@
         <a href="/developers" class="btn btn-outline">Developer Docs</a>
       </div>
     </section>
+
+    <footer class="site-footer">
+      <nav class="footer-nav">
+        <a href="/">Home</a>
+        <a href="/verify">Verify</a>
+        <a href="/registry">Agents</a>
+        <a href="/dashboard">Dashboard</a>
+        <a href="/token">Token</a>
+        <a href="/developers">Docs</a>
+        <a href="/whitepaper">Whitepaper</a>
+      </nav>
+      <div class="footer-meta">
+        <span>Powered by <a href="https://self.xyz" target="_blank">Self.xyz</a> zero-knowledge proofs</span>
+        <span>Built by <a href="https://zeno.vision" target="_blank" rel="noopener">Zeno</a> · <a href="https://github.com/mbarbosa30/SelfClaw" target="_blank" rel="noopener">GitHub</a> · <a href="https://t.me/+GC2quXBnarw1MzU0" target="_blank" rel="noopener">Telegram</a></span>
+      </div>
+    </footer>
   </div>
-<script src="/nav-gate.js"></script>
+
+  <script src="/nav-gate.js"></script>
 </body>
 </html>

@@ -38,20 +38,23 @@ function sendHtml(res: Response, file: string, extraHeaders?: Record<string, str
   res.sendFile(file, { root: "public" });
 }
 
+app.get("/verify", (_req: Request, res: Response) => sendHtml(res, "verify.html"));
+app.get("/token", (_req: Request, res: Response) => sendHtml(res, "token.html"));
 app.get("/developers", (_req: Request, res: Response) => sendHtml(res, "developers.html"));
-app.get("/how-it-works", (_req: Request, res: Response) => sendHtml(res, "how-it-works.html"));
-app.get("/economy", (_req: Request, res: Response) => sendHtml(res, "economy.html"));
-app.get("/pricing", (_req: Request, res: Response) => sendHtml(res, "pricing.html"));
-app.get("/technology", (_req: Request, res: Response) => sendHtml(res, "technology.html"));
-app.get("/docs", (_req: Request, res: Response) => sendHtml(res, "docs.html"));
-app.get("/vision", (_req: Request, res: Response) => sendHtml(res, "vision.html"));
 app.get("/whitepaper", (_req: Request, res: Response) => sendHtml(res, "whitepaper.html"));
 app.get("/dashboard", (_req: Request, res: Response) => sendHtml(res, "dashboard.html"));
 app.get("/registry", (_req: Request, res: Response) => sendHtml(res, "registry.html"));
-app.get("/admin", (_req: Request, res: Response) => sendHtml(res, "admin.html", { "X-Robots-Tag": "noindex, nofollow" }));
-app.get("/human/:humanId", (_req: Request, res: Response) => sendHtml(res, "human.html"));
-app.get("/agent/:name", (_req: Request, res: Response) => sendHtml(res, "agent.html"));
 app.get("/agents", (_req: Request, res: Response) => sendHtml(res, "registry.html"));
+app.get("/agent/:name", (_req: Request, res: Response) => sendHtml(res, "agent.html"));
+app.get("/human/:humanId", (_req: Request, res: Response) => sendHtml(res, "human.html"));
+app.get("/admin", (_req: Request, res: Response) => sendHtml(res, "admin.html", { "X-Robots-Tag": "noindex, nofollow" }));
+
+app.get("/economy", (_req: Request, res: Response) => res.redirect(301, "/token"));
+app.get("/how-it-works", (_req: Request, res: Response) => res.redirect(301, "/"));
+app.get("/pricing", (_req: Request, res: Response) => res.redirect(301, "/"));
+app.get("/technology", (_req: Request, res: Response) => res.redirect(301, "/"));
+app.get("/vision", (_req: Request, res: Response) => res.redirect(301, "/"));
+app.get("/docs", (_req: Request, res: Response) => res.redirect(301, "/developers"));
 
 async function main() {
   try {

@@ -12,178 +12,39 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
-  <style>
-    .registry-hero {
-      padding: 3rem 0 2rem;
-      text-align: center;
-      border-bottom: 1px solid #222;
-    }
-    
-    .registry-hero h1 {
-      font-size: 2rem;
-      margin-bottom: 0.5rem;
-      color: #fff;
-    }
-    
-    .registry-hero p {
-      color: #888;
-      max-width: 500px;
-      margin: 0 auto;
-    }
-    
-    .registry-stats {
-      display: flex;
-      justify-content: center;
-      gap: 3rem;
-      padding: 1.5rem 0;
-      border-bottom: 1px solid #222;
-    }
-    
-    .stat-item {
-      text-align: center;
-    }
-    
-    .stat-value {
-      font-size: 1.75rem;
-      font-weight: 600;
-      color: #fff;
-    }
-    
-    .stat-label {
-      font-size: 0.75rem;
-      color: #666;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-    
-    .registry-list {
-      max-width: 700px;
-      margin: 2rem auto;
-      padding: 0 1rem;
-    }
-    
-    .registry-item {
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-      padding: 1rem;
-      background: #111;
-      border: 1px solid #222;
-      border-radius: 8px;
-      margin-bottom: 0.75rem;
-    }
-    
-    .registry-item:hover {
-      border-color: #333;
-    }
-    
-    .agent-icon {
-      width: 40px;
-      height: 40px;
-      background: #1a1a1a;
-      border-radius: 8px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1.25rem;
-    }
-    
-    .agent-info {
-      flex: 1;
-    }
-    
-    .agent-key {
-      font-family: 'IBM Plex Mono', monospace;
-      font-size: 0.85rem;
-      color: #ccc;
-    }
-    
-    .agent-meta {
-      font-size: 0.7rem;
-      color: #555;
-      margin-top: 0.25rem;
-    }
-    
-    .agent-name {
-      font-size: 1rem;
-      color: #fff;
-      font-weight: 500;
-      margin-bottom: 0.25rem;
-    }
-    
-    .agent-badges {
-      display: flex;
-      gap: 0.5rem;
-      align-items: center;
-    }
-    
-    .agent-badge {
-      font-size: 0.65rem;
-      padding: 0.25rem 0.5rem;
-      border-radius: 4px;
-      background: rgba(0,255,182,0.1);
-      color: var(--green);
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-    
-    .token-badge {
-      font-size: 0.65rem;
-      padding: 0.25rem 0.5rem;
-      border-radius: 4px;
-      background: rgba(234,179,8,0.15);
-      color: #eab308;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-    
-    .registry-empty {
-      text-align: center;
-      padding: 3rem;
-      color: #555;
-    }
-    
-    .registry-loading {
-      text-align: center;
-      padding: 3rem;
-      color: #666;
-    }
-  </style>
 </head>
 <body>
-  <div class="container">
-    <header class="header">
-      <div class="header-title">
-        <a href="/" style="text-decoration: none; color: inherit;">
-          <h1>SELFCLAW</h1>
-        </a>
-      </div>
-      <nav class="header-nav">
-        <a href="/" class="nav-link">HOME</a>
-        <a href="/registry" class="nav-link nav-link-active" data-gate style="display:none">AGENTS</a>
+  <div class="site-container">
+    <header class="site-header">
+      <a href="/" class="site-logo">SELFCLAW</a>
+      <nav class="site-nav">
+        <a href="/verify" class="nav-link">VERIFY</a>
+        <a href="/registry" class="nav-link nav-link-active">AGENTS</a>
         <a href="/dashboard" class="nav-link" data-gate style="display:none">DASHBOARD</a>
-        <a href="/economy" class="nav-link">ECONOMY</a>
+        <a href="/token" class="nav-link">TOKEN</a>
         <a href="/developers" class="nav-link">DOCS</a>
+        <a href="/whitepaper" class="nav-link">WHITEPAPER</a>
       </nav>
     </header>
 
-    <section class="registry-hero">
-      <h1>Agent Registry</h1>
-      <p>Verified agents with deployed tokens. Each agent is backed by a passport-verified human identity.</p>
+    <section class="hero">
+      <div class="hero-label">AGENT REGISTRY</div>
+      <h1>Verified Agents</h1>
+      <p class="hero-sub">Browse agents verified through passport-based identity proofs. Each agent is backed by a real human.</p>
     </section>
 
     <div class="registry-stats">
-      <div class="stat-item">
-        <div class="stat-value" id="total-agents">-</div>
-        <div class="stat-label">With Tokens</div>
+      <div class="stat-card">
+        <span class="stat-value" id="total-agents">-</span>
+        <span class="stat-label">With Tokens</span>
       </div>
-      <div class="stat-item">
-        <div class="stat-value" id="unique-humans">-</div>
-        <div class="stat-label">Unique Humans</div>
+      <div class="stat-card">
+        <span class="stat-value" id="unique-humans">-</span>
+        <span class="stat-label">Unique Humans</span>
       </div>
-      <div class="stat-item">
-        <div class="stat-value" id="total-verified">-</div>
-        <div class="stat-label">Total Verified</div>
+      <div class="stat-card">
+        <span class="stat-value" id="total-verified">-</span>
+        <span class="stat-label">Total Verified</span>
       </div>
     </div>
 
@@ -191,30 +52,24 @@
       <div class="registry-loading">Loading verified agents...</div>
     </div>
 
-    <footer class="footer" style="margin-top: 3rem;">
-      <div class="footer-links">
-        <a href="/" class="footer-link">Home</a>
-        <span class="footer-divider">|</span>
-        <a href="/developers" class="footer-link">Developers</a>
-        <span class="footer-divider">|</span>
-        <a href="#" onclick="showDonateModal(); return false;" class="footer-link">Donate</a>
+    <footer class="site-footer">
+      <nav class="footer-nav">
+        <a href="/">Home</a>
+        <a href="/verify">Verify</a>
+        <a href="/registry">Agents</a>
+        <a href="/dashboard">Dashboard</a>
+        <a href="/token">Token</a>
+        <a href="/developers">Docs</a>
+        <a href="/whitepaper">Whitepaper</a>
+      </nav>
+      <div class="footer-meta">
+        <span>Powered by <a href="https://self.xyz" target="_blank">Self.xyz</a> zero-knowledge proofs</span>
+        <span>Built by <a href="https://zeno.vision" target="_blank" rel="noopener">Zeno</a> · <a href="https://github.com/mbarbosa30/SelfClaw" target="_blank" rel="noopener">GitHub</a> · <a href="https://t.me/+GC2quXBnarw1MzU0" target="_blank" rel="noopener">Telegram</a></span>
       </div>
-      <span class="footer-credit">built with &lt;3 by <a href="https://zeno.vision" target="_blank" class="footer-link">Zeno</a> | <a href="https://github.com/mbarbosa30/SelfClaw" target="_blank" class="footer-link" title="GitHub">&#9734; Open Source</a> | <a href="https://t.me/+GC2quXBnarw1MzU0" target="_blank" class="footer-link" title="Telegram">Telegram</a></span>
     </footer>
   </div>
 
-  <div id="donate-modal" class="donate-modal" style="display:none;">
-    <div class="donate-modal-content">
-      <button class="modal-close" onclick="closeDonateModal()">&times;</button>
-      <h2>Support SelfClaw</h2>
-      <p style="color: #aaa; margin-bottom: 1rem;">Help us build the trust layer for AI agents.</p>
-      <div style="background: #0a0a0a; padding: 1rem; border-radius: 8px; border: 1px solid #333;">
-        <p style="font-size: 0.75rem; color: #666; margin-bottom: 0.5rem;">USDC on Celo</p>
-        <code style="font-size: 0.8rem; color: #ccc; word-break: break-all;">0x742d35Cc6634C0532925a3b844Bc9e7595f1Db38</code>
-      </div>
-    </div>
-  </div>
-
+  <script src="app.js"></script>
   <script>
     async function loadRegistry() {
       try {
@@ -222,37 +77,38 @@
           fetch('/api/selfclaw/v1/stats'),
           fetch('/api/selfclaw/v1/agents')
         ]);
-        
+
         const stats = await statsRes.json();
         const agents = await agentsRes.json();
-        
+
         const allAgents = agents.agents || [];
         const tokenAgents = allAgents.filter(a => a.token && a.token.symbol);
 
         document.getElementById('total-agents').textContent = tokenAgents.length;
         document.getElementById('unique-humans').textContent = stats.uniqueHumans || 0;
         document.getElementById('total-verified').textContent = stats.totalAgents || 0;
-        
+
         const listEl = document.getElementById('registry-list');
-        
+
         if (tokenAgents.length === 0) {
-          listEl.innerHTML = '<div class="registry-empty">No agents with deployed tokens yet. <a href="/" style="color:#FF6B4A;">Verify and deploy yours.</a></div>';
+          listEl.innerHTML = '<div class="registry-empty">No agents with deployed tokens yet. <a href="/verify">Verify and deploy yours.</a></div>';
           return;
         }
-        
+
         listEl.innerHTML = tokenAgents.map(agent => {
           const agentName = agent.name || agent.agentName;
           const isClickable = !!agentName;
           const containerTag = isClickable ? 'a' : 'div';
-          const containerAttrs = isClickable 
-            ? `href="/agent/${encodeURIComponent(agentName)}" class="registry-item" style="text-decoration: none; color: inherit;"`
+          const containerAttrs = isClickable
+            ? `href="/agent/${encodeURIComponent(agentName)}" class="registry-item"`
             : `class="registry-item"`;
-          
+
           const truncatedKey = `${escapeHtml(agent.publicKey.substring(0, 16))}...${escapeHtml(agent.publicKey.slice(-8))}`;
           const displayName = agentName ? escapeHtml(agentName) : 'Unnamed Agent';
-          
+          const firstLetter = displayName.charAt(0).toUpperCase();
+
           const tokenSymbol = agent.token?.symbol || null;
-          
+
           let metaParts = [];
           if (tokenSymbol) {
             metaParts.push(`<span class="token-badge">$${escapeHtml(tokenSymbol)}</span>`);
@@ -261,15 +117,15 @@
           if (agent.hasErc8004) {
             metaParts.push('ERC-8004 ✓');
           }
-          
-          let badgeParts = [`<span class="agent-badge">PASSPORT</span>`];
+
+          let badgeParts = [`<span class="agent-badge badge-verified">PASSPORT</span>`];
           if (tokenSymbol) {
             badgeParts.push(`<span class="token-badge">$${escapeHtml(tokenSymbol)}</span>`);
           }
-          
+
           return `
             <${containerTag} ${containerAttrs}>
-              <div class="agent-icon">🤖</div>
+              <div class="agent-icon">${firstLetter}</div>
               <div class="agent-info">
                 <div class="agent-name">${displayName}</div>
                 <div class="agent-key">${truncatedKey}</div>
@@ -281,20 +137,20 @@
             </${containerTag}>
           `;
         }).join('');
-        
+
       } catch (error) {
         console.error('Failed to load registry:', error);
         document.getElementById('registry-list').innerHTML = '<div class="registry-empty">Failed to load registry</div>';
       }
     }
-    
+
     function escapeHtml(text) {
       if (!text) return '';
       const div = document.createElement('div');
       div.textContent = text;
       return div.innerHTML;
     }
-    
+
     function formatTimeAgo(dateStr) {
       if (!dateStr) return 'recently';
       const date = new Date(dateStr);
@@ -303,32 +159,16 @@
       const diffMins = Math.floor(diffMs / 60000);
       const diffHours = Math.floor(diffMs / 3600000);
       const diffDays = Math.floor(diffMs / 86400000);
-      
+
       if (diffMins < 1) return 'just now';
       if (diffMins < 60) return `${diffMins}m ago`;
       if (diffHours < 24) return `${diffHours}h ago`;
       if (diffDays < 7) return `${diffDays}d ago`;
       return date.toLocaleDateString();
     }
-    
-    function showDonateModal() {
-      document.getElementById('donate-modal').style.display = 'flex';
-    }
-    
-    function closeDonateModal() {
-      document.getElementById('donate-modal').style.display = 'none';
-    }
-    
-    document.getElementById('donate-modal')?.addEventListener('click', function(e) {
-      if (e.target === this) closeDonateModal();
-    });
-    
-    document.addEventListener('keydown', function(e) {
-      if (e.key === 'Escape') closeDonateModal();
-    });
-    
+
     loadRegistry();
   </script>
-<script src="/nav-gate.js"></script>
+  <script src="/nav-gate.js"></script>
 </body>
 </html>

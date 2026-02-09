@@ -12,284 +12,56 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
-  <style>
-    .profile-container {
-      max-width: 700px;
-      margin: 0 auto;
-    }
-
-    .profile-loading,
-    .profile-error {
-      text-align: center;
-      padding: 4rem 1rem;
-      color: #666;
-    }
-
-    .profile-error h2 {
-      color: #fff;
-      font-size: 1.5rem;
-      margin-bottom: 1rem;
-      border-bottom: none;
-      text-transform: none;
-      letter-spacing: normal;
-    }
-
-    .profile-error a {
-      color: #FF6B4A;
-    }
-
-    .section-card {
-      background: #111;
-      border: 1px solid #222;
-      border-radius: 8px;
-      padding: 1.5rem;
-      margin-bottom: 1rem;
-    }
-
-    .section-card-title {
-      font-size: 0.75rem;
-      font-weight: 600;
-      color: #666;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      margin-bottom: 1rem;
-    }
-
-    .agent-name {
-      font-size: 1.75rem;
-      font-weight: 700;
-      color: #fff;
-      margin-bottom: 0.75rem;
-      word-break: break-word;
-    }
-
-    .field-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 0.5rem 0;
-      border-bottom: 1px solid #1a1a1a;
-      gap: 1rem;
-    }
-
-    .field-row:last-child {
-      border-bottom: none;
-    }
-
-    .field-label {
-      font-size: 0.75rem;
-      color: #666;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      flex-shrink: 0;
-    }
-
-    .field-value {
-      font-family: 'IBM Plex Mono', monospace;
-      font-size: 0.85rem;
-      color: #ccc;
-      text-align: right;
-      word-break: break-all;
-    }
-
-    .field-value-text {
-      font-family: 'Inter', sans-serif;
-      font-size: 0.85rem;
-      color: #ccc;
-      text-align: right;
-    }
-
-    .copy-btn {
-      background: transparent;
-      border: 1px solid #333;
-      color: #888;
-      font-size: 0.7rem;
-      padding: 0.2rem 0.5rem;
-      border-radius: 4px;
-      cursor: pointer;
-      margin-left: 0.5rem;
-      font-family: 'IBM Plex Mono', monospace;
-      transition: all 0.2s ease;
-    }
-
-    .copy-btn:hover {
-      border-color: #FF6B4A;
-      color: #FF6B4A;
-    }
-
-    .badge-verified {
-      display: inline-block;
-      font-size: 0.7rem;
-      padding: 0.2rem 0.6rem;
-      border-radius: 4px;
-      background: rgba(255, 107, 74, 0.1);
-      color: #FF6B4A;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      font-weight: 600;
-    }
-
-    .badge-none {
-      display: inline-block;
-      font-size: 0.7rem;
-      padding: 0.2rem 0.6rem;
-      border-radius: 4px;
-      background: rgba(255, 255, 255, 0.05);
-      color: #555;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-
-    .section-card a {
-      color: #FF6B4A;
-      text-decoration: none;
-    }
-
-    .section-card a:hover {
-      text-decoration: underline;
-    }
-
-    .empty-state-text {
-      color: #555;
-      font-size: 0.85rem;
-      font-style: italic;
-    }
-
-    .allocation-table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 0.5rem;
-    }
-
-    .allocation-table th {
-      font-size: 0.7rem;
-      color: #666;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      text-align: left;
-      padding: 0.5rem 0.5rem;
-      border-bottom: 1px solid #222;
-      font-weight: 600;
-    }
-
-    .allocation-table td {
-      font-size: 0.8rem;
-      color: #ccc;
-      padding: 0.4rem 0.5rem;
-      border-bottom: 1px solid #1a1a1a;
-    }
-
-    .utility-list {
-      list-style: none;
-      padding: 0;
-      margin: 0.5rem 0 0;
-    }
-
-    .utility-list li {
-      font-size: 0.85rem;
-      color: #ccc;
-      padding: 0.3rem 0;
-      border-bottom: 1px solid #1a1a1a;
-    }
-
-    .utility-list li:last-child {
-      border-bottom: none;
-    }
-
-    .utility-list li::before {
-      content: '→ ';
-      color: #FF6B4A;
-    }
-
-    .activity-table {
-      width: 100%;
-      border-collapse: collapse;
-    }
-
-    .activity-table th {
-      font-size: 0.7rem;
-      color: #666;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      text-align: left;
-      padding: 0.5rem 0;
-      border-bottom: 1px solid #222;
-      font-weight: 600;
-    }
-
-    .activity-table td {
-      font-size: 0.8rem;
-      color: #ccc;
-      padding: 0.5rem 0;
-      border-bottom: 1px solid #1a1a1a;
-      font-family: 'IBM Plex Mono', monospace;
-    }
-
-    .tokenomics-block {
-      margin-bottom: 1rem;
-    }
-
-    .tokenomics-block:last-child {
-      margin-bottom: 0;
-    }
-
-    .tokenomics-label {
-      font-size: 0.75rem;
-      color: #666;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      margin-bottom: 0.25rem;
-    }
-
-    .tokenomics-value {
-      font-size: 0.85rem;
-      color: #ccc;
-      line-height: 1.6;
-    }
-  </style>
 </head>
 <body>
-  <div class="container">
-    <header class="header">
-      <div class="header-title">
-        <a href="/" style="text-decoration: none; color: inherit;"><h1>SELFCLAW</h1></a>
-      </div>
-      <nav class="header-nav">
-        <a href="/" class="nav-link">HOME</a>
+  <div class="site-container">
+    <header class="site-header">
+      <a href="/" class="site-logo">SELFCLAW</a>
+      <nav class="site-nav">
+        <a href="/verify" class="nav-link">VERIFY</a>
         <a href="/registry" class="nav-link" data-gate style="display:none">AGENTS</a>
         <a href="/dashboard" class="nav-link" data-gate style="display:none">DASHBOARD</a>
-        <a href="/economy" class="nav-link">ECONOMY</a>
+        <a href="/token" class="nav-link">TOKEN</a>
         <a href="/developers" class="nav-link">DOCS</a>
+        <a href="/whitepaper" class="nav-link">WHITEPAPER</a>
       </nav>
     </header>
 
     <div class="profile-container" id="profile-container">
+      <a href="/registry" class="back-link">&larr; Back to Registry</a>
       <div class="profile-loading" id="profile-loading">Loading agent profile...</div>
+      <div class="profile-error hidden" id="profile-error"></div>
+      <div class="hidden" id="profile-content"></div>
     </div>
 
-    <footer class="footer" style="margin-top: 3rem;">
-      <div class="footer-links">
-        <a href="/" class="footer-link">Home</a>
-        <span class="footer-divider">|</span>
-        <a href="/registry" class="footer-link">Registry</a>
-        <span class="footer-divider">|</span>
-        <a href="/developers" class="footer-link">Developers</a>
+    <footer class="site-footer">
+      <nav class="footer-nav">
+        <a href="/">Home</a>
+        <a href="/verify">Verify</a>
+        <a href="/registry">Agents</a>
+        <a href="/dashboard">Dashboard</a>
+        <a href="/token">Token</a>
+        <a href="/developers">Docs</a>
+        <a href="/whitepaper">Whitepaper</a>
+      </nav>
+      <div class="footer-meta">
+        <span>Powered by <a href="https://self.xyz" target="_blank">Self.xyz</a> zero-knowledge proofs</span>
+        <span>Built by <a href="https://zeno.vision" target="_blank" rel="noopener">Zeno</a> &middot; <a href="https://github.com/mbarbosa30/SelfClaw" target="_blank" rel="noopener">GitHub</a> &middot; <a href="https://t.me/+GC2quXBnarw1MzU0" target="_blank" rel="noopener">Telegram</a></span>
       </div>
-      <span class="footer-credit">built with &lt;3 by <a href="https://zeno.vision" target="_blank" class="footer-link">Zeno</a></span>
     </footer>
   </div>
 
   <script>
     function escapeHtml(text) {
       if (!text) return '';
-      const div = document.createElement('div');
+      var div = document.createElement('div');
       div.textContent = String(text);
       return div.innerHTML;
     }
 
     function formatDate(dateStr) {
       if (!dateStr) return 'N/A';
-      const date = new Date(dateStr);
+      var date = new Date(dateStr);
       return date.toLocaleDateString('en-US', {
         year: 'numeric',
         month: 'short',
@@ -358,16 +130,19 @@
     }
 
     function showError(message) {
-      var container = document.getElementById('profile-container');
-      container.innerHTML = '<div class="profile-error">' +
-        '<h2>' + escapeHtml(message) + '</h2>' +
+      document.getElementById('profile-loading').classList.add('hidden');
+      var errorEl = document.getElementById('profile-error');
+      errorEl.classList.remove('hidden');
+      errorEl.innerHTML = '<h2>' + escapeHtml(message) + '</h2>' +
         '<p>The agent you\'re looking for doesn\'t exist or hasn\'t been verified yet.</p>' +
-        '<p style="margin-top: 1rem;"><a href="/registry">← Back to Registry</a></p>' +
-        '</div>';
+        '<p class="back-link-wrap"><a href="/registry">&larr; Back to Registry</a></p>';
     }
 
     function renderProfile(raw) {
-      var container = document.getElementById('profile-container');
+      document.getElementById('profile-loading').classList.add('hidden');
+      var contentEl = document.getElementById('profile-content');
+      contentEl.classList.remove('hidden');
+
       var agent = raw.agent || {};
       var data = {
         agentName: agent.agentName,
@@ -382,19 +157,20 @@
         tokenPlan: raw.tokenPlan,
         revenue: raw.revenue || null,
         services: raw.services || [],
-        activity: raw.activity || []
+        activity: raw.activity || [],
+        recentActivity: raw.recentActivity || []
       };
       var html = '';
 
       html += renderIdentity(data);
       html += renderWallet(data);
       html += renderTokenAndMarket(data);
+      html += renderTokenomics(data);
       html += renderServices(data);
       html += renderRevenue(data);
-      html += renderTokenomics(data);
       html += renderActivity(data);
 
-      container.innerHTML = html;
+      contentEl.innerHTML = html;
     }
 
     function renderIdentity(data) {
@@ -403,7 +179,7 @@
 
       var html = '<div class="section-card">';
       html += '<div class="section-card-title">Agent Identity</div>';
-      html += '<div class="agent-name">' + escapeHtml(data.agentName || 'Unnamed Agent') + '</div>';
+      html += '<h2>' + escapeHtml(data.agentName || 'Unnamed Agent') + '</h2>';
 
       html += '<div class="field-row">';
       html += '<span class="field-label">Public Key</span>';
@@ -417,9 +193,9 @@
       html += '<span class="field-label">Status</span>';
       html += '<span class="field-value-text">';
       if (data.verifiedAt) {
-        html += '<span class="badge-verified">✓ Verified (' + escapeHtml(data.verificationLevel || 'passport') + ')</span>';
+        html += '<span class="badge badge-verified">&check; Verified (' + escapeHtml(data.verificationLevel || 'passport') + ')</span>';
       } else {
-        html += '<span class="badge-none">Unverified</span>';
+        html += '<span class="badge badge-none badge-muted">Unverified</span>';
       }
       html += '</span></div>';
 
@@ -438,7 +214,7 @@
       if (data.erc8004) {
         html += '<div class="field-row">';
         html += '<span class="field-label">ERC-8004</span>';
-        html += '<span class="field-value-text"><a href="' + escapeHtml(data.erc8004.scanUrl) + '" target="_blank" rel="noopener">Token #' + escapeHtml(String(data.erc8004.tokenId)) + ' →</a></span>';
+        html += '<span class="field-value-text"><a href="' + escapeHtml(data.erc8004.scanUrl) + '" target="_blank" rel="noopener">Token #' + escapeHtml(String(data.erc8004.tokenId)) + ' &rarr;</a></span>';
         html += '</div>';
       }
 
@@ -461,7 +237,7 @@
 
         html += '<div class="field-row">';
         html += '<span class="field-label">Gas Status</span>';
-        html += '<span class="field-value-text">' + (data.wallet.gasReceived ? '✓ Gas received' : 'No gas yet') + '</span>';
+        html += '<span class="field-value-text">' + (data.wallet.gasReceived ? '&check; Gas received' : 'No gas yet') + '</span>';
         html += '</div>';
       } else {
         html += '<p class="empty-state-text">No wallet registered</p>';
@@ -471,76 +247,15 @@
       return html;
     }
 
-    function renderServices(data) {
-      var html = '<div class="section-card">';
-      html += '<div class="section-card-title">Services</div>';
-
-      if (data.services && data.services.length > 0) {
-        for (var i = 0; i < data.services.length; i++) {
-          var s = data.services[i];
-          html += '<div style="border-bottom: 1px solid rgba(255,255,255,0.05); padding: 0.75rem 0;' + (i === 0 ? 'padding-top:0;' : '') + '">';
-          html += '<div style="font-weight: 600; color: #fff;">' + escapeHtml(s.name) + '</div>';
-          html += '<div style="font-size: 0.85rem; opacity: 0.7; margin-top: 0.25rem;">' + escapeHtml(s.description) + '</div>';
-          if (s.price) {
-            html += '<div style="margin-top: 0.25rem;"><span style="color: #00FFB6; font-weight: 500;">' + escapeHtml(s.price) + ' ' + escapeHtml(s.currency || 'CELO') + '</span></div>';
-          }
-          if (s.endpoint) {
-            html += '<div style="font-size: 0.8rem; margin-top: 0.25rem; opacity: 0.5;">' + escapeHtml(s.endpoint) + '</div>';
-          }
-          html += '</div>';
-        }
-      } else {
-        html += '<p class="empty-state-text">No services listed</p>';
-      }
-
-      html += '</div>';
-      return html;
-    }
-
-    function renderRevenue(data) {
-      var html = '<div class="section-card">';
-      html += '<div class="section-card-title">Revenue</div>';
-
-      if (data.revenue && data.revenue.totalEvents > 0) {
-        var totals = data.revenue.totals;
-        var keys = Object.keys(totals);
-        for (var i = 0; i < keys.length; i++) {
-          html += '<div class="field-row">';
-          html += '<span class="field-label">Total ' + escapeHtml(keys[i]) + '</span>';
-          html += '<span class="field-value-text" style="color: #00FFB6; font-weight: 600;">' + escapeHtml(String(totals[keys[i]])) + '</span>';
-          html += '</div>';
-        }
-        html += '<div class="field-row">';
-        html += '<span class="field-label">Events logged</span>';
-        html += '<span class="field-value-text">' + data.revenue.totalEvents + '</span>';
-        html += '</div>';
-
-        if (data.revenue.recent && data.revenue.recent.length > 0) {
-          html += '<div style="margin-top: 0.75rem; font-size: 0.8rem; opacity: 0.6;">Recent:</div>';
-          for (var j = 0; j < data.revenue.recent.length; j++) {
-            var r = data.revenue.recent[j];
-            html += '<div style="font-size: 0.8rem; opacity: 0.5; margin-top: 0.25rem;">';
-            html += escapeHtml(r.amount) + ' ' + escapeHtml(r.token) + ' from ' + escapeHtml(r.source);
-            html += '</div>';
-          }
-        }
-      } else {
-        html += '<p class="empty-state-text">No revenue logged yet</p>';
-      }
-
-      html += '</div>';
-      return html;
-    }
-
     function renderTokenAndMarket(data) {
       var html = '<div class="section-card">';
-      html += '<div class="section-card-title">Token & Market</div>';
+      html += '<div class="section-card-title">Token &amp; Market</div>';
 
       if (data.token) {
         if (data.token.name || data.token.symbol) {
           html += '<div class="field-row">';
           html += '<span class="field-label">Token</span>';
-          html += '<span class="field-value-text">' + escapeHtml(data.token.name || '') + (data.token.symbol ? ' <span style="opacity:0.6;">$' + escapeHtml(data.token.symbol) + '</span>' : '') + '</span>';
+          html += '<span class="field-value-text">' + escapeHtml(data.token.name || '') + (data.token.symbol ? ' <span class="text-muted">$' + escapeHtml(data.token.symbol) + '</span>' : '') + '</span>';
           html += '</div>';
         }
 
@@ -556,7 +271,7 @@
           if (data.pool.priceCelo !== undefined && data.pool.priceCelo !== null) {
             html += '<div class="field-row">';
             html += '<span class="field-label">Price</span>';
-            html += '<span class="field-value" style="color:#FF6B4A;font-weight:600;">' + escapeHtml(String(data.pool.priceCelo)) + ' CELO</span>';
+            html += '<span class="field-value text-accent">' + escapeHtml(String(data.pool.priceCelo)) + ' CELO</span>';
             html += '</div>';
           }
 
@@ -679,6 +394,67 @@
       return html;
     }
 
+    function renderServices(data) {
+      var html = '<div class="section-card">';
+      html += '<div class="section-card-title">Services</div>';
+
+      if (data.services && data.services.length > 0) {
+        for (var i = 0; i < data.services.length; i++) {
+          var s = data.services[i];
+          html += '<div class="field-row">';
+          html += '<span class="field-label">' + escapeHtml(s.name) + '</span>';
+          html += '<span class="field-value-text">' + escapeHtml(s.description);
+          if (s.price) {
+            html += ' &mdash; <span class="text-accent">' + escapeHtml(s.price) + ' ' + escapeHtml(s.currency || 'CELO') + '</span>';
+          }
+          html += '</span>';
+          html += '</div>';
+        }
+      } else {
+        html += '<p class="empty-state-text">No services listed</p>';
+      }
+
+      html += '</div>';
+      return html;
+    }
+
+    function renderRevenue(data) {
+      var html = '<div class="section-card">';
+      html += '<div class="section-card-title">Revenue</div>';
+
+      if (data.revenue && data.revenue.totalEvents > 0) {
+        var totals = data.revenue.totals;
+        var keys = Object.keys(totals);
+        for (var i = 0; i < keys.length; i++) {
+          html += '<div class="field-row">';
+          html += '<span class="field-label">Total ' + escapeHtml(keys[i]) + '</span>';
+          html += '<span class="field-value-text text-accent">' + escapeHtml(String(totals[keys[i]])) + '</span>';
+          html += '</div>';
+        }
+        html += '<div class="field-row">';
+        html += '<span class="field-label">Events logged</span>';
+        html += '<span class="field-value-text">' + data.revenue.totalEvents + '</span>';
+        html += '</div>';
+
+        if (data.revenue.recent && data.revenue.recent.length > 0) {
+          html += '<div class="tokenomics-block">';
+          html += '<div class="tokenomics-label">Recent</div>';
+          for (var j = 0; j < data.revenue.recent.length; j++) {
+            var r = data.revenue.recent[j];
+            html += '<div class="tokenomics-value">';
+            html += escapeHtml(r.amount) + ' ' + escapeHtml(r.token) + ' from ' + escapeHtml(r.source);
+            html += '</div>';
+          }
+          html += '</div>';
+        }
+      } else {
+        html += '<p class="empty-state-text">No revenue logged yet</p>';
+      }
+
+      html += '</div>';
+      return html;
+    }
+
     function renderActivity(data) {
       var html = '<div class="section-card">';
       html += '<div class="section-card-title">Recent Activity</div>';
@@ -705,6 +481,6 @@
 
     loadAgentProfile();
   </script>
-<script src="/nav-gate.js"></script>
+  <script src="/nav-gate.js"></script>
 </body>
 </html>

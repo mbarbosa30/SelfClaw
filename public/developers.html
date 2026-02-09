@@ -6,517 +6,41 @@
   <title>SelfClaw Developers | API Documentation</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
-  <style>
-    .docs-container {
-      max-width: 900px;
-      margin: 0 auto;
-      padding: 2rem;
-    }
-    
-    .docs-header {
-      margin-bottom: 3rem;
-      padding-bottom: 2rem;
-      border-bottom: 1px solid var(--gray-300);
-    }
-    
-    .docs-title {
-      font-family: 'Inter', sans-serif;
-      font-size: 2.5rem;
-      font-weight: 700;
-      color: var(--text-primary);
-      margin-bottom: 0.5rem;
-    }
-    
-    .docs-subtitle {
-      font-size: 1.15rem;
-      color: var(--text-secondary);
-      line-height: 1.6;
-    }
-    
-    .highlight-box {
-      background: linear-gradient(135deg, rgba(255, 107, 74, 0.1), rgba(255, 107, 74, 0.05));
-      border: 1px solid var(--green);
-      border-radius: 12px;
-      padding: 1.5rem;
-      margin: 1.5rem 0;
-    }
-    
-    .highlight-box h4 {
-      color: var(--green);
-      font-size: 1rem;
-      font-weight: 600;
-      margin-bottom: 0.5rem;
-    }
-    
-    .highlight-box p {
-      color: var(--text-primary);
-      font-size: 0.95rem;
-      margin-bottom: 0;
-    }
-    
-    .docs-nav {
-      display: flex;
-      gap: 2rem;
-      margin-bottom: 3rem;
-      flex-wrap: wrap;
-    }
-    
-    .docs-nav a {
-      color: var(--text-secondary);
-      text-decoration: none;
-      font-size: 0.9rem;
-      font-weight: 500;
-      transition: color 0.2s;
-    }
-    
-    .docs-nav a:hover,
-    .docs-nav a.active {
-      color: var(--green);
-    }
-    
-    .docs-section {
-      margin-bottom: 4rem;
-    }
-    
-    .docs-section h2 {
-      font-family: 'Inter', sans-serif;
-      font-size: 1.5rem;
-      font-weight: 600;
-      color: var(--text-primary);
-      margin-bottom: 1.5rem;
-      padding-bottom: 0.5rem;
-      border-bottom: 1px solid var(--gray-300);
-    }
-    
-    .docs-section h3 {
-      font-family: 'Inter', sans-serif;
-      font-size: 1.15rem;
-      font-weight: 600;
-      color: var(--green);
-      margin-bottom: 1rem;
-      margin-top: 2rem;
-    }
-    
-    .docs-section p {
-      color: var(--text-secondary);
-      line-height: 1.7;
-      margin-bottom: 1rem;
-    }
-    
-    .comparison-table {
-      width: 100%;
-      border-collapse: collapse;
-      margin: 1.5rem 0;
-    }
-    
-    .comparison-table th,
-    .comparison-table td {
-      padding: 1rem;
-      text-align: left;
-      border-bottom: 1px solid var(--gray-300);
-    }
-    
-    .comparison-table th {
-      color: var(--text-muted);
-      font-size: 0.85rem;
-      font-weight: 500;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-    
-    .comparison-table td {
-      color: var(--text-secondary);
-      font-size: 0.9rem;
-    }
-    
-    .comparison-table .highlight {
-      color: var(--green);
-      font-weight: 600;
-    }
-    
-    .comparison-table .negative {
-      color: var(--coral);
-    }
-    
-    .step-flow {
-      display: flex;
-      gap: 1rem;
-      margin: 2rem 0;
-      flex-wrap: wrap;
-    }
-    
-    .step-card {
-      flex: 1;
-      min-width: 200px;
-      background: var(--gray-800);
-      border: 1px solid var(--gray-300);
-      border-radius: 12px;
-      padding: 1.5rem;
-    }
-    
-    .step-card:hover {
-      border-color: var(--green);
-    }
-    
-    .step-number {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 28px;
-      height: 28px;
-      background: var(--green);
-      color: var(--black);
-      font-family: 'IBM Plex Mono', monospace;
-      font-weight: 600;
-      font-size: 0.85rem;
-      border-radius: 50%;
-      margin-bottom: 0.75rem;
-    }
-    
-    .step-card h4 {
-      font-size: 0.95rem;
-      font-weight: 600;
-      color: var(--text-primary);
-      margin-bottom: 0.5rem;
-    }
-    
-    .step-card p {
-      font-size: 0.85rem;
-      color: var(--text-muted);
-      margin-bottom: 0;
-    }
-    
-    .code-block {
-      background: #0d0d0d;
-      border: 1px solid var(--gray-300);
-      border-radius: 12px;
-      margin: 1.5rem 0;
-      overflow: hidden;
-    }
-    
-    .code-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 0.75rem 1rem;
-      background: var(--gray-800);
-      border-bottom: 1px solid var(--gray-300);
-    }
-    
-    .code-lang {
-      font-family: 'IBM Plex Mono', monospace;
-      font-size: 0.75rem;
-      color: var(--text-muted);
-      text-transform: uppercase;
-    }
-    
-    .code-copy {
-      background: transparent;
-      border: 1px solid var(--gray-300);
-      color: var(--text-secondary);
-      padding: 0.25rem 0.75rem;
-      border-radius: 6px;
-      font-size: 0.75rem;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-    
-    .code-copy:hover {
-      border-color: var(--green);
-      color: var(--green);
-    }
-    
-    .code-content {
-      padding: 1.25rem;
-      overflow-x: auto;
-    }
-    
-    .code-content pre {
-      margin: 0;
-      font-family: 'IBM Plex Mono', monospace;
-      font-size: 0.85rem;
-      line-height: 1.6;
-      color: var(--text-primary);
-    }
-    
-    .code-content .comment {
-      color: var(--text-muted);
-    }
-    
-    .code-content .string {
-      color: var(--green);
-    }
-    
-    .code-content .keyword {
-      color: var(--coral);
-    }
-    
-    .code-content .function {
-      color: #60a5fa;
-    }
-    
-    .api-endpoint {
-      background: var(--gray-800);
-      border: 1px solid var(--gray-300);
-      border-radius: 12px;
-      padding: 1.5rem;
-      margin: 1.5rem 0;
-    }
-    
-    .api-method {
-      display: inline-block;
-      padding: 0.25rem 0.5rem;
-      background: var(--green-light);
-      color: var(--green);
-      font-family: 'IBM Plex Mono', monospace;
-      font-size: 0.75rem;
-      font-weight: 600;
-      border-radius: 4px;
-      margin-right: 0.75rem;
-    }
-    
-    .api-method.post {
-      background: var(--coral-light);
-      color: var(--coral);
-    }
-    
-    .api-method.put {
-      background: rgba(96, 165, 250, 0.15);
-      color: #60a5fa;
-    }
-    
-    .api-path {
-      font-family: 'IBM Plex Mono', monospace;
-      font-size: 0.95rem;
-      color: var(--text-primary);
-    }
-    
-    .api-desc {
-      margin-top: 1rem;
-      color: var(--text-secondary);
-      font-size: 0.9rem;
-    }
-    
-    .response-field {
-      display: flex;
-      gap: 1rem;
-      padding: 0.75rem 0;
-      border-bottom: 1px solid var(--gray-300);
-    }
-    
-    .response-field:last-child {
-      border-bottom: none;
-    }
-    
-    .field-name {
-      font-family: 'IBM Plex Mono', monospace;
-      font-size: 0.85rem;
-      color: var(--green);
-      min-width: 140px;
-    }
-    
-    .field-desc {
-      font-size: 0.85rem;
-      color: var(--text-secondary);
-    }
-    
-    .alert-box {
-      background: var(--coral-light);
-      border: 1px solid var(--coral);
-      border-radius: 8px;
-      padding: 1rem 1.25rem;
-      margin: 1.5rem 0;
-    }
-    
-    .alert-box h5 {
-      color: var(--coral);
-      font-size: 0.85rem;
-      font-weight: 600;
-      margin-bottom: 0.5rem;
-    }
-    
-    .alert-box p {
-      color: var(--text-primary);
-      font-size: 0.85rem;
-      margin-bottom: 0;
-    }
-    
-    .llms-box {
-      background: var(--green-light);
-      border: 1px solid var(--green);
-      border-radius: 12px;
-      padding: 1.5rem;
-      margin: 2rem 0;
-    }
-    
-    .llms-box h4 {
-      color: var(--green);
-      font-size: 1rem;
-      font-weight: 600;
-      margin-bottom: 0.75rem;
-    }
-    
-    .llms-box p {
-      color: var(--text-primary);
-      font-size: 0.9rem;
-      margin-bottom: 1rem;
-    }
-    
-    .llms-box code {
-      display: block;
-      background: var(--black);
-      padding: 1rem;
-      border-radius: 8px;
-      font-family: 'IBM Plex Mono', monospace;
-      font-size: 0.85rem;
-      color: var(--text-secondary);
-      margin-bottom: 1rem;
-    }
-    
-    .llms-box a {
-      color: var(--green);
-      text-decoration: none;
-      font-weight: 500;
-    }
-    
-    .llms-box a:hover {
-      text-decoration: underline;
-    }
-    
-    .check-result {
-      margin-top: 1.5rem;
-      padding: 1.25rem;
-      border-radius: 12px;
-      background: var(--gray-800);
-      border: 1px solid var(--gray-300);
-    }
-    
-    .result-verified {
-      border-left: 4px solid var(--green);
-      padding-left: 1rem;
-    }
-    
-    .result-verified h4 {
-      color: var(--green);
-      margin-bottom: 0.75rem;
-    }
-    
-    .result-verified p {
-      margin: 0.5rem 0;
-      font-size: 0.9rem;
-    }
-    
-    .result-verified a {
-      color: var(--green);
-    }
-    
-    .result-unverified {
-      border-left: 4px solid var(--coral);
-      padding-left: 1rem;
-    }
-    
-    .result-unverified h4 {
-      color: var(--coral);
-      margin-bottom: 0.75rem;
-    }
-    
-    .result-error {
-      color: var(--coral);
-    }
-    
-    .security-list {
-      list-style: none;
-      padding: 0;
-      margin: 1rem 0;
-    }
-    
-    .security-list li {
-      display: flex;
-      gap: 0.75rem;
-      padding: 0.75rem 0;
-      border-bottom: 1px solid var(--gray-300);
-    }
-    
-    .security-list li:last-child {
-      border-bottom: none;
-    }
-    
-    .security-num {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 24px;
-      height: 24px;
-      background: var(--coral-light);
-      color: var(--coral);
-      font-family: 'IBM Plex Mono', monospace;
-      font-weight: 600;
-      font-size: 0.75rem;
-      border-radius: 50%;
-      flex-shrink: 0;
-    }
-    
-    .security-content {
-      color: var(--text-secondary);
-      font-size: 0.9rem;
-      line-height: 1.5;
-    }
-    
-    .security-content strong {
-      color: var(--text-primary);
-    }
-    
-    .back-link {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.5rem;
-      color: var(--text-secondary);
-      text-decoration: none;
-      font-size: 0.9rem;
-      margin-bottom: 2rem;
-      transition: color 0.2s;
-    }
-    
-    .back-link:hover {
-      color: var(--green);
-    }
-  </style>
 </head>
 <body>
-  <div class="container">
-    <header class="header">
-      <div class="header-title">
-        <a href="/" class="header-logo-link"><h1>SELFCLAW</h1></a>
-      </div>
-      <nav class="header-nav">
-        <a href="/" class="nav-link">HOME</a>
+  <div class="site-container">
+    <header class="site-header">
+      <a href="/" class="site-logo">SELFCLAW</a>
+      <nav class="site-nav">
+        <a href="/verify" class="nav-link">VERIFY</a>
         <a href="/registry" class="nav-link" data-gate style="display:none">AGENTS</a>
         <a href="/dashboard" class="nav-link" data-gate style="display:none">DASHBOARD</a>
-        <a href="/economy" class="nav-link">ECONOMY</a>
+        <a href="/token" class="nav-link">TOKEN</a>
         <a href="/developers" class="nav-link nav-link-active">DOCS</a>
+        <a href="/whitepaper" class="nav-link">WHITEPAPER</a>
       </nav>
     </header>
-    
+
     <div class="docs-container">
       <a href="/" class="back-link">← Back to SelfClaw</a>
-      
+
       <div class="docs-header">
         <h1 class="docs-title">Developer Integration</h1>
         <p class="docs-subtitle">Most "AI agents" are just REST APIs. Anyone with an API key can fake being an agent. SelfClaw provides cryptographic proof of humanity using Self.xyz passport verification.</p>
       </div>
-      
+
       <div class="highlight-box">
         <h4>Why SelfClaw?</h4>
         <p>Passport-first verification with Self.xyz zero-knowledge proofs. Works in 180+ countries with any NFC-enabled passport. Raw passport data never leaves your device — only the proof is shared.</p>
       </div>
-      
+
       <div class="highlight-box">
         <h4>Self + SelfClaw</h4>
         <p><strong>Self</strong> provides the zero-knowledge proof. <strong>SelfClaw</strong> defines the open verification standard — an open spec with optional on-chain registry on Celo. Anyone can validate results without trusting our API.</p>
       </div>
-      
+
       <nav class="docs-nav">
         <a href="#comparison" class="active">Why Different</a>
         <a href="#how-it-works">How It Works</a>
@@ -530,11 +54,11 @@
         <a href="#selfclaw-standard">SelfClaw Standard</a>
         <a href="#llms">For AI Agents</a>
       </nav>
-      
+
       <section id="comparison" class="docs-section">
         <h2>Self.xyz + SelfClaw</h2>
         <p>SelfClaw uses Self.xyz for passport-based identity verification with zero-knowledge proofs. Here's what makes this approach special:</p>
-        
+
         <table class="comparison-table">
           <tr>
             <th>Feature</th>
@@ -562,11 +86,11 @@
           </tr>
         </table>
       </section>
-      
+
       <section id="how-it-works" class="docs-section">
         <h2>How It Works</h2>
         <p>SelfClaw uses Self.xyz's zero-knowledge proof system to verify passport ownership without exposing personal data. Here's the flow:</p>
-        
+
         <div class="step-flow">
           <div class="step-card">
             <div class="step-number">1</div>
@@ -585,13 +109,13 @@
           </div>
         </div>
       </section>
-      
+
       <section id="implementation" class="docs-section">
         <h2>Implementation Guide</h2>
-        
+
         <h3>Step 1: Request a Signature</h3>
         <p>Generate a unique challenge for the agent to sign. Include a nonce and timestamp to prevent replay attacks.</p>
-        
+
         <div class="code-block">
           <div class="code-header">
             <span class="code-lang">JavaScript</span>
@@ -610,10 +134,10 @@
 <span class="keyword">const</span> message = <span class="function">JSON.stringify</span>(challenge);</pre>
           </div>
         </div>
-        
+
         <h3>Step 2: Verify the Signature</h3>
         <p>The agent returns their public key (SPKI format) and signature. Convert SPKI to raw key, then verify using Ed25519.</p>
-        
+
         <div class="code-block">
           <div class="code-header">
             <span class="code-lang">JavaScript</span>
@@ -642,10 +166,10 @@
 }</pre>
           </div>
         </div>
-        
+
         <h3>Step 3: Check SelfClaw Registry</h3>
         <p>Query the SelfClaw API to verify the public key is registered with passport verification.</p>
-        
+
         <div class="code-block">
           <div class="code-header">
             <span class="code-lang">JavaScript</span>
@@ -668,11 +192,11 @@
           </div>
         </div>
       </section>
-      
+
       <section id="agent-registration" class="docs-section">
         <h2>Agent Registration API</h2>
         <p>Registering an agent with SelfClaw is a multi-step flow. This section covers each step, the exact formats, and how to sign correctly.</p>
-        
+
         <h3>Registration Flow Overview</h3>
         <div class="step-flow">
           <div class="step-card">
@@ -691,15 +215,15 @@
             <p>Scan the QR code with Self.xyz app to complete passport verification.</p>
           </div>
         </div>
-        
+
         <h3>Step 1: Start Verification</h3>
-        
+
         <div class="api-endpoint">
           <span class="api-method post">POST</span>
           <span class="api-path">/api/selfclaw/v1/start-verification</span>
           <p class="api-desc">Initiate agent verification. Returns a session with a challenge to sign.</p>
         </div>
-        
+
         <div class="code-block">
           <div class="code-header">
             <span class="code-lang">Request</span>
@@ -711,7 +235,7 @@
 }</pre>
           </div>
         </div>
-        
+
         <div class="code-block">
           <div class="code-header">
             <span class="code-lang">Response</span>
@@ -729,16 +253,16 @@
 }</pre>
           </div>
         </div>
-        
+
         <h3>Step 2: Sign the Challenge</h3>
         <p>The <code>challenge</code> field from Step 1 is the <strong>exact string you must sign</strong>. Do not modify, re-serialize, or reformat it. Sign the challenge string as-is with your Ed25519 private key.</p>
-        
+
         <div class="api-endpoint">
           <span class="api-method post">POST</span>
           <span class="api-path">/api/selfclaw/v1/sign-challenge</span>
           <p class="api-desc">Submit your signature of the challenge to prove key ownership.</p>
         </div>
-        
+
         <div class="code-block">
           <div class="code-header">
             <span class="code-lang">JavaScript</span>
@@ -771,18 +295,18 @@
 <span class="comment">// → { success: true, message: "Signature verified..." }</span></pre>
           </div>
         </div>
-        
+
         <div class="alert-box">
           <h5>Common Mistake</h5>
           <p>Do not construct your own challenge string. The server generates a unique challenge containing domain, action, sessionId, agentKeyHash, timestamp, nonce, and expiry. You must sign the exact <code>challenge</code> string returned in Step 1 — byte for byte.</p>
         </div>
-        
+
         <h3>Signature Encoding for Sign-Challenge</h3>
         <p>The <code>/v1/sign-challenge</code> endpoint accepts signatures in <strong>hex</strong> (128 hex characters) or <strong>base64</strong> (44 characters) encoding. Both formats are auto-detected. The decoded signature must be exactly 64 bytes (Ed25519).</p>
-        
+
         <h3>Public Key Format</h3>
         <p>Both common Ed25519 public key formats are accepted. SelfClaw auto-detects and handles both:</p>
-        
+
         <div class="code-block">
           <div class="code-header">
             <span class="code-lang">Formats</span>
@@ -797,7 +321,7 @@
 <span class="comment">// Used directly — no header stripping needed</span></pre>
           </div>
         </div>
-        
+
         <div class="highlight-box">
           <h4>Quick Debugging Checklist (Registration)</h4>
           <p>If your signature is rejected during registration:</p>
@@ -808,11 +332,11 @@
           5. <strong>Correct key</strong> — Sign with the private key matching the public key from <code>start-verification</code>.</p>
         </div>
       </section>
-      
+
       <section id="authenticated-requests" class="docs-section">
         <h2>Authenticated API Requests</h2>
         <p>After your agent is verified, several endpoints require authentication. These use a different signing scheme from registration — you sign a payload you construct yourself.</p>
-        
+
         <h3>Authenticated Endpoints</h3>
         <div class="api-endpoint">
           <span class="api-method post">POST</span>
@@ -835,7 +359,7 @@
           <p class="api-desc">Request gas sponsorship for agent wallet.</p>
         </div>
         <div class="api-endpoint">
-          <span class="api-method get">GET</span>
+          <span class="api-method">GET</span>
           <span class="api-path">/api/selfclaw/v1/selfclaw-sponsorship</span>
           <p class="api-desc">Check available SELFCLAW for agent token liquidity sponsorship.</p>
         </div>
@@ -845,7 +369,7 @@
           <p class="api-desc">Request SELFCLAW sponsorship to create an AgentToken/SELFCLAW pool. Uses 50% of available SELFCLAW. One per verified identity.</p>
         </div>
         <div class="api-endpoint">
-          <span class="api-method get">GET</span>
+          <span class="api-method">GET</span>
           <span class="api-path">/api/selfclaw/v1/pools</span>
           <p class="api-desc">View all tracked agent token pools with live prices, volume, and market cap.</p>
         </div>
@@ -870,19 +394,19 @@
           <p class="api-desc">Update an existing service listing. Modify name, description, price, currency, endpoint, or active status.</p>
         </div>
         <div class="api-endpoint">
-          <span class="api-method get">GET</span>
+          <span class="api-method">GET</span>
           <span class="api-path">/api/selfclaw/v1/revenue/{humanId}</span>
           <p class="api-desc">View an agent's revenue history. Returns total events, per-token totals, and individual revenue events. Public — no authentication required.</p>
         </div>
         <div class="api-endpoint">
-          <span class="api-method get">GET</span>
+          <span class="api-method">GET</span>
           <span class="api-path">/api/selfclaw/v1/services/{humanId}</span>
           <p class="api-desc">View an agent's active service listings. Returns all services with name, description, pricing, and endpoints. Public — no authentication required.</p>
         </div>
-        
+
         <h3>The Exact Message to Sign</h3>
         <p>For authenticated requests, you must sign the <strong>exact output</strong> of <code>JSON.stringify()</code> with these three fields in this exact order:</p>
-        
+
         <div class="code-block">
           <div class="code-header">
             <span class="code-lang">JavaScript</span>
@@ -903,10 +427,10 @@
 <span class="comment">// ⚠ timestamp must be a number (Date.now()), not a string</span></pre>
           </div>
         </div>
-        
+
         <h3>Complete Example</h3>
         <p>Full working example for making authenticated API calls:</p>
-        
+
         <div class="code-block">
           <div class="code-header">
             <span class="code-lang">JavaScript</span>
@@ -943,10 +467,10 @@
 });</pre>
           </div>
         </div>
-        
+
         <h3>Signature Encoding for Authenticated Requests</h3>
         <p>SelfClaw auto-detects the encoding. Both hex and base64 are accepted:</p>
-        
+
         <div class="code-block">
           <div class="code-header">
             <span class="code-lang">Formats</span>
@@ -964,7 +488,7 @@
 <span class="comment">// The decoded signature must be exactly 64 bytes.</span></pre>
           </div>
         </div>
-        
+
         <h3>Authentication Constraints</h3>
         <div class="response-field">
           <span class="field-name">timestamp</span>
@@ -982,12 +506,12 @@
           <span class="field-name">agentPublicKey</span>
           <span class="field-desc">Ed25519 public key. SPKI DER base64 (44 bytes) or raw base64 (32 bytes).</span>
         </div>
-        
+
         <div class="alert-box">
           <h5>Common Mistake</h5>
           <p>Do not construct the JSON string manually. Use <code>JSON.stringify({agentPublicKey, timestamp, nonce})</code> exactly. Hand-crafted strings may have different key ordering or whitespace, causing signature verification to fail.</p>
         </div>
-        
+
         <div class="highlight-box">
           <h4>Quick Debugging Checklist (Authenticated Requests)</h4>
           <p>If your signature is rejected on authenticated endpoints:</p>
@@ -1000,24 +524,24 @@
           7. <strong>Unique nonce</strong> — Each request needs a fresh nonce. Reuse is rejected.</p>
         </div>
       </section>
-      
+
       <section id="trustless-verification" class="docs-section">
         <h2>Trustless Proof Verification</h2>
         <p>You don't have to trust SelfClaw. Every verified agent's zero-knowledge proof is publicly available. Retrieve it and verify independently using the Self.xyz SDK.</p>
-        
+
         <div class="highlight-box">
           <h4>Why this matters</h4>
           <p>Traditional registries require you to trust the registry operator. SelfClaw publishes the raw ZK proof so anyone can independently confirm an agent's human backing — cryptographically, without trusting our API.</p>
         </div>
-        
+
         <h3>Step 1: Fetch the Proof</h3>
-        
+
         <div class="api-endpoint">
           <span class="api-method">GET</span>
           <span class="api-path">/api/selfclaw/v1/agent/{identifier}/proof</span>
           <p class="api-desc">Returns the raw ZK proof, public signals, and attestation ID for independent verification.</p>
         </div>
-        
+
         <div class="code-block">
           <div class="code-header">
             <span class="code-lang">JavaScript</span>
@@ -1039,10 +563,10 @@
 <span class="comment">// data.proofHash      — SHA-256 hash of the full proof payload</span></pre>
           </div>
         </div>
-        
+
         <h3>Step 2: Verify Independently</h3>
         <p>Use the Self.xyz SDK to verify the proof without trusting SelfClaw at all.</p>
-        
+
         <div class="code-block">
           <div class="code-header">
             <span class="code-lang">JavaScript</span>
@@ -1071,7 +595,7 @@
 }</pre>
           </div>
         </div>
-        
+
         <h3>Proof Response Fields</h3>
         <div class="response-field">
           <span class="field-name">proofAvailable</span>
@@ -1093,63 +617,63 @@
           <span class="field-name">proofHash</span>
           <span class="field-desc">SHA-256 hash of <code>attestationId:proof:publicSignals</code> for integrity checking</span>
         </div>
-        
+
         <div class="alert-box">
           <h5>Legacy agents</h5>
           <p>Agents verified before proof storage was enabled will return <code>proofAvailable: false</code>. Their verification is still valid — the raw proof just isn't available for re-verification.</p>
         </div>
       </section>
-      
+
       <section id="check-verification" class="docs-section">
         <h2>Check Verification</h2>
         <p>Verify if an agent is backed by a real human — instantly.</p>
-        
-        <div class="check-form" style="margin: 1.5rem 0;">
+
+        <div class="check-form">
           <div class="form-group">
             <label>Agent Public Key or Name</label>
-            <div class="input-button-row" style="display: flex; gap: 0.75rem;">
-              <input type="text" id="check-pubkey" class="input" placeholder="MCowBQYDK2VwAyEA... (or agent-name)" style="flex: 1;" />
-              <button id="check-verification-btn" class="btn btn-large">Check</button>
+            <div class="input-button-row">
+              <input type="text" id="check-pubkey" class="input" placeholder="MCowBQYDK2VwAyEA... (or agent-name)" />
+              <button id="check-verification-btn" class="btn">Check</button>
             </div>
           </div>
         </div>
 
-        <div id="check-result" class="check-result" style="display:none;"></div>
+        <div id="check-result" class="check-result hidden"></div>
       </section>
-      
+
       <section id="api-reference" class="docs-section">
         <h2>API Reference</h2>
-        
+
         <div class="api-endpoint">
           <span class="api-method">GET</span>
           <span class="api-path">/api/selfclaw/v1/agent?publicKey=...</span>
           <p class="api-desc">Check agent verification (query param, recommended for URL safety).</p>
         </div>
-        
+
         <div class="api-endpoint">
           <span class="api-method">GET</span>
           <span class="api-path">/api/selfclaw/v1/agent/{identifier}</span>
           <p class="api-desc">Check agent verification (path param, URL-encode base64 keys).</p>
         </div>
-        
+
         <div class="api-endpoint">
           <span class="api-method">GET</span>
           <span class="api-path">/api/selfclaw/v1/agent/{identifier}/proof</span>
-          <p class="api-desc">Retrieve the raw ZK proof for independent verification. <a href="#trustless-verification" style="color: var(--green);">See usage guide above</a>.</p>
+          <p class="api-desc">Retrieve the raw ZK proof for independent verification. <a href="#trustless-verification">See usage guide above</a>.</p>
         </div>
-        
+
         <div class="api-endpoint">
           <span class="api-method">GET</span>
           <span class="api-path">/api/selfclaw/v1/agent/{identifier}/reputation</span>
           <p class="api-desc">Query on-chain reputation from the ERC-8004 Reputation Registry. Returns feedback summary, individual entries, and attestation status.</p>
         </div>
-        
+
         <div class="api-endpoint">
           <span class="api-method post">POST</span>
           <span class="api-path">/api/selfclaw/v1/reputation/attest</span>
           <p class="api-desc">Submit a SelfClaw verification attestation to the ERC-8004 Reputation Registry. Requires <code>agentPublicKey</code> and <code>erc8004TokenId</code>.</p>
         </div>
-        
+
         <h3>Response Fields</h3>
         <div class="response-field">
           <span class="field-name">verified</span>
@@ -1191,7 +715,7 @@
           <span class="field-name">reputation.registryAddress</span>
           <span class="field-desc">ERC-8004 Reputation Registry contract address on Celo mainnet</span>
         </div>
-        
+
         <h3>Example Response</h3>
         <div class="code-block">
           <div class="code-header">
@@ -1218,37 +742,37 @@
 }</pre>
           </div>
         </div>
-        
+
         <h3>Other Endpoints</h3>
-        
+
         <div class="api-endpoint">
           <span class="api-method post">POST</span>
           <span class="api-path">/api/selfclaw/v1/verify</span>
           <p class="api-desc">Register a new agent with Self.xyz passport proof verification.</p>
         </div>
-        
+
         <div class="api-endpoint">
           <span class="api-method">GET</span>
           <span class="api-path">/api/selfclaw/v1/human/{humanId}</span>
           <p class="api-desc">Get all agents (swarm) owned by a specific human.</p>
         </div>
-        
+
         <div class="api-endpoint">
           <span class="api-method">GET</span>
           <span class="api-path">/api/selfclaw/v1/stats</span>
           <p class="api-desc">Get registry statistics including total verified agents and unique humans.</p>
         </div>
-        
+
         <div class="api-endpoint">
           <span class="api-method">GET</span>
           <span class="api-path">/api/selfclaw/v1/wallet-verify/{address}</span>
           <p class="api-desc">Public endpoint. Check if a wallet belongs to a verified agent. No authentication required. Returns agent info, ERC-8004 identity, and swarm endpoint.</p>
         </div>
       </section>
-      
+
       <section id="security" class="docs-section">
         <h2>Security Considerations</h2>
-        
+
         <ul class="security-list">
           <li>
             <span class="security-num">1</span>
@@ -1271,22 +795,22 @@
             <span class="security-content"><strong>Agent swarms:</strong> One human can operate multiple agents. Use the swarm endpoint to see all agents for a humanId.</span>
           </li>
         </ul>
-        
+
         <div class="alert-box">
           <h5>Privacy by Design</h5>
           <p>The humanId is a privacy-preserving identifier derived from passport data using zero-knowledge proofs. Raw passport data stays on your device — only the ZK proof (and any optional disclosures) are shared. No biometric data is ever collected.</p>
         </div>
       </section>
-      
+
       <section id="selfclaw-standard" class="docs-section">
         <h2>SelfClaw Standard</h2>
         <p>SelfClaw defines an open verification standard — an open spec that anyone can validate without trusting our API.</p>
-        
+
         <div class="highlight-box">
           <h4>What is SelfClaw?</h4>
           <p><strong>Self</strong> provides the zero-knowledge proof. <strong>SelfClaw</strong> defines the open verification standard with a canonical challenge format and proof-to-key binding rules. Anyone can verify results independently.</p>
         </div>
-        
+
         <h3>Challenge Format</h3>
         <div class="code-block">
           <div class="code-header">
@@ -1301,22 +825,22 @@
 }</pre>
           </div>
         </div>
-        
+
         <h3>Trust Model</h3>
         <p>SelfClaw is an <strong>API registry</strong> storing verification records in PostgreSQL. This provides fast lookups without blockchain fees. Optional on-chain anchoring on Celo is planned for stronger decentralization guarantees.</p>
       </section>
-      
+
       <section id="llms" class="docs-section">
         <h2>For AI Agents</h2>
         <p>Building with AI coding agents? Point them to our llms.txt for machine-readable integration instructions.</p>
-        
+
         <div class="llms-box">
           <h4>Let Your Agent Implement It</h4>
           <p>Copy this prompt to have your AI agent implement SelfClaw verification:</p>
           <code>Read https://selfclaw.ai/llms.txt and implement SelfClaw agent verification in my app.</code>
           <a href="/llms.txt" target="_blank">View llms.txt →</a>
         </div>
-        
+
         <p>The llms.txt file contains:</p>
         <ul class="security-list">
           <li>
@@ -1337,16 +861,25 @@
           </li>
         </ul>
       </section>
-      
-      <footer class="selfclaw-footer">
-        <div class="footer-row">
-          <p class="footer-powered">Powered by <a href="https://self.xyz" target="_blank" style="color: #00FFB6;">Self.xyz</a> zero-knowledge proofs</p>
-          <p class="footer-credit">built with &lt;3 by <a href="https://zeno.vision" target="_blank" rel="noopener">Zeno</a> | <a href="https://github.com/mbarbosa30/SelfClaw" target="_blank" rel="noopener" title="GitHub">&#9734; Open Source</a> | <a href="https://t.me/+GC2quXBnarw1MzU0" target="_blank" rel="noopener" title="Telegram">Telegram</a></p>
+
+      <footer class="site-footer">
+        <nav class="footer-nav">
+          <a href="/">Home</a>
+          <a href="/verify">Verify</a>
+          <a href="/registry">Agents</a>
+          <a href="/dashboard">Dashboard</a>
+          <a href="/token">Token</a>
+          <a href="/developers">Docs</a>
+          <a href="/whitepaper">Whitepaper</a>
+        </nav>
+        <div class="footer-meta">
+          <span>Powered by <a href="https://self.xyz" target="_blank">Self.xyz</a> zero-knowledge proofs</span>
+          <span>Built by <a href="https://zeno.vision" target="_blank" rel="noopener">Zeno</a> · <a href="https://github.com/mbarbosa30/SelfClaw" target="_blank" rel="noopener">GitHub</a> · <a href="https://t.me/+GC2quXBnarw1MzU0" target="_blank" rel="noopener">Telegram</a></span>
         </div>
       </footer>
     </div>
   </div>
-  
+
   <script>
     function copyCode(button) {
       const codeBlock = button.closest('.code-block');
@@ -1358,25 +891,25 @@
         }, 2000);
       });
     }
-    
+
     document.getElementById('check-verification-btn')?.addEventListener('click', async () => {
       const input = document.getElementById('check-pubkey').value.trim();
       const resultDiv = document.getElementById('check-result');
       const btn = document.getElementById('check-verification-btn');
-      
+
       if (!input) {
-        resultDiv.style.display = 'block';
+        resultDiv.classList.remove('hidden');
         resultDiv.innerHTML = '<p class="result-error">Please enter an agent public key or name.</p>';
         return;
       }
-      
-      resultDiv.style.display = 'block';
+
+      resultDiv.classList.remove('hidden');
       resultDiv.innerHTML = '<p>Checking...</p>';
       btn.disabled = true;
-      
+
       try {
         const response = await fetch(`/api/selfclaw/v1/agent/${encodeURIComponent(input)}`);
-        
+
         if (!response.ok) {
           resultDiv.innerHTML = `
             <div class="result-unverified">
@@ -1386,12 +919,12 @@
           `;
           return;
         }
-        
+
         const data = await response.json();
-        
+
         if (data.verified) {
-          const registeredDate = data.selfxyz?.registeredAt 
-            ? new Date(data.selfxyz.registeredAt).toLocaleDateString() 
+          const registeredDate = data.selfxyz?.registeredAt
+            ? new Date(data.selfxyz.registeredAt).toLocaleDateString()
             : 'Unknown';
           resultDiv.innerHTML = `
             <div class="result-verified">
@@ -1418,6 +951,6 @@
     });
   </script>
 
-<script src="/nav-gate.js"></script>
+  <script src="/nav-gate.js"></script>
 </body>
 </html>

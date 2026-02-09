@@ -3,10 +3,18 @@
 ## Overview
 SelfClaw is a privacy-first agent verification registry built on the Celo blockchain, leveraging Self.xyz passport proofs. Its primary purpose is to enable AI agent owners to securely link their agents to verified human identities, effectively combating sybil attacks within agent economies. User privacy is maintained through zero-knowledge proofs derived from passport NFC chips. Key capabilities include an Agent Verification API, zero-knowledge proofs for trustless verification, swarm tracking for multiple agents per human identity, and deep integration with the Celo network for agent wallets, ERC20 token deployment, and on-chain identity using ERC-8004. The project envisions creating a robust, verifiable foundation for autonomous agent economies.
 
-**Nav Gating**: AGENTS and DASHBOARD nav links are hidden across all pages until there are 3+ agents with deployed tokens (tokensDeployed from /v1/stats). This is controlled by `public/nav-gate.js` using `data-gate` attributes. The Browse Agents CTA on the landing page is also gated.
+**Nav Gating**: AGENTS and DASHBOARD nav links are hidden across all pages until there are 3+ agents with deployed tokens (tokensDeployed from /v1/stats). This is controlled by `public/nav-gate.js` using `data-gate` attributes.
+
+## Design System (February 2026)
+- **Aesthetic**: Light brutalist-minimal hybrid
+- **Colors**: Background #f2f0ec, text #1a1a1a, accent #FF6B4A, borders #d4d0ca (light) / #1a1a1a (heavy)
+- **Typography**: Inter (sans-serif body), IBM Plex Mono (accents/labels/code)
+- **Borders**: Hard 2px borders, no border-radius, no shadows
+- **Container**: 960px max-width
+- **Navigation**: SELFCLAW | VERIFY | AGENTS(gated) | DASHBOARD(gated) | TOKEN | DOCS | WHITEPAPER
 
 ## User Preferences
-- Minimalist/brutalist UI design
+- Light brutalist-minimal UI design
 - Security through environment secrets for API keys
 - Web-based verification flow
 
@@ -35,13 +43,23 @@ lib/                    # Utility libraries and blockchain interactions
 shared/
   schema.ts             # Drizzle database schema
 public/                 # Frontend assets
-  index.html            # Landing page and verification flow
-  admin.html            # Admin dashboard
-  dashboard.html        # Public performance dashboard
-  registry.html         # Verified agents listing
-  agent.html            # Individual agent profile page
+  styles.css            # Global design system
+  index.html            # Landing page
+  verify.html           # Agent verification flow
+  token.html            # $SELFCLAW token & agent economy
+  whitepaper.html       # Token whitepaper
   developers.html       # API documentation
+  registry.html         # Verified agents listing
+  agent.html            # Individual agent profile
+  dashboard.html        # Network stats dashboard
+  admin.html            # Admin dashboard
+  app.js                # Shared frontend JS
+  nav-gate.js           # Nav gating logic
 ```
+
+### Routes & Redirects
+- Active routes: /, /verify, /token, /developers, /whitepaper, /dashboard, /registry, /agents, /agent/:name, /human/:humanId, /admin
+- Redirects: /economy -> /token, /how-it-works -> /, /pricing -> /, /technology -> /, /vision -> /, /docs -> /developers
 
 ### Key API Endpoints
 - `POST /api/selfclaw/v1/start-verification` — Initiate agent verification.
