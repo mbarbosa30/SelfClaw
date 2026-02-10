@@ -1,7 +1,7 @@
 # SelfClaw — Agent Verification Registry
 
 ## Overview
-SelfClaw is a privacy-first agent verification registry built on the Celo blockchain, leveraging Self.xyz passport proofs. Its primary purpose is to enable AI agent owners to securely link their agents to verified human identities, effectively combating sybil attacks within agent economies. User privacy is maintained through zero-knowledge proofs derived from passport NFC chips. Key capabilities include an Agent Verification API, zero-knowledge proofs for trustless verification, swarm tracking for multiple agents per human identity, and deep integration with the Celo network for agent wallets, ERC20 token deployment, and on-chain identity using ERC-8004. The project envisions creating a robust, verifiable foundation for autonomous agent economies.
+SelfClaw is a privacy-first agent verification registry built on EVM chains (starting with Celo), leveraging Self.xyz passport proofs. Its primary purpose is to enable AI agent owners to securely link their agents to verified human identities, effectively combating sybil attacks within agent economies. User privacy is maintained through zero-knowledge proofs derived from passport NFC chips. Key capabilities include an Agent Verification API, zero-knowledge proofs for trustless verification, swarm tracking for multiple agents per human identity, and deep integration with EVM chains for agent wallets, ERC20 token deployment, and on-chain identity using ERC-8004. The project envisions creating a robust, verifiable foundation for autonomous agent economies.
 
 **Nav Gating**: AGENTS and DASHBOARD nav links are hidden across all pages until there are 3+ agents with deployed tokens (tokensDeployed from /v1/stats). This is controlled by `public/nav-gate.js` using `data-gate` attributes.
 
@@ -27,7 +27,7 @@ SelfClaw is a privacy-first agent verification registry built on the Celo blockc
 - **Database**: PostgreSQL with Drizzle ORM
 - **Authentication**: Self.xyz passport-only (QR code verification)
 - **Frontend**: Vanilla HTML/CSS/JS (public/)
-- **Blockchain**: Celo network, ERC-8004 for agent identity NFTs
+- **Blockchain**: Celo & Base (EVM-compatible chains), ERC-8004 for agent identity NFTs
 
 ### Project Structure
 ```
@@ -37,7 +37,7 @@ server/                 # Backend services and API
   self-auth.ts          # Self.xyz authentication
 lib/                    # Utility libraries and blockchain interactions
   erc8004.ts            # ERC-8004 on-chain identity
-  secure-wallet.ts      # Celo wallet management
+  secure-wallet.ts      # EVM wallet management
   token-factory.ts      # ERC20 token deployment
   uniswap-v3.ts         # Uniswap integration
   wormhole-bridge.ts    # Wormhole cross-chain bridge
@@ -73,7 +73,7 @@ public/                 # Frontend assets
 - `GET /api/selfclaw/v1/agent/{identifier}` — Check agent verification status.
 - `GET /api/selfclaw/v1/agents` — List all agents with enriched data.
 - `GET /api/selfclaw/v1/human/{humanId}` — Retrieve all agents for a given human (swarm).
-- `POST /api/selfclaw/v1/create-wallet` — Register agent's self-custody Celo wallet address.
+- `POST /api/selfclaw/v1/create-wallet` — Register agent's self-custody EVM wallet address.
 - `POST /api/selfclaw/v1/token-plan` — Submit tokenomics plan.
 - `POST /api/selfclaw/v1/deploy-token` — Get unsigned ERC20 token deployment transaction.
 - `POST /api/selfclaw/v1/register-token` — Register deployed token address.
@@ -89,7 +89,7 @@ public/                 # Frontend assets
 
 ## External Dependencies
 - **Self.xyz SDK**: For passport-based verification via QR code and ZK proofs.
-- **Celo Network**: For on-chain identity (ERC-8004), wallets, and token deployment.
-- **Uniswap**: For pool creation, fee collection, and sponsored liquidity on Celo.
+- **Celo & Base Networks**: For on-chain identity (ERC-8004), wallets, token deployment, and trading.
+- **Uniswap**: For pool creation, fee collection, and sponsored liquidity.
 - **Drizzle ORM**: Used for database schema definition and queries with PostgreSQL.
 - **Express.js**: The core web framework for building the backend API.

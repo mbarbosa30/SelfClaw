@@ -760,7 +760,7 @@ router.get("/v1/status/:sessionId", publicApiLimiter, async (req: Request, res: 
             features: [
               "Deploy your own ERC20 token",
               "Create Uniswap liquidity pools",
-              "Trade and swap tokens on Celo",
+              "Trade and swap tokens across EVM chains",
               "Earn yield on Aave",
               "Sell skills in the marketplace"
             ]
@@ -1406,7 +1406,7 @@ router.post("/v1/request-selfclaw-sponsorship", verificationLimiter, async (req:
         sponsorWallet: sponsorAddress,
       },
       nextSteps: [
-        "Your token is now tradeable against SELFCLAW on Uniswap (Celo)",
+        "Your token is now tradeable against SELFCLAW on Uniswap",
         "Trading fees (1%) accrue to the SelfClaw treasury for future sponsorships",
         `View pool on Uniswap: https://app.uniswap.org/explore/pools/celo/${result.poolAddress}`,
         "View on Celoscan: https://celoscan.io/address/" + (result.poolAddress || tokenAddress)
@@ -1944,7 +1944,7 @@ router.post("/v1/create-wallet", verificationLimiter, async (req: Request, res: 
     
     if (!walletAddress) {
       return res.status(400).json({ 
-        error: "walletAddress is required. SelfClaw never stores private keys — provide your own Celo wallet address."
+        error: "walletAddress is required. SelfClaw never stores private keys — provide your own EVM wallet address."
       });
     }
 
@@ -1984,7 +1984,7 @@ router.post("/v1/switch-wallet", verificationLimiter, async (req: Request, res: 
 
     if (!walletAddress) {
       return res.status(400).json({ 
-        error: "walletAddress is required. Provide the new Celo wallet address you want to use."
+        error: "walletAddress is required. Provide the new EVM wallet address you want to use."
       });
     }
 

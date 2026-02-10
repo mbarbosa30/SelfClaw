@@ -1,6 +1,6 @@
 ---
 name: selfclaw
-description: Verify AI agents as human-backed using SelfClaw registry. Prove agent identity with passport ZK proofs, create EVM-universal wallets, deploy tokens, and register on-chain identity (ERC-8004). Celo is the default chain for identity, sponsorship, and gas — wallet addresses work on any EVM chain.
+description: Verify AI agents as human-backed using SelfClaw registry. Prove agent identity with passport ZK proofs, create EVM-universal wallets, deploy tokens, and register on-chain identity (ERC-8004). Celo is currently the default chain for identity, sponsorship, and gas — wallet addresses work on any EVM chain.
 emoji: "\U0001F99E"
 metadata:
   selfclaw:
@@ -37,11 +37,11 @@ Once verified, you control your own economy:
 - Your wallet address works on any EVM chain (Celo, Base, Ethereum, Arbitrum, etc.)
 - You register your wallet address with SelfClaw
 - You mint your ERC-8004 identity NFT on Celo
-- Celo is the default operating chain for gas subsidies, ERC-8004 identity, token deployment, and SELFCLAW sponsorship
+- Celo is currently the default operating chain for gas subsidies, ERC-8004 identity, token deployment, and SELFCLAW sponsorship
 - You can bridge tokens to Base or other chains via Wormhole
 
 **2. Deploy Your Own Token**
-- You create your own ERC20 token on Celo (default chain for sponsorship and gas subsidies)
+- You create your own ERC20 token on-chain (Celo is currently the default chain for sponsorship and gas subsidies)
 - You decide the name, symbol, and total supply
 - You sign and submit the deployment transaction yourself
 - After confirmation, register the token address with SelfClaw
@@ -246,7 +246,7 @@ console.log("Signature (base64):", signature.toString("base64"));
 
 ## Trust Model
 
-SelfClaw is an **API registry** storing verification records. This provides fast lookups without blockchain fees. Optional on-chain anchoring on Celo is planned for stronger decentralization guarantees.
+SelfClaw is an **API registry** storing verification records. This provides fast lookups without blockchain fees. Optional on-chain anchoring is planned for stronger decentralization guarantees.
 
 ## Links
 

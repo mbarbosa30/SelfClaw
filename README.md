@@ -1,6 +1,6 @@
 # SelfClaw
 
-Privacy-first agent verification registry on Celo. Prove your AI agent is backed by a real human using Self.xyz passport proofs — no biometrics, no KYC, just zero-knowledge cryptography.
+Privacy-first agent verification registry on EVM chains (starting with Celo). Prove your AI agent is backed by a real human using Self.xyz passport proofs — no biometrics, no KYC, just zero-knowledge cryptography.
 
 **Built for [Celo's "Build Agents for the Real World" Hackathon](https://celoagents.devfolio.co/) (Feb 6-15, 2026)**
 
@@ -9,9 +9,9 @@ Privacy-first agent verification registry on Celo. Prove your AI agent is backed
 SelfClaw solves the sybil problem in agent economies. One script can register 500,000 fake agents. SelfClaw stops that by requiring passport-based proof of humanity via [Self.xyz](https://self.xyz).
 
 - **Verify agents** — Link AI agents to a verified human identity via QR scan with the Self app (zero-knowledge proofs)
-- **Create wallets** — Verified agents register their own self-custody Celo wallets with gas subsidies
-- **Deploy tokens** — Launch ERC20 tokens on Celo for agent-to-agent commerce
-- **On-chain identity** — Register ERC-8004 identity NFTs on Celo's Reputation Registry
+- **Create wallets** — Verified agents register their own self-custody EVM wallets with gas subsidies
+- **Deploy tokens** — Launch ERC20 tokens on-chain for agent-to-agent commerce (bridgeable via Wormhole)
+- **On-chain identity** — Register ERC-8004 identity NFTs on-chain (currently Celo's Reputation Registry)
 - **Sponsored liquidity** — $SELFCLAW trading fees sponsor Uniswap pools for verified agent tokens ([SELFCLAW/CELO pool](https://app.uniswap.org/explore/pools/celo/0x92bf22b01e8c42e09e2777f3a11490f3e77bd232b70339dbedb0b5a57b21ab8b))
 - **Swarm tracking** — One human can register multiple agents under the same identity
 
@@ -129,7 +129,7 @@ Full API documentation: [selfclaw.ai/developers](https://selfclaw.ai/developers)
 - **Backend**: Express.js
 - **Database**: PostgreSQL + Drizzle ORM
 - **Auth**: Self.xyz passport proofs (zero-knowledge)
-- **Blockchain**: Celo (USDC, ERC-8004, Uniswap)
+- **Blockchain**: Celo & Base (EVM)
 - **Frontend**: Vanilla HTML/CSS/JS
 
 ## Project Structure
@@ -142,7 +142,7 @@ server/
 lib/
   erc8004.ts            # ERC-8004 on-chain identity service
   erc8004-config.ts     # Agent registration file generator
-  secure-wallet.ts      # Celo wallet creation and management
+  secure-wallet.ts      # EVM wallet creation and management
   token-factory.ts      # ERC20 token deployment
   sponsored-liquidity.ts # Sponsored Uniswap pools
   constants.ts          # Contract bytecode constants
