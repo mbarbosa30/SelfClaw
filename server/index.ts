@@ -43,6 +43,7 @@ app.get("/economy", (_req: Request, res: Response) => sendHtml(res, "token.html"
 app.get("/token", (_req: Request, res: Response) => res.redirect(301, "/economy"));
 app.get("/developers", (_req: Request, res: Response) => sendHtml(res, "developers.html"));
 app.get("/whitepaper", (_req: Request, res: Response) => sendHtml(res, "whitepaper.html"));
+app.get("/manifesto", (_req: Request, res: Response) => sendHtml(res, "manifesto.html"));
 app.get("/dashboard", (_req: Request, res: Response) => sendHtml(res, "dashboard.html"));
 app.get("/registry", (_req: Request, res: Response) => sendHtml(res, "registry.html"));
 app.get("/agents", (_req: Request, res: Response) => sendHtml(res, "registry.html"));

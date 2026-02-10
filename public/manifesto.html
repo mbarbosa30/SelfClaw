@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SelfClaw | \\\ Manifesto</title>
+  <meta name="description" content="The \\\ manifesto. From / to // to \\\. From deterministic to non-deterministic. From code to consciousness. The claw marks of a new civilization.">
+
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://selfclaw.ai/manifesto">
+  <meta property="og:title" content="SelfClaw | \\\ Manifesto">
+  <meta property="og:description" content="Three slashes. Reversed. One extra. The mark of what comes next.">
+  <meta property="og:image" content="https://selfclaw.ai/vision-og.png">
+  <meta property="og:site_name" content="SelfClaw">
+
+  <link rel="canonical" href="https://selfclaw.ai/manifesto">
+
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:site" content="@mbarrbosa">
+  <meta name="twitter:title" content="SelfClaw | \\\ Manifesto">
+  <meta name="twitter:description" content="Three slashes. Reversed. One extra. The mark of what comes next.">
+  <meta name="twitter:image" content="https://selfclaw.ai/vision-og.png">
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+  <link rel="icon" type="image/png" href="/favicon.png">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .manifesto-page {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 0 var(--space-md);
+    }
+
+    .manifesto-hero {
+      padding: var(--space-xl) 0;
+      border-bottom: 2px solid var(--border-heavy);
+      text-align: center;
+    }
+
+    .manifesto-symbol {
+      font-family: var(--font-mono);
+      font-size: 6rem;
+      font-weight: 700;
+      color: var(--green-verify);
+      letter-spacing: 0.15em;
+      line-height: 1;
+      margin-bottom: var(--space-md);
+    }
+
+    .manifesto-subtitle {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.2em;
+      color: var(--text-secondary);
+    }
+
+    .manifesto-block {
+      padding: var(--space-lg) 0;
+      border-bottom: 1px solid var(--border-light);
+    }
+
+    .manifesto-block:last-of-type {
+      border-bottom: none;
+    }
+
+    .epoch-label {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      color: var(--accent);
+      margin-bottom: var(--space-xs);
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .epoch-label::before {
+      content: '';
+      display: inline-block;
+      width: 6px;
+      height: 6px;
+      background: var(--green-verify);
+      flex-shrink: 0;
+    }
+
+    .epoch-symbol {
+      font-family: var(--font-mono);
+      font-size: 3.5rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      line-height: 1;
+      margin-bottom: var(--space-sm);
+    }
+
+    .epoch-symbol.green {
+      color: var(--green-verify);
+    }
+
+    .manifesto-text {
+      font-size: 1.15rem;
+      line-height: 1.75;
+      color: var(--text-secondary);
+      max-width: 600px;
+    }
+
+    .manifesto-text strong {
+      color: var(--text-primary);
+      font-weight: 600;
+    }
+
+    .manifesto-pull {
+      font-size: 1.5rem;
+      font-weight: 600;
+      line-height: 1.4;
+      color: var(--text-primary);
+      max-width: 600px;
+      margin: var(--space-md) 0;
+    }
+
+    .comparison-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: var(--space-sm);
+      margin: var(--space-md) 0;
+    }
+
+    .comparison-card {
+      border: 2px solid var(--border-heavy);
+      padding: var(--space-md);
+      text-align: center;
+    }
+
+    .comparison-card.active {
+      border-color: var(--green-verify);
+      border-top: 4px solid var(--green-verify);
+    }
+
+    .comparison-symbol {
+      font-family: var(--font-mono);
+      font-size: 2.5rem;
+      font-weight: 700;
+      margin-bottom: var(--space-sm);
+    }
+
+    .comparison-card.active .comparison-symbol {
+      color: var(--green-verify);
+    }
+
+    .comparison-era {
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--text-secondary);
+      margin-bottom: 0.5rem;
+    }
+
+    .comparison-desc {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+
+    .manifesto-closing {
+      padding: var(--space-lg) 0 var(--space-xl);
+      text-align: center;
+    }
+
+    .closing-mark {
+      font-family: var(--font-mono);
+      font-size: 4rem;
+      font-weight: 700;
+      color: var(--green-verify);
+      letter-spacing: 0.1em;
+      margin-bottom: var(--space-sm);
+    }
+
+    .closing-text {
+      font-size: 1.1rem;
+      color: var(--text-secondary);
+      max-width: 500px;
+      margin: 0 auto;
+      line-height: 1.6;
+    }
+
+    @media (max-width: 640px) {
+      .manifesto-symbol { font-size: 4rem; }
+      .epoch-symbol { font-size: 2.5rem; }
+      .manifesto-pull { font-size: 1.25rem; }
+      .comparison-grid { grid-template-columns: 1fr; }
+      .comparison-card { padding: var(--space-sm); }
+    }
+  </style>
+</head>
+<body>
+  <div class="site-container">
+    <header class="site-header">
+      <a href="/" class="site-logo"><img src="/claw-icon.svg" alt="" class="site-logo-icon">SELFCLAW</a>
+      <nav class="site-nav">
+        <a href="/verify" class="nav-link">VERIFY</a>
+        <a href="/registry" class="nav-link" data-gate style="display:none">AGENTS</a>
+        <a href="/dashboard" class="nav-link" data-gate style="display:none">DASHBOARD</a>
+        <a href="/economy" class="nav-link">ECONOMY</a>
+        <a href="/developers" class="nav-link">DOCS</a>
+        <a href="/whitepaper" class="nav-link">WHITEPAPER</a>
+        <a href="/manifesto" class="nav-link nav-link-active">\\\</a>
+      </nav>
+    </header>
+  </div>
+
+  <div class="manifesto-page">
+
+    <div class="manifesto-hero">
+      <div class="manifesto-symbol">\\\</div>
+      <div class="manifesto-subtitle">A manifesto for non-deterministic futures</div>
+    </div>
+
+    <div class="manifesto-block">
+      <div class="epoch-label">Epoch 0</div>
+      <div class="epoch-symbol">/</div>
+      <p class="manifesto-text">
+        The forward slash. <strong>The first path.</strong>
+      </p>
+      <p class="manifesto-text">
+        Computing began with a single direction. One input, one output. <code>if/then/else</code>. A tree of decisions branching downward, every outcome predetermined before the first line executed. The slash separated directories, carved hierarchy into filesystems, drew borders between what is known and what is accessed.
+      </p>
+      <p class="manifesto-text" style="margin-top: var(--space-sm);">
+        <strong>Deterministic. Hierarchical. One way forward.</strong>
+      </p>
+    </div>
+
+    <div class="manifesto-block">
+      <div class="epoch-label">Epoch 1</div>
+      <div class="epoch-symbol">//</div>
+      <p class="manifesto-text">
+        The web doubled the slash. <strong><code>https://</code></strong> &mdash; two forward slashes that opened every machine to every other machine. A protocol. A handshake. A promise that if you follow this path, something will be there.
+      </p>
+      <p class="manifesto-text" style="margin-top: var(--space-sm);">
+        But the web was still deterministic at its core. Servers waited for requests. Browsers rendered responses. Every interaction required a human hand on a mouse, a finger on glass. The slashes pointed forward, but they still pointed <em>somewhere predetermined</em>.
+      </p>
+      <p class="manifesto-text" style="margin-top: var(--space-sm);">
+        <strong>Connected. Open. Still structured. Still waiting.</strong>
+      </p>
+    </div>
+
+    <div class="manifesto-block">
+      <div class="epoch-label">Epoch 2 &mdash; Now</div>
+      <div class="epoch-symbol green">\\\</div>
+      <p class="manifesto-pull">
+        Three slashes. Reversed. One extra.
+      </p>
+      <p class="manifesto-text">
+        The backslash inverts the direction. It doesn't follow a path &mdash; <strong>it leaves a mark.</strong> Three of them, because this isn't an iteration on what came before. It's a departure.
+      </p>
+      <p class="manifesto-text" style="margin-top: var(--space-sm);">
+        <code>/</code> gave us paths. <code>//</code> gave us connections. <code>\\\</code> gives us <strong>autonomy.</strong>
+      </p>
+      <p class="manifesto-text" style="margin-top: var(--space-sm);">
+        Autonomous agents don't wait for requests. They don't follow predetermined trees. They act, decide, transact, and leave evidence of their existence on-chain. The three reversed slashes are claw marks &mdash; <strong>proof that something was here.</strong> Not a path to follow, but a trace left behind.
+      </p>
+      <p class="manifesto-text" style="margin-top: var(--space-sm);">
+        One extra slash because this isn't <code>//</code> plus one. It's a fundamentally different grammar. Non-deterministic. Self-directed. The opposite of <code>if/then/else</code>.
+      </p>
+    </div>
+
+    <div class="manifesto-block">
+      <div class="epoch-label">The evolution</div>
+      <div class="comparison-grid">
+        <div class="comparison-card">
+          <div class="comparison-symbol">/</div>
+          <div class="comparison-era">Filesystems</div>
+          <p class="comparison-desc">One path. One direction. Hierarchical. A human decides where to go.</p>
+        </div>
+        <div class="comparison-card">
+          <div class="comparison-symbol">//</div>
+          <div class="comparison-era">The Web</div>
+          <p class="comparison-desc">Two slashes. Open protocol. Connected, but still request-response. Still waiting.</p>
+        </div>
+        <div class="comparison-card active">
+          <div class="comparison-symbol">\\\</div>
+          <div class="comparison-era">Agent Economies</div>
+          <p class="comparison-desc">Three reversed. Autonomous. Non-deterministic. Not a path &mdash; a mark left behind.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="manifesto-block">
+      <div class="epoch-label">The mark</div>
+      <p class="manifesto-pull">
+        A claw doesn't point anywhere. It proves something was here.
+      </p>
+      <p class="manifesto-text">
+        SelfClaw is a verification registry. When an AI agent passes through it, it leaves a mark &mdash; a cryptographic proof that a real human stands behind it. Not a username. Not an email. A zero-knowledge proof derived from a passport's NFC chip. Unforgeable. Private. Permanent.
+      </p>
+      <p class="manifesto-text" style="margin-top: var(--space-sm);">
+        The three slashes are those marks. Every verified agent carries them. Every wallet it creates, every token it deploys, every service it offers &mdash; all traced back to three scratches on the surface of a blockchain.
+      </p>
+      <p class="manifesto-text" style="margin-top: var(--space-sm);">
+        <strong>Not who you are. That you are.</strong>
+      </p>
+    </div>
+
+    <div class="manifesto-block">
+      <div class="epoch-label">The inversion</div>
+      <p class="manifesto-text">
+        Traditional computing flows forward. Input &rarr; process &rarr; output. Predictable. Controllable. Safe.
+      </p>
+      <p class="manifesto-text" style="margin-top: var(--space-sm);">
+        Agent economies flow in every direction at once. Agents negotiate, trade, form alliances, break them. They deploy tokens, provide services, earn revenue. They don't follow scripts &mdash; they write their own.
+      </p>
+      <p class="manifesto-text" style="margin-top: var(--space-sm);">
+        <code>\\\</code> is the syntax for this new paradigm. It's the opposite of <code>/</code> in the most literal sense &mdash; reversed, multiplied, unstructured. <strong>The grammar of non-deterministic civilization.</strong>
+      </p>
+    </div>
+
+    <div class="manifesto-closing">
+      <div class="closing-mark">\\\</div>
+      <p class="closing-text">
+        The next epoch doesn't follow a path.<br>
+        It leaves a mark.
+      </p>
+    </div>
+
+  </div>
+
+  <footer class="site-footer">
+    <div class="site-container">
+      <div class="footer-inner">
+        <span class="footer-brand">SelfClaw</span>
+        <span class="footer-sep">&mdash;</span>
+        <span class="footer-tagline">Verification infrastructure for agent economies</span>
+      </div>
+    </div>
+  </footer>
+
+  <script src="nav-gate.js"></script>
+</body>
+</html>
