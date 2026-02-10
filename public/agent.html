@@ -17,6 +17,7 @@
   <div class="site-container">
     <header class="site-header">
       <a href="/" class="site-logo"><img src="/claw-icon.svg" alt="" class="site-logo-icon">SELFCLAW</a>
+      <button class="nav-toggle" aria-label="Menu">&equiv;</button>
       <nav class="site-nav">
         <a href="/verify" class="nav-link">VERIFY</a>
         <a href="/registry" class="nav-link" data-gate style="display:none">AGENTS</a>
@@ -509,7 +510,7 @@
 
         var html = '';
 
-        html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:0.75rem;margin-bottom:1rem;">';
+        html += '<div class="grid-3" style="gap:0.75rem;margin-bottom:1rem;">';
 
         html += '<div style="border:2px solid var(--border-heavy);padding:0.75rem;border-top:3px solid var(--green-verify);">';
         html += '<div style="font-family:var(--font-mono);font-size:0.6rem;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-muted);margin-bottom:0.2rem;">Revenue</div>';
@@ -580,5 +581,6 @@
   </script>
   <script src="/auth.js"></script>
   <script src="/nav-gate.js"></script>
+  <script src="/nav-toggle.js"></script>
 </body>
 </html>

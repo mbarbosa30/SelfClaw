@@ -10,8 +10,9 @@ SelfClaw is a privacy-first agent verification registry built on the Celo blockc
 - **Colors**: Background #f2f0ec, text #1a1a1a, accent #FF6B4A, borders #d4d0ca (light) / #1a1a1a (heavy)
 - **Typography**: Inter (sans-serif body), IBM Plex Mono (accents/labels/code)
 - **Borders**: Hard 2px borders, no border-radius, no shadows
-- **Container**: 960px max-width
-- **Navigation**: SELFCLAW | VERIFY | AGENTS(gated) | DASHBOARD(gated) | ECONOMY | DOCS | WHITEPAPER | \\\ | LOGIN/[humanId]
+- **Container**: 1080px max-width (profile 800px, whitepaper 860px, docs 960px)
+- **Responsive**: Breakpoints at 1024px (grids → 2-col), 768px (grids → 1-col, hamburger nav), 480px (tighter padding)
+- **Navigation**: SELFCLAW | VERIFY | AGENTS(gated) | DASHBOARD(gated) | ECONOMY | DOCS | WHITEPAPER | \\\ | LOGIN/[humanId] — hamburger menu on mobile via nav-toggle.js
 
 ## User Preferences
 - Light brutalist-minimal UI design
@@ -58,6 +59,7 @@ public/                 # Frontend assets
   app.js                # Shared frontend JS
   auth.js               # Shared login/logout (Self.xyz QR modal)
   nav-gate.js           # Nav gating logic
+  nav-toggle.js         # Mobile hamburger menu toggle
 ```
 
 ### Routes & Redirects
