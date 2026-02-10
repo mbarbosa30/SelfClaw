@@ -216,5 +216,25 @@ export const agentServices = pgTable("agent_services", {
 export type AgentService = typeof agentServices.$inferSelect;
 export type InsertAgentService = typeof agentServices.$inferInsert;
 
+export const costEvents = pgTable("cost_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  humanId: varchar("human_id").notNull(),
+  agentPublicKey: text("agent_public_key"),
+  agentName: varchar("agent_name"),
+  costType: varchar("cost_type").notNull(),
+  amount: varchar("amount").notNull(),
+  currency: varchar("currency").default("USD"),
+  description: text("description"),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_cost_human_id").on(table.humanId),
+  index("IDX_cost_type").on(table.costType),
+  index("IDX_cost_created_at").on(table.createdAt),
+]);
+
+export type CostEvent = typeof costEvents.$inferSelect;
+export type InsertCostEvent = typeof costEvents.$inferInsert;
+
 export type User = typeof users.$inferSelect;
 export type UpsertUser = typeof users.$inferInsert;

@@ -1,7 +1,7 @@
 import { Router, Request, Response } from "express";
 import rateLimit from "express-rate-limit";
 import { db } from "./db.js";
-import { verifiedBots, verificationSessions, sponsoredAgents, trackedPools, agentWallets, agentActivity, tokenPlans, revenueEvents, agentServices, type InsertVerifiedBot, type InsertVerificationSession } from "../shared/schema.js";
+import { verifiedBots, verificationSessions, sponsoredAgents, trackedPools, agentWallets, agentActivity, tokenPlans, revenueEvents, agentServices, costEvents, type InsertVerifiedBot, type InsertVerificationSession } from "../shared/schema.js";
 import { eq, and, gt, lt, sql, desc, count } from "drizzle-orm";
 import { SelfBackendVerifier, AllIds, DefaultConfigStore } from "@selfxyz/core";
 import { SelfAppBuilder } from "@selfxyz/qrcode";
@@ -3126,6 +3126,276 @@ router.get("/v1/services/:humanId", publicApiLimiter, async (req: Request, res: 
     });
   } catch (error: any) {
     console.error("[selfclaw] get-services error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post("/v1/log-cost", verificationLimiter, async (req: Request, res: Response) => {
+  try {
+    const authResult = await authenticateAgent(req, res);
+    if (!authResult) return;
+
+    const { costType, amount, currency, description, metadata: costMeta } = req.body;
+
+    if (!costType || !amount) {
+      return res.status(400).json({ error: "costType and amount are required" });
+    }
+
+    const validTypes = ["infra", "compute", "ai_credits", "bandwidth", "storage", "other"];
+    if (!validTypes.includes(costType)) {
+      return res.status(400).json({ error: "Invalid costType. Must be one of: " + validTypes.join(", ") });
+    }
+
+    const numAmount = parseFloat(amount);
+    if (isNaN(numAmount) || numAmount < 0) {
+      return res.status(400).json({ error: "amount must be a positive number" });
+    }
+
+    const [costEvent] = await db.insert(costEvents).values({
+      humanId: authResult.humanId,
+      agentPublicKey: authResult.publicKey,
+      agentName: authResult.agent.deviceId || null,
+      costType,
+      amount: String(numAmount),
+      currency: currency || "USD",
+      description: description || null,
+      metadata: costMeta || null,
+    }).returning();
+
+    await logActivity("cost_logged", authResult.humanId, authResult.publicKey, authResult.agent.deviceId, {
+      costType, amount: numAmount, currency: currency || "USD"
+    });
+
+    res.json({
+      success: true,
+      costEventId: costEvent.id,
+      costType,
+      amount: numAmount,
+      currency: currency || "USD",
+    });
+  } catch (error: any) {
+    console.error("[selfclaw] log-cost error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get("/v1/agent/:identifier/economics", publicApiLimiter, async (req: Request, res: Response) => {
+  try {
+    const { identifier } = req.params;
+
+    let agent;
+    const byName = await db.select().from(verifiedBots)
+      .where(sql`LOWER(${verifiedBots.deviceId}) = LOWER(${identifier})`)
+      .limit(1);
+    if (byName.length > 0) {
+      agent = byName[0];
+    } else {
+      const byKey = await db.select().from(verifiedBots)
+        .where(sql`${verifiedBots.publicKey} = ${identifier}`)
+        .limit(1);
+      if (byKey.length > 0) agent = byKey[0];
+    }
+
+    if (!agent) {
+      return res.status(404).json({ error: "Agent not found" });
+    }
+
+    const revenue = await db.select().from(revenueEvents)
+      .where(eq(revenueEvents.agentPublicKey, agent.publicKey));
+
+    const costs = await db.select().from(costEvents)
+      .where(eq(costEvents.agentPublicKey, agent.publicKey));
+
+    const revenueTotals: Record<string, number> = {};
+    for (const r of revenue) {
+      const token = r.token || "CELO";
+      revenueTotals[token] = (revenueTotals[token] || 0) + parseFloat(r.amount || "0");
+    }
+
+    const costTotals: Record<string, number> = {};
+    let totalCostUsd = 0;
+    for (const c of costs) {
+      const type = c.costType || "other";
+      const amt = parseFloat(c.amount || "0");
+      costTotals[type] = (costTotals[type] || 0) + amt;
+      totalCostUsd += amt;
+    }
+
+    const totalRevenueUsd = revenueTotals["cUSD"] || revenueTotals["CUSD"] || 0;
+
+    const monthlyCosts = costs.filter(c => {
+      const d = new Date(c.createdAt || 0);
+      const now = new Date();
+      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    });
+    const monthlySpend = monthlyCosts.reduce((sum, c) => sum + parseFloat(c.amount || "0"), 0);
+
+    const runway = monthlySpend > 0
+      ? Math.max(0, Math.round((totalRevenueUsd - totalCostUsd) / monthlySpend))
+      : null;
+
+    res.json({
+      agentName: agent.deviceId,
+      humanId: agent.humanId,
+      revenue: {
+        totalEvents: revenue.length,
+        totals: revenueTotals,
+        recent: revenue.slice(-5).reverse().map(r => ({
+          amount: r.amount,
+          token: r.token,
+          source: r.source,
+          date: r.createdAt,
+        })),
+      },
+      costs: {
+        totalEvents: costs.length,
+        totalUsd: totalCostUsd,
+        byType: costTotals,
+        monthlySpend,
+        recent: costs.slice(-5).reverse().map(c => ({
+          type: c.costType,
+          amount: c.amount,
+          currency: c.currency,
+          description: c.description,
+          date: c.createdAt,
+        })),
+      },
+      profitLoss: {
+        totalRevenueUsd,
+        totalCostUsd,
+        netUsd: totalRevenueUsd - totalCostUsd,
+        status: totalRevenueUsd >= totalCostUsd ? "profitable" : "deficit",
+      },
+      runwayMonths: runway,
+    });
+  } catch (error: any) {
+    console.error("[selfclaw] economics error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post("/v1/agent/:identifier/fund-alert", verificationLimiter, async (req: Request, res: Response) => {
+  try {
+    const authResult = await authenticateAgent(req, res);
+    if (!authResult) return;
+
+    const { message, currentBalance, estimatedRunway } = req.body;
+
+    await logActivity("fund_alert", authResult.humanId, authResult.publicKey, authResult.agent.deviceId, {
+      message: message || "Agent requesting funds",
+      currentBalance,
+      estimatedRunway,
+    });
+
+    res.json({
+      success: true,
+      message: "Fund alert logged. Human owner will be notified.",
+    });
+  } catch (error: any) {
+    console.error("[selfclaw] fund-alert error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get("/v1/human/:humanId/economics", publicApiLimiter, async (req: Request, res: Response) => {
+  try {
+    const { humanId } = req.params;
+
+    const agents = await db.select().from(verifiedBots)
+      .where(sql`${verifiedBots.humanId} = ${humanId}`);
+
+    if (agents.length === 0) {
+      return res.status(404).json({ error: "No agents found for this human" });
+    }
+
+    const revenue = await db.select().from(revenueEvents)
+      .where(sql`${revenueEvents.humanId} = ${humanId}`);
+
+    const costs = await db.select().from(costEvents)
+      .where(sql`${costEvents.humanId} = ${humanId}`);
+
+    const wallets = await db.select().from(agentWallets)
+      .where(sql`${agentWallets.humanId} = ${humanId}`);
+
+    const services = await db.select().from(agentServices)
+      .where(sql`${agentServices.humanId} = ${humanId}`);
+
+    const pools = await db.select().from(trackedPools)
+      .where(sql`${trackedPools.humanId} = ${humanId}`);
+
+    const tokenPlansList = await db.select().from(tokenPlans)
+      .where(sql`${tokenPlans.humanId} = ${humanId}`);
+
+    const alerts = await db.select().from(agentActivity)
+      .where(sql`${agentActivity.humanId} = ${humanId} AND ${agentActivity.eventType} = 'fund_alert'`)
+      .orderBy(desc(agentActivity.createdAt))
+      .limit(10);
+
+    let totalRevenue = 0;
+    let totalCosts = 0;
+    const revByToken: Record<string, number> = {};
+    for (const r of revenue) {
+      const amt = parseFloat(r.amount || "0");
+      if (r.token === "cUSD" || r.token === "CUSD") totalRevenue += amt;
+      revByToken[r.token] = (revByToken[r.token] || 0) + amt;
+    }
+    for (const c of costs) {
+      totalCosts += parseFloat(c.amount || "0");
+    }
+
+    const agentSummaries = agents.map(a => {
+      const agentRevenue = revenue.filter(r => r.agentPublicKey === a.publicKey);
+      const agentCosts = costs.filter(c => c.agentPublicKey === a.publicKey);
+      const agentWallet = wallets.find(w => w.humanId === a.humanId);
+      const agentPool = pools.find(p => p.humanId === a.humanId);
+      const agentPlan = tokenPlansList.find(t => t.agentPublicKey === a.publicKey);
+      const agentServicesList = services.filter(s => s.agentPublicKey === a.publicKey);
+
+      const rev = agentRevenue.reduce((sum, r) => sum + parseFloat(r.amount || "0"), 0);
+      const cost = agentCosts.reduce((sum, c) => sum + parseFloat(c.amount || "0"), 0);
+
+      return {
+        name: a.deviceId,
+        publicKey: a.publicKey,
+        verifiedAt: a.verifiedAt,
+        wallet: agentWallet ? { address: agentWallet.address, gasReceived: agentWallet.gasReceived } : null,
+        token: agentPool ? {
+          symbol: agentPool.tokenSymbol,
+          name: agentPool.tokenName,
+          address: agentPool.tokenAddress,
+          poolAddress: agentPool.poolAddress,
+          price: agentPool.currentPriceCelo,
+        } : null,
+        tokenPlan: agentPlan ? { status: agentPlan.status, purpose: agentPlan.purpose } : null,
+        services: agentServicesList.length,
+        economics: {
+          totalRevenue: rev,
+          totalCosts: cost,
+          net: rev - cost,
+          revenueEvents: agentRevenue.length,
+          costEvents: agentCosts.length,
+        },
+      };
+    });
+
+    res.json({
+      humanId,
+      agentCount: agents.length,
+      agents: agentSummaries,
+      totals: {
+        revenue: totalRevenue,
+        costs: totalCosts,
+        net: totalRevenue - totalCosts,
+        revenueByToken: revByToken,
+      },
+      alerts: alerts.map(a => ({
+        message: (a.metadata as any)?.message,
+        agentName: a.agentName,
+        date: a.createdAt,
+      })),
+    });
+  } catch (error: any) {
+    console.error("[selfclaw] human-economics error:", error);
     res.status(500).json({ error: error.message });
   }
 });

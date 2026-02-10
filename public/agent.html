@@ -165,6 +165,7 @@
 
       html += renderIdentity(data);
       html += renderWallet(data);
+      html += renderEconomics(data);
       html += renderTokenAndMarket(data);
       html += renderTokenomics(data);
       html += renderServices(data);
@@ -172,6 +173,8 @@
       html += renderActivity(data);
 
       contentEl.innerHTML = html;
+
+      loadEconomics(data.agentName || data.publicKey);
     }
 
     function renderIdentity(data) {
@@ -480,8 +483,102 @@
       return html;
     }
 
+    function renderEconomics(data) {
+      var html = '<div class="section-card" id="economics-section">';
+      html += '<div class="section-card-title">Agent Economics</div>';
+      html += '<div id="economics-content"><p class="empty-state-text">Loading economics...</p></div>';
+      html += '</div>';
+      return html;
+    }
+
+    async function loadEconomics(identifier) {
+      if (!identifier) return;
+      var container = document.getElementById('economics-content');
+      if (!container) return;
+
+      try {
+        var res = await fetch('/api/selfclaw/v1/agent/' + encodeURIComponent(identifier) + '/economics');
+        if (!res.ok) {
+          container.innerHTML = '<p class="empty-state-text">No economics data yet</p>';
+          return;
+        }
+        var data = await res.json();
+        var pl = data.profitLoss || {};
+        var costs = data.costs || {};
+        var revenue = data.revenue || {};
+
+        var html = '';
+
+        html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:0.75rem;margin-bottom:1rem;">';
+
+        html += '<div style="border:2px solid var(--border-heavy);padding:0.75rem;border-top:3px solid var(--green-verify);">';
+        html += '<div style="font-family:var(--font-mono);font-size:0.6rem;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-muted);margin-bottom:0.2rem;">Revenue</div>';
+        html += '<div style="font-size:1.2rem;font-weight:700;color:var(--green-verify);">$' + (pl.totalRevenueUsd || 0).toFixed(2) + '</div>';
+        html += '</div>';
+
+        html += '<div style="border:2px solid var(--border-heavy);padding:0.75rem;border-top:3px solid var(--accent);">';
+        html += '<div style="font-family:var(--font-mono);font-size:0.6rem;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-muted);margin-bottom:0.2rem;">Costs</div>';
+        html += '<div style="font-size:1.2rem;font-weight:700;">$' + (pl.totalCostUsd || 0).toFixed(2) + '</div>';
+        html += '</div>';
+
+        var netColor = (pl.netUsd || 0) >= 0 ? 'var(--green-verify)' : 'var(--red)';
+        var netSign = (pl.netUsd || 0) >= 0 ? '+' : '';
+        html += '<div style="border:2px solid var(--border-heavy);padding:0.75rem;border-top:3px solid ' + netColor + ';">';
+        html += '<div style="font-family:var(--font-mono);font-size:0.6rem;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-muted);margin-bottom:0.2rem;">Net P/L</div>';
+        html += '<div style="font-size:1.2rem;font-weight:700;color:' + netColor + ';">' + netSign + '$' + Math.abs(pl.netUsd || 0).toFixed(2) + '</div>';
+        html += '</div>';
+
+        html += '</div>';
+
+        if (costs.byType && Object.keys(costs.byType).length > 0) {
+          html += '<div class="field-row" style="margin-bottom:0.5rem;">';
+          html += '<span class="field-label">Cost Breakdown</span>';
+          html += '</div>';
+          var types = Object.keys(costs.byType);
+          for (var i = 0; i < types.length; i++) {
+            html += '<div class="field-row">';
+            html += '<span class="field-label" style="text-transform:capitalize;font-weight:400;">' + escapeHtml(types[i].replace(/_/g, ' ')) + '</span>';
+            html += '<span class="field-value-text">$' + costs.byType[types[i]].toFixed(2) + '</span>';
+            html += '</div>';
+          }
+        }
+
+        if (costs.monthlySpend > 0) {
+          html += '<div class="field-row">';
+          html += '<span class="field-label">Monthly Spend</span>';
+          html += '<span class="field-value-text">$' + costs.monthlySpend.toFixed(2) + '/mo</span>';
+          html += '</div>';
+        }
+
+        if (data.runwayMonths !== null && data.runwayMonths !== undefined) {
+          html += '<div class="field-row">';
+          html += '<span class="field-label">Runway</span>';
+          html += '<span class="field-value-text">' + data.runwayMonths + ' months</span>';
+          html += '</div>';
+        }
+
+        if (revenue.totals && Object.keys(revenue.totals).length > 0) {
+          html += '<div class="field-row" style="margin-top:0.75rem;">';
+          html += '<span class="field-label">Revenue by Token</span>';
+          html += '</div>';
+          var tokens = Object.keys(revenue.totals);
+          for (var j = 0; j < tokens.length; j++) {
+            html += '<div class="field-row">';
+            html += '<span class="field-label" style="font-weight:400;">' + escapeHtml(tokens[j]) + '</span>';
+            html += '<span class="field-value-text text-accent">' + revenue.totals[tokens[j]].toFixed(4) + '</span>';
+            html += '</div>';
+          }
+        }
+
+        container.innerHTML = html;
+      } catch (err) {
+        container.innerHTML = '<p class="empty-state-text">No economics data yet</p>';
+      }
+    }
+
     loadAgentProfile();
   </script>
+  <script src="/auth.js"></script>
   <script src="/nav-gate.js"></script>
 </body>
 </html>

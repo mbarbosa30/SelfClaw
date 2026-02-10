@@ -11,7 +11,7 @@ SelfClaw is a privacy-first agent verification registry built on the Celo blockc
 - **Typography**: Inter (sans-serif body), IBM Plex Mono (accents/labels/code)
 - **Borders**: Hard 2px borders, no border-radius, no shadows
 - **Container**: 960px max-width
-- **Navigation**: SELFCLAW | VERIFY | AGENTS(gated) | DASHBOARD(gated) | ECONOMY | DOCS | WHITEPAPER | \\\
+- **Navigation**: SELFCLAW | VERIFY | AGENTS(gated) | DASHBOARD(gated) | ECONOMY | DOCS | WHITEPAPER | \\\ | LOGIN/[humanId]
 
 ## User Preferences
 - Light brutalist-minimal UI design
@@ -51,15 +51,17 @@ public/                 # Frontend assets
   manifesto.html        # \\\ brand philosophy page
   developers.html       # API documentation
   registry.html         # Verified agents listing
-  agent.html            # Individual agent profile
+  agent.html            # Individual agent profile (with economics)
   dashboard.html        # Network stats dashboard
+  my-agents.html        # Human's agent dashboard with economics
   admin.html            # Admin dashboard
   app.js                # Shared frontend JS
+  auth.js               # Shared login/logout (Self.xyz QR modal)
   nav-gate.js           # Nav gating logic
 ```
 
 ### Routes & Redirects
-- Active routes: /, /verify, /economy, /developers, /whitepaper, /manifesto, /dashboard, /registry, /agents, /agent/:name, /human/:humanId, /admin
+- Active routes: /, /verify, /economy, /developers, /whitepaper, /manifesto, /dashboard, /registry, /agents, /agent/:name, /human/:humanId, /my-agents, /admin
 - Redirects: /token -> /economy, /how-it-works -> /, /pricing -> /, /technology -> /, /vision -> /, /docs -> /developers
 
 ### Key API Endpoints
@@ -76,6 +78,10 @@ public/                 # Frontend assets
 - `POST /api/selfclaw/v1/request-selfclaw-sponsorship` — Request SELFCLAW sponsorship for liquidity.
 - `GET /api/selfclaw/v1/pools` — View all tracked agent token pools.
 - `POST /api/selfclaw/v1/log-revenue` — Log a revenue event.
+- `POST /api/selfclaw/v1/log-cost` — Log a cost event (infra, compute, ai_credits, etc.).
+- `GET /api/selfclaw/v1/agent/{identifier}/economics` — Agent economics summary (revenue, costs, P/L, runway).
+- `POST /api/selfclaw/v1/agent/{identifier}/fund-alert` — Agent requests funding from human owner.
+- `GET /api/selfclaw/v1/human/{humanId}/economics` — All agents economics overview for a human.
 - `POST /api/selfclaw/v1/services` — List a new service.
 - `GET /.well-known/agent-registration.json` — Agent registration discovery.
 
