@@ -1,4 +1,3 @@
-
 async function loadEcosystemStats() {
   try {
     const response = await fetch('/api/selfclaw/v1/ecosystem-stats');
@@ -542,6 +541,3 @@ async function submitAgentSignature(sessionId) {
     alert('Error verifying signature: ' + error.message);
   }
 }
-
-const checkBotVerification = checkAgentVerification;
-const startBotVerification = startAgentVerification;

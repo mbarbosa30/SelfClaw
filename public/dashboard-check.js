@@ -1,1 +1,0 @@
-fetch('/api/selfclaw/v1/stats').then(r=>r.json()).then(d=>{if(d.totalAgents>=2)document.querySelectorAll('.dashboard-nav-link').forEach(el=>el.style.display='')}).catch(()=>{});

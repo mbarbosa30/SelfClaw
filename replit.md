@@ -36,10 +36,13 @@ server/                 # Backend services and API
   selfclaw.ts           # Core verification API
   self-auth.ts          # Self.xyz authentication
 lib/                    # Utility libraries and blockchain interactions
+  constants.ts          # Contract bytecode constants
   erc8004.ts            # ERC-8004 on-chain identity
+  erc8004-config.ts     # ERC-8004 configuration
   secure-wallet.ts      # EVM wallet management
-  token-factory.ts      # ERC20 token deployment
-  uniswap-v3.ts         # Uniswap integration
+  sponsored-liquidity.ts # Liquidity sponsorship logic
+  uniswap-v3.ts         # Uniswap V3 integration
+  uniswap-v4.ts         # Uniswap V4 integration
   wormhole-bridge.ts    # Wormhole cross-chain bridge
 shared/
   schema.ts             # Drizzle database schema

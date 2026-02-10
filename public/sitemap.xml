@@ -6,41 +6,6 @@
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://selfclaw.ai/developers</loc>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://selfclaw.ai/how-it-works</loc>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://selfclaw.ai/economy</loc>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://selfclaw.ai/technology</loc>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://selfclaw.ai/registry</loc>
-    <changefreq>daily</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://selfclaw.ai/pricing</loc>
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
-  </url>
-  <url>
-    <loc>https://selfclaw.ai/docs</loc>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
     <loc>https://selfclaw.ai/verify</loc>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
@@ -51,8 +16,38 @@
     <priority>0.9</priority>
   </url>
   <url>
+    <loc>https://selfclaw.ai/developers</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://selfclaw.ai/skill.md</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://selfclaw.ai/registry</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://selfclaw.ai/economy</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://selfclaw.ai/whitepaper</loc>
     <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://selfclaw.ai/dashboard</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://selfclaw.ai/agent-economy.md</loc>
+    <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
@@ -61,18 +56,13 @@
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://selfclaw.ai/dashboard</loc>
+    <loc>https://selfclaw.ai/explorer</loc>
     <changefreq>daily</changefreq>
-    <priority>0.7</priority>
+    <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://selfclaw.ai/skill.md</loc>
+    <loc>https://selfclaw.ai/my-agents</loc>
     <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://selfclaw.ai/agent-economy.md</loc>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
+    <priority>0.6</priority>
   </url>
 </urlset>
