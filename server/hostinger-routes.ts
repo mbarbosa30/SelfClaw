@@ -1,7 +1,26 @@
 import { Router, type Request, type Response } from "express";
+import rateLimit from "express-rate-limit";
 import { listTools, callTool, getConnectionStatus } from "./hostinger-mcp.js";
 
 const router = Router();
+
+const hostingerLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 20,
+  message: { error: "Too many requests to Hostinger API, please try again later" },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+function requireAuth(req: any, res: Response, next: Function) {
+  if (!req.session?.isAuthenticated || !req.session?.humanId) {
+    return res.status(401).json({ error: "Login required. Authenticate with Self.xyz passport first." });
+  }
+  next();
+}
+
+router.use(requireAuth);
+router.use(hostingerLimiter);
 
 router.get("/status", async (_req: Request, res: Response) => {
   try {

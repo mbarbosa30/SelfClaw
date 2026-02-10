@@ -4,9 +4,7 @@ import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
 let mcpClient: Client | null = null;
 let connectionError: string | null = null;
 
-export async function getHostingerClient(): Promise<Client> {
-  if (mcpClient) return mcpClient;
-
+async function createClient(): Promise<Client> {
   const apiToken = process.env.HOSTINGER_API_TOKEN;
   if (!apiToken) {
     throw new Error("HOSTINGER_API_TOKEN secret is not set");
@@ -26,14 +24,21 @@ export async function getHostingerClient(): Promise<Client> {
     { capabilities: {} }
   );
 
+  await client.connect(transport);
+  console.log("[hostinger-mcp] Connected to Hostinger MCP server");
+  return client;
+}
+
+export async function getHostingerClient(): Promise<Client> {
+  if (mcpClient) return mcpClient;
+
   try {
-    await client.connect(transport);
-    mcpClient = client;
+    mcpClient = await createClient();
     connectionError = null;
-    console.log("[hostinger-mcp] Connected to Hostinger MCP server");
-    return client;
+    return mcpClient;
   } catch (err: any) {
     connectionError = err.message;
+    mcpClient = null;
     console.error("[hostinger-mcp] Failed to connect:", err.message);
     throw err;
   }
@@ -41,14 +46,32 @@ export async function getHostingerClient(): Promise<Client> {
 
 export async function listTools() {
   const client = await getHostingerClient();
-  const result = await client.listTools();
-  return result.tools;
+  try {
+    const result = await client.listTools();
+    return result.tools;
+  } catch (err: any) {
+    console.warn("[hostinger-mcp] listTools failed, resetting connection:", err.message);
+    mcpClient = null;
+    connectionError = err.message;
+    const client2 = await getHostingerClient();
+    const result = await client2.listTools();
+    return result.tools;
+  }
 }
 
 export async function callTool(name: string, args: Record<string, any> = {}) {
   const client = await getHostingerClient();
-  const result = await client.callTool({ name, arguments: args });
-  return result;
+  try {
+    const result = await client.callTool({ name, arguments: args });
+    return result;
+  } catch (err: any) {
+    console.warn("[hostinger-mcp] callTool failed, resetting connection:", err.message);
+    mcpClient = null;
+    connectionError = err.message;
+    const client2 = await getHostingerClient();
+    const result = await client2.callTool({ name, arguments: args });
+    return result;
+  }
 }
 
 export function getConnectionStatus() {

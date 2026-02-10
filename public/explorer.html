@@ -198,6 +198,20 @@
     const toolCount = document.getElementById('tool-count');
     let allTools = [];
 
+    (function gateExplorer() {
+      var explorerContent = document.querySelector('.explorer-page');
+      if (!explorerContent) return;
+      window.selfclawAuth.onReady(function(user) {
+        if (!user) {
+          explorerContent.innerHTML = '<div style="text-align:center;padding:4rem 1rem;border:2px solid var(--border-heavy);">' +
+            '<div style="font-family:var(--font-mono);font-size:0.85rem;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:1rem;">Authentication Required</div>' +
+            '<p style="font-size:0.9rem;color:var(--text-secondary);margin-bottom:1.5rem;max-width:400px;margin-left:auto;margin-right:auto;">You must be logged in with your Self.xyz passport to access the MCP Explorer.</p>' +
+            '<button onclick="window.selfclawAuth && window.selfclawAuth.openLogin()" style="padding:0.7rem 2rem;border:2px solid var(--border-heavy);background:var(--bg-card);color:var(--text-primary);font-family:var(--font-mono);font-size:0.8rem;font-weight:600;cursor:pointer;">Login with Self</button>' +
+            '</div>';
+        }
+      });
+    })();
+
     async function connect() {
       try {
         const res = await fetch('/api/hostinger/status');

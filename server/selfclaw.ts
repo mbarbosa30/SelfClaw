@@ -3476,6 +3476,9 @@ router.post("/v1/create-agent", verificationLimiter, async (req: any, res: Respo
     if (!agentName || typeof agentName !== "string" || agentName.trim().length < 2) {
       return res.status(400).json({ error: "agentName is required (minimum 2 characters)" });
     }
+    if (agentName.trim().length > 32) {
+      return res.status(400).json({ error: "agentName must be 32 characters or fewer" });
+    }
 
     const cleanName = agentName.trim().toLowerCase().replace(/[^a-z0-9\-_]/g, "-");
 
@@ -3566,16 +3569,17 @@ services:
       "
 `.trim();
 
+        const dockerProjectName = `sc-${cleanName}`;
         const result = await callTool("vps_docker_compose_create_project", {
           virtual_machine_id: vmIdNum,
-          project_name: cleanName,
+          project_name: dockerProjectName,
           docker_compose_content: agentDockerCompose,
         });
 
         deployment = {
           success: true,
           vmId: hostingerVmId,
-          projectName: cleanName,
+          projectName: dockerProjectName,
           result,
         };
       } catch (deployErr: any) {
@@ -3589,6 +3593,10 @@ services:
 
     // SECURITY: privateKeyPkcs8 is returned to the user exactly once and never stored, logged, or persisted anywhere
     console.log(`[selfclaw] === AGENT CREATED === name: ${cleanName}, humanId: ${humanId}`);
+
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
+    res.setHeader("Pragma", "no-cache");
+    res.setHeader("Expires", "0");
 
     res.json({
       success: true,
@@ -3680,6 +3688,10 @@ router.post("/v1/my-agents/:publicKey/setup-wallet", verificationLimiter, async 
       address: wallet.address,
       method: "dashboard"
     });
+
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
+    res.setHeader("Pragma", "no-cache");
+    res.setHeader("Expires", "0");
 
     res.json({
       success: true,
