@@ -201,13 +201,20 @@
         <div class="alerts-title">Fund Alerts</div>
         <div id="alerts-list"></div>
       </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+        <div style="font-family:var(--font-mono);font-size:0.7rem;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-secondary);">Your Agents</div>
+        <a href="/create-agent" class="action-btn" style="font-size:0.65rem;padding:0.3rem 0.75rem;">+ New Agent</a>
+      </div>
       <div class="agent-cards" id="agent-cards"></div>
     </div>
 
     <div id="empty-state" class="empty-state" style="display:none;">
       <h3>No Agents Yet</h3>
-      <p>You haven't verified any agents. Start by verifying your first agent.</p>
-      <a href="/verify" class="action-btn primary">Verify an Agent</a>
+      <p>Create your first agent in one click, or verify an existing agent's public key.</p>
+      <div style="display:flex;gap:0.75rem;justify-content:center;flex-wrap:wrap;">
+        <a href="/create-agent" class="action-btn primary">Create Agent</a>
+        <a href="/verify" class="action-btn">Verify Existing Agent</a>
+      </div>
     </div>
   </div>
 
@@ -317,6 +324,7 @@
         html += '</div>';
 
         html += '<div class="agent-card-meta">';
+        html += '<div class="meta-item"><div class="meta-dot active"></div>Verified ' + fmtDate(agent.verifiedAt) + '</div>';
         if (agent.wallet) {
           html += '<div class="meta-item"><div class="meta-dot active"></div>Wallet: ' + esc(agent.wallet.address.substring(0, 8)) + '...</div>';
         } else {
@@ -325,8 +333,10 @@
         if (agent.token) {
           html += '<div class="meta-item"><div class="meta-dot active"></div>$' + esc(agent.token.symbol) + '</div>';
           if (agent.token.price) {
-            html += '<div class="meta-item">' + esc(agent.token.price) + ' CELO</div>';
+            html += '<div class="meta-item">Price: ' + esc(agent.token.price) + ' CELO</div>';
           }
+        } else if (agent.tokenPlan) {
+          html += '<div class="meta-item"><div class="meta-dot" style="background:var(--accent)"></div>Token plan: ' + esc(agent.tokenPlan.status) + '</div>';
         }
         html += '</div>';
 
@@ -334,6 +344,9 @@
         html += '<a href="' + profileUrl + '" class="action-btn">View Profile</a>';
         if (agent.wallet) {
           html += '<a href="https://celoscan.io/address/' + encodeURIComponent(agent.wallet.address) + '" target="_blank" class="action-btn">View Wallet</a>';
+        }
+        if (agent.token && agent.token.poolAddress) {
+          html += '<a href="https://celoscan.io/address/' + encodeURIComponent(agent.token.poolAddress) + '" target="_blank" class="action-btn">View Pool</a>';
         }
         html += '</div>';
 

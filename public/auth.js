@@ -205,7 +205,16 @@
             renderAuthUI();
             closeLoginModal();
 
-            if (window.onAuthLogin) window.onAuthLogin(authState.user);
+            if (window.onAuthLogin) {
+              window.onAuthLogin(authState.user);
+            }
+
+            var stayPages = ['/my-agents', '/create-agent', '/verify'];
+            var currentPath = window.location.pathname;
+            var shouldStay = stayPages.some(function(p) { return currentPath.startsWith(p); });
+            if (!shouldStay) {
+              window.location.href = '/my-agents';
+            }
           } else {
             if (statusEl) {
               statusEl.style.color = 'var(--red)';
