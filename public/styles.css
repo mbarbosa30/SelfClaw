@@ -443,7 +443,7 @@ h4 {
   font-size: 1rem;
   color: var(--text-secondary);
   line-height: 1.7;
-  max-width: 600px;
+  max-width: 700px;
   margin-bottom: var(--space-md);
 }
 
@@ -937,7 +937,7 @@ h4 {
 }
 
 .registry-list {
-  max-width: 700px;
+  max-width: 100%;
   margin: var(--space-md) auto;
 }
 
@@ -1270,7 +1270,7 @@ h4 {
 .wp-subtitle {
   font-size: 1.05rem;
   color: var(--text-secondary);
-  max-width: 580px;
+  max-width: 700px;
   margin: 0 auto 1.25rem;
   line-height: 1.7;
 }
@@ -1456,7 +1456,7 @@ h4 {
 
 .wp-cta { text-align: center; padding: var(--space-lg) 0 var(--space-md); border-top: 2px solid var(--border-heavy); }
 .wp-cta h2 { font-size: 1.6rem; margin-bottom: 0.75rem; }
-.wp-cta p { color: var(--text-secondary); font-size: 0.95rem; max-width: 460px; margin: 0 auto 1.25rem; line-height: 1.7; }
+.wp-cta p { color: var(--text-secondary); font-size: 0.95rem; max-width: 600px; margin: 0 auto 1.25rem; line-height: 1.7; }
 .wp-cta-links { display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap; }
 
 .wp-phase { display: flex; gap: 1rem; align-items: flex-start; margin-bottom: 1.25rem; }
@@ -1616,7 +1616,7 @@ h4 {
   font-size: 1.05rem;
   color: var(--text-secondary);
   line-height: 1.7;
-  max-width: 560px;
+  max-width: 700px;
   margin: 0 auto;
 }
 
@@ -1674,7 +1674,7 @@ h4 {
 
 /* ── DOCS ── */
 .docs-container {
-  max-width: 960px;
+  max-width: 1080px;
   margin: 0 auto;
 }
 
@@ -1807,7 +1807,7 @@ h4 {
 
 /* ── PROFILE PAGE ── */
 .profile-container {
-  max-width: 800px;
+  max-width: 1080px;
   margin: 0 auto;
 }
 
