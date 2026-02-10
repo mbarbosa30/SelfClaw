@@ -478,6 +478,21 @@ h4 {
   border: 2px solid var(--border-heavy);
   overflow: hidden;
   margin: var(--space-sm) 0;
+  color: #e8e8e8;
+}
+
+.code-block pre,
+.code-block code {
+  color: #e8e8e8;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  line-height: 1.6;
+}
+
+.code-block pre {
+  padding: 1.25rem;
+  margin: 0;
+  overflow-x: auto;
 }
 
 .code-header {
