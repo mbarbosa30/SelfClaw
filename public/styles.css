@@ -689,6 +689,7 @@ h4 {
   justify-content: center;
   flex-shrink: 0;
   font-family: var(--font-mono);
+  margin-bottom: 0.75rem;
 }
 
 .step-number-lg {
