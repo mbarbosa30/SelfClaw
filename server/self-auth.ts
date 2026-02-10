@@ -23,7 +23,7 @@ function getCanonicalDomain(): string {
   const custom = parts.find(d => d.endsWith(".ai") || d.endsWith(".com") || d.endsWith(".app"));
   return custom || parts[parts.length - 1] || domains;
 }
-const SELF_ENDPOINT = process.env.SELFCLAW_CALLBACK_URL
+const SELF_ENDPOINT = process.env.SELFCLAW_AUTH_CALLBACK_URL
   || `https://${getCanonicalDomain()}/api/auth/self/callback`;
 
 console.log(`[self-auth] Callback endpoint: ${SELF_ENDPOINT}`);
