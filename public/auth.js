@@ -143,7 +143,7 @@
       qrArea.innerHTML = '<div id="login-qr-img" style="background:white;padding:0.75rem;display:inline-block;margin-bottom:0.75rem;border:2px solid var(--border-heavy);"></div>' +
         '<br><a href="' + escHtml(selfUniversalLink) + '" target="_blank" style="font-family:var(--font-mono);font-size:0.7rem;color:var(--accent);">Open in Self App</a>';
 
-      statusEl.textContent = 'Waiting for passport scan...';
+      statusEl.textContent = 'Waiting for QR scan...';
 
       var qrContainer = document.getElementById('login-qr-img');
       if (typeof QRCode !== 'undefined') {
