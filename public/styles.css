@@ -1237,7 +1237,7 @@ h4 {
 
 /* ── WHITEPAPER ── */
 .wp-page {
-  max-width: 960px;
+  max-width: 1080px;
   margin: 0 auto;
   padding: var(--space-md);
 }
