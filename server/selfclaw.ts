@@ -2,7 +2,7 @@ import { Router, Request, Response } from "express";
 import rateLimit from "express-rate-limit";
 import { db } from "./db.js";
 import { verifiedBots, verificationSessions, sponsoredAgents, trackedPools, agentWallets, agentActivity, tokenPlans, revenueEvents, agentServices, costEvents, type InsertVerifiedBot, type InsertVerificationSession } from "../shared/schema.js";
-import { eq, and, gt, lt, sql, desc, count } from "drizzle-orm";
+import { eq, and, gt, lt, sql, desc, count, isNotNull } from "drizzle-orm";
 import { SelfBackendVerifier, AllIds, DefaultConfigStore } from "@selfxyz/core";
 import { SelfAppBuilder } from "@selfxyz/qrcode";
 import crypto from "crypto";
@@ -1168,7 +1168,7 @@ router.get("/v1/stats", publicApiLimiter, async (_req: Request, res: Response) =
 
     const [tokensResult] = await db.select({ count: count() })
       .from(sponsoredAgents)
-      .where(eq(sponsoredAgents.status, 'completed'));
+      .where(isNotNull(sponsoredAgents.tokenAddress));
 
     res.json({
       totalAgents: totalResult?.count || 0,
