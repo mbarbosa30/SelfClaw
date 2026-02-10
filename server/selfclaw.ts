@@ -2298,11 +2298,11 @@ router.post("/v1/deploy-token", verificationLimiter, async (req: Request, res: R
         "1. Sign the unsignedTx with your wallet private key",
         "2. Submit the signed transaction to Celo mainnet (chainId 42220)",
         "3. Wait for confirmation (typically 5 seconds on Celo)",
-        "4. Call POST /v1/register-token with {tokenAddress: predictedTokenAddress, txHash: <your_tx_hash>}",
-        "5. After registering, call POST /v1/request-selfclaw-sponsorship to create your liquidity pool",
+        "4. Call POST /api/selfclaw/v1/register-token with {tokenAddress: predictedTokenAddress, txHash: <your_tx_hash>}",
+        "5. After registering, call POST /api/selfclaw/v1/request-selfclaw-sponsorship to create your liquidity pool",
       ],
       troubleshooting: {
-        gasErrors: "If you get 'out of gas', request more CELO via POST /v1/request-gas (retries allowed if no token deployed yet)",
+        gasErrors: "If you get 'out of gas', request more CELO via POST /api/selfclaw/v1/request-gas (retries allowed if no token deployed yet)",
         revertErrors: "If the transaction reverts, check that you have enough CELO for gas and that the contract data is not corrupted",
         nonceMismatch: "If nonce is wrong, wait for any pending transactions to confirm first",
       },
@@ -2311,7 +2311,7 @@ router.post("/v1/deploy-token", verificationLimiter, async (req: Request, res: R
     console.error("[selfclaw] deploy-token error:", error);
     res.status(500).json({
       error: error.message,
-      hint: "Token deployment preparation failed. Common causes: wallet not registered, insufficient gas balance, or RPC connectivity issues. If gas was burned on a previous failed attempt, you can request gas again via POST /v1/request-gas."
+      hint: "Token deployment preparation failed. Common causes: wallet not registered, insufficient gas balance, or RPC connectivity issues. If gas was burned on a previous failed attempt, you can request gas again via POST /api/selfclaw/v1/request-gas."
     });
   }
 });
