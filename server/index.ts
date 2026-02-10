@@ -5,6 +5,7 @@ import { verifiedBots } from "../shared/schema.js";
 import { sql } from "drizzle-orm";
 import selfclawRouter from "./selfclaw.js";
 import adminRouter, { runAutoClaimPendingBridges } from "./admin.js";
+import hostingerRouter from "./hostinger-routes.js";
 import { erc8004Service } from "../lib/erc8004.js";
 
 const app = express();
@@ -50,6 +51,7 @@ app.get("/agents", (_req: Request, res: Response) => sendHtml(res, "registry.htm
 app.get("/agent/:name", (_req: Request, res: Response) => sendHtml(res, "agent.html"));
 app.get("/human/:humanId", (_req: Request, res: Response) => sendHtml(res, "human.html"));
 app.get("/admin", (_req: Request, res: Response) => sendHtml(res, "admin.html", { "X-Robots-Tag": "noindex, nofollow" }));
+app.get("/explorer", (_req: Request, res: Response) => sendHtml(res, "explorer.html"));
 
 app.get("/how-it-works", (_req: Request, res: Response) => res.redirect(301, "/"));
 app.get("/pricing", (_req: Request, res: Response) => res.redirect(301, "/"));
@@ -71,6 +73,7 @@ async function main() {
 
   app.use("/api/selfclaw", selfclawRouter);
   app.use("/api/admin", adminRouter);
+  app.use("/api/hostinger", hostingerRouter);
 
   app.get("/.well-known/agent-registration.json", async (req: Request, res: Response) => {
     try {

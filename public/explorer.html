@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SelfClaw | Hostinger MCP Explorer</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+  <link rel="icon" type="image/png" href="/favicon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .explorer-page { max-width: 960px; margin: 0 auto; padding: 0 var(--space-md); }
+
+    .status-bar {
+      display: flex; align-items: center; gap: 0.75rem;
+      padding: 1rem; border: 2px solid var(--border-heavy);
+      margin-bottom: var(--space-md); font-family: var(--font-mono); font-size: 0.8rem;
+    }
+    .status-dot {
+      width: 10px; height: 10px; flex-shrink: 0;
+    }
+    .status-dot.connected { background: var(--green-verify); }
+    .status-dot.disconnected { background: var(--red); }
+    .status-dot.loading { background: var(--yellow); animation: pulse 1s infinite; }
+    @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
+
+    .tool-groups { display: flex; flex-direction: column; gap: var(--space-md); }
+
+    .tool-group-header {
+      font-family: var(--font-mono); font-size: 0.75rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.12em; color: var(--accent);
+      padding-bottom: 0.5rem; border-bottom: 1px solid var(--border-light);
+      display: flex; align-items: center; gap: 0.4rem;
+    }
+    .tool-group-header::before {
+      content: ''; display: inline-block; width: 6px; height: 6px;
+      background: var(--green-verify); flex-shrink: 0;
+    }
+
+    .tool-list { display: flex; flex-direction: column; gap: 0.5rem; }
+
+    .tool-item {
+      border: 2px solid var(--border-heavy); padding: 1rem;
+      cursor: pointer; transition: border-color 0.2s;
+    }
+    .tool-item:hover { border-color: var(--green-verify); }
+    .tool-item.active { border-color: var(--green-verify); border-top: 3px solid var(--green-verify); }
+
+    .tool-name {
+      font-family: var(--font-mono); font-size: 0.8rem; font-weight: 600;
+      color: var(--text-primary);
+    }
+    .tool-desc {
+      font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.25rem;
+      line-height: 1.4;
+    }
+
+    .tool-panel {
+      border: 2px solid var(--border-heavy); padding: var(--space-md);
+      margin-top: var(--space-sm); display: none;
+    }
+    .tool-panel.open { display: block; }
+
+    .tool-panel-title {
+      font-family: var(--font-mono); font-size: 0.7rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-secondary);
+      margin-bottom: var(--space-sm);
+    }
+
+    .param-row {
+      display: flex; gap: 0.75rem; align-items: center;
+      margin-bottom: 0.5rem; flex-wrap: wrap;
+    }
+    .param-label {
+      font-family: var(--font-mono); font-size: 0.75rem; font-weight: 500;
+      min-width: 160px; color: var(--text-primary);
+    }
+    .param-type {
+      font-family: var(--font-mono); font-size: 0.65rem;
+      color: var(--text-secondary); margin-left: 0.25rem;
+    }
+    .param-input {
+      flex: 1; min-width: 200px; padding: 0.5rem 0.75rem;
+      border: 2px solid var(--border-light); background: var(--bg-card);
+      font-family: var(--font-mono); font-size: 0.8rem; color: var(--text-primary);
+    }
+    .param-input:focus { outline: none; border-color: var(--green-verify); }
+
+    .run-btn {
+      margin-top: var(--space-sm); padding: 0.6rem 1.5rem;
+      background: var(--accent); color: #fff; border: none;
+      font-family: var(--font-mono); font-size: 0.8rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.08em; cursor: pointer;
+    }
+    .run-btn:hover { background: var(--accent-hover); }
+    .run-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .result-box {
+      margin-top: var(--space-sm); padding: 1rem;
+      border: 2px solid var(--border-light); background: var(--bg-card);
+      font-family: var(--font-mono); font-size: 0.75rem;
+      white-space: pre-wrap; word-break: break-all;
+      max-height: 400px; overflow-y: auto; line-height: 1.5;
+      display: none;
+    }
+    .result-box.visible { display: block; }
+    .result-box.error { border-color: var(--red); color: var(--red); }
+
+    .search-input {
+      width: 100%; padding: 0.75rem 1rem;
+      border: 2px solid var(--border-heavy); background: var(--bg-card);
+      font-family: var(--font-mono); font-size: 0.85rem;
+      color: var(--text-primary); margin-bottom: var(--space-md);
+    }
+    .search-input:focus { outline: none; border-color: var(--green-verify); }
+    .search-input::placeholder { color: var(--text-muted); }
+
+    .tool-count {
+      font-family: var(--font-mono); font-size: 0.75rem;
+      color: var(--text-secondary); margin-bottom: var(--space-sm);
+    }
+
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <div class="site-container">
+    <header class="site-header">
+      <a href="/" class="site-logo"><img src="/claw-icon.svg" alt="" class="site-logo-icon">SELFCLAW</a>
+      <nav class="site-nav">
+        <a href="/verify" class="nav-link">VERIFY</a>
+        <a href="/registry" class="nav-link" data-gate style="display:none">AGENTS</a>
+        <a href="/dashboard" class="nav-link" data-gate style="display:none">DASHBOARD</a>
+        <a href="/economy" class="nav-link">ECONOMY</a>
+        <a href="/developers" class="nav-link">DOCS</a>
+        <a href="/whitepaper" class="nav-link">WHITEPAPER</a>
+        <a href="/manifesto" class="nav-link">\\\</a>
+      </nav>
+    </header>
+  </div>
+
+  <div class="explorer-page">
+    <section class="hero" style="padding: 3rem 0 var(--space-lg);">
+      <div class="hero-label">Infrastructure Control</div>
+      <h1>Hostinger MCP Explorer</h1>
+      <p class="hero-sub">Browse and execute 100+ Hostinger API tools via the Model Context Protocol. Manage hosting, domains, VPS, DNS, and more.</p>
+    </section>
+
+    <div id="status-bar" class="status-bar">
+      <div id="status-dot" class="status-dot loading"></div>
+      <span id="status-text">Connecting to Hostinger MCP...</span>
+    </div>
+
+    <input type="text" class="search-input" id="tool-search" placeholder="Search tools... (e.g. dns, vps, domain, hosting)" disabled>
+    <div class="tool-count" id="tool-count"></div>
+
+    <div class="tool-groups" id="tool-groups">
+    </div>
+  </div>
+
+  <footer class="site-footer">
+    <div class="site-container">
+      <div class="footer-inner">
+        <span class="footer-brand">SelfClaw</span>
+        <span class="footer-sep">&mdash;</span>
+        <span class="footer-tagline">Verification infrastructure for agent economies</span>
+      </div>
+    </div>
+  </footer>
+
+  <script src="nav-gate.js"></script>
+  <script>
+    const statusDot = document.getElementById('status-dot');
+    const statusText = document.getElementById('status-text');
+    const toolGroups = document.getElementById('tool-groups');
+    const toolSearch = document.getElementById('tool-search');
+    const toolCount = document.getElementById('tool-count');
+    let allTools = [];
+
+    async function connect() {
+      try {
+        const res = await fetch('/api/hostinger/status');
+        const data = await res.json();
+        if (data.connected) {
+          statusDot.className = 'status-dot connected';
+          statusText.textContent = 'Connected to Hostinger MCP';
+          loadTools();
+        } else {
+          statusDot.className = 'status-dot disconnected';
+          statusText.textContent = 'Disconnected: ' + (data.error || 'Unknown error');
+        }
+      } catch (err) {
+        statusDot.className = 'status-dot disconnected';
+        statusText.textContent = 'Failed to reach API';
+      }
+    }
+
+    async function loadTools() {
+      try {
+        const res = await fetch('/api/hostinger/tools');
+        const data = await res.json();
+        if (data.error) {
+          toolGroups.innerHTML = '<p style="color:var(--red)">Error: ' + data.error + '</p>';
+          return;
+        }
+        allTools = [];
+        const groups = data.groups;
+        const sortedGroups = Object.keys(groups).sort();
+
+        toolCount.textContent = data.total + ' tools available';
+        toolSearch.disabled = false;
+
+        let html = '';
+        for (const group of sortedGroups) {
+          const tools = groups[group];
+          for (const t of tools) { allTools.push({ ...t, group }); }
+
+          html += '<div class="tool-group" data-group="' + group + '">';
+          html += '<div class="tool-group-header">' + group + ' (' + tools.length + ')</div>';
+          html += '<div class="tool-list">';
+          for (const tool of tools) {
+            const params = extractParams(tool.inputSchema);
+            html += '<div class="tool-item" data-name="' + tool.name + '" onclick="toggleTool(this)">';
+            html += '<div class="tool-name">' + tool.name + '</div>';
+            if (tool.description) html += '<div class="tool-desc">' + escHtml(tool.description) + '</div>';
+            html += '<div class="tool-panel" id="panel-' + tool.name + '">';
+            html += '<div class="tool-panel-title">Parameters</div>';
+            if (params.length === 0) {
+              html += '<div style="font-size:0.8rem;color:var(--text-secondary)">No parameters required</div>';
+            } else {
+              for (const p of params) {
+                html += '<div class="param-row">';
+                html += '<label class="param-label">' + p.name + '<span class="param-type">' + p.type + (p.required ? ' *' : '') + '</span></label>';
+                html += '<input class="param-input" data-param="' + p.name + '" placeholder="' + (p.description || '') + '">';
+                html += '</div>';
+              }
+            }
+            html += '<button class="run-btn" onclick="event.stopPropagation(); runTool(\'' + tool.name + '\', this)">Execute</button>';
+            html += '<div class="result-box" id="result-' + tool.name + '"></div>';
+            html += '</div>';
+            html += '</div>';
+          }
+          html += '</div></div>';
+        }
+        toolGroups.innerHTML = html;
+      } catch (err) {
+        toolGroups.innerHTML = '<p style="color:var(--red)">Failed to load tools</p>';
+      }
+    }
+
+    function extractParams(schema) {
+      if (!schema || !schema.properties) return [];
+      const required = schema.required || [];
+      return Object.entries(schema.properties).map(([name, prop]) => ({
+        name,
+        type: prop.type || 'string',
+        description: prop.description || '',
+        required: required.includes(name),
+      }));
+    }
+
+    function toggleTool(el) {
+      const panel = el.querySelector('.tool-panel');
+      const wasOpen = panel.classList.contains('open');
+      document.querySelectorAll('.tool-panel.open').forEach(p => {
+        p.classList.remove('open');
+        p.closest('.tool-item').classList.remove('active');
+      });
+      if (!wasOpen) {
+        panel.classList.add('open');
+        el.classList.add('active');
+      }
+    }
+
+    async function runTool(name, btn) {
+      const panel = document.getElementById('panel-' + name);
+      const resultBox = document.getElementById('result-' + name);
+      const inputs = panel.querySelectorAll('.param-input');
+      const args = {};
+      inputs.forEach(input => {
+        const val = input.value.trim();
+        if (val) {
+          try { args[input.dataset.param] = JSON.parse(val); }
+          catch { args[input.dataset.param] = val; }
+        }
+      });
+
+      btn.disabled = true;
+      btn.textContent = 'Running...';
+      resultBox.className = 'result-box visible';
+      resultBox.textContent = 'Executing ' + name + '...';
+
+      try {
+        const res = await fetch('/api/hostinger/call', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tool: name, args }),
+        });
+        const data = await res.json();
+        if (data.error) {
+          resultBox.className = 'result-box visible error';
+          resultBox.textContent = 'Error: ' + data.error;
+        } else {
+          resultBox.className = 'result-box visible';
+          let content = data.result?.content;
+          if (Array.isArray(content)) {
+            content = content.map(c => {
+              if (c.type === 'text') {
+                try { return JSON.stringify(JSON.parse(c.text), null, 2); }
+                catch { return c.text; }
+              }
+              return JSON.stringify(c, null, 2);
+            }).join('\n');
+          } else {
+            content = JSON.stringify(data.result, null, 2);
+          }
+          resultBox.textContent = content;
+        }
+      } catch (err) {
+        resultBox.className = 'result-box visible error';
+        resultBox.textContent = 'Request failed: ' + err.message;
+      }
+
+      btn.disabled = false;
+      btn.textContent = 'Execute';
+    }
+
+    toolSearch.addEventListener('input', () => {
+      const q = toolSearch.value.toLowerCase();
+      document.querySelectorAll('.tool-item').forEach(item => {
+        const name = item.dataset.name.toLowerCase();
+        const desc = (item.querySelector('.tool-desc')?.textContent || '').toLowerCase();
+        item.classList.toggle('hidden', q && !name.includes(q) && !desc.includes(q));
+      });
+      document.querySelectorAll('.tool-group').forEach(group => {
+        const visible = group.querySelectorAll('.tool-item:not(.hidden)').length;
+        group.classList.toggle('hidden', visible === 0);
+      });
+    });
+
+    function escHtml(s) {
+      const d = document.createElement('div');
+      d.textContent = s;
+      return d.innerHTML;
+    }
+
+    connect();
+  </script>
+</body>
+</html>
