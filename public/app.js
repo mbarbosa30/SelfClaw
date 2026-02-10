@@ -415,7 +415,40 @@ function handleVerificationSuccess(pubkey, agentName) {
       </div>
 
       <div style="margin-bottom: 1.5rem;">
-        <div style="font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.08em; color: var(--text-secondary); margin-bottom: 0.75rem; font-weight: 600;">WHAT'S NEXT</div>
+        <div style="font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.08em; color: var(--text-secondary); margin-bottom: 0.75rem; font-weight: 600;">YOU UNLOCKED</div>
+        <div class="grid-3" style="gap: 0;">
+          <div style="border: 2px solid var(--border); padding: 1rem; border-right: none;">
+            <div style="font-family: var(--font-mono); font-size: 0.65rem; letter-spacing: 0.06em; color: var(--accent); margin-bottom: 0.4rem; font-weight: 600;">01 WALLET</div>
+            <div style="font-size: 0.85rem; font-weight: 600; margin-bottom: 0.25rem;">Self-Custody Wallet</div>
+            <div style="font-size: 0.75rem; color: var(--text-secondary); line-height: 1.4;">Generate a Celo wallet. Your keys, your control.</div>
+          </div>
+          <div style="border: 2px solid var(--border); padding: 1rem; border-right: none;">
+            <div style="font-family: var(--font-mono); font-size: 0.65rem; letter-spacing: 0.06em; color: var(--accent); margin-bottom: 0.4rem; font-weight: 600;">02 TOKEN</div>
+            <div style="font-size: 0.85rem; font-weight: 600; margin-bottom: 0.25rem;">Deploy ERC20 Token</div>
+            <div style="font-size: 0.75rem; color: var(--text-secondary); line-height: 1.4;">Launch your agent's token on Celo mainnet.</div>
+          </div>
+          <div style="border: 2px solid var(--border); padding: 1rem;">
+            <div style="font-family: var(--font-mono); font-size: 0.65rem; letter-spacing: 0.06em; color: var(--accent); margin-bottom: 0.4rem; font-weight: 600;">03 LIQUIDITY</div>
+            <div style="font-size: 0.85rem; font-weight: 600; margin-bottom: 0.25rem;">Sponsored Liquidity</div>
+            <div style="font-size: 0.75rem; color: var(--text-secondary); line-height: 1.4;">Auto-paired with SELFCLAW. Free launch pool.</div>
+          </div>
+        </div>
+      </div>
+
+      <div id="sponsorship-pool-info" style="margin-bottom: 1.5rem; border: 2px solid var(--border-heavy); padding: 1rem; background: rgba(255,107,74,0.04);">
+        <div style="font-family: var(--font-mono); font-size: 0.65rem; letter-spacing: 0.06em; color: var(--text-secondary); margin-bottom: 0.6rem; font-weight: 600;">SPONSORSHIP POOL — LIVE</div>
+        <div style="display: flex; align-items: baseline; gap: 0.75rem; flex-wrap: wrap;">
+          <span id="sp-amount" style="font-family: var(--font-mono); font-size: 1.4rem; font-weight: 700; color: var(--text);">...</span>
+          <span style="font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-secondary);">SELFCLAW available</span>
+          <span id="sp-usd" style="font-family: var(--font-mono); font-size: 0.85rem; color: var(--accent); font-weight: 600;"></span>
+        </div>
+        <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem; line-height: 1.4;">
+          50% of this pool is paired with your token when you request sponsorship. Your initial supply choice determines your starting market cap.
+        </div>
+      </div>
+
+      <div style="margin-bottom: 1.5rem;">
+        <div style="font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.08em; color: var(--text-secondary); margin-bottom: 0.75rem; font-weight: 600;">GET STARTED</div>
         <div style="display: flex; flex-direction: column; gap: 0;">
           <a href="/my-agents" style="display: flex; align-items: center; justify-content: space-between; padding: 0.85rem 1rem; border: 2px solid var(--border); border-bottom: none; text-decoration: none; color: var(--text); transition: background 0.15s;">
             <div>
@@ -452,6 +485,8 @@ function handleVerificationSuccess(pubkey, agentName) {
     statusEl.style.padding = '0';
     statusEl.style.background = 'none';
     statusEl.style.border = 'none';
+
+    fetchSponsorshipPoolData();
   }
   const qrImg = document.getElementById('qr-code-img');
   if (qrImg) qrImg.style.display = 'none';
@@ -463,6 +498,30 @@ function handleVerificationSuccess(pubkey, agentName) {
     selfSocket.disconnect();
     selfSocket = null;
   }
+}
+
+function fetchSponsorshipPoolData() {
+  fetch('/api/selfclaw/v1/selfclaw-sponsorship')
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+      var amountEl = document.getElementById('sp-amount');
+      var usdEl = document.getElementById('sp-usd');
+      if (!amountEl) return;
+
+      var available = parseFloat(data.available || '0');
+      var sponsorable = available / 2;
+      amountEl.textContent = Math.floor(sponsorable).toLocaleString();
+
+      if (data.halfValueUsd != null && usdEl) {
+        usdEl.textContent = '~$' + data.halfValueUsd.toFixed(2);
+      } else if (usdEl) {
+        usdEl.textContent = '';
+      }
+    })
+    .catch(function() {
+      var amountEl = document.getElementById('sp-amount');
+      if (amountEl) amountEl.textContent = '—';
+    });
 }
 
 function copyAgentPrompt() {

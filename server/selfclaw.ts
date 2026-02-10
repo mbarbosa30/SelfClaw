@@ -1219,18 +1219,46 @@ router.post("/v1/create-sponsored-lp", verificationLimiter, async (_req: Request
 
 router.get("/v1/selfclaw-sponsorship", publicApiLimiter, async (_req: Request, res: Response) => {
   try {
-    const { getSelfclawBalance, getSponsorAddress } = await import("../lib/uniswap-v3.js");
+    const { getSelfclawBalance, getSponsorAddress, getV3PoolState, SELFCLAW_CELO_V3_POOL } = await import("../lib/uniswap-v3.js");
     const rawSponsorKey = process.env.SELFCLAW_SPONSOR_PRIVATE_KEY || process.env.CELO_PRIVATE_KEY;
     const sponsorKey = rawSponsorKey && !rawSponsorKey.startsWith('0x') ? `0x${rawSponsorKey}` : rawSponsorKey;
     const balance = await getSelfclawBalance(sponsorKey);
     const sponsorAddress = getSponsorAddress(sponsorKey);
-    
+
+    let selfclawPriceInCelo: string | null = null;
+    let celoUsd: number | null = null;
+    let selfclawPriceUsd: number | null = null;
+    let sponsorValueUsd: number | null = null;
+    let halfValueUsd: number | null = null;
+
+    try {
+      const [poolState, celoRes] = await Promise.all([
+        getV3PoolState(SELFCLAW_CELO_V3_POOL),
+        fetch('https://api.coingecko.com/api/v3/simple/price?ids=celo&vs_currencies=usd').then((r: any) => r.json()).catch(() => null),
+      ]);
+      selfclawPriceInCelo = poolState.price;
+      if (celoRes?.celo?.usd) {
+        celoUsd = celoRes.celo.usd;
+        selfclawPriceUsd = parseFloat(selfclawPriceInCelo!) * celoUsd!;
+        sponsorValueUsd = parseFloat(balance) * selfclawPriceUsd;
+        halfValueUsd = sponsorValueUsd / 2;
+      }
+    } catch (priceErr: any) {
+      console.warn("[selfclaw] sponsorship price fetch warning:", priceErr.message);
+    }
+
     res.json({
       available: balance,
+      sponsorableAmount: (parseFloat(balance) / 2).toFixed(2),
       token: "SELFCLAW (Wrapped on Celo)",
       tokenAddress: "0xCD88f99Adf75A9110c0bcd22695A32A20eC54ECb",
       sponsorWallet: sponsorAddress,
-      description: "SELFCLAW available for agent token liquidity sponsorship. On request, fees are collected from the SELFCLAW/CELO pool, then 50% of sponsor balance is used to create an AgentToken/SELFCLAW pool.",
+      selfclawPriceInCelo,
+      celoUsd,
+      selfclawPriceUsd,
+      sponsorValueUsd,
+      halfValueUsd,
+      description: "SELFCLAW available for agent token liquidity sponsorship. On request, fees are collected from the SELFCLAW/CELO pool, then 50% of sponsor balance is used to create an AgentToken/SELFCLAW pool. The sponsorable amount (50% of available) defines the initial liquidity pairing for your agent token.",
       poolFeeTier: "1% (10000)",
       poolVersion: "Uniswap",
       requirements: [
