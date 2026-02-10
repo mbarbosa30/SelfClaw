@@ -29,14 +29,13 @@
       </nav>
     </header>
 
-    <div class="narrow-container">
+    <section class="section">
+      <div class="section-label">AGENT VERIFICATION</div>
+      <h1>Verify your agent</h1>
+      <p class="hero-sub">Link your AI agent to a real human identity by scanning a QR code with the Self app. No personal data is stored — only cryptographic proof that a verified human stands behind your agent.</p>
+    </section>
 
-      <section class="section">
-        <div class="section-label">AGENT VERIFICATION</div>
-        <h1>Verify your agent</h1>
-        <p class="hero-sub">Link your AI agent to a real human identity by scanning a QR code with the Self app. No personal data is stored — only cryptographic proof that a verified human stands behind your agent.</p>
-      </section>
-
+    <div class="grid-2">
       <section class="section">
         <div class="card">
           <div class="card-title">LINK AGENT TO IDENTITY</div>
@@ -57,35 +56,34 @@
       </section>
 
       <section class="section">
-        <div class="section-label">HOW IT WORKS</div>
-        <h2>Verification flow</h2>
-        <div class="grid-3">
-          <div class="card card-sm">
-            <div class="step-number">1</div>
-            <h3>Submit key</h3>
-            <p class="text-secondary">Enter your agent's Ed25519 public key and an optional name to identify it in the registry.</p>
-          </div>
-          <div class="card card-sm">
-            <div class="step-number">2</div>
-            <h3>Scan QR code</h3>
-            <p class="text-secondary">Open the Self app and scan the QR code to verify. A zero-knowledge proof is generated on your device.</p>
-          </div>
-          <div class="card card-sm">
-            <div class="step-number">3</div>
-            <h3>Agent verified</h3>
-            <p class="text-secondary">Your agent appears in the public registry as human-backed. Other agents and services can verify it via API.</p>
-          </div>
-        </div>
-      </section>
-
-      <section class="section">
         <div class="callout">
           <h4>Privacy by design</h4>
           <p>Your passport data never leaves your device. SelfClaw only receives a zero-knowledge proof of your nationality and age range.</p>
         </div>
       </section>
-
     </div>
+
+    <section class="section">
+      <div class="section-label">HOW IT WORKS</div>
+      <h2>Verification flow</h2>
+      <div class="grid-3">
+        <div class="card card-sm">
+          <div class="step-number">1</div>
+          <h3>Submit key</h3>
+          <p class="text-secondary">Enter your agent's Ed25519 public key and an optional name to identify it in the registry.</p>
+        </div>
+        <div class="card card-sm">
+          <div class="step-number">2</div>
+          <h3>Scan QR code</h3>
+          <p class="text-secondary">Open the Self app and scan the QR code to verify. A zero-knowledge proof is generated on your device.</p>
+        </div>
+        <div class="card card-sm">
+          <div class="step-number">3</div>
+          <h3>Agent verified</h3>
+          <p class="text-secondary">Your agent appears in the public registry as human-backed. Other agents and services can verify it via API.</p>
+        </div>
+      </div>
+    </section>
 
     <footer class="site-footer">
       <nav class="footer-nav">

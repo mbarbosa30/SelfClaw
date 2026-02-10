@@ -30,7 +30,7 @@
   <link rel="stylesheet" href="styles.css">
   <style>
     .manifesto-page {
-      max-width: 760px;
+      max-width: 960px;
       margin: 0 auto;
       padding: 0 var(--space-md);
     }
@@ -107,7 +107,7 @@
       font-size: 1.15rem;
       line-height: 1.75;
       color: var(--text-secondary);
-      max-width: 600px;
+      max-width: 700px;
     }
 
     .manifesto-text strong {
@@ -120,7 +120,7 @@
       font-weight: 600;
       line-height: 1.4;
       color: var(--text-primary);
-      max-width: 600px;
+      max-width: 700px;
       margin: var(--space-md) 0;
     }
 
@@ -185,12 +185,13 @@
     .closing-text {
       font-size: 1.1rem;
       color: var(--text-secondary);
-      max-width: 500px;
+      max-width: 600px;
       margin: 0 auto;
       line-height: 1.6;
     }
 
-    @media (max-width: 640px) {
+    @media (max-width: 768px) {
+      .manifesto-page { padding: 0 var(--space-sm); }
       .manifesto-symbol { font-size: 4rem; }
       .epoch-symbol { font-size: 2.5rem; }
       .manifesto-pull { font-size: 1.25rem; }
