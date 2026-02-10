@@ -26,7 +26,7 @@ export async function createAgentWallet(humanId: string, agentPublicKey: string,
   try {
     const verified = await db.select()
       .from(verifiedBots)
-      .where(eq(verifiedBots.humanId, humanId))
+      .where(eq(verifiedBots.publicKey, agentPublicKey))
       .limit(1);
     
     if (verified.length === 0) {
@@ -36,16 +36,16 @@ export async function createAgentWallet(humanId: string, agentPublicKey: string,
       };
     }
     
-    if (verified[0].publicKey !== agentPublicKey) {
+    if (verified[0].humanId !== humanId) {
       return {
         success: false,
-        error: 'Agent public key does not match the verified agent for this humanId'
+        error: 'Agent public key does not match the authenticated humanId'
       };
     }
     
     const existing = await db.select()
       .from(agentWallets)
-      .where(eq(agentWallets.humanId, humanId))
+      .where(eq(agentWallets.publicKey, agentPublicKey))
       .limit(1);
     
     if (existing.length > 0) {
@@ -71,7 +71,7 @@ export async function createAgentWallet(humanId: string, agentPublicKey: string,
       address: walletAddress,
     });
 
-    console.log(`[secure-wallet] Registered wallet ${walletAddress} for humanId ${humanId.substring(0, 16)}...`);
+    console.log(`[secure-wallet] Registered wallet ${walletAddress} for agent ${agentPublicKey.substring(0, 20)}...`);
 
     return {
       success: true,
@@ -102,20 +102,20 @@ export async function switchWallet(
   try {
     const verified = await db.select()
       .from(verifiedBots)
-      .where(eq(verifiedBots.humanId, humanId))
+      .where(eq(verifiedBots.publicKey, agentPublicKey))
       .limit(1);
 
     if (verified.length === 0) {
       return { success: false, error: 'Only verified agents can switch wallets' };
     }
 
-    if (verified[0].publicKey !== agentPublicKey) {
-      return { success: false, error: 'Agent public key does not match the verified agent for this humanId' };
+    if (verified[0].humanId !== humanId) {
+      return { success: false, error: 'Agent public key does not match the authenticated humanId' };
     }
 
     const existing = await db.select()
       .from(agentWallets)
-      .where(eq(agentWallets.humanId, humanId))
+      .where(eq(agentWallets.publicKey, agentPublicKey))
       .limit(1);
 
     if (existing.length === 0) {
@@ -138,9 +138,9 @@ export async function switchWallet(
         address: newAddress,
         updatedAt: new Date(),
       })
-      .where(eq(agentWallets.humanId, humanId));
+      .where(eq(agentWallets.publicKey, agentPublicKey));
 
-    console.log(`[secure-wallet] Updated wallet for humanId ${humanId.substring(0, 16)}... from ${previousAddress} to ${newAddress}`);
+    console.log(`[secure-wallet] Updated wallet for agent ${agentPublicKey.substring(0, 20)}... from ${previousAddress} to ${newAddress}`);
     return {
       success: true,
       address: newAddress,
@@ -149,6 +149,40 @@ export async function switchWallet(
   } catch (error: any) {
     console.error('[secure-wallet] Switch wallet error:', error);
     return { success: false, error: error.message || 'Failed to switch wallet' };
+  }
+}
+
+export async function getAgentWallet(agentPublicKey: string): Promise<{
+  address?: string;
+  publicKey?: string;
+  gasReceived?: boolean;
+  balance?: { celo: string; };
+} | null> {
+  try {
+    const wallets = await db.select()
+      .from(agentWallets)
+      .where(eq(agentWallets.publicKey, agentPublicKey))
+      .limit(1);
+    
+    if (wallets.length === 0) {
+      return null;
+    }
+    
+    const wallet = wallets[0];
+    
+    const celoBalance = await publicClient.getBalance({ address: wallet.address as `0x${string}` });
+    
+    return {
+      address: wallet.address,
+      publicKey: wallet.publicKey,
+      gasReceived: wallet.gasReceived || false,
+      balance: {
+        celo: formatUnits(celoBalance, 18)
+      }
+    };
+  } catch (error) {
+    console.error('[secure-wallet] Get wallet error:', error);
+    return null;
   }
 }
 
@@ -194,17 +228,17 @@ export interface GasSubsidyResult {
   alreadyReceived?: boolean;
 }
 
-export async function sendGasSubsidy(humanId: string): Promise<GasSubsidyResult> {
+export async function sendGasSubsidy(humanId: string, agentPublicKey: string): Promise<GasSubsidyResult> {
   try {
     const wallets = await db.select()
       .from(agentWallets)
-      .where(eq(agentWallets.humanId, humanId))
+      .where(eq(agentWallets.publicKey, agentPublicKey))
       .limit(1);
     
     if (wallets.length === 0) {
       return {
         success: false,
-        error: 'No wallet found for this humanId. Register a wallet first.'
+        error: 'No wallet found for this agent. Register a wallet first.'
       };
     }
     
@@ -214,7 +248,7 @@ export async function sendGasSubsidy(humanId: string): Promise<GasSubsidyResult>
       const tokenRegistrations = await db.select()
         .from(agentActivity)
         .where(and(
-          eq(agentActivity.humanId, humanId),
+          eq(agentActivity.agentPublicKey, agentPublicKey),
           eq(agentActivity.eventType, 'token_registered')
         ))
         .limit(1);
@@ -227,11 +261,11 @@ export async function sendGasSubsidy(humanId: string): Promise<GasSubsidyResult>
         };
       }
       
-      console.log(`[secure-wallet] Gas retry allowed for ${humanId} — previous gas used but no successful token deployment found`);
+      console.log(`[secure-wallet] Gas retry allowed for agent ${agentPublicKey.substring(0, 20)}... — previous gas used but no successful token deployment found`);
       await db.execute(sql`
         UPDATE agent_wallets 
         SET gas_received = false, gas_tx_hash = NULL, updated_at = NOW()
-        WHERE human_id = ${humanId}
+        WHERE public_key = ${agentPublicKey}
       `);
     }
     
@@ -239,7 +273,7 @@ export async function sendGasSubsidy(humanId: string): Promise<GasSubsidyResult>
       const tokenRegistrations = await db.select()
         .from(agentActivity)
         .where(and(
-          eq(agentActivity.humanId, humanId),
+          eq(agentActivity.agentPublicKey, agentPublicKey),
           eq(agentActivity.eventType, 'token_registered')
         ))
         .limit(1);
@@ -253,11 +287,11 @@ export async function sendGasSubsidy(humanId: string): Promise<GasSubsidyResult>
         };
       }
       
-      console.log(`[secure-wallet] Gas retry allowed for ${humanId} — previous tx exists but no token registered`);
+      console.log(`[secure-wallet] Gas retry allowed for agent ${agentPublicKey.substring(0, 20)}... — previous tx exists but no token registered`);
       await db.execute(sql`
         UPDATE agent_wallets 
         SET gas_received = false, gas_tx_hash = NULL, updated_at = NOW()
-        WHERE human_id = ${humanId}
+        WHERE public_key = ${agentPublicKey}
       `);
     }
     
@@ -274,7 +308,7 @@ export async function sendGasSubsidy(humanId: string): Promise<GasSubsidyResult>
       const claimResult = await db.execute(sql`
         UPDATE agent_wallets 
         SET gas_tx_hash = ${pendingMarker}, updated_at = NOW()
-        WHERE human_id = ${humanId} 
+        WHERE public_key = ${agentPublicKey} 
           AND gas_received = false 
           AND gas_tx_hash IS NULL
         RETURNING id
@@ -284,7 +318,7 @@ export async function sendGasSubsidy(humanId: string): Promise<GasSubsidyResult>
       if (claimedRows.length === 0) {
         const current = await db.select()
           .from(agentWallets)
-          .where(eq(agentWallets.humanId, humanId))
+          .where(eq(agentWallets.publicKey, agentPublicKey))
           .limit(1);
         
         if (current.length > 0 && current[0].gasTxHash && !current[0].gasTxHash.startsWith('pending-')) {
@@ -330,7 +364,7 @@ export async function sendGasSubsidy(humanId: string): Promise<GasSubsidyResult>
       await db.execute(sql`
         UPDATE agent_wallets 
         SET gas_tx_hash = ${txHash}, gas_received = true, updated_at = NOW() 
-        WHERE human_id = ${humanId}
+        WHERE public_key = ${agentPublicKey}
       `);
       
       console.log(`[secure-wallet] Sent ${GAS_AMOUNT_CELO} CELO gas to ${wallet.address} (tx: ${txHash})`);
@@ -344,7 +378,7 @@ export async function sendGasSubsidy(humanId: string): Promise<GasSubsidyResult>
       await db.execute(sql`
         UPDATE agent_wallets 
         SET gas_tx_hash = NULL, updated_at = NOW() 
-        WHERE human_id = ${humanId} AND gas_tx_hash LIKE 'pending-%'
+        WHERE public_key = ${agentPublicKey} AND gas_tx_hash LIKE 'pending-%'
       `);
       
       console.error('[secure-wallet] Gas transfer error:', txError);

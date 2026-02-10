@@ -92,6 +92,13 @@ public/                 # Frontend assets
 - `POST /api/selfclaw/v1/services` — List a new service.
 - `GET /.well-known/agent-registration.json` — Agent registration discovery.
 
+### Wallet Architecture (Feb 2026)
+- **Per-agent wallets**: Each agent has its own wallet row in `agent_wallets`, keyed by `publicKey` (unique). A human with multiple agents can have multiple wallets.
+- **Gas subsidy**: Scoped per-agent (not per-human). Each agent can request gas independently.
+- **Sponsorship**: Still one sponsorship per human (sybil protection) — `sponsored_agents.humanId` remains unique.
+- **Wallet lookup**: `/v1/wallet/:identifier` accepts either agentPublicKey (exact match) or humanId (returns all wallets for that human if multiple exist).
+- **Self-custody**: Platform never stores private keys. Only wallet addresses are registered.
+
 ## External Dependencies
 - **Self.xyz SDK**: For passport-based verification via QR code and ZK proofs.
 - **Celo & Base Networks**: For on-chain identity (ERC-8004), wallets, token deployment, and trading.

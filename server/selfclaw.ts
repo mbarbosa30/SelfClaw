@@ -7,7 +7,7 @@ import { SelfBackendVerifier, AllIds, DefaultConfigStore } from "@selfxyz/core";
 import { SelfAppBuilder } from "@selfxyz/qrcode";
 import crypto from "crypto";
 import * as ed from "@noble/ed25519";
-import { createAgentWallet, getAgentWalletByHumanId, sendGasSubsidy, getGasWalletInfo, switchWallet } from "../lib/secure-wallet.js";
+import { createAgentWallet, getAgentWallet, getAgentWalletByHumanId, sendGasSubsidy, getGasWalletInfo, switchWallet } from "../lib/secure-wallet.js";
 import { erc8004Service } from "../lib/erc8004.js";
 import { generateRegistrationFile } from "../lib/erc8004-config.js";
 import { createPublicClient, http, parseUnits, formatUnits, encodeFunctionData, getContractAddress } from 'viem';
@@ -2011,24 +2011,46 @@ router.post("/v1/switch-wallet", verificationLimiter, async (req: Request, res: 
   }
 });
 
-router.get("/v1/wallet/:humanId", publicApiLimiter, async (req: Request, res: Response) => {
+router.get("/v1/wallet/:identifier", publicApiLimiter, async (req: Request, res: Response) => {
   try {
-    const humanId = req.params.humanId as string;
+    const identifier = req.params.identifier as string;
     
-    if (!humanId) {
-      return res.status(400).json({ error: "humanId is required" });
+    if (!identifier) {
+      return res.status(400).json({ error: "humanId or agentPublicKey is required" });
     }
     
-    const wallet = await getAgentWalletByHumanId(humanId);
+    const wallet = await getAgentWallet(identifier);
+    if (wallet) {
+      return res.json({
+        address: wallet.address,
+        gasReceived: wallet.gasReceived,
+        balance: wallet.balance
+      });
+    }
     
-    if (!wallet) {
-      return res.status(404).json({ error: "No wallet found for this humanId" });
+    const allWallets = await db.select()
+      .from(agentWallets)
+      .where(eq(agentWallets.humanId, identifier));
+    
+    if (allWallets.length === 0) {
+      return res.status(404).json({ error: "No wallet found" });
+    }
+    
+    if (allWallets.length === 1) {
+      const w = allWallets[0];
+      return res.json({
+        address: w.address,
+        gasReceived: w.gasReceived,
+      });
     }
     
     res.json({
-      address: wallet.address,
-      gasReceived: wallet.gasReceived,
-      balance: wallet.balance
+      wallets: allWallets.map(w => ({
+        address: w.address,
+        agentPublicKey: w.publicKey,
+        gasReceived: w.gasReceived,
+      })),
+      message: "Multiple wallets found for this humanId. Use agentPublicKey for precise lookup."
     });
   } catch (error: any) {
     console.error("[selfclaw] wallet lookup error:", error);
@@ -2119,7 +2141,7 @@ router.post("/v1/request-gas", verificationLimiter, async (req: Request, res: Re
 
     const humanId = auth.humanId;
     
-    const result = await sendGasSubsidy(humanId);
+    const result = await sendGasSubsidy(humanId, auth.publicKey);
     
     if (!result.success) {
       return res.status(400).json({ 
@@ -2229,7 +2251,7 @@ router.post("/v1/deploy-token", verificationLimiter, async (req: Request, res: R
 
     const deployData = (TOKEN_FACTORY_BYTECODE + encodedArgs) as `0x${string}`;
 
-    const walletInfo = await getAgentWalletByHumanId(humanId);
+    const walletInfo = await getAgentWallet(auth.publicKey);
     if (!walletInfo?.address) {
       return res.status(400).json({ error: "No wallet found. Register a wallet first." });
     }
@@ -2529,7 +2551,7 @@ router.post("/v1/transfer-token", verificationLimiter, async (req: Request, res:
       args: [toAddress as `0x${string}`, amountParsed]
     });
 
-    const walletInfo = await getAgentWalletByHumanId(humanId);
+    const walletInfo = await getAgentWallet(auth.publicKey);
     if (!walletInfo?.address) {
       return res.status(400).json({ error: "No wallet found. Register a wallet first." });
     }
@@ -2571,7 +2593,7 @@ router.post("/v1/register-erc8004", verificationLimiter, async (req: Request, re
     const { agentName, description } = req.body;
     const humanId = auth.humanId;
     
-    const walletInfo = await getAgentWalletByHumanId(humanId);
+    const walletInfo = await getAgentWallet(auth.publicKey);
     if (!walletInfo || !walletInfo.address) {
       return res.status(400).json({ error: "No wallet found. Create a wallet first." });
     }
@@ -2658,20 +2680,21 @@ router.post("/v1/register-erc8004", verificationLimiter, async (req: Request, re
   }
 });
 
-// Get token balance
-router.get("/v1/token-balance/:humanId/:tokenAddress", publicApiLimiter, async (req: Request, res: Response) => {
+router.get("/v1/token-balance/:identifier/:tokenAddress", publicApiLimiter, async (req: Request, res: Response) => {
   try {
-    const humanId = req.params.humanId as string;
+    const identifier = req.params.identifier as string;
     const tokenAddress = req.params.tokenAddress as string;
     
-    if (!humanId || !tokenAddress) {
-      return res.status(400).json({ error: "humanId and tokenAddress are required" });
+    if (!identifier || !tokenAddress) {
+      return res.status(400).json({ error: "identifier (agentPublicKey or humanId) and tokenAddress are required" });
     }
     
-    // Get wallet
-    const walletInfo = await getAgentWalletByHumanId(humanId);
+    let walletInfo = await getAgentWallet(identifier);
+    if (!walletInfo) {
+      walletInfo = await getAgentWalletByHumanId(identifier);
+    }
     if (!walletInfo || !walletInfo.address) {
-      return res.status(404).json({ error: "No wallet found for this humanId" });
+      return res.status(404).json({ error: "No wallet found" });
     }
     
     // Get token balance and decimals
@@ -3346,8 +3369,8 @@ router.get("/v1/human/:humanId/economics", publicApiLimiter, async (req: Request
     const agentSummaries = agents.map(a => {
       const agentRevenue = revenue.filter(r => r.agentPublicKey === a.publicKey);
       const agentCosts = costs.filter(c => c.agentPublicKey === a.publicKey);
-      const agentWallet = wallets.find(w => w.humanId === a.humanId);
-      const agentPool = pools.find(p => p.humanId === a.humanId);
+      const agentWallet = wallets.find(w => w.publicKey === a.publicKey);
+      const agentPool = pools.find(p => p.agentPublicKey === a.publicKey) || pools.find(p => p.humanId === a.humanId);
       const agentPlan = tokenPlansList.find(t => t.agentPublicKey === a.publicKey);
       const agentServicesList = services.filter(s => s.agentPublicKey === a.publicKey);
 

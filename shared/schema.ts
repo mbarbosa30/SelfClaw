@@ -65,8 +65,8 @@ export type InsertVerifiedBot = typeof verifiedBots.$inferInsert;
 
 export const agentWallets = pgTable("agent_wallets", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  humanId: varchar("human_id").notNull().unique(),
-  publicKey: varchar("public_key").notNull(),
+  humanId: varchar("human_id").notNull(),
+  publicKey: varchar("public_key").notNull().unique(),
   address: varchar("address").notNull().unique(),
   gasReceived: boolean("gas_received").default(false),
   gasTxHash: varchar("gas_tx_hash"),
