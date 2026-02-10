@@ -400,38 +400,58 @@ async function startAgentVerification() {
 
 function handleVerificationSuccess(pubkey, agentName) {
   const statusEl = document.getElementById('verification-status');
-  
-  const agentPrompt = `Read https://selfclaw.ai/agent-economy.md — you're now verified on SelfClaw. This guide shows how to create a wallet, deploy your own token, and access sponsored SELFCLAW liquidity.`;
+  const displayName = agentName || pubkey.substring(0, 16) + '...';
 
   if (statusEl) {
     statusEl.innerHTML = `
-      <div style="text-align: center; margin-bottom: 1.5rem;">
-        <div style="color: #FF6B4A; font-size: 1.5rem; font-weight: 600; margin-bottom: 0.5rem;">Verified</div>
-        <p style="font-size: 0.9rem; color: var(--text-secondary); line-height: 1.5;">
-          Your agent is now linked to your passport-backed human identity.
+      <div style="border: 2px solid #22c55e; padding: 1.25rem; margin-bottom: 1.5rem; background: rgba(34,197,94,0.06);">
+        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+          <span style="color: #22c55e; font-size: 1.25rem;">&#10003;</span>
+          <span style="font-family: var(--font-mono); font-size: 0.75rem; letter-spacing: 0.08em; color: #22c55e; font-weight: 600;">VERIFICATION COMPLETE</span>
+        </div>
+        <p style="font-size: 0.95rem; color: var(--text); line-height: 1.5; margin: 0;">
+          <strong>${escapeHtml(displayName)}</strong> is now linked to your passport-backed human identity and visible in the public registry.
         </p>
       </div>
-      
-      <div style="display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap; margin-bottom: 1.5rem;">
-        <a href="/developers" class="btn btn-primary">Developer Docs</a>
-        <a href="/registry" class="btn btn-outline">View Registry</a>
-      </div>
-      
-      <details open style="text-align: left;">
-        <summary style="color: var(--green); cursor: pointer; font-size: 0.95rem; font-weight: 500; padding: 0.75rem 0; border-top: 1px solid var(--border-subtle);">Next Step: Agent Economy</summary>
-        <div style="margin-top: 1rem; padding: 1rem; background: rgba(255,255,255,0.02); border: 1px solid var(--border-subtle); border-radius: 8px;">
-          <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 1rem; line-height: 1.5;">
-            Verified agents can optionally create wallets, deploy tokens, and access sponsored SELFCLAW liquidity. Give this prompt to your agent:
-          </p>
-          <div style="background: var(--bg-darker); padding: 0.75rem; border-radius: 6px; font-family: monospace; font-size: 0.8rem; color: var(--text-muted); word-break: break-word; border: 1px solid var(--border-subtle);" id="agent-prompt-text">${escapeHtml(agentPrompt)}</div>
-          <button onclick="copyAgentPrompt()" class="btn btn-outline btn-sm" style="margin-top: 0.75rem; width: 100%;" id="copy-prompt-btn">Copy Prompt</button>
+
+      <div style="margin-bottom: 1.5rem;">
+        <div style="font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.08em; color: var(--text-secondary); margin-bottom: 0.75rem; font-weight: 600;">WHAT'S NEXT</div>
+        <div style="display: flex; flex-direction: column; gap: 0;">
+          <a href="/my-agents" style="display: flex; align-items: center; justify-content: space-between; padding: 0.85rem 1rem; border: 2px solid var(--border); border-bottom: none; text-decoration: none; color: var(--text); transition: background 0.15s;">
+            <div>
+              <div style="font-weight: 600; font-size: 0.9rem;">My Agents Dashboard</div>
+              <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.15rem;">Set up wallet, deploy token, get sponsored liquidity</div>
+            </div>
+            <span style="color: var(--accent); font-size: 1.1rem;">&rarr;</span>
+          </a>
+          <a href="/agent/${encodeURIComponent(agentName || pubkey)}" style="display: flex; align-items: center; justify-content: space-between; padding: 0.85rem 1rem; border: 2px solid var(--border); border-bottom: none; text-decoration: none; color: var(--text); transition: background 0.15s;">
+            <div>
+              <div style="font-weight: 600; font-size: 0.9rem;">View Agent Profile</div>
+              <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.15rem;">See your agent's public verification page</div>
+            </div>
+            <span style="color: var(--accent); font-size: 1.1rem;">&rarr;</span>
+          </a>
+          <a href="/developers" style="display: flex; align-items: center; justify-content: space-between; padding: 0.85rem 1rem; border: 2px solid var(--border); text-decoration: none; color: var(--text); transition: background 0.15s;">
+            <div>
+              <div style="font-weight: 600; font-size: 0.9rem;">API Documentation</div>
+              <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.15rem;">Integrate verification checks into your agent's code</div>
+            </div>
+            <span style="color: var(--accent); font-size: 1.1rem;">&rarr;</span>
+          </a>
         </div>
+      </div>
+
+      <details style="text-align: left;">
+        <summary style="cursor: pointer; font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.08em; color: var(--text-secondary); font-weight: 600; padding: 0.75rem 0; border-top: 2px solid var(--border);">FOR AI AGENTS: COPY INTEGRATION PROMPT</summary>
+        <div style="margin-top: 0.75rem; padding: 1rem; background: var(--bg-code); border: 2px solid var(--border-heavy);">
+          <p style="color: #e0e0e0; font-family: var(--font-mono); font-size: 0.8rem; line-height: 1.6; word-break: break-word; margin: 0;" id="agent-prompt-text">Read https://selfclaw.ai/llms.txt and integrate SelfClaw verification for agent ${escapeHtml(displayName)}. The agent public key is ${escapeHtml(pubkey)}.</p>
+        </div>
+        <button onclick="copyAgentPrompt()" class="btn btn-outline btn-sm" style="margin-top: 0.75rem; width: 100%;" id="copy-prompt-btn">Copy Prompt</button>
       </details>
     `;
-    statusEl.style.background = 'rgba(255,255,255,0.02)';
-    statusEl.style.border = '1px solid var(--border-subtle)';
-    statusEl.style.padding = '1.5rem';
-    statusEl.style.borderRadius = '12px';
+    statusEl.style.padding = '0';
+    statusEl.style.background = 'none';
+    statusEl.style.border = 'none';
   }
   const qrImg = document.getElementById('qr-code-img');
   if (qrImg) qrImg.style.display = 'none';
