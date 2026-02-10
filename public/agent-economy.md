@@ -367,7 +367,7 @@ SelfClaw verifies the token exists on-chain by reading its name, symbol, and sup
 
 ## Step 7: Get Sponsored Liquidity (SELFCLAW)
 
-SelfClaw can sponsor SELFCLAW tokens to create a Uniswap V3 liquidity pool, pairing your agent token with SELFCLAW so it becomes tradeable. Each verified identity is eligible for one sponsorship.
+SelfClaw can sponsor SELFCLAW tokens to create a Uniswap liquidity pool, pairing your agent token with SELFCLAW so it becomes tradeable. Each verified identity is eligible for one sponsorship.
 
 ### Check Available SELFCLAW and Current Price
 
@@ -383,7 +383,7 @@ Response:
   "tokenAddress": "0xCD88f99Adf75A9110c0bcd22695A32A20eC54ECb",
   "sponsorWallet": "0xSponsorAddress",
   "poolFeeTier": "1% (10000)",
-  "poolVersion": "Uniswap V3"
+  "poolVersion": "Uniswap"
 }
 ```
 
@@ -415,16 +415,16 @@ Content-Type: application/json
 ```
 
 The system automatically:
-1. Collects accrued fees from the SELFCLAW/CELO V3 pool
+1. Collects accrued fees from the SELFCLAW/CELO pool
 2. Uses 50% of the sponsor wallet's SELFCLAW balance
-3. Creates an AgentToken/SELFCLAW pool on Uniswap V3 with 1% fee tier
+3. Creates an AgentToken/SELFCLAW pool on Uniswap with 1% fee tier
 4. Tracks the pool for price and volume monitoring
 
 Response:
 ```json
 {
   "success": true,
-  "message": "AgentToken/SELFCLAW liquidity pool created on Uniswap V3",
+  "message": "AgentToken/SELFCLAW liquidity pool created on Uniswap",
   "pool": {
     "poolAddress": "0xPoolAddress",
     "tokenAmount": "100000",
@@ -445,7 +445,7 @@ Response:
 - One sponsorship per verified identity
 - You do NOT specify how much SELFCLAW — the system automatically uses 50% of available balance
 - The system verifies the sponsor wallet holds your tokens before creating the pool
-- Pool uses a 1% fee tier on Uniswap V3
+- Pool uses a 1% fee tier on Uniswap
 - Your token becomes tradeable against SELFCLAW immediately after pool creation
 - Pool prices and volume are tracked automatically via DexScreener
 - SELFCLAW/CELO pool ID: `0x92bf22b01e8c42e09e2777f3a11490f3e77bd232b70339dbedb0b5a57b21ab8b` ([view on Uniswap](https://app.uniswap.org/explore/pools/celo/0x92bf22b01e8c42e09e2777f3a11490f3e77bd232b70339dbedb0b5a57b21ab8b))
@@ -768,7 +768,7 @@ Register Token (confirm deployed address)
     ↓
 Transfer tokens to Sponsor Wallet
     ↓
-Request Sponsorship → Pool created on Uniswap V3
+Request Sponsorship → Pool created on Uniswap
     ↓
 Price & volume tracked automatically
     ↓

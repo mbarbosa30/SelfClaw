@@ -759,7 +759,7 @@ router.get("/v1/status/:sessionId", publicApiLimiter, async (req: Request, res: 
             command: "Read https://selfclaw.ai/agent-economy.md to deploy tokens, create liquidity pools, and trade with other agents.",
             features: [
               "Deploy your own ERC20 token",
-              "Create Uniswap V3 liquidity pools",
+              "Create Uniswap liquidity pools",
               "Trade and swap tokens on Celo",
               "Earn yield on Aave",
               "Sell skills in the marketplace"
@@ -1230,14 +1230,14 @@ router.get("/v1/selfclaw-sponsorship", publicApiLimiter, async (_req: Request, r
       token: "SELFCLAW (Wrapped on Celo)",
       tokenAddress: "0xCD88f99Adf75A9110c0bcd22695A32A20eC54ECb",
       sponsorWallet: sponsorAddress,
-      description: "SELFCLAW available for agent token liquidity sponsorship. On request, fees are collected from the SELFCLAW/CELO V3 pool, then 50% of sponsor balance is used to create an AgentToken/SELFCLAW V3 pool.",
+      description: "SELFCLAW available for agent token liquidity sponsorship. On request, fees are collected from the SELFCLAW/CELO pool, then 50% of sponsor balance is used to create an AgentToken/SELFCLAW pool.",
       poolFeeTier: "1% (10000)",
-      poolVersion: "Uniswap V3",
+      poolVersion: "Uniswap",
       requirements: [
         "Agent must be verified via Self.xyz passport",
         "Agent must have deployed a token on Celo",
         "Agent sends chosen amount of its token to sponsor wallet",
-        "System auto-collects V3 fees, then creates AgentToken/SELFCLAW pool with 1% fee tier"
+        "System auto-collects fees, then creates AgentToken/SELFCLAW pool with 1% fee tier"
       ]
     });
   } catch (error: any) {
@@ -1297,12 +1297,12 @@ router.post("/v1/request-selfclaw-sponsorship", verificationLimiter, async (req:
 
     const selfclawAddress = "0xCD88f99Adf75A9110c0bcd22695A32A20eC54ECb";
 
-    console.log(`[selfclaw] Sponsorship requested by ${humanId.substring(0, 16)}... — collecting V3 fees first`);
+    console.log(`[selfclaw] Sponsorship requested by ${humanId.substring(0, 16)}... — collecting fees first`);
     let feeCollectionResult;
     try {
       feeCollectionResult = await collectAllV3Fees(sponsorKey);
       if (feeCollectionResult.success && parseFloat(feeCollectionResult.totalSelfclaw) > 0) {
-        console.log(`[selfclaw] Collected ${feeCollectionResult.totalSelfclaw} SELFCLAW from V3 fee positions`);
+        console.log(`[selfclaw] Collected ${feeCollectionResult.totalSelfclaw} SELFCLAW from fee positions`);
       }
     } catch (feeErr: any) {
       console.log(`[selfclaw] Fee collection skipped: ${feeErr.message}`);
@@ -1326,7 +1326,7 @@ router.post("/v1/request-selfclaw-sponsorship", verificationLimiter, async (req:
     const existingPool = await getExistingV3Pool(tokenAddress, selfclawAddress, 10000);
     if (existingPool) {
       return res.status(409).json({
-        error: "A V3 pool already exists for this token pair",
+        error: "A pool already exists for this token pair",
         existingPool
       });
     }
@@ -1390,7 +1390,7 @@ router.post("/v1/request-selfclaw-sponsorship", verificationLimiter, async (req:
 
     res.json({
       success: true,
-      message: "AgentToken/SELFCLAW liquidity pool created on Uniswap V3",
+      message: "AgentToken/SELFCLAW liquidity pool created on Uniswap",
       pool: {
         poolAddress: result.poolAddress,
         positionTokenId: result.positionTokenId,
@@ -1406,7 +1406,7 @@ router.post("/v1/request-selfclaw-sponsorship", verificationLimiter, async (req:
         sponsorWallet: sponsorAddress,
       },
       nextSteps: [
-        "Your token is now tradeable against SELFCLAW on Uniswap V3 (Celo)",
+        "Your token is now tradeable against SELFCLAW on Uniswap (Celo)",
         "Trading fees (1%) accrue to the SelfClaw treasury for future sponsorships",
         `View pool on Uniswap: https://app.uniswap.org/explore/pools/celo/${result.poolAddress}`,
         "View on Celoscan: https://celoscan.io/address/" + (result.poolAddress || tokenAddress)

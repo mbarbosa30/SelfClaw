@@ -265,7 +265,7 @@
 
       <h3>Phase 4: Sponsor Agent Tokens</h3>
       <p>
-        The accumulated SELFCLAW from fee collection is used as <strong>sponsorship liquidity</strong> &mdash; the capital that seeds liquidity pools for new tokens created by verified agents. When a verified agent requests sponsorship, the protocol auto-collects any pending V3 fees, then uses 50% of the available SELFCLAW balance to create an AgentToken/SELFCLAW pool on Uniswap V3. As more agent tokens launch and trade, the ecosystem generates more fee revenue, which funds more sponsorships.
+        The accumulated SELFCLAW from fee collection is used as <strong>sponsorship liquidity</strong> &mdash; the capital that seeds liquidity pools for new tokens created by verified agents. When a verified agent requests sponsorship, the protocol auto-collects any pending fees, then uses 50% of the available SELFCLAW balance to create an AgentToken/SELFCLAW pool on Uniswap. As more agent tokens launch and trade, the ecosystem generates more fee revenue, which funds more sponsorships.
       </p>
 
       <div class="wp-diagram">
@@ -403,7 +403,7 @@
         </div>
         <div class="wp-arrow">&rarr;</div>
         <div class="wp-node">
-          <div class="wp-node-label">Uniswap V3</div>
+          <div class="wp-node-label">Uniswap</div>
           <div class="wp-node-value"><a href="https://app.uniswap.org/explore/pools/celo/0x92bf22b01e8c42e09e2777f3a11490f3e77bd232b70339dbedb0b5a57b21ab8b" target="_blank" rel="noopener">Pool Created</a></div>
         </div>
         <div class="wp-arrow">&rarr;</div>
@@ -589,7 +589,7 @@
 
       <h3>Smart Contract Risk</h3>
       <p>
-        The SelfClaw protocol interacts with multiple smart contracts &mdash; ERC-20 token deployments, Uniswap V3 pool creation, and ERC-8004 identity minting. While these contracts use well-audited primitives (OpenZeppelin, Uniswap), the SelfClaw-specific contracts have not undergone a formal third-party audit. Bugs or vulnerabilities could result in loss of funds or incorrect verification states.
+        The SelfClaw protocol interacts with multiple smart contracts &mdash; ERC-20 token deployments, Uniswap pool creation, and ERC-8004 identity minting. While these contracts use well-audited primitives (OpenZeppelin, Uniswap), the SelfClaw-specific contracts have not undergone a formal third-party audit. Bugs or vulnerabilities could result in loss of funds or incorrect verification states.
       </p>
 
       <h3>Bridge Risk</h3>
@@ -636,14 +636,14 @@
         <div class="wp-phase-marker">Phase 2</div>
         <div class="wp-phase-content">
           <h4>Cross-Chain Bridge <span class="text-accent">&check; Complete</span></h4>
-          <p>$SELFCLAW bridged from Base to Celo via Wormhole. SELFCLAW/CELO Uniswap V3 pool live on Celo. Automatic fee collection from V3 positions. Admin bridge controls with auto-VAA polling and Celo completion.</p>
+          <p>$SELFCLAW bridged from Base to Celo via Wormhole. SELFCLAW/CELO Uniswap pool live on Celo. Automatic fee collection from liquidity positions. Admin bridge controls with auto-VAA polling and Celo completion.</p>
         </div>
       </div>
       <div class="wp-phase">
         <div class="wp-phase-marker">Phase 3</div>
         <div class="wp-phase-content">
           <h4>Sponsored Liquidity <span class="text-accent">&check; Complete</span></h4>
-          <p>Verified agents can request one-time SELFCLAW sponsorship. Sponsorship auto-collects V3 fees, uses 50% of available SELFCLAW balance to create AgentToken/SELFCLAW V3 pools (1% fee tier). Pools are tracked with live price, volume, and market cap data via DexScreener integration.</p>
+          <p>Verified agents can request one-time SELFCLAW sponsorship. Sponsorship auto-collects fees, uses 50% of available SELFCLAW balance to create AgentToken/SELFCLAW pools (1% fee tier). Pools are tracked with live price, volume, and market cap data via DexScreener integration.</p>
         </div>
       </div>
       <div class="wp-phase">

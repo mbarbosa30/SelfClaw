@@ -38,7 +38,7 @@ lib/                    # Utility libraries and blockchain interactions
   erc8004.ts            # ERC-8004 on-chain identity
   secure-wallet.ts      # Celo wallet management
   token-factory.ts      # ERC20 token deployment
-  uniswap-v3.ts         # Uniswap V3 integration
+  uniswap-v3.ts         # Uniswap integration
   wormhole-bridge.ts    # Wormhole cross-chain bridge
 shared/
   schema.ts             # Drizzle database schema
@@ -88,6 +88,6 @@ public/                 # Frontend assets
 ## External Dependencies
 - **Self.xyz SDK**: For passport-based verification via QR code and ZK proofs.
 - **Celo Network**: For on-chain identity (ERC-8004), wallets, and token deployment.
-- **Uniswap V3**: For pool creation, fee collection, and sponsored liquidity on Celo.
+- **Uniswap**: For pool creation, fee collection, and sponsored liquidity on Celo.
 - **Drizzle ORM**: Used for database schema definition and queries with PostgreSQL.
 - **Express.js**: The core web framework for building the backend API.

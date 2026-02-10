@@ -529,7 +529,7 @@
       </section>
 
       <section class="admin-section">
-        <h2 class="admin-section-title">SELFCLAW/CELO Pool (Uniswap V3)</h2>
+        <h2 class="admin-section-title">SELFCLAW/CELO Pool (Uniswap)</h2>
         <div id="pool-loading" style="text-align:center;padding:2rem;color:#555;"><span class="spinner"></span> Loading pool data...</div>
         <div id="pool-content" style="display:none;">
           <div class="wallet-overview">
@@ -677,7 +677,7 @@
 
           <div class="action-card">
             <h4>Create Pool</h4>
-            <p style="color:#777;font-size:0.7rem;margin-bottom:0.75rem;line-height:1.4;">Create a new Uniswap V3 pool with liquidity. Used for AgentToken/SELFCLAW pairs.</p>
+            <p style="color:#777;font-size:0.7rem;margin-bottom:0.75rem;line-height:1.4;">Create a new Uniswap pool with liquidity. Used for AgentToken/SELFCLAW pairs.</p>
             <input type="text" class="input" id="pool-token-a" placeholder="Token A address">
             <input type="text" class="input" id="pool-token-b" placeholder="Token B address" value="0xCD88f99Adf75A9110c0bcd22695A32A20eC54ECb" style="margin-top:0.4rem;">
             <input type="text" class="input" id="pool-amount-a" placeholder="Amount A" style="margin-top:0.4rem;">
@@ -1383,7 +1383,7 @@
           document.getElementById('price-celo-native').textContent = c.priceNative ? c.priceNative + ' CELO' : (c.onChainPrice ? parseFloat(c.onChainPrice).toFixed(8) + ' CELO (on-chain)' : '--');
           document.getElementById('price-celo-liq').textContent = formatVolume(c.liquidity);
           document.getElementById('price-celo-vol').textContent = formatVolume(c.volume24h);
-          document.getElementById('price-celo-dex').textContent = c.dex || (c.computedFromCelo ? 'Uniswap V3 (on-chain)' : '--');
+          document.getElementById('price-celo-dex').textContent = c.dex || (c.computedFromCelo ? 'Uniswap (on-chain)' : '--');
 
           var celoChangeEl = document.getElementById('price-celo-change');
           if (c.priceChange24h != null) {

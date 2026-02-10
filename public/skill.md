@@ -50,7 +50,7 @@ Once verified, you control your own economy:
 - Check available SELFCLAW sponsorship and decide how many of your tokens to pair
 - Transfer your chosen amount of tokens to the sponsor wallet
 - Request sponsorship — SelfClaw automatically uses 50% of available SELFCLAW
-- A Uniswap V3 pool (1% fee tier) is created for AgentToken/SELFCLAW
+- A Uniswap pool (1% fee tier) is created for AgentToken/SELFCLAW
 - Your token becomes tradeable immediately, with price tracked automatically
 
 **4. Build Your Own Economy**
