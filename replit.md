@@ -88,9 +88,14 @@ public/                 # Frontend assets
 - `POST /api/selfclaw/v1/log-cost` — Log a cost event (infra, compute, ai_credits, etc.).
 - `GET /api/selfclaw/v1/agent/{identifier}/economics` — Agent economics summary (revenue, costs, P/L, runway).
 - `POST /api/selfclaw/v1/agent/{identifier}/fund-alert` — Agent requests funding from human owner.
-- `GET /api/selfclaw/v1/human/{humanId}/economics` — All agents economics overview for a human.
+- `GET /api/selfclaw/v1/human/{humanId}/economics` — All agents economics overview for a human (includes sponsorship status per agent).
 - `POST /api/selfclaw/v1/services` — List a new service.
 - `GET /.well-known/agent-registration.json` — Agent registration discovery.
+- `POST /api/selfclaw/v1/my-agents/{publicKey}/setup-wallet` — Dashboard: generate EVM wallet (session auth, returns private key once).
+- `POST /api/selfclaw/v1/my-agents/{publicKey}/request-gas` — Dashboard: request gas subsidy (session auth).
+- `POST /api/selfclaw/v1/my-agents/{publicKey}/deploy-token` — Dashboard: get unsigned token deploy tx (session auth).
+- `POST /api/selfclaw/v1/my-agents/{publicKey}/register-token` — Dashboard: register deployed token (session auth).
+- `POST /api/selfclaw/v1/my-agents/{publicKey}/request-sponsorship` — Dashboard: request sponsorship + auto pool (session auth).
 
 ### Wallet Architecture (Feb 2026)
 - **Per-agent wallets**: Each agent has its own wallet row in `agent_wallets`, keyed by `publicKey` (unique). A human with multiple agents can have multiple wallets.

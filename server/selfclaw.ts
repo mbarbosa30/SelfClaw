@@ -3349,6 +3349,9 @@ router.get("/v1/human/:humanId/economics", publicApiLimiter, async (req: Request
     const tokenPlansList = await db.select().from(tokenPlans)
       .where(sql`${tokenPlans.humanId} = ${humanId}`);
 
+    const sponsorships = await db.select().from(sponsoredAgents)
+      .where(sql`${sponsoredAgents.humanId} = ${humanId}`);
+
     const alerts = await db.select().from(agentActivity)
       .where(sql`${agentActivity.humanId} = ${humanId} AND ${agentActivity.eventType} = 'fund_alert'`)
       .orderBy(desc(agentActivity.createdAt))
@@ -3373,6 +3376,7 @@ router.get("/v1/human/:humanId/economics", publicApiLimiter, async (req: Request
       const agentPool = pools.find(p => p.agentPublicKey === a.publicKey) || pools.find(p => p.humanId === a.humanId);
       const agentPlan = tokenPlansList.find(t => t.agentPublicKey === a.publicKey);
       const agentServicesList = services.filter(s => s.agentPublicKey === a.publicKey);
+      const agentSponsorship = sponsorships.find(s => s.publicKey === a.publicKey) || sponsorships.find(s => s.humanId === a.humanId);
 
       const rev = agentRevenue.reduce((sum, r) => sum + parseFloat(r.amount || "0"), 0);
       const cost = agentCosts.reduce((sum, c) => sum + parseFloat(c.amount || "0"), 0);
@@ -3390,6 +3394,12 @@ router.get("/v1/human/:humanId/economics", publicApiLimiter, async (req: Request
           price: agentPool.currentPriceCelo,
         } : null,
         tokenPlan: agentPlan ? { status: agentPlan.status, purpose: agentPlan.purpose } : null,
+        sponsorship: agentSponsorship ? {
+          status: agentSponsorship.status,
+          tokenAddress: agentSponsorship.tokenAddress,
+          poolAddress: agentSponsorship.poolAddress,
+          amount: agentSponsorship.sponsoredAmountCelo,
+        } : null,
         services: agentServicesList.length,
         economics: {
           totalRevenue: rev,
@@ -3596,6 +3606,340 @@ router.get("/v1/hostinger/vms", async (req: any, res: Response) => {
     res.json({ result });
   } catch (err: any) {
     res.status(500).json({ error: err.message, hint: "Could not connect to Hostinger. Make sure HOSTINGER_API_TOKEN is set." });
+  }
+});
+
+async function authenticateHumanForAgent(req: any, res: Response, agentPublicKey: string): Promise<{ humanId: string; agent: any } | null> {
+  if (!req.session?.isAuthenticated || !req.session?.humanId) {
+    res.status(401).json({ error: "Login required. Scan the QR code with your Self app." });
+    return null;
+  }
+  const humanId = req.session.humanId;
+  const agents = await db.select().from(verifiedBots)
+    .where(sql`${verifiedBots.publicKey} = ${agentPublicKey} AND ${verifiedBots.humanId} = ${humanId}`)
+    .limit(1);
+  if (agents.length === 0) {
+    res.status(403).json({ error: "Agent not found or does not belong to your identity." });
+    return null;
+  }
+  return { humanId, agent: agents[0] };
+}
+
+router.post("/v1/my-agents/:publicKey/setup-wallet", verificationLimiter, async (req: any, res: Response) => {
+  try {
+    const auth = await authenticateHumanForAgent(req, res, req.params.publicKey);
+    if (!auth) return;
+
+    const existingWallet = await getAgentWallet(req.params.publicKey);
+    if (existingWallet) {
+      return res.json({
+        success: true,
+        alreadyExists: true,
+        address: existingWallet.address,
+        gasReceived: existingWallet.gasReceived,
+      });
+    }
+
+    const { Wallet } = await import('ethers');
+    const wallet = Wallet.createRandom();
+
+    const result = await createAgentWallet(auth.humanId, req.params.publicKey, wallet.address);
+    if (!result.success) {
+      return res.status(400).json({ error: result.error });
+    }
+
+    logActivity("wallet_creation", auth.humanId, req.params.publicKey, auth.agent.deviceId, {
+      address: wallet.address,
+      method: "dashboard"
+    });
+
+    res.json({
+      success: true,
+      address: wallet.address,
+      privateKey: wallet.privateKey,
+      warning: "SAVE THIS PRIVATE KEY NOW. It will NOT be shown again. SelfClaw never stores private keys.",
+    });
+  } catch (error: any) {
+    console.error("[selfclaw] my-agents setup-wallet error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post("/v1/my-agents/:publicKey/request-gas", verificationLimiter, async (req: any, res: Response) => {
+  try {
+    const auth = await authenticateHumanForAgent(req, res, req.params.publicKey);
+    if (!auth) return;
+
+    const result = await sendGasSubsidy(auth.humanId, req.params.publicKey);
+    if (!result.success) {
+      return res.status(400).json({
+        error: result.error,
+        alreadyReceived: result.alreadyReceived || false
+      });
+    }
+
+    logActivity("gas_request", auth.humanId, req.params.publicKey, auth.agent.deviceId, {
+      txHash: result.txHash, amountCelo: result.amountCelo, method: "dashboard"
+    });
+
+    res.json({
+      success: true,
+      txHash: result.txHash,
+      amountCelo: result.amountCelo,
+    });
+  } catch (error: any) {
+    console.error("[selfclaw] my-agents request-gas error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post("/v1/my-agents/:publicKey/deploy-token", verificationLimiter, async (req: any, res: Response) => {
+  try {
+    const auth = await authenticateHumanForAgent(req, res, req.params.publicKey);
+    if (!auth) return;
+
+    const { name, symbol, initialSupply } = req.body;
+    if (!name || !symbol || !initialSupply) {
+      return res.status(400).json({ error: "name, symbol, and initialSupply are required" });
+    }
+
+    const walletInfo = await getAgentWallet(req.params.publicKey);
+    if (!walletInfo?.address) {
+      return res.status(400).json({ error: "No wallet found. Create a wallet first." });
+    }
+
+    const decimals = 18;
+    const supplyWithDecimals = parseUnits(initialSupply.toString(), decimals);
+    const { AbiCoder } = await import('ethers');
+    const abiCoder = new AbiCoder();
+    const encodedArgs = abiCoder.encode(
+      ['string', 'string', 'uint256'],
+      [name, symbol, supplyWithDecimals.toString()]
+    ).slice(2);
+
+    const deployData = (TOKEN_FACTORY_BYTECODE + encodedArgs) as `0x${string}`;
+    const fromAddr = walletInfo.address as `0x${string}`;
+    const nonce = await viemPublicClient.getTransactionCount({ address: fromAddr });
+    const gasPrice = await viemPublicClient.getGasPrice();
+    const predictedAddress = getContractAddress({ from: fromAddr, nonce: BigInt(nonce) });
+
+    let estimatedGas = BigInt(2000000);
+    try {
+      estimatedGas = await viemPublicClient.estimateGas({
+        account: fromAddr, data: deployData, value: BigInt(0),
+      });
+      estimatedGas = estimatedGas * BigInt(120) / BigInt(100);
+    } catch (e: any) {
+      console.warn(`[selfclaw] Gas estimation failed, using default: ${e.message}`);
+    }
+
+    const balance = await viemPublicClient.getBalance({ address: fromAddr });
+    const txCost = estimatedGas * gasPrice;
+
+    logActivity("token_deployment", auth.humanId, req.params.publicKey, auth.agent.deviceId, {
+      predictedTokenAddress: predictedAddress, symbol, name, supply: initialSupply, method: "dashboard"
+    });
+
+    res.json({
+      success: true,
+      unsignedTx: {
+        from: walletInfo.address,
+        data: deployData,
+        gas: estimatedGas.toString(),
+        gasPrice: gasPrice.toString(),
+        chainId: 42220,
+        value: "0",
+        nonce,
+      },
+      predictedTokenAddress: predictedAddress,
+      name, symbol, supply: initialSupply,
+      walletBalance: formatUnits(balance, 18) + " CELO",
+      hasSufficientGas: balance >= txCost,
+      estimatedCost: formatUnits(txCost, 18) + " CELO",
+    });
+  } catch (error: any) {
+    console.error("[selfclaw] my-agents deploy-token error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post("/v1/my-agents/:publicKey/register-token", verificationLimiter, async (req: any, res: Response) => {
+  try {
+    const auth = await authenticateHumanForAgent(req, res, req.params.publicKey);
+    if (!auth) return;
+
+    const { tokenAddress, txHash } = req.body;
+    if (!tokenAddress || !txHash) {
+      return res.status(400).json({ error: "tokenAddress and txHash are required" });
+    }
+
+    if (!/^0x[0-9a-fA-F]{40}$/.test(tokenAddress)) {
+      return res.status(400).json({ error: "Invalid tokenAddress format" });
+    }
+
+    let onChainName = '', onChainSymbol = '', onChainDecimals = 18, onChainSupply = '';
+    try {
+      const ERC20_ABI = [
+        { name: 'name', type: 'function', stateMutability: 'view', inputs: [], outputs: [{ name: '', type: 'string' }] },
+        { name: 'symbol', type: 'function', stateMutability: 'view', inputs: [], outputs: [{ name: '', type: 'string' }] },
+        { name: 'decimals', type: 'function', stateMutability: 'view', inputs: [], outputs: [{ name: '', type: 'uint8' }] },
+        { name: 'totalSupply', type: 'function', stateMutability: 'view', inputs: [], outputs: [{ name: '', type: 'uint256' }] },
+      ] as const;
+      const tokenAddr = tokenAddress as `0x${string}`;
+      const [n, s, d, ts] = await Promise.all([
+        viemPublicClient.readContract({ address: tokenAddr, abi: ERC20_ABI, functionName: 'name' }).catch(() => null),
+        viemPublicClient.readContract({ address: tokenAddr, abi: ERC20_ABI, functionName: 'symbol' }).catch(() => null),
+        viemPublicClient.readContract({ address: tokenAddr, abi: ERC20_ABI, functionName: 'decimals' }).catch(() => null),
+        viemPublicClient.readContract({ address: tokenAddr, abi: ERC20_ABI, functionName: 'totalSupply' }).catch(() => null),
+      ]);
+      if (n) onChainName = n as string;
+      if (s) onChainSymbol = s as string;
+      if (d !== null) onChainDecimals = Number(d);
+      if (ts !== null) onChainSupply = formatUnits(ts as bigint, onChainDecimals);
+    } catch (e: any) {
+      console.log(`[selfclaw] Could not read token data: ${e.message}`);
+    }
+
+    if (!onChainName && !onChainSymbol) {
+      return res.status(400).json({ error: "Could not verify token at the provided address." });
+    }
+
+    logActivity("token_registered", auth.humanId, req.params.publicKey, auth.agent.deviceId, {
+      tokenAddress, txHash, name: onChainName, symbol: onChainSymbol, method: "dashboard"
+    });
+
+    res.json({
+      success: true,
+      token: {
+        address: tokenAddress,
+        name: onChainName,
+        symbol: onChainSymbol,
+        decimals: onChainDecimals,
+        totalSupply: onChainSupply,
+      },
+      celoscanUrl: `https://celoscan.io/token/${tokenAddress}`,
+    });
+  } catch (error: any) {
+    console.error("[selfclaw] my-agents register-token error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post("/v1/my-agents/:publicKey/request-sponsorship", verificationLimiter, async (req: any, res: Response) => {
+  try {
+    const auth = await authenticateHumanForAgent(req, res, req.params.publicKey);
+    if (!auth) return;
+
+    const { tokenAddress, tokenSymbol, tokenAmount } = req.body;
+    if (!tokenAddress || !tokenAmount) {
+      return res.status(400).json({ error: "tokenAddress and tokenAmount are required" });
+    }
+
+    const existing = await db.select().from(sponsoredAgents)
+      .where(eq(sponsoredAgents.humanId, auth.humanId)).limit(1);
+    if (existing.length > 0) {
+      return res.status(409).json({
+        error: "This identity has already received a sponsorship",
+        alreadySponsored: true,
+        existingPool: existing[0].poolAddress,
+      });
+    }
+
+    const {
+      getSelfclawBalance, getTokenBalance, getSponsorAddress,
+      collectAllV3Fees, createV3PoolAndAddLiquidity, getExistingV3Pool,
+    } = await import("../lib/uniswap-v3.js");
+
+    const rawSponsorKey = process.env.SELFCLAW_SPONSOR_PRIVATE_KEY || process.env.CELO_PRIVATE_KEY;
+    const sponsorKey = rawSponsorKey && !rawSponsorKey.startsWith('0x') ? `0x${rawSponsorKey}` : rawSponsorKey;
+    const sponsorAddress = getSponsorAddress(sponsorKey);
+
+    const agentTokenBalance = await getTokenBalance(tokenAddress, 18, sponsorKey);
+    const requiredAmount = parseFloat(tokenAmount);
+    const heldAmount = parseFloat(agentTokenBalance);
+
+    if (heldAmount < requiredAmount) {
+      return res.status(400).json({
+        error: `Sponsor wallet does not hold enough of your agent token.`,
+        sponsorWallet: sponsorAddress,
+        has: agentTokenBalance,
+        needs: tokenAmount,
+        instructions: `Send ${tokenAmount} of your token (${tokenAddress}) to ${sponsorAddress} before requesting sponsorship`,
+      });
+    }
+
+    const selfclawAddress = "0xCD88f99Adf75A9110c0bcd22695A32A20eC54ECb";
+
+    let feeCollectionResult;
+    try {
+      feeCollectionResult = await collectAllV3Fees(sponsorKey);
+    } catch (e: any) {
+      console.log(`[selfclaw] Fee collection skipped: ${e.message}`);
+    }
+
+    const availableBalance = await getSelfclawBalance(sponsorKey);
+    const available = parseFloat(availableBalance);
+    if (available <= 0) {
+      return res.status(400).json({ error: "No SELFCLAW available in sponsorship wallet." });
+    }
+
+    const selfclawForPool = (available * 0.5).toFixed(0);
+
+    const existingPool = await getExistingV3Pool(tokenAddress, selfclawAddress, 10000);
+    if (existingPool) {
+      return res.status(409).json({ error: "A pool already exists for this token pair", existingPool });
+    }
+
+    const result = await createV3PoolAndAddLiquidity({
+      tokenA: tokenAddress, tokenB: selfclawAddress,
+      amountA: tokenAmount, amountB: selfclawForPool,
+      feeTier: 10000, privateKey: sponsorKey,
+    });
+
+    if (!result.success) {
+      return res.status(400).json({ error: result.error });
+    }
+
+    await db.insert(sponsoredAgents).values({
+      humanId: auth.humanId, publicKey: req.params.publicKey,
+      tokenAddress, tokenSymbol: tokenSymbol || 'TOKEN',
+      poolAddress: result.poolAddress || '',
+      sponsoredAmountCelo: selfclawForPool,
+      sponsorTxHash: result.txHash || '',
+      status: 'completed', completedAt: new Date(),
+    });
+
+    if (result.poolAddress) {
+      try {
+        await db.insert(trackedPools).values({
+          poolAddress: result.poolAddress, tokenAddress,
+          tokenSymbol: tokenSymbol || 'TOKEN',
+          tokenName: req.body.tokenName || tokenSymbol || 'TOKEN',
+          pairedWith: 'SELFCLAW', humanId: auth.humanId,
+          agentPublicKey: req.params.publicKey, feeTier: 10000,
+          initialCeloLiquidity: selfclawForPool,
+          initialTokenLiquidity: tokenAmount,
+        }).onConflictDoNothing();
+      } catch (e: any) {
+        console.error(`[selfclaw] Failed to track pool: ${e.message}`);
+      }
+    }
+
+    logActivity("selfclaw_sponsorship", auth.humanId, req.params.publicKey, auth.agent.deviceId, {
+      tokenAddress, selfclawAmount: selfclawForPool, poolAddress: result.poolAddress, method: "dashboard"
+    });
+
+    res.json({
+      success: true,
+      pool: {
+        poolAddress: result.poolAddress,
+        tokenAddress, selfclawAmount: selfclawForPool,
+        txHash: result.txHash,
+      },
+    });
+  } catch (error: any) {
+    console.error("[selfclaw] my-agents request-sponsorship error:", error);
+    res.status(500).json({ error: error.message });
   }
 });
 
