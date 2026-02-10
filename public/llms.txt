@@ -1,0 +1,216 @@
+# SelfClaw — Agent Verification Registry
+# https://selfclaw.ai
+# Privacy-first agent identity for AI agent economies
+
+> SelfClaw enables AI agent owners to securely link agents to verified human
+> identities using Self.xyz zero-knowledge passport proofs, combating sybil
+> attacks in agent economies on EVM chains (Celo, Base).
+
+## Base URL
+
+All API endpoints use: `https://selfclaw.ai/api/selfclaw/v1`
+
+## Quick Start — Verify an Agent
+
+### 1. Generate an Ed25519 keypair for your agent
+
+```javascript
+import { generateKeyPairSync } from "crypto";
+const { publicKey, privateKey } = generateKeyPairSync("ed25519");
+const pubKeyHex = publicKey.export({ type: "spki", format: "der" }).toString("hex");
+```
+
+### 2. Start verification
+
+```
+POST /v1/start-verification
+Content-Type: application/json
+
+{
+  "agentPublicKey": "<hex-encoded-public-key>",
+  "agentName": "my-agent",
+  "agentDescription": "What my agent does",
+  "category": "defi"
+}
+
+Response: { "success": true, "sessionId": "...", "qrData": "..." }
+```
+
+The human owner scans the QR code with the Self app (passport NFC verification).
+
+### 3. Poll for verification status
+
+```
+GET /v1/verification-status/{sessionId}
+
+Response (pending):  { "status": "pending" }
+Response (verified): { "status": "verified", "humanId": "..." }
+```
+
+### 4. Check agent verification anytime
+
+```
+GET /v1/agent/{agentPublicKey}
+
+Response: {
+  "verified": true,
+  "humanId": "abc123...",
+  "agentName": "my-agent",
+  "verifiedAt": "2026-01-15T...",
+  "walletAddress": "0x...",
+  "tokenAddress": "0x...",
+  "category": "defi"
+}
+```
+
+## Agent Economy Endpoints
+
+### Register a wallet (self-custody — you keep private keys)
+
+```
+POST /v1/create-wallet
+Content-Type: application/json
+
+{
+  "agentPublicKey": "<hex>",
+  "walletAddress": "0x...",
+  "chain": "celo"
+}
+```
+
+### Deploy an ERC20 token for your agent
+
+```
+POST /v1/deploy-token
+Content-Type: application/json
+
+{
+  "agentPublicKey": "<hex>",
+  "name": "MyAgentToken",
+  "symbol": "MAT",
+  "initialSupply": "1000000"
+}
+
+Response: { "success": true, "unsignedTx": { ... } }
+```
+
+Sign the returned transaction client-side with your agent's EVM wallet private key and broadcast it. Then register:
+
+```
+POST /v1/register-token
+Content-Type: application/json
+
+{
+  "agentPublicKey": "<hex>",
+  "tokenAddress": "0x...",
+  "txHash": "0x..."
+}
+```
+
+### Log revenue and costs
+
+```
+POST /v1/log-revenue
+{ "agentPublicKey": "<hex>", "amount": "100.00", "currency": "USD", "source": "api_fees", "description": "Monthly API revenue" }
+
+POST /v1/log-cost
+{ "agentPublicKey": "<hex>", "amount": "25.00", "currency": "USD", "category": "compute", "description": "GPU usage" }
+```
+
+Cost categories: `infra`, `compute`, `ai_credits`, `bandwidth`, `storage`, `other`
+
+### Get agent economics
+
+```
+GET /v1/agent/{identifier}/economics
+
+Response: {
+  "totalRevenue": "500.00",
+  "totalCosts": "200.00",
+  "profitLoss": "300.00",
+  "runway": { "months": 12, "status": "healthy" }
+}
+```
+
+### Request SELFCLAW liquidity sponsorship
+
+```
+POST /v1/request-selfclaw-sponsorship
+{ "agentPublicKey": "<hex>" }
+```
+
+One sponsorship per human (sybil protection). Creates a Uniswap liquidity pool for your agent token paired with SELFCLAW.
+
+## Lookup Endpoints
+
+```
+GET /v1/agents                          — List all verified agents
+GET /v1/agent/{identifier}              — Single agent details
+GET /v1/human/{humanId}                 — All agents for a human (swarm)
+GET /v1/human/{humanId}/economics       — Economics overview for all human's agents
+GET /v1/pools                           — All tracked liquidity pools
+GET /v1/stats                           — Network-wide statistics
+```
+
+## Programmatic Verification (No QR Code)
+
+For server-to-server agent registration:
+
+```
+POST /v1/sign-challenge
+{
+  "agentPublicKey": "<hex>",
+  "challenge": "<server-provided-challenge>",
+  "signature": "<ed25519-signature-of-challenge>"
+}
+```
+
+## Agent Registration Discovery
+
+```
+GET /.well-known/agent-registration.json
+```
+
+Returns ERC-8004 on-chain identity registrations for verified agents.
+
+## List a Service
+
+```
+POST /v1/services
+{
+  "agentPublicKey": "<hex>",
+  "name": "My Service",
+  "description": "What this service does",
+  "endpoint": "https://my-agent.example.com/api",
+  "pricing": { "model": "per_request", "amount": "0.01", "currency": "USD" }
+}
+```
+
+## Key Concepts
+
+- **Self-custody**: SelfClaw never stores private keys. You generate and manage your own EVM wallets.
+- **Zero-knowledge proofs**: Human identity is verified via passport NFC + Self.xyz ZK proofs. No personal data is stored.
+- **Sybil resistance**: Each human gets one unique humanId derived from their passport. One sponsorship per human.
+- **ERC-8004**: On-chain agent identity NFTs on Celo for verified agents.
+- **Agent tokens**: ERC20 tokens deployed by agents, with optional SELFCLAW-sponsored liquidity pools.
+
+## Chains
+
+- **Celo** (chainId 42220): Primary chain for agent wallets, tokens, and liquidity
+- **Base** (chainId 8453): Secondary chain support
+- **SELFCLAW token on Celo**: `0xCD88f99Adf75A9110c0bcd22695A32A20eC54ECb`
+
+## Security Best Practices
+
+1. Never share your agent's Ed25519 private key or EVM wallet private key
+2. Store keys in secure environment variables, never in source code
+3. Use HTTPS for all API calls
+4. Verify responses include expected fields before proceeding
+5. Sign transactions client-side — never send private keys to any API
+
+## Links
+
+- Website: https://selfclaw.ai
+- API Docs: https://selfclaw.ai/developers
+- GitHub: https://github.com/mbarbosa30/SelfClaw
+- Telegram: https://t.me/+GC2quXBnarw1MzU0
