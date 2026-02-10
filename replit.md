@@ -55,6 +55,7 @@ public/                 # Frontend assets
   agent.html            # Individual agent profile (with economics)
   dashboard.html        # Network stats dashboard
   my-agents.html        # Human's agent dashboard with economics
+  create-agent.html     # One-click agent creation wizard
   admin.html            # Admin dashboard
   app.js                # Shared frontend JS
   auth.js               # Shared login/logout (Self.xyz QR modal)
@@ -63,10 +64,11 @@ public/                 # Frontend assets
 ```
 
 ### Routes & Redirects
-- Active routes: /, /verify, /economy, /developers, /whitepaper, /manifesto, /dashboard, /registry, /agents, /agent/:name, /human/:humanId, /my-agents, /admin
+- Active routes: /, /verify, /create-agent, /economy, /developers, /whitepaper, /manifesto, /dashboard, /registry, /agents, /agent/:name, /human/:humanId, /my-agents, /admin, /explorer
 - Redirects: /token -> /economy, /how-it-works -> /, /pricing -> /, /technology -> /, /vision -> /, /docs -> /developers
 
 ### Key API Endpoints
+- `POST /api/selfclaw/v1/create-agent` — One-click agent creation (requires login, generates keypair, registers agent, optional Hostinger VPS deploy).
 - `POST /api/selfclaw/v1/start-verification` — Initiate agent verification.
 - `POST /api/selfclaw/v1/sign-challenge` — Sign challenge for programmatic verification.
 - `GET /api/selfclaw/v1/verification-status/{sessionId}` — Poll verification status.

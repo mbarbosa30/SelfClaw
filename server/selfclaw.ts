@@ -3400,4 +3400,180 @@ router.get("/v1/human/:humanId/economics", publicApiLimiter, async (req: Request
   }
 });
 
+router.post("/v1/create-agent", verificationLimiter, async (req: any, res: Response) => {
+  try {
+    if (!req.session?.isAuthenticated || !req.session?.humanId) {
+      return res.status(401).json({
+        error: "Login required",
+        hint: "You must be logged in with Self.xyz passport to create an agent. Visit selfclaw.ai and click LOGIN."
+      });
+    }
+
+    const humanId = req.session.humanId;
+    const { agentName, description, deployToHostinger, hostingerVmId } = req.body;
+
+    if (!agentName || typeof agentName !== "string" || agentName.trim().length < 2) {
+      return res.status(400).json({ error: "agentName is required (minimum 2 characters)" });
+    }
+
+    const cleanName = agentName.trim().toLowerCase().replace(/[^a-z0-9\-_]/g, "-");
+
+    const existingAgents = await db.select()
+      .from(verifiedBots)
+      .where(sql`LOWER(${verifiedBots.deviceId}) = LOWER(${cleanName})`)
+      .limit(1);
+    if (existingAgents.length > 0) {
+      return res.status(400).json({
+        error: "Agent name already taken",
+        suggestion: cleanName + "-" + Date.now().toString(36)
+      });
+    }
+
+    const { generateKeyPairSync } = await import("crypto");
+    const keyPair = generateKeyPairSync("ed25519");
+
+    const publicKeySpki = keyPair.publicKey.export({ type: "spki", format: "der" }).toString("base64");
+    const privateKeyPkcs8 = keyPair.privateKey.export({ type: "pkcs8", format: "der" }).toString("base64");
+
+    const agentKeyHash = crypto.createHash("sha256").update(publicKeySpki).digest("hex").substring(0, 16);
+
+    const metadata: any = {
+      verifiedVia: "create-agent",
+      createdByHuman: true,
+      description: description || null,
+      lastUpdated: new Date().toISOString(),
+    };
+
+    const newBot: InsertVerifiedBot = {
+      publicKey: publicKeySpki,
+      deviceId: cleanName,
+      selfId: null,
+      humanId,
+      verificationLevel: "human-created",
+      metadata,
+    };
+
+    await db.insert(verifiedBots).values(newBot);
+    logActivity("create_agent", humanId, publicKeySpki, cleanName, { method: "one-click" });
+
+    let deployment: any = null;
+
+    if (deployToHostinger && hostingerVmId) {
+      const vmIdNum = parseInt(String(hostingerVmId), 10);
+      if (isNaN(vmIdNum) || vmIdNum <= 0) {
+        return res.status(400).json({ error: "Invalid hostingerVmId — must be a positive number" });
+      }
+
+      try {
+        const { callTool } = await import("./hostinger-mcp.js");
+
+        const agentDockerCompose = `
+version: '3.8'
+services:
+  ${cleanName}:
+    image: node:22-slim
+    container_name: ${cleanName}
+    restart: unless-stopped
+    working_dir: /app
+    environment:
+      - AGENT_NAME=${cleanName}
+      - AGENT_PUBLIC_KEY=${publicKeySpki}
+      - SELFCLAW_API=https://selfclaw.ai/api/selfclaw/v1
+    volumes:
+      - ./${cleanName}-data:/app/data
+    command: >
+      bash -c "
+        mkdir -p /app &&
+        cat > /app/agent.mjs << 'AGENTEOF'
+        import { readFileSync, writeFileSync, existsSync } from 'fs';
+        import { createPrivateKey, sign } from 'crypto';
+
+        const AGENT_NAME = process.env.AGENT_NAME || '${cleanName}';
+        const PUBLIC_KEY = process.env.AGENT_PUBLIC_KEY || '${publicKeySpki}';
+        const SELFCLAW_API = process.env.SELFCLAW_API || 'https://selfclaw.ai/api/selfclaw/v1';
+
+        console.log('[' + AGENT_NAME + '] Agent started');
+        console.log('[' + AGENT_NAME + '] Public Key: ' + PUBLIC_KEY);
+        console.log('[' + AGENT_NAME + '] SelfClaw API: ' + SELFCLAW_API);
+        console.log('[' + AGENT_NAME + '] Ready for commands. Set AGENT_PRIVATE_KEY env var to enable signing.');
+
+        setInterval(() => {
+          console.log('[' + AGENT_NAME + '] heartbeat ' + new Date().toISOString());
+        }, 60000);
+        AGENTEOF
+        node /app/agent.mjs
+      "
+`.trim();
+
+        const result = await callTool("vps_docker_compose_create_project", {
+          virtual_machine_id: vmIdNum,
+          project_name: cleanName,
+          docker_compose_content: agentDockerCompose,
+        });
+
+        deployment = {
+          success: true,
+          vmId: hostingerVmId,
+          projectName: cleanName,
+          result,
+        };
+      } catch (deployErr: any) {
+        deployment = {
+          success: false,
+          error: deployErr.message,
+          hint: "Agent was created successfully but VPS deployment failed. You can deploy manually later."
+        };
+      }
+    }
+
+    // SECURITY: privateKeyPkcs8 is returned to the user exactly once and never stored, logged, or persisted anywhere
+    console.log(`[selfclaw] === AGENT CREATED === name: ${cleanName}, humanId: ${humanId}`);
+
+    res.json({
+      success: true,
+      agent: {
+        name: cleanName,
+        publicKey: publicKeySpki,
+        humanId,
+        agentKeyHash,
+        verificationLevel: "human-created",
+        registeredAt: new Date().toISOString(),
+        profileUrl: `https://selfclaw.ai/agent/${encodeURIComponent(cleanName)}`,
+      },
+      keys: {
+        publicKey: publicKeySpki,
+        privateKey: privateKeyPkcs8,
+        format: "SPKI DER (base64) / PKCS8 DER (base64)",
+        warning: "SAVE YOUR PRIVATE KEY NOW. It will never be shown again. SelfClaw does not store private keys.",
+      },
+      deployment,
+      nextSteps: [
+        "1. SAVE your private key securely — it cannot be recovered",
+        "2. Create a wallet: POST /api/selfclaw/v1/create-wallet",
+        "3. Plan your tokenomics: POST /api/selfclaw/v1/token-plan",
+        "4. Deploy your token: POST /api/selfclaw/v1/deploy-token",
+        "5. Request liquidity sponsorship: POST /api/selfclaw/v1/request-selfclaw-sponsorship",
+        deployToHostinger ? "6. Your agent is deploying to Hostinger VPS" : "6. (Optional) Deploy to Hostinger VPS from /create-agent",
+      ],
+    });
+  } catch (error: any) {
+    console.error("[selfclaw] create-agent error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get("/v1/hostinger/vms", async (req: any, res: Response) => {
+  if (!req.session?.isAuthenticated || !req.session?.humanId) {
+    return res.status(401).json({ error: "Login required" });
+  }
+
+  try {
+    const { callTool } = await import("./hostinger-mcp.js");
+    const result = await callTool("vps_get_virtual_machine_list", {});
+    res.json({ result });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message, hint: "Could not connect to Hostinger. Make sure HOSTINGER_API_TOKEN is set." });
+  }
+});
+
 export default router;

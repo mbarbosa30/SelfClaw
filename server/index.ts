@@ -52,6 +52,7 @@ app.get("/agent/:name", (_req: Request, res: Response) => sendHtml(res, "agent.h
 app.get("/human/:humanId", (_req: Request, res: Response) => sendHtml(res, "human.html"));
 app.get("/admin", (_req: Request, res: Response) => sendHtml(res, "admin.html", { "X-Robots-Tag": "noindex, nofollow" }));
 app.get("/explorer", (_req: Request, res: Response) => sendHtml(res, "explorer.html"));
+app.get("/create-agent", (_req: Request, res: Response) => sendHtml(res, "create-agent.html"));
 app.get("/my-agents", (_req: Request, res: Response) => sendHtml(res, "my-agents.html"));
 
 app.get("/how-it-works", (_req: Request, res: Response) => res.redirect(301, "/"));

@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Create Agent | SelfClaw</title>
+  <meta name="description" content="Create and deploy a verified AI agent in one click. Generate keys, register identity, and optionally deploy to Hostinger VPS.">
+  <link rel="canonical" href="https://selfclaw.ai/create-agent">
+
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://selfclaw.ai/create-agent">
+  <meta property="og:title" content="Create Agent | SelfClaw">
+  <meta property="og:description" content="Create and deploy a verified AI agent in one click. Generate keys, register identity, and optionally deploy to Hostinger VPS.">
+  <meta property="og:image" content="https://selfclaw.ai/og-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="675">
+  <meta property="og:site_name" content="SelfClaw">
+
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:site" content="@mbarrbosa">
+  <meta name="twitter:title" content="Create Agent | SelfClaw">
+  <meta name="twitter:description" content="Create and deploy a verified AI agent in one click. Generate keys, register identity, and optionally deploy to Hostinger VPS.">
+  <meta name="twitter:image" content="https://selfclaw.ai/og-image.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+  <link rel="icon" type="image/png" href="/favicon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .create-page { max-width: 800px; margin: 0 auto; padding: 0 var(--space-md); }
+
+    .wizard-steps {
+      display: flex; gap: 0; margin-bottom: var(--space-lg);
+      border: 2px solid var(--border-heavy);
+    }
+    .wizard-step {
+      flex: 1; padding: 0.75rem 1rem; text-align: center;
+      font-family: var(--font-mono); font-size: 0.7rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.08em;
+      color: var(--text-muted); background: var(--bg-card);
+      border-right: 2px solid var(--border-heavy);
+      transition: all 0.2s;
+    }
+    .wizard-step:last-child { border-right: none; }
+    .wizard-step.active { background: var(--text-primary); color: var(--bg); }
+    .wizard-step.done { background: var(--green-verify); color: #fff; }
+    .wizard-step-num {
+      display: inline-block; width: 20px; height: 20px; line-height: 20px;
+      text-align: center; border: 2px solid currentColor; margin-right: 0.4rem;
+      font-size: 0.65rem;
+    }
+
+    .wizard-panel { display: none; }
+    .wizard-panel.active { display: block; }
+
+    .agent-form .form-group { margin-bottom: 1.25rem; }
+    .agent-form label {
+      display: block; font-family: var(--font-mono); font-size: 0.75rem;
+      font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;
+      margin-bottom: 0.4rem; color: var(--text-primary);
+    }
+    .agent-form .input {
+      width: 100%; padding: 0.65rem 0.85rem;
+      border: 2px solid var(--border-heavy); background: var(--bg-card);
+      font-family: var(--font-mono); font-size: 0.85rem; color: var(--text-primary);
+    }
+    .agent-form .input:focus { outline: none; border-color: var(--green-verify); }
+    .agent-form .input::placeholder { color: var(--text-muted); }
+    .agent-form textarea.input { min-height: 80px; resize: vertical; font-family: var(--font-body); }
+
+    .deploy-toggle {
+      display: flex; align-items: center; gap: 0.75rem;
+      padding: 1rem; border: 2px solid var(--border-heavy);
+      margin-bottom: 1.25rem; cursor: pointer;
+      transition: border-color 0.2s;
+    }
+    .deploy-toggle:hover { border-color: var(--green-verify); }
+    .deploy-toggle.checked { border-color: var(--green-verify); }
+    .deploy-toggle input[type="checkbox"] { display: none; }
+    .deploy-check {
+      width: 20px; height: 20px; border: 2px solid var(--border-heavy);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; font-size: 0.8rem; font-weight: 700;
+      transition: all 0.2s;
+    }
+    .deploy-toggle.checked .deploy-check {
+      background: var(--green-verify); border-color: var(--green-verify); color: #fff;
+    }
+    .deploy-info { flex: 1; }
+    .deploy-info-title {
+      font-family: var(--font-mono); font-size: 0.8rem; font-weight: 600;
+    }
+    .deploy-info-desc {
+      font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.2rem;
+    }
+
+    .vm-select-area { display: none; margin-bottom: 1.25rem; }
+    .vm-select-area.visible { display: block; }
+    .vm-list { display: flex; flex-direction: column; gap: 0.5rem; }
+    .vm-option {
+      padding: 0.75rem 1rem; border: 2px solid var(--border-light);
+      cursor: pointer; font-family: var(--font-mono); font-size: 0.8rem;
+      transition: border-color 0.2s;
+    }
+    .vm-option:hover { border-color: var(--accent); }
+    .vm-option.selected { border-color: var(--green-verify); background: rgba(34,197,94,0.05); }
+    .vm-option-name { font-weight: 600; }
+    .vm-option-meta { font-size: 0.7rem; color: var(--text-secondary); margin-top: 0.15rem; }
+    .vm-loading {
+      padding: 1rem; text-align: center;
+      font-family: var(--font-mono); font-size: 0.8rem; color: var(--text-muted);
+    }
+
+    .create-btn {
+      width: 100%; padding: 0.85rem; border: none;
+      background: var(--accent); color: #fff;
+      font-family: var(--font-mono); font-size: 0.9rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.08em;
+      cursor: pointer; transition: background 0.2s;
+    }
+    .create-btn:hover { background: var(--accent-hover); }
+    .create-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .key-display {
+      border: 2px solid var(--border-heavy); padding: 1.25rem;
+      margin-bottom: 1.25rem;
+    }
+    .key-label {
+      font-family: var(--font-mono); font-size: 0.7rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-secondary);
+      margin-bottom: 0.4rem;
+    }
+    .key-value {
+      font-family: var(--font-mono); font-size: 0.75rem; word-break: break-all;
+      background: var(--bg-card); padding: 0.6rem 0.75rem; border: 1px solid var(--border-light);
+      line-height: 1.5; position: relative;
+    }
+    .key-copy {
+      position: absolute; top: 0.4rem; right: 0.4rem;
+      background: var(--border-heavy); color: #fff; border: none;
+      font-family: var(--font-mono); font-size: 0.65rem; padding: 0.2rem 0.5rem;
+      cursor: pointer;
+    }
+
+    .key-warning {
+      border: 2px solid var(--red); padding: 1rem; margin-bottom: 1.25rem;
+      font-family: var(--font-mono); font-size: 0.8rem; color: var(--red);
+      line-height: 1.5;
+    }
+
+    .key-download {
+      width: 100%; padding: 0.7rem; border: 2px solid var(--border-heavy);
+      background: var(--bg-card); color: var(--text-primary);
+      font-family: var(--font-mono); font-size: 0.8rem; font-weight: 600;
+      cursor: pointer; text-align: center; margin-bottom: 1.25rem;
+      transition: border-color 0.2s;
+    }
+    .key-download:hover { border-color: var(--green-verify); }
+
+    .success-card {
+      border: 2px solid var(--green-verify); padding: 1.5rem;
+      margin-bottom: 1.25rem;
+    }
+    .success-title {
+      font-family: var(--font-mono); font-size: 0.85rem; font-weight: 600;
+      color: var(--green-verify); text-transform: uppercase; letter-spacing: 0.1em;
+      margin-bottom: 0.75rem;
+    }
+    .success-detail {
+      font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.4rem;
+    }
+    .success-detail strong { color: var(--text-primary); }
+
+    .next-steps {
+      border: 2px solid var(--border-heavy); padding: 1.25rem;
+    }
+    .next-steps-title {
+      font-family: var(--font-mono); font-size: 0.75rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent);
+      margin-bottom: 0.75rem;
+    }
+    .next-steps ol {
+      list-style: none; padding: 0; margin: 0;
+      font-size: 0.85rem; color: var(--text-secondary);
+    }
+    .next-steps li {
+      padding: 0.4rem 0; border-bottom: 1px solid var(--border-light);
+    }
+    .next-steps li:last-child { border-bottom: none; }
+
+    .login-gate {
+      text-align: center; padding: 3rem 1rem;
+      border: 2px solid var(--border-heavy);
+    }
+    .login-gate-title {
+      font-family: var(--font-mono); font-size: 0.85rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.1em;
+      margin-bottom: 1rem;
+    }
+    .login-gate-desc {
+      font-size: 0.9rem; color: var(--text-secondary);
+      margin-bottom: 1.5rem; max-width: 400px; margin-left: auto; margin-right: auto;
+    }
+    .login-gate-btn {
+      padding: 0.7rem 2rem; border: 2px solid var(--border-heavy);
+      background: var(--bg-card); color: var(--text-primary);
+      font-family: var(--font-mono); font-size: 0.8rem; font-weight: 600;
+      cursor: pointer; transition: border-color 0.2s;
+    }
+    .login-gate-btn:hover { border-color: var(--green-verify); }
+
+    .error-msg {
+      border: 2px solid var(--red); padding: 0.75rem 1rem;
+      font-family: var(--font-mono); font-size: 0.8rem; color: var(--red);
+      margin-bottom: 1rem; display: none;
+    }
+
+    @media (max-width: 600px) {
+      .wizard-steps { flex-direction: column; }
+      .wizard-step { border-right: none; border-bottom: 2px solid var(--border-heavy); }
+      .wizard-step:last-child { border-bottom: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="site-container">
+    <header class="site-header">
+      <a href="/" class="site-logo"><img src="/claw-icon.svg" alt="" class="site-logo-icon">SELFCLAW</a>
+      <button class="nav-toggle" aria-label="Menu">&equiv;</button>
+      <nav class="site-nav">
+        <a href="/verify" class="nav-link">VERIFY</a>
+        <a href="/registry" class="nav-link" data-gate style="display:none">AGENTS</a>
+        <a href="/dashboard" class="nav-link" data-gate style="display:none">DASHBOARD</a>
+        <a href="/economy" class="nav-link">ECONOMY</a>
+        <a href="/developers" class="nav-link">DOCS</a>
+        <a href="/whitepaper" class="nav-link">WHITEPAPER</a>
+        <a href="/manifesto" class="nav-link">\\\</a>
+      </nav>
+    </header>
+  </div>
+
+  <div class="create-page">
+    <section class="hero" style="padding: 3rem 0 var(--space-lg);">
+      <div class="hero-label">One-Click Agent</div>
+      <h1>Create your agent</h1>
+      <p class="hero-sub">Name your agent, get a keypair, and optionally deploy it to a Hostinger VPS — all in one step. You must be logged in with your Self.xyz passport.</p>
+    </section>
+
+    <div id="login-gate" class="login-gate" style="display:none;">
+      <div class="login-gate-title">Passport Required</div>
+      <div class="login-gate-desc">You need to be logged in with your Self.xyz passport to create an agent. Your agent will be linked to your verified identity.</div>
+      <button class="login-gate-btn" onclick="window.selfclawAuth && window.selfclawAuth.openLogin()">Login with Self</button>
+    </div>
+
+    <div id="wizard-container" style="display:none;">
+      <div class="wizard-steps">
+        <div class="wizard-step active" id="ws-1"><span class="wizard-step-num">1</span>Configure</div>
+        <div class="wizard-step" id="ws-2"><span class="wizard-step-num">2</span>Keys</div>
+        <div class="wizard-step" id="ws-3"><span class="wizard-step-num">3</span>Done</div>
+      </div>
+
+      <div class="wizard-panel active" id="panel-configure">
+        <div class="agent-form">
+          <div class="form-group">
+            <label for="agent-name">Agent Name</label>
+            <input type="text" id="agent-name" class="input" placeholder="my-research-agent" maxlength="64">
+          </div>
+          <div class="form-group">
+            <label for="agent-desc">Description <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text-muted);">(optional)</span></label>
+            <textarea id="agent-desc" class="input" placeholder="What does your agent do?"></textarea>
+          </div>
+
+          <div class="deploy-toggle" id="deploy-toggle" onclick="toggleDeploy()">
+            <input type="checkbox" id="deploy-check-input">
+            <div class="deploy-check" id="deploy-check-box"></div>
+            <div class="deploy-info">
+              <div class="deploy-info-title">Deploy to Hostinger VPS</div>
+              <div class="deploy-info-desc">Automatically deploy your agent as a Docker container on your Hostinger VPS.</div>
+            </div>
+          </div>
+
+          <div class="vm-select-area" id="vm-select-area">
+            <label style="display:block;font-family:var(--font-mono);font-size:0.75rem;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.5rem;">Select VPS</label>
+            <div id="vm-list" class="vm-list">
+              <div class="vm-loading">Loading your VPS instances...</div>
+            </div>
+          </div>
+
+          <div class="error-msg" id="error-msg"></div>
+
+          <button class="create-btn" id="create-btn" onclick="createAgent()">Create Agent</button>
+        </div>
+      </div>
+
+      <div class="wizard-panel" id="panel-keys">
+        <div class="key-warning">
+          SAVE YOUR PRIVATE KEY NOW. It will never be shown again. SelfClaw does not store private keys.
+        </div>
+
+        <div class="key-display">
+          <div class="key-label">Public Key (SPKI DER, base64)</div>
+          <div class="key-value" id="public-key-value">
+            <button class="key-copy" onclick="copyKey('public-key-value')">COPY</button>
+            <span id="public-key-text"></span>
+          </div>
+        </div>
+
+        <div class="key-display">
+          <div class="key-label">Private Key (PKCS8 DER, base64)</div>
+          <div class="key-value" id="private-key-value" style="border-color: var(--red);">
+            <button class="key-copy" onclick="copyKey('private-key-value')">COPY</button>
+            <span id="private-key-text"></span>
+          </div>
+        </div>
+
+        <button class="key-download" onclick="downloadKeys()">Download Keys as JSON</button>
+
+        <button class="create-btn" onclick="confirmKeysSaved()" style="background:var(--green-verify);">I have saved my keys — Continue</button>
+      </div>
+
+      <div class="wizard-panel" id="panel-done">
+        <div class="success-card">
+          <div class="success-title">Agent Created</div>
+          <div class="success-detail"><strong>Name:</strong> <span id="done-name"></span></div>
+          <div class="success-detail"><strong>Verification:</strong> human-created</div>
+          <div class="success-detail"><strong>Human ID:</strong> <span id="done-human-id"></span></div>
+          <div id="done-deployment" style="display:none;">
+            <div class="success-detail" style="margin-top:0.75rem;"><strong>VPS Deployment:</strong> <span id="done-deploy-status"></span></div>
+          </div>
+        </div>
+
+        <div class="next-steps">
+          <div class="next-steps-title">Next Steps</div>
+          <ol id="next-steps-list"></ol>
+        </div>
+
+        <div style="margin-top:1.25rem;display:flex;gap:0.75rem;flex-wrap:wrap;">
+          <a href="/my-agents" class="create-btn" style="text-decoration:none;text-align:center;display:block;flex:1;">My Agents</a>
+          <a href="/verify" class="create-btn" style="text-decoration:none;text-align:center;display:block;flex:1;background:var(--border-heavy);">Verify Another</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="site-footer">
+    <div class="site-container">
+      <div class="footer-inner">
+        <span class="footer-brand">SelfClaw</span>
+        <span class="footer-sep">&mdash;</span>
+        <span class="footer-tagline">Verification infrastructure for agent economies</span>
+      </div>
+    </div>
+  </footer>
+
+  <script src="/auth.js"></script>
+  <script src="nav-gate.js"></script>
+  <script>
+    var agentResult = null;
+    var selectedVmId = null;
+    var deployEnabled = false;
+    var vmList = [];
+
+    function escHtml(s) {
+      if (!s) return '';
+      var d = document.createElement('div');
+      d.textContent = s;
+      return d.innerHTML;
+    }
+
+    window.selfclawAuth.onReady(function(user) {
+      if (user) {
+        document.getElementById('login-gate').style.display = 'none';
+        document.getElementById('wizard-container').style.display = 'block';
+      } else {
+        document.getElementById('login-gate').style.display = 'block';
+        document.getElementById('wizard-container').style.display = 'none';
+      }
+    });
+
+    window.onAuthLogin = function(user) {
+      document.getElementById('login-gate').style.display = 'none';
+      document.getElementById('wizard-container').style.display = 'block';
+    };
+
+    function setStep(step) {
+      document.querySelectorAll('.wizard-step').forEach(function(el, i) {
+        el.className = 'wizard-step';
+        if (i + 1 < step) el.classList.add('done');
+        if (i + 1 === step) el.classList.add('active');
+      });
+      document.querySelectorAll('.wizard-panel').forEach(function(el) {
+        el.classList.remove('active');
+      });
+      var panels = ['panel-configure', 'panel-keys', 'panel-done'];
+      var panel = document.getElementById(panels[step - 1]);
+      if (panel) panel.classList.add('active');
+    }
+
+    function toggleDeploy() {
+      deployEnabled = !deployEnabled;
+      var toggle = document.getElementById('deploy-toggle');
+      var area = document.getElementById('vm-select-area');
+      if (deployEnabled) {
+        toggle.classList.add('checked');
+        document.getElementById('deploy-check-box').textContent = '\u2713';
+        area.classList.add('visible');
+        loadVMs();
+      } else {
+        toggle.classList.remove('checked');
+        document.getElementById('deploy-check-box').textContent = '';
+        area.classList.remove('visible');
+        selectedVmId = null;
+      }
+    }
+
+    async function loadVMs() {
+      var listEl = document.getElementById('vm-list');
+      listEl.innerHTML = '<div class="vm-loading">Loading VPS instances...</div>';
+
+      try {
+        var res = await fetch('/api/selfclaw/v1/hostinger/vms');
+        var data = await res.json();
+
+        var content = data.result?.content;
+        var vms = [];
+        if (Array.isArray(content)) {
+          for (var i = 0; i < content.length; i++) {
+            if (content[i].type === 'text') {
+              try { vms = JSON.parse(content[i].text); } catch(e) {}
+            }
+          }
+        }
+
+        if (!Array.isArray(vms) || vms.length === 0) {
+          listEl.innerHTML = '<div class="vm-loading">No VPS instances found. <a href="https://hostinger.com/vps-hosting" target="_blank" style="color:var(--accent);">Get a Hostinger VPS</a></div>';
+          return;
+        }
+
+        vmList = vms;
+        var html = '';
+        for (var j = 0; j < vms.length; j++) {
+          var vm = vms[j];
+          var id = vm.id || vm.virtual_machine_id || '';
+          var hostname = vm.hostname || vm.label || 'VPS ' + id;
+          var state = vm.state || vm.status || 'unknown';
+          var ip = '';
+          if (vm.ip_addresses && vm.ip_addresses.length > 0) {
+            ip = vm.ip_addresses[0].address || vm.ip_addresses[0] || '';
+          } else if (vm.ipv4) {
+            ip = vm.ipv4;
+          }
+          html += '<div class="vm-option" data-vm-id="' + id + '" onclick="selectVM(this, \'' + id + '\')">';
+          html += '<div class="vm-option-name">' + escHtml(hostname) + '</div>';
+          html += '<div class="vm-option-meta">ID: ' + id + (ip ? ' &middot; ' + escHtml(ip) : '') + ' &middot; ' + escHtml(state) + '</div>';
+          html += '</div>';
+        }
+        listEl.innerHTML = html;
+      } catch (err) {
+        listEl.innerHTML = '<div class="vm-loading" style="color:var(--red);">Failed to load VPS instances: ' + escHtml(err.message) + '</div>';
+      }
+    }
+
+    function selectVM(el, vmId) {
+      document.querySelectorAll('.vm-option').forEach(function(v) { v.classList.remove('selected'); });
+      el.classList.add('selected');
+      selectedVmId = vmId;
+    }
+
+    async function createAgent() {
+      var nameInput = document.getElementById('agent-name');
+      var descInput = document.getElementById('agent-desc');
+      var errorEl = document.getElementById('error-msg');
+      var btn = document.getElementById('create-btn');
+
+      var name = nameInput.value.trim();
+      if (!name || name.length < 2) {
+        errorEl.textContent = 'Agent name must be at least 2 characters.';
+        errorEl.style.display = 'block';
+        return;
+      }
+
+      if (deployEnabled && !selectedVmId) {
+        errorEl.textContent = 'Please select a VPS to deploy to, or uncheck the deploy option.';
+        errorEl.style.display = 'block';
+        return;
+      }
+
+      errorEl.style.display = 'none';
+      btn.disabled = true;
+      btn.textContent = 'Creating...';
+
+      try {
+        var body = {
+          agentName: name,
+          description: descInput.value.trim() || null,
+          deployToHostinger: deployEnabled,
+          hostingerVmId: selectedVmId,
+        };
+
+        var res = await fetch('/api/selfclaw/v1/create-agent', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+
+        var data = await res.json();
+
+        if (!res.ok || !data.success) {
+          errorEl.textContent = data.error || 'Failed to create agent';
+          if (data.suggestion) errorEl.textContent += '. Try: ' + data.suggestion;
+          errorEl.style.display = 'block';
+          btn.disabled = false;
+          btn.textContent = 'Create Agent';
+          return;
+        }
+
+        agentResult = data;
+
+        document.getElementById('public-key-text').textContent = data.keys.publicKey;
+        document.getElementById('private-key-text').textContent = data.keys.privateKey;
+
+        setStep(2);
+      } catch (err) {
+        errorEl.textContent = 'Error: ' + err.message;
+        errorEl.style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = 'Create Agent';
+      }
+    }
+
+    function copyKey(containerId) {
+      var el = document.getElementById(containerId);
+      var text = el.querySelector('span').textContent;
+      navigator.clipboard.writeText(text).then(function() {
+        var btn = el.querySelector('.key-copy');
+        btn.textContent = 'COPIED';
+        setTimeout(function() { btn.textContent = 'COPY'; }, 1500);
+      });
+    }
+
+    function downloadKeys() {
+      if (!agentResult) return;
+      var keyData = {
+        agentName: agentResult.agent.name,
+        publicKey: agentResult.keys.publicKey,
+        privateKey: agentResult.keys.privateKey,
+        format: agentResult.keys.format,
+        humanId: agentResult.agent.humanId,
+        createdAt: agentResult.agent.registeredAt,
+        selfclawApi: 'https://selfclaw.ai/api/selfclaw/v1',
+        warning: agentResult.keys.warning,
+      };
+      var blob = new Blob([JSON.stringify(keyData, null, 2)], { type: 'application/json' });
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = agentResult.agent.name + '-keys.json';
+      a.click();
+      URL.revokeObjectURL(a.href);
+    }
+
+    function confirmKeysSaved() {
+      if (!agentResult) return;
+
+      document.getElementById('done-name').textContent = agentResult.agent.name;
+      document.getElementById('done-human-id').textContent = agentResult.agent.humanId;
+
+      if (agentResult.deployment) {
+        document.getElementById('done-deployment').style.display = 'block';
+        var status = agentResult.deployment.success ? 'Deployed successfully' : 'Failed: ' + (agentResult.deployment.error || 'Unknown error');
+        document.getElementById('done-deploy-status').textContent = status;
+        document.getElementById('done-deploy-status').style.color = agentResult.deployment.success ? 'var(--green-verify)' : 'var(--red)';
+      }
+
+      var stepsList = document.getElementById('next-steps-list');
+      if (agentResult.nextSteps) {
+        stepsList.innerHTML = agentResult.nextSteps.map(function(s) {
+          return '<li>' + escHtml(s) + '</li>';
+        }).join('');
+      }
+
+      setStep(3);
+    }
+  </script>
+  <script src="/nav-toggle.js"></script>
+</body>
+</html>
