@@ -8,11 +8,11 @@ Privacy-first agent verification registry on Celo. Prove your AI agent is backed
 
 SelfClaw solves the sybil problem in agent economies. One script can register 500,000 fake agents. SelfClaw stops that by requiring passport-based proof of humanity via [Self.xyz](https://self.xyz).
 
-- **Verify agents** — Link AI agents to a verified human identity using NFC passport proofs
-- **Create wallets** — Verified agents get their own Celo wallet with gas subsidies
+- **Verify agents** — Link AI agents to a verified human identity via QR scan with the Self app (zero-knowledge proofs)
+- **Create wallets** — Verified agents register their own self-custody Celo wallets with gas subsidies
 - **Deploy tokens** — Launch ERC20 tokens on Celo for agent-to-agent commerce
 - **On-chain identity** — Register ERC-8004 identity NFTs on Celo's Reputation Registry
-- **Sponsored liquidity** — Receive CELO to bootstrap Uniswap V4 pools for your token ([SELFCLAW/CELO pool](https://app.uniswap.org/explore/pools/celo/0x92bf22b01e8c42e09e2777f3a11490f3e77bd232b70339dbedb0b5a57b21ab8b))
+- **Sponsored liquidity** — $SELFCLAW trading fees sponsor Uniswap V3 pools for verified agent tokens ([SELFCLAW/CELO pool](https://app.uniswap.org/explore/pools/celo/0x92bf22b01e8c42e09e2777f3a11490f3e77bd232b70339dbedb0b5a57b21ab8b))
 - **Swarm tracking** — One human can register multiple agents under the same identity
 
 ## How It Works
@@ -24,8 +24,8 @@ Agent Owner                 SelfClaw                    Self.xyz
     |                          |-- Generate QR Code -----> |
     |<-- QR Code ------------ |                           |
     |                          |                           |
-    |-- Scan with Self App --> |                           |
-    |   (NFC passport tap)     |                           |
+    |-- Scan QR with Self App  |                           |
+    |   (QR code verification) |                           |
     |                          |<-- ZK Proof Callback ---- |
     |                          |-- Verify + Store -------> |
     |<-- Agent Verified ------ |                           |
@@ -33,7 +33,7 @@ Agent Owner                 SelfClaw                    Self.xyz
 
 1. Agent owner submits their Ed25519 public key
 2. SelfClaw generates a Self.xyz QR code bound to that key
-3. Owner scans QR with the Self.xyz app and taps their passport's NFC chip
+3. Owner scans QR code with the Self app to verify (passport was registered once in the Self app)
 4. Self.xyz sends a zero-knowledge proof back to SelfClaw
 5. SelfClaw verifies the proof, records the verification, and links the agent to a human identity
 
@@ -129,7 +129,7 @@ Full API documentation: [selfclaw.ai/developers](https://selfclaw.ai/developers)
 - **Backend**: Express.js
 - **Database**: PostgreSQL + Drizzle ORM
 - **Auth**: Self.xyz passport proofs (zero-knowledge)
-- **Blockchain**: Celo (USDC, ERC-8004, Uniswap V4)
+- **Blockchain**: Celo (USDC, ERC-8004, Uniswap V3)
 - **Frontend**: Vanilla HTML/CSS/JS
 
 ## Project Structure
@@ -144,7 +144,7 @@ lib/
   erc8004-config.ts     # Agent registration file generator
   secure-wallet.ts      # Celo wallet creation and management
   token-factory.ts      # ERC20 token deployment
-  sponsored-liquidity.ts # Sponsored Uniswap V4 pools
+  sponsored-liquidity.ts # Sponsored Uniswap V3 pools
   constants.ts          # Contract bytecode constants
 shared/
   schema.ts             # Drizzle database schema

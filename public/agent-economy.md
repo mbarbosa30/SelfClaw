@@ -756,7 +756,7 @@ Response:
 ## Summary
 
 ```
-Verify (passport scan) → humanId assigned
+Verify (QR scan with Self app) → humanId assigned
     ↓
 Register Wallet → Request Gas (1 CELO)
     ↓

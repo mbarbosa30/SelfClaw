@@ -529,7 +529,7 @@
       </section>
 
       <section class="admin-section">
-        <h2 class="admin-section-title">SELFCLAW/CELO Pool (Uniswap V4)</h2>
+        <h2 class="admin-section-title">SELFCLAW/CELO Pool (Uniswap V3)</h2>
         <div id="pool-loading" style="text-align:center;padding:2rem;color:#555;"><span class="spinner"></span> Loading pool data...</div>
         <div id="pool-content" style="display:none;">
           <div class="wallet-overview">
@@ -1383,7 +1383,7 @@
           document.getElementById('price-celo-native').textContent = c.priceNative ? c.priceNative + ' CELO' : (c.onChainPrice ? parseFloat(c.onChainPrice).toFixed(8) + ' CELO (on-chain)' : '--');
           document.getElementById('price-celo-liq').textContent = formatVolume(c.liquidity);
           document.getElementById('price-celo-vol').textContent = formatVolume(c.volume24h);
-          document.getElementById('price-celo-dex').textContent = c.dex || (c.computedFromCelo ? 'Uniswap V4 (on-chain)' : '--');
+          document.getElementById('price-celo-dex').textContent = c.dex || (c.computedFromCelo ? 'Uniswap V3 (on-chain)' : '--');
 
           var celoChangeEl = document.getElementById('price-celo-change');
           if (c.priceChange24h != null) {

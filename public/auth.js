@@ -93,7 +93,7 @@
       '<div style="font-family:var(--font-mono);font-size:0.75rem;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;color:var(--accent);">Login with Self</div>' +
       '<button id="login-modal-close" style="background:none;border:none;font-size:1.2rem;cursor:pointer;color:var(--text);padding:0.25rem;">&times;</button>' +
       '</div>' +
-      '<p style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:1.5rem;line-height:1.5;">Scan with your Self app to authenticate using your passport. No passwords, no email — just your verified identity.</p>' +
+      '<p style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:1.5rem;line-height:1.5;">Scan the QR code with your Self app to authenticate. No passwords, no email — just your verified identity.</p>' +
       '<div id="login-qr-area" style="text-align:center;padding:1rem 0;">' +
       '<div style="color:var(--text-muted);font-size:0.8rem;">Loading...</div>' +
       '</div>' +

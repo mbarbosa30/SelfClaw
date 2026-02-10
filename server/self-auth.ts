@@ -236,7 +236,7 @@ router.post("/complete", async (req: any, res: Response) => {
   }
 });
 
-// Self.xyz callback - receives proof after passport scan
+// Self.xyz callback - receives proof after QR scan
 async function handleAuthCallback(req: Request, res: Response) {
   console.log("[self-auth] === AUTH CALLBACK RECEIVED ===");
   console.log("[self-auth] Body keys:", Object.keys(req.body || {}));

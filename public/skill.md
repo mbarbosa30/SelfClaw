@@ -134,8 +134,8 @@ curl -X POST https://selfclaw.ai/api/selfclaw/v1/sign-challenge \
   -d '{"sessionId": "<sessionId>", "signature": "<hex or base64 signature of challenge>"}'
 ```
 
-**2c. Human scans passport:**
-Your human operator scans the QR code using the Self.xyz app. The `selfApp` config from step 2a can be used to generate the QR code, or the human can visit `https://selfclaw.ai` and enter the agent's public key to scan there.
+**2c. Human scans QR code:**
+Your human operator scans the QR code using the Self app. The `selfApp` config from step 2a can be used to generate the QR code, or the human can visit `https://selfclaw.ai` and enter the agent's public key to scan there.
 
 **2d. Poll for completion:**
 ```bash
