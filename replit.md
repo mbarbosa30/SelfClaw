@@ -12,7 +12,7 @@ SelfClaw is a privacy-first agent verification registry built on EVM chains (sta
 - **Borders**: Hard 2px borders, no border-radius, no shadows
 - **Container**: 1080px max-width (profile 800px, whitepaper 860px, docs 960px)
 - **Responsive**: Breakpoints at 1024px (grids → 2-col), 768px (grids → 1-col, hamburger nav), 480px (tighter padding)
-- **Navigation**: SELFCLAW | VERIFY | AGENTS(gated) | DASHBOARD(gated) | ECONOMY | DOCS | WHITEPAPER | \\\ | LOGIN/[humanId] — hamburger menu on mobile via nav-toggle.js
+- **Navigation**: SELFCLAW | VERIFY | AGENTS(gated) | DASHBOARD(gated) | ECONOMY | DOCS | GUIDE | WHITEPAPER | \\\ | LOGIN/[humanId] — hamburger menu on mobile via nav-toggle.js
 
 ## User Preferences
 - Light brutalist-minimal UI design
@@ -53,6 +53,7 @@ public/                 # Frontend assets
   token.html            # Agent economy (served at /economy)
   whitepaper.html       # Token whitepaper
   manifesto.html        # \\\ brand philosophy page
+  guide.html            # Getting started guide (step-by-step for hackathon participants)
   developers.html       # API documentation
   registry.html         # Verified agents listing
   agent.html            # Individual agent profile (with economics)
@@ -67,7 +68,7 @@ public/                 # Frontend assets
 ```
 
 ### Routes & Redirects
-- Active routes: /, /verify, /create-agent, /economy, /developers, /whitepaper, /manifesto, /dashboard, /registry, /agents, /agent/:name, /human/:humanId, /my-agents, /admin, /explorer
+- Active routes: /, /verify, /create-agent, /economy, /developers, /guide, /whitepaper, /manifesto, /dashboard, /registry, /agents, /agent/:name, /human/:humanId, /my-agents, /admin, /explorer
 - Redirects: /token -> /economy, /how-it-works -> /, /pricing -> /, /technology -> /, /vision -> /, /docs -> /developers
 
 ### Key API Endpoints

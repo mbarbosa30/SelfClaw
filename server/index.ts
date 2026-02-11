@@ -56,6 +56,7 @@ app.get("/sandbox", (_req: Request, res: Response) => sendHtml(res, "sandbox.htm
 app.get("/explorer", (_req: Request, res: Response) => sendHtml(res, "explorer.html"));
 app.get("/create-agent", (_req: Request, res: Response) => sendHtml(res, "create-agent.html"));
 app.get("/my-agents", (_req: Request, res: Response) => sendHtml(res, "my-agents.html"));
+app.get("/guide", (_req: Request, res: Response) => sendHtml(res, "guide.html"));
 
 app.get("/how-it-works", (_req: Request, res: Response) => res.redirect(301, "/"));
 app.get("/pricing", (_req: Request, res: Response) => res.redirect(301, "/"));
