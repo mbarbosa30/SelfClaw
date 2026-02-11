@@ -3480,7 +3480,13 @@ router.post("/v1/create-agent", verificationLimiter, async (req: any, res: Respo
       return res.status(400).json({ error: "agentName must be 32 characters or fewer" });
     }
 
-    const cleanName = agentName.trim().toLowerCase().replace(/[^a-z0-9\-_]/g, "-");
+    let cleanName = agentName.trim().toLowerCase().replace(/[^a-z0-9\-]/g, "-").replace(/^-+|-+$/g, "").replace(/-{2,}/g, "-");
+    if (!cleanName || cleanName.length < 2) {
+      return res.status(400).json({ error: "Agent name must contain at least 2 alphanumeric characters" });
+    }
+    if (cleanName.length > 63) {
+      cleanName = cleanName.substring(0, 63).replace(/-+$/, "");
+    }
 
     const existingAgents = await db.select()
       .from(verifiedBots)
@@ -3631,19 +3637,6 @@ services:
   }
 });
 
-router.get("/v1/hostinger/vms", async (req: any, res: Response) => {
-  if (!req.session?.isAuthenticated || !req.session?.humanId) {
-    return res.status(401).json({ error: "Login required" });
-  }
-
-  try {
-    const { callTool } = await import("./hostinger-mcp.js");
-    const result = await callTool("vps_get_virtual_machine_list", {});
-    res.json({ result });
-  } catch (err: any) {
-    res.status(500).json({ error: err.message, hint: "Could not connect to Hostinger. Make sure HOSTINGER_API_TOKEN is set." });
-  }
-});
 
 async function authenticateHumanForAgent(req: any, res: Response, agentPublicKey: string): Promise<{ humanId: string; agent: any } | null> {
   if (!req.session?.isAuthenticated || !req.session?.humanId) {

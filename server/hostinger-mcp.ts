@@ -3,6 +3,10 @@ import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
 
 let mcpClient: Client | null = null;
 let connectionError: string | null = null;
+let connectingPromise: Promise<Client> | null = null;
+
+const CONNECT_TIMEOUT_MS = 15_000;
+const CALL_TIMEOUT_MS = 30_000;
 
 async function createClient(): Promise<Client> {
   const apiToken = process.env.HOSTINGER_API_TOKEN;
@@ -24,37 +28,72 @@ async function createClient(): Promise<Client> {
     { capabilities: {} }
   );
 
-  await client.connect(transport);
-  console.log("[hostinger-mcp] Connected to Hostinger MCP server");
-  return client;
+  const ac = new AbortController();
+  const timer = setTimeout(() => ac.abort(), CONNECT_TIMEOUT_MS);
+
+  try {
+    await Promise.race([
+      client.connect(transport),
+      new Promise<never>((_, reject) => {
+        ac.signal.addEventListener("abort", () =>
+          reject(new Error("MCP connection timed out after " + (CONNECT_TIMEOUT_MS / 1000) + "s"))
+        );
+      }),
+    ]);
+    console.log("[hostinger-mcp] Connected to Hostinger MCP server");
+    return client;
+  } catch (err) {
+    try { await transport.close(); } catch {}
+    try { await client.close(); } catch {}
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 export async function getHostingerClient(): Promise<Client> {
   if (mcpClient) return mcpClient;
 
-  try {
-    mcpClient = await createClient();
-    connectionError = null;
-    return mcpClient;
-  } catch (err: any) {
-    connectionError = err.message;
-    mcpClient = null;
-    console.error("[hostinger-mcp] Failed to connect:", err.message);
-    throw err;
-  }
+  if (connectingPromise) return connectingPromise;
+
+  connectingPromise = (async () => {
+    try {
+      mcpClient = await createClient();
+      connectionError = null;
+      return mcpClient;
+    } catch (err: any) {
+      connectionError = err.message;
+      mcpClient = null;
+      console.error("[hostinger-mcp] Failed to connect:", err.message);
+      throw err;
+    } finally {
+      connectingPromise = null;
+    }
+  })();
+
+  return connectingPromise;
+}
+
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error(`${label} timed out after ${ms / 1000}s`)), ms)
+    ),
+  ]);
 }
 
 export async function listTools() {
   const client = await getHostingerClient();
   try {
-    const result = await client.listTools();
+    const result = await withTimeout(client.listTools(), CALL_TIMEOUT_MS, "listTools");
     return result.tools;
   } catch (err: any) {
     console.warn("[hostinger-mcp] listTools failed, resetting connection:", err.message);
     mcpClient = null;
     connectionError = err.message;
     const client2 = await getHostingerClient();
-    const result = await client2.listTools();
+    const result = await withTimeout(client2.listTools(), CALL_TIMEOUT_MS, "listTools");
     return result.tools;
   }
 }
@@ -62,14 +101,22 @@ export async function listTools() {
 export async function callTool(name: string, args: Record<string, any> = {}) {
   const client = await getHostingerClient();
   try {
-    const result = await client.callTool({ name, arguments: args });
+    const result = await withTimeout(
+      client.callTool({ name, arguments: args }),
+      CALL_TIMEOUT_MS,
+      `callTool(${name})`
+    );
     return result;
   } catch (err: any) {
     console.warn("[hostinger-mcp] callTool failed, resetting connection:", err.message);
     mcpClient = null;
     connectionError = err.message;
     const client2 = await getHostingerClient();
-    const result = await client2.callTool({ name, arguments: args });
+    const result = await withTimeout(
+      client2.callTool({ name, arguments: args }),
+      CALL_TIMEOUT_MS,
+      `callTool(${name})`
+    );
     return result;
   }
 }

@@ -419,7 +419,7 @@
       listEl.innerHTML = '<div class="vm-loading">Loading VPS instances...</div>';
 
       try {
-        var res = await fetch('/api/selfclaw/v1/hostinger/vms');
+        var res = await fetch('/api/hostinger/vms');
         var data = await res.json();
 
         var content = data.result?.content;

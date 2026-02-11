@@ -197,6 +197,17 @@
     const toolSearch = document.getElementById('tool-search');
     const toolCount = document.getElementById('tool-count');
     let allTools = [];
+    let toolDataMap = {};
+
+    function escAttr(s) {
+      return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    function escHtml(s) {
+      const d = document.createElement('div');
+      d.textContent = s;
+      return d.innerHTML;
+    }
 
     (function gateExplorer() {
       var explorerContent = document.querySelector('.explorer-page');
@@ -208,6 +219,8 @@
             '<p style="font-size:0.9rem;color:var(--text-secondary);margin-bottom:1.5rem;max-width:400px;margin-left:auto;margin-right:auto;">You must be logged in with your Self.xyz passport to access the MCP Explorer.</p>' +
             '<button onclick="window.selfclawAuth && window.selfclawAuth.openLogin()" style="padding:0.7rem 2rem;border:2px solid var(--border-heavy);background:var(--bg-card);color:var(--text-primary);font-family:var(--font-mono);font-size:0.8rem;font-weight:600;cursor:pointer;">Login with Self</button>' +
             '</div>';
+        } else {
+          connect();
         }
       });
     })();
@@ -235,69 +248,155 @@
         const res = await fetch('/api/hostinger/tools');
         const data = await res.json();
         if (data.error) {
-          toolGroups.innerHTML = '<p style="color:var(--red)">Error: ' + data.error + '</p>';
+          toolGroups.textContent = '';
+          var errP = document.createElement('p');
+          errP.style.color = 'var(--red)';
+          errP.textContent = 'Error: ' + data.error;
+          toolGroups.appendChild(errP);
           return;
         }
         allTools = [];
+        toolDataMap = {};
         const groups = data.groups;
         const sortedGroups = Object.keys(groups).sort();
 
         toolCount.textContent = data.total + ' tools available';
         toolSearch.disabled = false;
 
-        let html = '';
+        toolGroups.textContent = '';
+
         for (const group of sortedGroups) {
           const tools = groups[group];
-          for (const t of tools) { allTools.push({ ...t, group }); }
+          for (const t of tools) {
+            allTools.push({ ...t, group });
+            toolDataMap[t.name] = t;
+          }
 
-          html += '<div class="tool-group" data-group="' + group + '">';
-          html += '<div class="tool-group-header">' + group + ' (' + tools.length + ')</div>';
-          html += '<div class="tool-list">';
+          var groupDiv = document.createElement('div');
+          groupDiv.className = 'tool-group';
+          groupDiv.setAttribute('data-group', escAttr(group));
+
+          var headerDiv = document.createElement('div');
+          headerDiv.className = 'tool-group-header';
+          headerDiv.textContent = group + ' (' + tools.length + ')';
+          groupDiv.appendChild(headerDiv);
+
+          var listDiv = document.createElement('div');
+          listDiv.className = 'tool-list';
+
           for (const tool of tools) {
-            const params = extractParams(tool.inputSchema);
-            html += '<div class="tool-item" data-name="' + tool.name + '" onclick="toggleTool(this)">';
-            html += '<div class="tool-name">' + tool.name + '</div>';
-            if (tool.description) html += '<div class="tool-desc">' + escHtml(tool.description) + '</div>';
-            html += '<div class="tool-panel" id="panel-' + tool.name + '">';
-            html += '<div class="tool-panel-title">Parameters</div>';
+            var safeName = escAttr(tool.name);
+            var params = extractParams(tool.inputSchema);
+
+            var itemDiv = document.createElement('div');
+            itemDiv.className = 'tool-item';
+            itemDiv.setAttribute('data-name', tool.name);
+            itemDiv.addEventListener('click', (function(el) { return function() { toggleTool(el); }; })(itemDiv));
+
+            var nameDiv = document.createElement('div');
+            nameDiv.className = 'tool-name';
+            nameDiv.textContent = tool.name;
+            if (!tool.allowed) {
+              var lockSpan = document.createElement('span');
+              lockSpan.style.cssText = 'margin-left:0.5rem;font-size:0.65rem;color:var(--text-secondary);';
+              lockSpan.textContent = '(restricted)';
+              nameDiv.appendChild(lockSpan);
+            }
+            itemDiv.appendChild(nameDiv);
+
+            if (tool.description) {
+              var descDiv = document.createElement('div');
+              descDiv.className = 'tool-desc';
+              descDiv.textContent = tool.description;
+              itemDiv.appendChild(descDiv);
+            }
+
+            var panelDiv = document.createElement('div');
+            panelDiv.className = 'tool-panel';
+            panelDiv.id = 'panel-' + safeName;
+
+            var titleDiv = document.createElement('div');
+            titleDiv.className = 'tool-panel-title';
+            titleDiv.textContent = 'Parameters';
+            panelDiv.appendChild(titleDiv);
+
             if (params.length === 0) {
-              html += '<div style="font-size:0.8rem;color:var(--text-secondary)">No parameters required</div>';
+              var noParams = document.createElement('div');
+              noParams.style.cssText = 'font-size:0.8rem;color:var(--text-secondary)';
+              noParams.textContent = 'No parameters required';
+              panelDiv.appendChild(noParams);
             } else {
-              for (const p of params) {
-                html += '<div class="param-row">';
-                html += '<label class="param-label">' + p.name + '<span class="param-type">' + p.type + (p.required ? ' *' : '') + '</span></label>';
-                html += '<input class="param-input" data-param="' + p.name + '" placeholder="' + (p.description || '') + '">';
-                html += '</div>';
+              for (var pi = 0; pi < params.length; pi++) {
+                var p = params[pi];
+                var row = document.createElement('div');
+                row.className = 'param-row';
+                var label = document.createElement('label');
+                label.className = 'param-label';
+                label.textContent = p.name;
+                var typeSpan = document.createElement('span');
+                typeSpan.className = 'param-type';
+                typeSpan.textContent = ' ' + p.type + (p.required ? ' *' : '');
+                label.appendChild(typeSpan);
+                var input = document.createElement('input');
+                input.className = 'param-input';
+                input.setAttribute('data-param', p.name);
+                input.placeholder = p.description || '';
+                row.appendChild(label);
+                row.appendChild(input);
+                panelDiv.appendChild(row);
               }
             }
-            html += '<button class="run-btn" onclick="event.stopPropagation(); runTool(\'' + tool.name + '\', this)">Execute</button>';
-            html += '<div class="result-box" id="result-' + tool.name + '"></div>';
-            html += '</div>';
-            html += '</div>';
+
+            var runBtn = document.createElement('button');
+            runBtn.className = 'run-btn';
+            runBtn.textContent = 'Execute';
+            (function(tn, rb) {
+              rb.addEventListener('click', function(e) {
+                e.stopPropagation();
+                runTool(tn, rb);
+              });
+            })(tool.name, runBtn);
+            panelDiv.appendChild(runBtn);
+
+            var resultBox = document.createElement('div');
+            resultBox.className = 'result-box';
+            resultBox.id = 'result-' + safeName;
+            panelDiv.appendChild(resultBox);
+
+            itemDiv.appendChild(panelDiv);
+            listDiv.appendChild(itemDiv);
           }
-          html += '</div></div>';
+
+          groupDiv.appendChild(listDiv);
+          toolGroups.appendChild(groupDiv);
         }
-        toolGroups.innerHTML = html;
       } catch (err) {
-        toolGroups.innerHTML = '<p style="color:var(--red)">Failed to load tools</p>';
+        toolGroups.textContent = '';
+        var errP = document.createElement('p');
+        errP.style.color = 'var(--red)';
+        errP.textContent = 'Failed to load tools';
+        toolGroups.appendChild(errP);
       }
     }
 
     function extractParams(schema) {
       if (!schema || !schema.properties) return [];
       const required = schema.required || [];
-      return Object.entries(schema.properties).map(([name, prop]) => ({
-        name,
-        type: prop.type || 'string',
-        description: prop.description || '',
-        required: required.includes(name),
-      }));
+      return Object.entries(schema.properties).map(function(entry) {
+        var name = entry[0], prop = entry[1];
+        return {
+          name: name,
+          type: prop.type || 'string',
+          description: prop.description || '',
+          required: required.includes(name),
+        };
+      });
     }
 
     function toggleTool(el) {
       const panel = el.querySelector('.tool-panel');
       const wasOpen = panel.classList.contains('open');
-      document.querySelectorAll('.tool-panel.open').forEach(p => {
+      document.querySelectorAll('.tool-panel.open').forEach(function(p) {
         p.classList.remove('open');
         p.closest('.tool-item').classList.remove('active');
       });
@@ -308,15 +407,18 @@
     }
 
     async function runTool(name, btn) {
-      const panel = document.getElementById('panel-' + name);
-      const resultBox = document.getElementById('result-' + name);
+      var safeId = escAttr(name);
+      const panel = document.getElementById('panel-' + safeId);
+      const resultBox = document.getElementById('result-' + safeId);
+      if (!panel || !resultBox) return;
+
       const inputs = panel.querySelectorAll('.param-input');
       const args = {};
-      inputs.forEach(input => {
+      inputs.forEach(function(input) {
         const val = input.value.trim();
         if (val) {
           try { args[input.dataset.param] = JSON.parse(val); }
-          catch { args[input.dataset.param] = val; }
+          catch(e) { args[input.dataset.param] = val; }
         }
       });
 
@@ -329,20 +431,20 @@
         const res = await fetch('/api/hostinger/call', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ tool: name, args }),
+          body: JSON.stringify({ tool: name, args: args }),
         });
         const data = await res.json();
         if (data.error) {
           resultBox.className = 'result-box visible error';
-          resultBox.textContent = 'Error: ' + data.error;
+          resultBox.textContent = 'Error: ' + data.error + (data.hint ? ' — ' + data.hint : '');
         } else {
           resultBox.className = 'result-box visible';
           let content = data.result?.content;
           if (Array.isArray(content)) {
-            content = content.map(c => {
+            content = content.map(function(c) {
               if (c.type === 'text') {
                 try { return JSON.stringify(JSON.parse(c.text), null, 2); }
-                catch { return c.text; }
+                catch(e) { return c.text; }
               }
               return JSON.stringify(c, null, 2);
             }).join('\n');
@@ -360,26 +462,18 @@
       btn.textContent = 'Execute';
     }
 
-    toolSearch.addEventListener('input', () => {
+    toolSearch.addEventListener('input', function() {
       const q = toolSearch.value.toLowerCase();
-      document.querySelectorAll('.tool-item').forEach(item => {
-        const name = item.dataset.name.toLowerCase();
+      document.querySelectorAll('.tool-item').forEach(function(item) {
+        const name = (item.getAttribute('data-name') || '').toLowerCase();
         const desc = (item.querySelector('.tool-desc')?.textContent || '').toLowerCase();
         item.classList.toggle('hidden', q && !name.includes(q) && !desc.includes(q));
       });
-      document.querySelectorAll('.tool-group').forEach(group => {
+      document.querySelectorAll('.tool-group').forEach(function(group) {
         const visible = group.querySelectorAll('.tool-item:not(.hidden)').length;
         group.classList.toggle('hidden', visible === 0);
       });
     });
-
-    function escHtml(s) {
-      const d = document.createElement('div');
-      d.textContent = s;
-      return d.innerHTML;
-    }
-
-    connect();
   </script>
   <script src="/nav-toggle.js"></script>
 </body>
