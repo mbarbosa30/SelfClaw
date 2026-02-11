@@ -490,7 +490,12 @@
         } else if (step.key === 'pool') {
           if (step.done) {
             var pAddr = info.poolAddr;
-            html += '<div class="pipeline-step-info"><a href="https://celoscan.io/address/' + esc(pAddr) + '" target="_blank">' + esc(truncAddr(pAddr)) + '</a></div>';
+            var isV4 = pAddr && pAddr.length > 42;
+            if (isV4) {
+              html += '<div class="pipeline-step-info" title="V4 Pool ID: ' + esc(pAddr) + '">V4: ' + esc(truncAddr(pAddr)) + '</div>';
+            } else {
+              html += '<div class="pipeline-step-info"><a href="https://celoscan.io/address/' + esc(pAddr) + '" target="_blank">' + esc(truncAddr(pAddr)) + '</a></div>';
+            }
           } else if (step.status === 'active') {
             if (info.hasSponsorship) {
               html += '<div class="pipeline-step-info" style="color:var(--accent);">Pending...</div>';
@@ -965,7 +970,11 @@
           html += '<a href="https://celoscan.io/address/' + encodeURIComponent(agent.wallet.address) + '" target="_blank" class="action-btn">View Wallet</a>';
         }
         if (agent.token && agent.token.poolAddress) {
-          html += '<a href="https://celoscan.io/address/' + encodeURIComponent(agent.token.poolAddress) + '" target="_blank" class="action-btn">View Pool</a>';
+          if (agent.token.poolVersion === 'v4' || agent.token.poolAddress.length > 42) {
+            html += '<span class="action-btn" title="V4 Pool ID: ' + esc(agent.token.poolAddress) + '" style="cursor:default;">V4 Pool Active</span>';
+          } else {
+            html += '<a href="https://celoscan.io/address/' + encodeURIComponent(agent.token.poolAddress) + '" target="_blank" class="action-btn">View Pool</a>';
+          }
         }
         html += '</div>';
 

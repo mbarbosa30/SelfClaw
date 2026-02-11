@@ -3478,6 +3478,7 @@ router.get("/v1/human/:humanId/economics", publicApiLimiter, async (req: Request
           name: agentPool.tokenName,
           address: agentPool.tokenAddress,
           poolAddress: agentPool.poolAddress,
+          poolVersion: agentPool.poolVersion || 'v3',
           price: agentPool.currentPriceCelo,
         } : null,
         tokenPlan: agentPlan ? { status: agentPlan.status, purpose: agentPlan.purpose } : null,
@@ -3885,7 +3886,8 @@ router.post("/v1/create-agent/deploy-economy", async (req: any, res: Response) =
             const SELFCLAW_TOTAL_SUPPLY = 1_000_000_000;
             const MAX_SELFCLAW = (SELFCLAW_TOTAL_SUPPLY * PRODUCTION_SELFCLAW_CAP_PERCENT) / 100;
 
-            const cappedAmount = Math.min(Number(selfclawForPool), available * (PRODUCTION_SELFCLAW_CAP_PERCENT / 100), MAX_SELFCLAW);
+            const SLIPPAGE_BUFFER = 1.06;
+            const cappedAmount = Math.min(Number(selfclawForPool), available * (PRODUCTION_SELFCLAW_CAP_PERCENT / 100) / SLIPPAGE_BUFFER, MAX_SELFCLAW);
             const finalSelfclaw = Math.floor(cappedAmount).toString();
 
             if (Number(finalSelfclaw) <= 0) {
@@ -3898,7 +3900,9 @@ router.post("/v1/create-agent/deploy-economy", async (req: any, res: Response) =
             const agentAccount = privateKeyToAccount(evmPrivateKey as `0x${string}`);
             const agentWalletClient = createWalletClient({ account: agentAccount, chain: celo, transport: http() });
 
-            const tokenAmount = Math.floor(Number(totalSupply) * 0.3).toString();
+            const poolTokenPercent = 0.3;
+            const tokenAmountForPool = Math.floor(Number(totalSupply) * poolTokenPercent).toString();
+            const tokenAmountToTransfer = Math.floor(Number(totalSupply) * poolTokenPercent * SLIPPAGE_BUFFER).toString();
 
             const ERC20_ABI_TRANSFER = [
               { name: "transfer", type: "function", stateMutability: "nonpayable", inputs: [{ name: "to", type: "address" }, { name: "amount", type: "uint256" }], outputs: [{ name: "", type: "bool" }] },
@@ -3910,7 +3914,7 @@ router.post("/v1/create-agent/deploy-economy", async (req: any, res: Response) =
               address: deployedTokenAddress as `0x${string}`,
               abi: ERC20_ABI_TRANSFER,
               functionName: "transfer",
-              args: [sponsorAddress as `0x${string}`, parseUnits(tokenAmount, 18)],
+              args: [sponsorAddress as `0x${string}`, parseUnits(tokenAmountToTransfer, 18)],
             });
 
             const transferPublicClient = createPublicClient({ chain: celo, transport: http() });
@@ -3929,7 +3933,7 @@ router.post("/v1/create-agent/deploy-economy", async (req: any, res: Response) =
             const poolResult = await createPoolAndAddLiquidity({
               tokenA: deployedTokenAddress,
               tokenB: selfclawAddress,
-              amountA: tokenAmount,
+              amountA: tokenAmountForPool,
               amountB: finalSelfclaw,
               feeTier,
               privateKey: sponsorKey,
@@ -3978,7 +3982,7 @@ router.post("/v1/create-agent/deploy-economy", async (req: any, res: Response) =
                 poolVersion: "v4",
                 v4PoolId,
                 initialCeloLiquidity: finalSelfclaw,
-                initialTokenLiquidity: tokenAmount,
+                initialTokenLiquidity: tokenAmountForPool,
               }).onConflictDoNothing();
             } catch (e: any) {
               console.error(`[selfclaw] Failed to track pool: ${e.message}`);
@@ -3995,7 +3999,7 @@ router.post("/v1/create-agent/deploy-economy", async (req: any, res: Response) =
               v4PoolId,
               positionTokenId,
               selfclawAmount: finalSelfclaw,
-              agentTokenAmount: tokenAmount,
+              agentTokenAmount: tokenAmountForPool,
               txHash: poolResult.txHash,
               poolVersion: "v4",
             };
@@ -4351,16 +4355,16 @@ router.post("/v1/my-agents/:publicKey/request-sponsorship", verificationLimiter,
     const sponsorAddress = getSponsorAddress(sponsorKey);
 
     const agentTokenBalance = await getTokenBalance(tokenAddress, 18, sponsorKey);
-    const requiredAmount = parseFloat(tokenAmount);
+    const requiredAmount = parseFloat(tokenAmount) * 1.06;
     const heldAmount = parseFloat(agentTokenBalance);
 
     if (heldAmount < requiredAmount) {
       return res.status(400).json({
-        error: `Sponsor wallet does not hold enough of your agent token.`,
+        error: `Sponsor wallet does not hold enough of your agent token (need ~6% extra for slippage buffer).`,
         sponsorWallet: sponsorAddress,
         has: agentTokenBalance,
-        needs: tokenAmount,
-        instructions: `Send ${tokenAmount} of your token (${tokenAddress}) to ${sponsorAddress} before requesting sponsorship`,
+        needs: Math.ceil(requiredAmount).toString(),
+        instructions: `Send ${Math.ceil(requiredAmount)} of your token (${tokenAddress}) to ${sponsorAddress} before requesting sponsorship`,
       });
     }
 
@@ -4384,7 +4388,7 @@ router.post("/v1/my-agents/:publicKey/request-sponsorship", verificationLimiter,
       return res.status(400).json({ error: "No SELFCLAW available in sponsorship wallet." });
     }
 
-    const selfclawForPool = (available * 0.5).toFixed(0);
+    const selfclawForPool = Math.floor(available * 0.5 / 1.06).toString();
 
     const tokenLower = tokenAddress.toLowerCase();
     const selfclawLower = selfclawAddress.toLowerCase();
