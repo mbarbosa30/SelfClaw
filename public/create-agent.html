@@ -781,12 +781,7 @@
           if (s.name === 'setup_wallet' && (s.result.walletAddress || s.result.address)) {
             var wAddr = s.result.walletAddress || s.result.address;
             info = shortAddr(wAddr);
-            if (s.result.privateKey) {
-              walletPrivateKey = s.result.privateKey;
-              document.getElementById('wallet-address-text').textContent = wAddr;
-              document.getElementById('wallet-privkey-text').textContent = s.result.privateKey;
-              document.getElementById('wallet-reveal').style.display = 'block';
-            }
+            document.getElementById('wallet-address-text').textContent = wAddr;
           } else if (s.name === 'request_gas') {
             info = '1 CELO';
           } else if (s.name === 'deploy_token' && s.result.tokenAddress) {
@@ -889,6 +884,28 @@
       }
     }
 
+    var walletKeyClaimed = false;
+
+    async function claimWalletKey() {
+      if (walletKeyClaimed || !deploySessionId) return;
+      walletKeyClaimed = true;
+      try {
+        var res = await fetch('/api/selfclaw/v1/create-agent/claim-wallet-key/' + deploySessionId, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+        });
+        var data = await res.json();
+        if (res.ok && data.privateKey) {
+          walletPrivateKey = data.privateKey;
+          document.getElementById('wallet-address-text').textContent = data.walletAddress || '';
+          document.getElementById('wallet-privkey-text').textContent = data.privateKey;
+          document.getElementById('wallet-reveal').style.display = 'block';
+        }
+      } catch (err) {
+        walletKeyClaimed = false;
+      }
+    }
+
     async function pollDeployStatus() {
       if (!deploySessionId) return;
       try {
@@ -904,6 +921,10 @@
         }
 
         renderPipeline(data.steps);
+
+        if (data.walletKeyAvailable && !walletKeyClaimed) {
+          claimWalletKey();
+        }
 
         var runningStep = data.steps.find(function(s) { return s.status === 'running'; });
         if (runningStep) {

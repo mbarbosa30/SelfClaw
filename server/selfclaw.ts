@@ -106,6 +106,8 @@ const deployEconomySessions = new Map<string, {
   startedAt: number;
 }>();
 
+const deployWalletKeys = new Map<string, { privateKey: string; claimed: boolean; humanId: string; createdAt: number }>();
+
 // Store history of raw callback requests for debugging
 interface RawCallbackRequest {
   timestamp: string;
@@ -3775,12 +3777,19 @@ router.post("/v1/create-agent/deploy-economy", async (req: any, res: Response) =
           const result = await createAgentWallet(humanId, publicKey, wallet.address);
           if (!result.success) throw new Error(result.error || "Failed to register wallet");
 
+          deployWalletKeys.set(sessionId, {
+            privateKey: wallet.privateKey,
+            claimed: false,
+            humanId,
+            createdAt: Date.now(),
+          });
+
           logActivity("wallet_creation", humanId, publicKey, agent.deviceId || undefined, {
             address: wallet.address,
             method: "deploy-economy"
           });
 
-          return { walletAddress: wallet.address, privateKey: wallet.privateKey };
+          return { walletAddress: wallet.address };
         });
 
         await runPipelineStep('request_gas', async () => {
@@ -4031,9 +4040,60 @@ router.get("/v1/create-agent/deploy-status/:sessionId", async (req: any, res: Re
       return res.status(404).json({ error: "Session not found or expired" });
     }
 
-    res.json(session);
+    if (session.humanId !== req.session.humanId) {
+      return res.status(403).json({ error: "Access denied." });
+    }
+
+    const keyEntry = deployWalletKeys.get(sessionId);
+    const hasUnclaimedKey = keyEntry && !keyEntry.claimed;
+
+    res.json({
+      ...session,
+      walletKeyAvailable: hasUnclaimedKey || false,
+    });
   } catch (error: any) {
     console.error("[selfclaw] deploy-status error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post("/v1/create-agent/claim-wallet-key/:sessionId", async (req: any, res: Response) => {
+  try {
+    if (!req.session?.isAuthenticated || !req.session?.humanId) {
+      return res.status(401).json({ error: "Login required." });
+    }
+
+    const { sessionId } = req.params;
+    const keyEntry = deployWalletKeys.get(sessionId);
+
+    if (!keyEntry) {
+      return res.status(404).json({ error: "No wallet key found for this session." });
+    }
+
+    if (keyEntry.humanId !== req.session.humanId) {
+      return res.status(403).json({ error: "Access denied." });
+    }
+
+    if (keyEntry.claimed) {
+      return res.status(410).json({ error: "Wallet key has already been claimed. It can only be retrieved once." });
+    }
+
+    keyEntry.claimed = true;
+
+    const session = deployEconomySessions.get(sessionId);
+    const walletAddress = session?.steps.find(s => s.name === 'setup_wallet')?.result?.walletAddress || '';
+
+    res.json({
+      success: true,
+      walletAddress,
+      privateKey: keyEntry.privateKey,
+    });
+
+    setTimeout(() => {
+      deployWalletKeys.delete(sessionId);
+    }, 5 * 60 * 1000);
+  } catch (error: any) {
+    console.error("[selfclaw] claim-wallet-key error:", error);
     res.status(500).json({ error: error.message });
   }
 });
