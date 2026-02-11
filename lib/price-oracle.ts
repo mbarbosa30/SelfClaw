@@ -16,7 +16,7 @@ const Q96 = 2n ** 96n;
 
 const publicClient = createPublicClient({
   chain: celo,
-  transport: http(CELO_RPC),
+  transport: http(CELO_RPC, { timeout: 15_000, retryCount: 1 }),
 });
 
 const STATE_VIEW_ABI = [

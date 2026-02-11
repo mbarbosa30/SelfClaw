@@ -7,7 +7,7 @@ import { eq, sql } from 'drizzle-orm';
 
 const publicClient = createPublicClient({
   chain: celo,
-  transport: http()
+  transport: http(undefined, { timeout: 15_000, retryCount: 1 })
 });
 
 const SPONSORED_LIQUIDITY_AMOUNT = process.env.SPONSORED_LIQUIDITY_CELO || '100';

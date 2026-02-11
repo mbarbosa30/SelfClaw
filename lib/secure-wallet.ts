@@ -11,7 +11,7 @@ const SELFCLAW_GAS_PRIVATE_KEY = rawGasKey && !rawGasKey.startsWith('0x') ? `0x$
 
 const publicClient = createPublicClient({
   chain: celo,
-  transport: http()
+  transport: http(undefined, { timeout: 15_000, retryCount: 1 })
 });
 
 export interface WalletCreationResult {

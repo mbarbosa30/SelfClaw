@@ -23,7 +23,7 @@ const TICK_SPACINGS: Record<number, number> = {
 
 const publicClient = createPublicClient({
   chain: celo,
-  transport: http(CELO_RPC),
+  transport: http(CELO_RPC, { timeout: 15_000, retryCount: 1 }),
 });
 
 const ERC20_ABI = [

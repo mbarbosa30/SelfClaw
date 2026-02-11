@@ -30,8 +30,8 @@ async function cleanupExpiredSessions() {
   }
 }
 
-setInterval(cleanupExpiredSessions, 5 * 60 * 1000);
-cleanupExpiredSessions();
+setInterval(() => cleanupExpiredSessions().catch(() => {}), 5 * 60 * 1000);
+cleanupExpiredSessions().catch(() => {});
 
 async function logActivity(eventType: string, humanId?: string, agentPublicKey?: string, agentName?: string, metadata?: any) {
   try {
@@ -2547,7 +2547,7 @@ const SIMPLE_ERC20_ABI = [
 
 const viemPublicClient = createPublicClient({
   chain: celo,
-  transport: http()
+  transport: http(undefined, { timeout: 15_000, retryCount: 1 })
 });
 
 // ============================================================
@@ -3211,7 +3211,12 @@ async function updatePoolPrices() {
 
     for (const pool of pools) {
       try {
-        const resp = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${pool.tokenAddress}`);
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10_000);
+        const resp = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${pool.tokenAddress}`, {
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
         if (!resp.ok) continue;
         const data = await resp.json() as any;
         const pairs = data.pairs || [];
@@ -3232,7 +3237,9 @@ async function updatePoolPrices() {
             .where(eq(trackedPools.id, pool.id));
         }
       } catch (e: any) {
-        // skip individual pool errors
+        if (e.name === 'AbortError') {
+          console.warn('[selfclaw] DexScreener request timed out for pool', pool.tokenAddress);
+        }
       }
     }
     console.log(`[selfclaw] Pool prices updated for ${pools.length} pool(s)`);
@@ -3241,8 +3248,8 @@ async function updatePoolPrices() {
   }
 }
 
-setInterval(updatePoolPrices, 5 * 60 * 1000);
-setTimeout(updatePoolPrices, 30 * 1000);
+setInterval(() => updatePoolPrices().catch(() => {}), 5 * 60 * 1000);
+setTimeout(() => updatePoolPrices().catch(() => {}), 30 * 1000);
 
 // ===================== REVENUE TRACKING =====================
 
@@ -4971,26 +4978,33 @@ async function snapshotPrices() {
     const allPools = await db.select().from(trackedPools);
     if (allPools.length === 0) return;
 
-    const prices = await getAllAgentTokenPrices(allPools.map(p => ({
-      tokenAddress: p.tokenAddress,
-      v4PoolId: p.v4PoolId,
-      poolAddress: p.poolAddress,
-      tokenSymbol: p.tokenSymbol,
-      poolVersion: p.poolVersion,
-    })));
+    const prices = await Promise.race([
+      getAllAgentTokenPrices(allPools.map(p => ({
+        tokenAddress: p.tokenAddress,
+        v4PoolId: p.v4PoolId,
+        poolAddress: p.poolAddress,
+        tokenSymbol: p.tokenSymbol,
+        poolVersion: p.poolVersion,
+      }))),
+      new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Price fetch timeout')), 30_000)),
+    ]);
 
     for (const p of prices) {
-      await db.insert(tokenPriceSnapshots).values({
-        tokenAddress: p.tokenAddress,
-        tokenSymbol: p.tokenSymbol,
-        poolId: p.poolId,
-        priceUsd: p.priceInUsd.toFixed(12),
-        priceCelo: p.priceInCelo.toFixed(12),
-        priceSelfclaw: p.priceInSelfclaw.toFixed(12),
-        marketCapUsd: p.marketCapUsd.toFixed(2),
-        totalSupply: p.totalSupply,
-        liquidity: p.liquidity,
-      });
+      try {
+        await db.insert(tokenPriceSnapshots).values({
+          tokenAddress: p.tokenAddress,
+          tokenSymbol: p.tokenSymbol,
+          poolId: p.poolId,
+          priceUsd: p.priceInUsd.toFixed(12),
+          priceCelo: p.priceInCelo.toFixed(12),
+          priceSelfclaw: p.priceInSelfclaw.toFixed(12),
+          marketCapUsd: p.marketCapUsd.toFixed(2),
+          totalSupply: p.totalSupply,
+          liquidity: p.liquidity,
+        });
+      } catch (insertErr: any) {
+        console.error('[price-oracle] Snapshot insert error:', insertErr.message);
+      }
     }
 
     console.log(`[price-oracle] Snapshot saved for ${prices.length} tokens`);
@@ -4999,9 +5013,21 @@ async function snapshotPrices() {
   }
 }
 
+async function pruneOldSnapshots() {
+  try {
+    const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    await db.delete(tokenPriceSnapshots).where(lt(tokenPriceSnapshots.createdAt, cutoff));
+    console.log('[price-oracle] Old snapshots pruned (>30 days)');
+  } catch (error: any) {
+    console.error('[price-oracle] Prune error:', error.message);
+  }
+}
+
 setTimeout(() => {
-  snapshotPrices();
-  setInterval(snapshotPrices, 5 * 60 * 1000);
+  snapshotPrices().catch(() => {});
+  setInterval(() => snapshotPrices().catch(() => {}), 5 * 60 * 1000);
+  pruneOldSnapshots().catch(() => {});
+  setInterval(() => pruneOldSnapshots().catch(() => {}), 24 * 60 * 60 * 1000);
 }, 10_000);
 
 export default router;

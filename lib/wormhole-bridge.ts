@@ -18,12 +18,12 @@ const PRIVATE_KEY = rawPrivateKey && !rawPrivateKey.startsWith('0x') ? `0x${rawP
 
 const baseClient = createPublicClient({
   chain: base,
-  transport: http(BASE_RPC),
+  transport: http(BASE_RPC, { timeout: 15_000, retryCount: 1 }),
 });
 
 const celoClient = createPublicClient({
   chain: celo,
-  transport: http(CELO_RPC),
+  transport: http(CELO_RPC, { timeout: 15_000, retryCount: 1 }),
 });
 
 const ERC20_ABI = [

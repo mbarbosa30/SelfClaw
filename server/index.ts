@@ -9,6 +9,15 @@ import hostingerRouter from "./hostinger-routes.js";
 import sandboxRouter, { initOpenClawGateway } from "./sandbox-agent.js";
 import { erc8004Service } from "../lib/erc8004.js";
 
+process.on('unhandledRejection', (reason: any) => {
+  console.error('[FATAL] Unhandled promise rejection:', reason?.message || reason);
+});
+
+process.on('uncaughtException', (error: Error) => {
+  console.error('[FATAL] Uncaught exception:', error.message);
+  if (error.message.includes('EADDRINUSE')) process.exit(1);
+});
+
 const app = express();
 const PORT = 5000;
 
