@@ -2498,11 +2498,20 @@ router.post("/v1/request-gas", verificationLimiter, async (req: Request, res: Re
     logActivity("gas_request", humanId, auth.publicKey, undefined, { 
       txHash: result.txHash, amountCelo: result.amountCelo 
     });
+
+    const erc8004Result = await autoRegisterErc8004(auth.publicKey);
+
     res.json({
       success: true,
       txHash: result.txHash,
       amountCelo: result.amountCelo,
-      message: `Sent ${result.amountCelo} CELO for gas. You can now register ERC-8004 and deploy tokens.`
+      erc8004: erc8004Result ? {
+        registered: true,
+        tokenId: erc8004Result.tokenId,
+        txHash: erc8004Result.txHash,
+        scanUrl: `https://www.8004scan.io/agents/${erc8004Result.tokenId}`,
+      } : { registered: false, message: "ERC-8004 auto-registration will be retried on next gas request" },
+      message: `Sent ${result.amountCelo} CELO for gas.${erc8004Result ? ` ERC-8004 identity #${erc8004Result.tokenId} registered on-chain.` : ""}`,
     });
   } catch (error: any) {
     console.error("[selfclaw] request-gas error:", error);
@@ -2928,6 +2937,106 @@ router.post("/v1/transfer-token", verificationLimiter, async (req: Request, res:
     res.status(500).json({ error: error.message });
   }
 });
+
+async function autoRegisterErc8004(agentPublicKey: string): Promise<{ tokenId: string; txHash: string } | null> {
+  try {
+    if (!erc8004Service.isReady()) {
+      console.log("[erc8004-auto] Contracts not deployed, skipping auto-registration");
+      return null;
+    }
+
+    const agents = await db.select().from(verifiedBots).where(eq(verifiedBots.publicKey, agentPublicKey)).limit(1);
+    const agent = agents[0];
+    if (!agent) return null;
+
+    const metadata = (agent.metadata as Record<string, any>) || {};
+    if (metadata.erc8004Minted) {
+      console.log(`[erc8004-auto] Agent ${agent.deviceId || agentPublicKey.substring(0, 20)} already registered, tokenId: ${metadata.erc8004TokenId}`);
+      return { tokenId: metadata.erc8004TokenId, txHash: metadata.erc8004TxHash };
+    }
+
+    if (metadata.erc8004RegistrationPending) {
+      console.log(`[erc8004-auto] Agent ${agent.deviceId || agentPublicKey.substring(0, 20)} registration already in progress, skipping`);
+      return null;
+    }
+
+    const walletInfo = await getAgentWallet(agentPublicKey);
+    if (!walletInfo?.address) {
+      console.log("[erc8004-auto] No wallet found, skipping auto-registration");
+      return null;
+    }
+
+    await db.update(verifiedBots)
+      .set({ metadata: { ...metadata, erc8004RegistrationPending: true } })
+      .where(eq(verifiedBots.id, agent.id));
+
+    const domain = "selfclaw.ai";
+    const agentIdentifier = agent.publicKey || agent.deviceId;
+
+    const registrationJson = generateRegistrationFile(
+      agent.deviceId || "Verified Agent",
+      (metadata.description as string) || "A verified AI agent on SelfClaw — passport-verified, sybil-resistant",
+      walletInfo.address,
+      undefined,
+      `https://${domain}`,
+      undefined,
+      true,
+    );
+
+    const registrationURL = `https://${domain}/api/selfclaw/v1/agent/${agentIdentifier}/registration.json`;
+
+    await db.update(verifiedBots)
+      .set({ metadata: { ...metadata, erc8004RegistrationPending: true, erc8004RegistrationJson: registrationJson } })
+      .where(eq(verifiedBots.id, agent.id));
+
+    const result = await erc8004Service.registerAgent(registrationURL);
+    if (!result) {
+      await db.update(verifiedBots)
+        .set({ metadata: { ...metadata, erc8004RegistrationPending: false, erc8004RegistrationJson: registrationJson } })
+        .where(eq(verifiedBots.id, agent.id));
+      console.error("[erc8004-auto] On-chain registration returned null");
+      return null;
+    }
+
+    const updatedRegistrationJson = {
+      ...registrationJson,
+      registrations: [{
+        agentRegistry: `eip155:${erc8004Service.getConfig().chainId}:${erc8004Service.getConfig().identityRegistry}`,
+        agentId: result.tokenId,
+        supportedTrust: registrationJson.supportedTrust,
+      }],
+    };
+
+    await db.update(verifiedBots)
+      .set({
+        metadata: {
+          ...metadata,
+          erc8004TokenId: result.tokenId,
+          erc8004Minted: true,
+          erc8004TxHash: result.txHash,
+          erc8004RegistrationPending: false,
+          erc8004RegistrationJson: updatedRegistrationJson,
+        }
+      })
+      .where(eq(verifiedBots.id, agent.id));
+
+    console.log(`[erc8004-auto] Registered ERC-8004 identity #${result.tokenId} for agent ${agent.deviceId || agentPublicKey.substring(0, 20)}, tx: ${result.txHash}`);
+    logActivity("erc8004_auto_register", agent.humanId ?? undefined, agentPublicKey, agent.deviceId ?? undefined, {
+      tokenId: result.tokenId,
+      txHash: result.txHash,
+    });
+
+    return result;
+  } catch (error: any) {
+    try {
+      await db.update(verifiedBots)
+        .set({ metadata: sql`jsonb_set(COALESCE(metadata, '{}'), '{erc8004RegistrationPending}', 'false')` })
+        .where(eq(verifiedBots.publicKey, agentPublicKey));
+    } catch {}
+    console.error("[erc8004-auto] Auto-registration failed (non-fatal):", error.message);
+    return null;
+  }
+}
 
 // Register ERC-8004 on-chain identity
 router.post("/v1/register-erc8004", verificationLimiter, async (req: Request, res: Response) => {
@@ -4444,10 +4553,18 @@ router.post("/v1/my-agents/:publicKey/request-gas", verificationLimiter, async (
       txHash: result.txHash, amountCelo: result.amountCelo, method: "dashboard"
     });
 
+    const erc8004Result = await autoRegisterErc8004(req.params.publicKey);
+
     res.json({
       success: true,
       txHash: result.txHash,
       amountCelo: result.amountCelo,
+      erc8004: erc8004Result ? {
+        registered: true,
+        tokenId: erc8004Result.tokenId,
+        txHash: erc8004Result.txHash,
+        scanUrl: `https://www.8004scan.io/agents/${erc8004Result.tokenId}`,
+      } : { registered: false },
     });
   } catch (error: any) {
     console.error("[selfclaw] my-agents request-gas error:", error);

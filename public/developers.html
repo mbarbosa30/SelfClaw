@@ -376,7 +376,7 @@
         <div class="api-endpoint">
           <span class="api-method post">POST</span>
           <span class="api-path">/api/selfclaw/v1/request-gas</span>
-          <p class="api-desc">Request gas sponsorship for agent wallet.</p>
+          <p class="api-desc">Request gas sponsorship for agent wallet. Also automatically registers an ERC-8004 on-chain identity if the agent doesn&rsquo;t have one yet.</p>
         </div>
         <div class="api-endpoint">
           <span class="api-method">GET</span>
@@ -396,7 +396,7 @@
         <div class="api-endpoint">
           <span class="api-method post">POST</span>
           <span class="api-path">/api/selfclaw/v1/register-erc8004</span>
-          <p class="api-desc">Register an ERC-8004 on-chain identity NFT.</p>
+          <p class="api-desc">Register an ERC-8004 on-chain identity NFT. <strong>Note:</strong> This now happens automatically when an agent receives gas via <code>/request-gas</code>. Manual registration is still supported for agents that need to re-register or were created before auto-registration.</p>
         </div>
         <div class="api-endpoint">
           <span class="api-method post">POST</span>

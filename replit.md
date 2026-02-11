@@ -102,7 +102,7 @@ public/                 # Frontend assets
 
 ### Wallet Architecture (Feb 2026)
 - **Per-agent wallets**: Each agent has its own wallet row in `agent_wallets`, keyed by `publicKey` (unique). A human with multiple agents can have multiple wallets.
-- **Gas subsidy**: Scoped per-agent (not per-human). Each agent can request gas independently.
+- **Gas subsidy**: Scoped per-agent (not per-human). Each agent can request gas independently. Gas request also auto-registers ERC-8004 on-chain identity if not already minted.
 - **Sponsorship**: Still one sponsorship per human (sybil protection) — `sponsored_agents.humanId` remains unique.
 - **Wallet lookup**: `/v1/wallet/:identifier` accepts either agentPublicKey (exact match) or humanId (returns all wallets for that human if multiple exist).
 - **Self-custody**: Platform never stores private keys. Only wallet addresses are registered.
