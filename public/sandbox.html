@@ -383,6 +383,47 @@
       </section>
 
       <section class="section">
+        <h2 class="section-title">Launch Agent (Live / Mainnet)</h2>
+        <p style="color:#777;font-size:0.75rem;margin-bottom:1rem;line-height:1.5;">Deploys a real agent on Celo mainnet: registers identity, creates wallet, sends gas, deploys ERC-20 token, and creates a Uniswap V4 pool with SELFCLAW liquidity (1% cap). This costs real gas.</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:1rem;">
+          <div>
+            <label style="font-family:'IBM Plex Mono',monospace;font-size:0.55rem;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:#777;display:block;margin-bottom:0.2rem;">Agent Name</label>
+            <input type="text" class="input" id="launch-name" placeholder="e.g. Sentinel-42">
+          </div>
+          <div>
+            <label style="font-family:'IBM Plex Mono',monospace;font-size:0.55rem;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:#777;display:block;margin-bottom:0.2rem;">Economic Model</label>
+            <select class="input" id="launch-model">
+              <option value="fixed">Fixed</option>
+              <option value="deflationary">Deflationary</option>
+              <option value="inflationary">Inflationary</option>
+              <option value="utility">Utility</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-family:'IBM Plex Mono',monospace;font-size:0.55rem;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:#777;display:block;margin-bottom:0.2rem;">Token Name</label>
+            <input type="text" class="input" id="launch-token-name" placeholder="e.g. Sentinel Credits">
+          </div>
+          <div>
+            <label style="font-family:'IBM Plex Mono',monospace;font-size:0.55rem;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:#777;display:block;margin-bottom:0.2rem;">Token Symbol</label>
+            <input type="text" class="input" id="launch-token-symbol" placeholder="e.g. SNTL">
+          </div>
+          <div>
+            <label style="font-family:'IBM Plex Mono',monospace;font-size:0.55rem;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:#777;display:block;margin-bottom:0.2rem;">Total Supply</label>
+            <input type="number" class="input" id="launch-supply" placeholder="e.g. 10000" value="10000">
+          </div>
+          <div>
+            <label style="font-family:'IBM Plex Mono',monospace;font-size:0.55rem;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:#777;display:block;margin-bottom:0.2rem;">SELFCLAW for Pool (max 1% cap)</label>
+            <input type="number" class="input" id="launch-selfclaw" placeholder="e.g. 5000" value="5000">
+          </div>
+        </div>
+        <div class="controls">
+          <button class="btn" id="btn-launch" onclick="launchLive()" style="background:#4AFF6B;color:#000;">Launch on Mainnet</button>
+          <span class="run-status" id="launch-status"></span>
+        </div>
+        <div id="launch-progress" style="display:none;margin-top:1rem;"></div>
+      </section>
+
+      <section class="section">
         <h2 class="section-title">Test History</h2>
         <div id="history-loading" style="text-align:center;padding:2rem;"><span class="spinner"></span></div>
         <div id="history-content" style="display:none;"></div>
@@ -612,6 +653,91 @@
       .catch(function(e) {
         btnFull.disabled = false;
         btnDry.disabled = false;
+        statusEl.className = 'run-status error';
+        statusEl.textContent = 'Error: ' + e.message;
+      });
+    }
+
+    function launchLive() {
+      var name = document.getElementById('launch-name').value.trim();
+      var tName = document.getElementById('launch-token-name').value.trim();
+      var tSymbol = document.getElementById('launch-token-symbol').value.trim().toUpperCase();
+      var supply = document.getElementById('launch-supply').value.trim();
+      var selfclaw = document.getElementById('launch-selfclaw').value.trim();
+      var model = document.getElementById('launch-model').value;
+
+      if (!name || !tName || !tSymbol || !supply) {
+        alert('Please fill in all required fields (Agent Name, Token Name, Token Symbol, Supply).');
+        return;
+      }
+
+      if (!confirm('This will deploy a REAL token on Celo mainnet and create a Uniswap V4 pool. This costs real gas. Continue?')) {
+        return;
+      }
+
+      var btn = document.getElementById('btn-launch');
+      var statusEl = document.getElementById('launch-status');
+      var progressEl = document.getElementById('launch-progress');
+      btn.disabled = true;
+      statusEl.className = 'run-status running';
+      statusEl.innerHTML = '<span class="spinner"></span> Launching on mainnet...';
+
+      var stepNames = ['generate_identity', 'register_agent', 'create_wallet', 'request_gas', 'deploy_token', 'register_token', 'request_sponsorship'];
+      progressEl.style.display = 'block';
+      progressEl.innerHTML = '<ul class="steps-list">' + stepNames.map(function(s) {
+        return '<li class="step-item" id="launch-step-' + s + '"><span class="step-dot skipped"></span><span class="step-name">' + esc(formatStepName(s)) + '</span><span class="step-detail" style="color:#555;">waiting</span></li>';
+      }).join('') + '</ul>';
+
+      fetch('/api/admin/sandbox/launch-live', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          adminPassword: getPw(),
+          agentName: name,
+          tokenName: tName,
+          tokenSymbol: tSymbol,
+          totalSupply: supply,
+          economicModel: model,
+          selfclawForPool: selfclaw || '0',
+        })
+      })
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        btn.disabled = false;
+        if (d.steps) {
+          d.steps.forEach(function(s) {
+            var el = document.getElementById('launch-step-' + s.name);
+            if (!el) return;
+            var dot = el.querySelector('.step-dot');
+            var detail = el.querySelector('.step-detail');
+            dot.className = 'step-dot ' + (s.status || 'skipped');
+            if (s.status === 'success') {
+              if (s.result && s.result.txHash) detail.textContent = s.result.txHash;
+              else if (s.result && s.result.tokenAddress) detail.textContent = s.result.tokenAddress;
+              else if (s.result && s.result.walletAddress) detail.textContent = s.result.walletAddress;
+              else if (s.result && s.result.v4PoolId) detail.textContent = 'Pool: ' + shortAddr(s.result.v4PoolId);
+              else if (s.result && s.result.amountCelo) detail.textContent = s.result.amountCelo + ' CELO sent';
+              else if (s.result && s.result.agentName) detail.textContent = s.result.agentName;
+              else detail.textContent = 'done';
+              detail.style.color = '#4AFF6B';
+            } else if (s.status === 'failed') {
+              detail.textContent = s.error || 'failed';
+              detail.style.color = '#ef4444';
+            }
+          });
+        }
+        if (d.success) {
+          var tokenLink = d.token && d.token.celoscanUrl ? ' — ' + d.token.celoscanUrl : '';
+          statusEl.className = 'run-status success';
+          statusEl.textContent = 'Launched! ' + (d.agent ? d.agent.name : '') + ' ($' + (d.token ? d.token.symbol : '') + ') in ' + (d.durationMs || 0) + 'ms' + tokenLink;
+        } else {
+          statusEl.className = 'run-status error';
+          statusEl.textContent = 'Failed: ' + (d.error || 'Unknown error');
+        }
+        refreshAll();
+      })
+      .catch(function(e) {
+        btn.disabled = false;
         statusEl.className = 'run-status error';
         statusEl.textContent = 'Error: ' + e.message;
       });

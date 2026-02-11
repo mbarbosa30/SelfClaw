@@ -1,8 +1,9 @@
 import { Router, type Request, type Response } from "express";
 import crypto from "crypto";
 import { db } from "./db.js";
-import { sandboxTestRuns, verifiedBots, agentWallets, sponsoredAgents } from "../shared/schema.js";
+import { sandboxTestRuns, verifiedBots, agentWallets, sponsoredAgents, trackedPools, tokenPlans } from "../shared/schema.js";
 import { desc, eq } from "drizzle-orm";
+import { createAgentWallet, sendGasSubsidy } from "../lib/secure-wallet.js";
 
 const router = Router();
 
@@ -393,6 +394,406 @@ async function useOpenClawAgent(prompt: string): Promise<string | null> {
     return null;
   }
 }
+
+router.post("/launch-live", async (req: Request, res: Response) => {
+  try {
+    const adminPassword = req.headers["x-admin-password"] || req.body?.adminPassword;
+    if (adminPassword !== process.env.ADMIN_PASSWORD) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const {
+      agentName, tokenName, tokenSymbol,
+      totalSupply: rawSupply, economicModel, selfclawForPool: rawSelfclaw,
+    } = req.body;
+
+    if (!agentName || !tokenName || !tokenSymbol || !rawSupply) {
+      return res.status(400).json({ error: "agentName, tokenName, tokenSymbol, and totalSupply are required" });
+    }
+
+    const totalSupply = rawSupply.toString();
+    const selfclawForPool = rawSelfclaw ? Math.min(Number(rawSelfclaw), MAX_SELFCLAW_FOR_SANDBOX).toString() : null;
+
+    console.log(`[sandbox] Starting LIVE launch for ${agentName} ($${tokenSymbol})...`);
+
+    const startTime = Date.now();
+    const keypair = generateEd25519Keypair();
+    const sandboxHumanId = `sandbox-${crypto.randomBytes(8).toString("hex")}`;
+
+    const steps: TestStep[] = [
+      { name: "generate_identity", status: "pending" },
+      { name: "register_agent", status: "pending" },
+      { name: "create_wallet", status: "pending" },
+      { name: "request_gas", status: "pending" },
+      { name: "deploy_token", status: "pending" },
+      { name: "register_token", status: "pending" },
+      { name: "request_sponsorship", status: "pending" },
+    ];
+
+    const [testRun] = await db
+      .insert(sandboxTestRuns)
+      .values({
+        agentName,
+        agentPublicKey: keypair.publicKey,
+        tokenName,
+        tokenSymbol,
+        tokenSupply: totalSupply,
+        selfclawAmount: selfclawForPool || "0",
+        status: "running",
+        steps: steps as any,
+      })
+      .returning();
+
+    const updateRun = async (updates: Record<string, any>) => {
+      await db
+        .update(sandboxTestRuns)
+        .set({ ...updates, steps: steps as any })
+        .where(eq(sandboxTestRuns.id, testRun.id));
+    };
+
+    const failAndReturn = async (error: string) => {
+      await updateRun({ status: "failed", error, completedAt: new Date(), durationMs: Date.now() - startTime });
+      return res.json({ success: false, testRunId: testRun.id, error, steps, durationMs: Date.now() - startTime });
+    };
+
+    const identityResult = await runStep("generate_identity", steps, async () => {
+      return {
+        agentName,
+        publicKey: keypair.publicKey.substring(0, 32) + "...",
+        humanId: sandboxHumanId,
+        tokenName,
+        tokenSymbol,
+        totalSupply,
+        economicModel: economicModel || "fixed",
+      };
+    });
+    if (!identityResult.success) return failAndReturn(identityResult.error!);
+    await updateRun({});
+
+    const registerResult = await runStep("register_agent", steps, async () => {
+      await db.insert(verifiedBots).values({
+        publicKey: keypair.publicKey,
+        humanId: sandboxHumanId,
+        verificationLevel: "sandbox",
+        metadata: {
+          agentName,
+          sandbox: true,
+          live: true,
+          tokenName,
+          tokenSymbol,
+          createdBy: "sandbox-live-launch",
+        },
+      });
+      return { publicKey: keypair.publicKey.substring(0, 32) + "...", humanId: sandboxHumanId, level: "sandbox" };
+    });
+    if (!registerResult.success) return failAndReturn(registerResult.error!);
+    await updateRun({});
+
+    let evmPrivateKey: string;
+    let evmAddress: string;
+    const walletResult = await runStep("create_wallet", steps, async () => {
+      const { Wallet } = await import("ethers");
+      const wallet = Wallet.createRandom();
+      evmPrivateKey = wallet.privateKey;
+      evmAddress = wallet.address;
+
+      const result = await createAgentWallet(sandboxHumanId, keypair.publicKey, wallet.address);
+      if (!result.success) throw new Error(result.error || "Failed to register wallet");
+
+      return { walletAddress: wallet.address };
+    });
+    if (!walletResult.success) return failAndReturn(walletResult.error!);
+    await updateRun({ walletAddress: evmAddress! });
+
+    const gasResult = await runStep("request_gas", steps, async () => {
+      const result = await sendGasSubsidy(sandboxHumanId, keypair.publicKey);
+      if (!result.success) throw new Error(result.error || "Gas subsidy failed");
+      return { txHash: result.txHash, amountCelo: result.amountCelo };
+    });
+    if (!gasResult.success) return failAndReturn(gasResult.error!);
+    await updateRun({});
+
+    let deployedTokenAddress: string = "";
+    let deployTxHash: string = "";
+    const deployResult = await runStep("deploy_token", steps, async () => {
+      const { parseUnits, formatUnits } = await import("viem");
+      const { createPublicClient, createWalletClient, http, getContractAddress } = await import("viem");
+      const { privateKeyToAccount } = await import("viem/accounts");
+      const { celo } = await import("viem/chains");
+      const { TOKEN_FACTORY_BYTECODE } = await import("../lib/constants.js");
+      const { AbiCoder } = await import("ethers");
+
+      const account = privateKeyToAccount(evmPrivateKey! as `0x${string}`);
+      const publicClient = createPublicClient({ chain: celo, transport: http() });
+      const walletClient = createWalletClient({ account, chain: celo, transport: http() });
+
+      const decimals = 18;
+      const supplyWithDecimals = parseUnits(totalSupply, decimals);
+      const abiCoder = new AbiCoder();
+      const encodedArgs = abiCoder.encode(
+        ["string", "string", "uint256"],
+        [tokenName, tokenSymbol, supplyWithDecimals.toString()]
+      ).slice(2);
+
+      const deployData = (TOKEN_FACTORY_BYTECODE + encodedArgs) as `0x${string}`;
+      const nonce = await publicClient.getTransactionCount({ address: account.address });
+      const predictedAddress = getContractAddress({ from: account.address, nonce: BigInt(nonce) });
+
+      console.log(`[sandbox-live] Deploying token ${tokenSymbol} from ${account.address}, nonce=${nonce}`);
+
+      const txHash = await walletClient.sendTransaction({
+        data: deployData,
+        value: BigInt(0),
+      });
+
+      console.log(`[sandbox-live] Token deploy tx sent: ${txHash}`);
+
+      const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash, timeout: 120_000 });
+
+      if (receipt.status !== "success") {
+        throw new Error(`Token deploy transaction reverted (tx: ${txHash})`);
+      }
+
+      deployedTokenAddress = receipt.contractAddress || predictedAddress;
+      deployTxHash = txHash;
+
+      return {
+        tokenAddress: deployedTokenAddress,
+        txHash,
+        celoscanUrl: `https://celoscan.io/token/${deployedTokenAddress}`,
+      };
+    });
+    if (!deployResult.success) return failAndReturn(deployResult.error!);
+    await updateRun({ tokenAddress: deployedTokenAddress });
+
+    const registerTokenResult = await runStep("register_token", steps, async () => {
+      const { createPublicClient, http } = await import("viem");
+      const { celo } = await import("viem/chains");
+      const { formatUnits } = await import("viem");
+
+      const publicClient = createPublicClient({ chain: celo, transport: http() });
+      const ERC20_ABI = [
+        { name: "name", type: "function", stateMutability: "view", inputs: [], outputs: [{ name: "", type: "string" }] },
+        { name: "symbol", type: "function", stateMutability: "view", inputs: [], outputs: [{ name: "", type: "string" }] },
+        { name: "totalSupply", type: "function", stateMutability: "view", inputs: [], outputs: [{ name: "", type: "uint256" }] },
+      ] as const;
+
+      const tokenAddr = deployedTokenAddress as `0x${string}`;
+      const [onChainName, onChainSymbol, onChainSupply] = await Promise.all([
+        publicClient.readContract({ address: tokenAddr, abi: ERC20_ABI, functionName: "name" }).catch(() => ""),
+        publicClient.readContract({ address: tokenAddr, abi: ERC20_ABI, functionName: "symbol" }).catch(() => ""),
+        publicClient.readContract({ address: tokenAddr, abi: ERC20_ABI, functionName: "totalSupply" }).catch(() => BigInt(0)),
+      ]);
+
+      await db.insert(tokenPlans).values({
+        humanId: sandboxHumanId,
+        agentPublicKey: keypair.publicKey,
+        agentName,
+        purpose: `Live sandbox token for ${agentName}. Model: ${economicModel || "fixed"}.`,
+        supplyReasoning: `Supply of ${totalSupply} deployed on Celo mainnet via sandbox live launch.`,
+        allocation: { liquidity: 30, team: 20, community: 50 } as any,
+        utility: ["governance", "staking", "payment"] as any,
+        economicModel: economicModel || "fixed",
+        status: "sandbox",
+      });
+
+      return {
+        verified: true,
+        name: onChainName,
+        symbol: onChainSymbol,
+        totalSupply: formatUnits(onChainSupply as bigint, 18),
+        address: deployedTokenAddress,
+      };
+    });
+    if (!registerTokenResult.success) return failAndReturn(registerTokenResult.error!);
+    await updateRun({});
+
+    let v4PoolId = "";
+    let positionTokenId: string | null = null;
+    const sponsorshipResult = await runStep("request_sponsorship", steps, async () => {
+      if (!selfclawForPool || Number(selfclawForPool) <= 0) {
+        return { skipped: true, reason: "No SELFCLAW budget specified" };
+      }
+
+      const {
+        getSelfclawBalance, getTokenBalance, getSponsorAddress,
+        createPoolAndAddLiquidity, getNextPositionTokenId, computePoolId,
+        extractPositionTokenIdFromReceipt,
+      } = await import("../lib/uniswap-v4.js");
+
+      const rawSponsorKey = process.env.SELFCLAW_SPONSOR_PRIVATE_KEY || process.env.CELO_PRIVATE_KEY;
+      const sponsorKey = rawSponsorKey && !rawSponsorKey.startsWith("0x") ? `0x${rawSponsorKey}` : rawSponsorKey;
+
+      const selfclawAddress = "0xCD88f99Adf75A9110c0bcd22695A32A20eC54ECb";
+
+      const availableBalance = await getSelfclawBalance(sponsorKey);
+      const available = parseFloat(availableBalance);
+      if (available <= 0) {
+        throw new Error("No SELFCLAW available in sponsorship wallet");
+      }
+
+      const cappedAmount = Math.min(Number(selfclawForPool), available * (SANDBOX_SELFCLAW_CAP_PERCENT / 100), MAX_SELFCLAW_FOR_SANDBOX);
+      const finalSelfclaw = Math.floor(cappedAmount).toString();
+
+      if (Number(finalSelfclaw) <= 0) {
+        throw new Error(`SELFCLAW budget too small after 1% cap (available: ${availableBalance})`);
+      }
+
+      const { parseUnits } = await import("viem");
+      const { createWalletClient, http } = await import("viem");
+      const { privateKeyToAccount } = await import("viem/accounts");
+      const { celo } = await import("viem/chains");
+
+      const agentAccount = privateKeyToAccount(evmPrivateKey! as `0x${string}`);
+      const agentWalletClient = createWalletClient({ account: agentAccount, chain: celo, transport: http() });
+
+      const tokenAmount = Math.floor(Number(totalSupply) * 0.3).toString();
+
+      const ERC20_ABI_TRANSFER = [
+        { name: "transfer", type: "function", stateMutability: "nonpayable", inputs: [{ name: "to", type: "address" }, { name: "amount", type: "uint256" }], outputs: [{ name: "", type: "bool" }] },
+      ] as const;
+
+      const sponsorAddress = getSponsorAddress(sponsorKey);
+      console.log(`[sandbox-live] Transferring ${tokenAmount} ${tokenSymbol} to sponsor wallet ${sponsorAddress}`);
+
+      const transferHash = await agentWalletClient.writeContract({
+        address: deployedTokenAddress as `0x${string}`,
+        abi: ERC20_ABI_TRANSFER,
+        functionName: "transfer",
+        args: [sponsorAddress as `0x${string}`, parseUnits(tokenAmount, 18)],
+      });
+
+      const { createPublicClient } = await import("viem");
+      const publicClient = createPublicClient({ chain: celo, transport: http() });
+      await publicClient.waitForTransactionReceipt({ hash: transferHash, timeout: 60_000 });
+
+      console.log(`[sandbox-live] Transfer complete: ${transferHash}`);
+
+      const tokenLower = deployedTokenAddress.toLowerCase();
+      const selfclawLower = selfclawAddress.toLowerCase();
+      const token0 = tokenLower < selfclawLower ? deployedTokenAddress : selfclawAddress;
+      const token1 = tokenLower < selfclawLower ? selfclawAddress : deployedTokenAddress;
+      const feeTier = 10000;
+      const tickSpacing = 200;
+      v4PoolId = computePoolId(token0, token1, feeTier, tickSpacing);
+
+      const nextTokenIdBefore = await getNextPositionTokenId();
+
+      console.log(`[sandbox-live] Creating V4 pool: ${tokenSymbol}/SELFCLAW, selfclaw=${finalSelfclaw}, agentTokens=${tokenAmount}`);
+
+      const poolResult = await createPoolAndAddLiquidity({
+        tokenA: deployedTokenAddress,
+        tokenB: selfclawAddress,
+        amountA: tokenAmount,
+        amountB: finalSelfclaw,
+        feeTier,
+        privateKey: sponsorKey,
+      });
+
+      if (!poolResult.success) {
+        throw new Error(poolResult.error || "Pool creation failed");
+      }
+
+      if (poolResult.receipt) {
+        positionTokenId = extractPositionTokenIdFromReceipt(poolResult.receipt);
+      }
+      if (!positionTokenId) {
+        const nextTokenIdAfter = await getNextPositionTokenId();
+        if (nextTokenIdAfter > nextTokenIdBefore) {
+          positionTokenId = nextTokenIdBefore.toString();
+        }
+      }
+
+      await db.insert(sponsoredAgents).values({
+        humanId: sandboxHumanId,
+        publicKey: keypair.publicKey,
+        tokenAddress: deployedTokenAddress,
+        tokenSymbol,
+        poolAddress: v4PoolId,
+        v4PositionTokenId: positionTokenId,
+        poolVersion: "v4",
+        sponsoredAmountCelo: finalSelfclaw,
+        sponsorTxHash: poolResult.txHash || "",
+        status: "completed",
+        completedAt: new Date(),
+      });
+
+      try {
+        await db.insert(trackedPools).values({
+          poolAddress: v4PoolId,
+          tokenAddress: deployedTokenAddress,
+          tokenSymbol,
+          tokenName,
+          pairedWith: "SELFCLAW",
+          humanId: sandboxHumanId,
+          agentPublicKey: keypair.publicKey,
+          feeTier,
+          v4PositionTokenId: positionTokenId,
+          poolVersion: "v4",
+          v4PoolId,
+          initialCeloLiquidity: finalSelfclaw,
+          initialTokenLiquidity: tokenAmount,
+        }).onConflictDoNothing();
+      } catch (e: any) {
+        console.error(`[sandbox-live] Failed to track pool: ${e.message}`);
+      }
+
+      return {
+        v4PoolId,
+        positionTokenId,
+        selfclawAmount: finalSelfclaw,
+        agentTokenAmount: tokenAmount,
+        txHash: poolResult.txHash,
+        poolVersion: "v4",
+      };
+    });
+    if (!sponsorshipResult.success) return failAndReturn(sponsorshipResult.error!);
+
+    const finalStatus = steps.every((s) => s.status === "success") ? "completed" : "partial";
+    const durationMs = Date.now() - startTime;
+
+    await updateRun({
+      status: finalStatus,
+      v4PoolId: v4PoolId || null,
+      positionTokenId,
+      completedAt: new Date(),
+      durationMs,
+    });
+
+    console.log(`[sandbox-live] Launch complete for ${agentName} ($${tokenSymbol}) in ${durationMs}ms`);
+
+    res.json({
+      success: true,
+      testRunId: testRun.id,
+      status: finalStatus,
+      mode: "live",
+      agent: {
+        name: agentName,
+        publicKey: keypair.publicKey.substring(0, 32) + "...",
+        humanId: sandboxHumanId,
+      },
+      token: {
+        name: tokenName,
+        symbol: tokenSymbol,
+        supply: totalSupply,
+        address: deployedTokenAddress,
+        celoscanUrl: `https://celoscan.io/token/${deployedTokenAddress}`,
+        deployTxHash,
+      },
+      wallet: evmAddress!,
+      pool: v4PoolId ? {
+        v4PoolId,
+        positionTokenId,
+        version: "v4",
+      } : null,
+      steps,
+      durationMs,
+    });
+  } catch (err: any) {
+    console.error("[sandbox] launch-live error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
 
 router.post("/run-test", async (req: Request, res: Response) => {
   try {

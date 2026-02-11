@@ -602,11 +602,14 @@ export async function createPoolAndAddLiquidity(params: CreatePoolParams): Promi
     const isCeloToken0 = token0.toLowerCase() === CELO_NATIVE.toLowerCase();
     const isCeloToken1 = token1.toLowerCase() === CELO_NATIVE.toLowerCase();
 
+    const amount0Max = amount0 + (amount0 * 5n / 100n);
+    const amount1Max = amount1 + (amount1 * 5n / 100n);
+
     if (!isCeloToken0) {
-      await ensurePermit2Approval(token0, POSITION_MANAGER, amount0);
+      await ensurePermit2Approval(token0, POSITION_MANAGER, amount0Max);
     }
     if (!isCeloToken1) {
-      await ensurePermit2Approval(token1, POSITION_MANAGER, amount1);
+      await ensurePermit2Approval(token1, POSITION_MANAGER, amount1Max);
     }
 
     const { tickLower, tickUpper } = getFullRangeTicks(feeTier);
@@ -626,8 +629,8 @@ export async function createPoolAndAddLiquidity(params: CreatePoolParams): Promi
         tickLower,
         tickUpper,
         liquidity,
-        amount0,
-        amount1,
+        amount0Max,
+        amount1Max,
         account.address,
         '0x',
       ]
