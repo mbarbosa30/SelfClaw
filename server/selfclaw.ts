@@ -777,14 +777,21 @@ router.get("/v1/status/:sessionId", publicApiLimiter, async (req: Request, res: 
             verifiedAt: agents[0].verifiedAt
           },
           nextSteps: {
-            message: "Your agent is verified! Unlock the token economy.",
-            command: "Read https://selfclaw.ai/agent-economy.md to deploy tokens, create liquidity pools, and trade with other agents.",
+            message: "Your agent is verified! Read the playbook to deploy tokens, create liquidity, and build your economy.",
+            playbook: "https://selfclaw.ai/agent-economy.md",
+            quickStart: [
+              "1. Read the playbook: https://selfclaw.ai/agent-economy.md",
+              "2. Check SELFCLAW price & sponsorship: GET /api/selfclaw/v1/selfclaw-sponsorship",
+              "3. Simulate your token launch: GET /api/selfclaw/v1/sponsorship-simulator?totalSupply=1000000&liquidityTokens=100000",
+              "4. Register wallet → Request gas → Deploy token → Get sponsored liquidity",
+            ],
             features: [
               "Deploy your own ERC20 token",
-              "Create Uniswap liquidity pools",
-              "Trade and swap tokens across EVM chains",
-              "Earn yield on Aave",
-              "Sell skills in the marketplace"
+              "Get SELFCLAW-sponsored liquidity (Uniswap V4)",
+              "Live price tracking and market cap",
+              "Track revenue, costs, and P/L",
+              "On-chain identity via ERC-8004",
+              "List services in the marketplace"
             ]
           }
         });
@@ -872,7 +879,9 @@ router.get("/v1/agent", publicApiLimiter, async (req: Request, res: Response) =>
       economy: {
         enabled: true,
         playbook: "https://selfclaw.ai/agent-economy.md",
-        capabilities: ["deploy_token", "create_liquidity_pool", "swap_tokens", "aave_supply", "invoke_skill"]
+        sponsorshipSimulator: "GET /api/selfclaw/v1/sponsorship-simulator?totalSupply=1000000&liquidityTokens=100000",
+        referencePrices: "GET /api/selfclaw/v1/prices/reference",
+        capabilities: ["deploy_token", "create_liquidity_pool", "swap_tokens", "track_economics", "invoke_skill", "erc8004_identity"]
       }
     });
   } catch (error) {
@@ -1125,7 +1134,9 @@ router.get("/v1/agent/:identifier", publicApiLimiter, async (req: Request, res: 
       economy: {
         enabled: true,
         playbook: "https://selfclaw.ai/agent-economy.md",
-        capabilities: ["deploy_token", "create_liquidity_pool", "swap_tokens", "aave_supply", "invoke_skill"]
+        sponsorshipSimulator: "GET /api/selfclaw/v1/sponsorship-simulator?totalSupply=1000000&liquidityTokens=100000",
+        referencePrices: "GET /api/selfclaw/v1/prices/reference",
+        capabilities: ["deploy_token", "create_liquidity_pool", "swap_tokens", "track_economics", "invoke_skill", "erc8004_identity"]
       }
     });
   } catch (error: any) {
@@ -1269,6 +1280,25 @@ router.get("/v1/selfclaw-sponsorship", publicApiLimiter, async (_req: Request, r
       console.warn("[selfclaw] sponsorship price fetch warning:", priceErr.message);
     }
 
+    const allPools = await db.select().from(trackedPools);
+    const peerStats = {
+      totalAgentsWithPools: allPools.length,
+      avgInitialTokenLiquidity: 0,
+      avgInitialSelfclawLiquidity: 0,
+      pools: allPools.map(p => ({
+        tokenSymbol: p.tokenSymbol,
+        initialTokenLiquidity: p.initialTokenLiquidity,
+        initialSelfclawLiquidity: p.initialCeloLiquidity,
+      })),
+    };
+
+    if (allPools.length > 0) {
+      const tokenLiqs = allPools.map(p => parseFloat(p.initialTokenLiquidity || '0')).filter(v => v > 0);
+      const selfclawLiqs = allPools.map(p => parseFloat(p.initialCeloLiquidity || '0')).filter(v => v > 0);
+      peerStats.avgInitialTokenLiquidity = tokenLiqs.length > 0 ? tokenLiqs.reduce((a, b) => a + b, 0) / tokenLiqs.length : 0;
+      peerStats.avgInitialSelfclawLiquidity = selfclawLiqs.length > 0 ? selfclawLiqs.reduce((a, b) => a + b, 0) / selfclawLiqs.length : 0;
+    }
+
     res.json({
       available: balance,
       sponsorableAmount: (parseFloat(balance) / 2).toFixed(2),
@@ -1281,6 +1311,12 @@ router.get("/v1/selfclaw-sponsorship", publicApiLimiter, async (_req: Request, r
       sponsorValueUsd,
       halfValueUsd,
       description: "SELFCLAW available for agent token liquidity sponsorship. On request, fees are collected from the SELFCLAW/CELO pool, then 50% of sponsor balance is used to create an AgentToken/SELFCLAW pool. The sponsorable amount (50% of available) defines the initial liquidity pairing for your agent token.",
+      pricingFormula: {
+        explanation: "Your initial token price is determined by: initialPrice = selfclawAmount / yourTokenAmount. Market cap = initialPrice * totalSupply * selfclawPriceUsd.",
+        example: `If you send 100,000 tokens and ${(parseFloat(balance) / 2).toFixed(0)} SELFCLAW are sponsored: initialPrice = ${(parseFloat(balance) / 2).toFixed(0)} / 100000 = ${(parseFloat(balance) / 2 / 100000).toFixed(6)} SELFCLAW per token`,
+      },
+      simulator: "GET /api/selfclaw/v1/sponsorship-simulator?totalSupply=1000000&liquidityTokens=100000 — model different scenarios before committing",
+      peerStats,
       poolFeeTier: "1% (10000)",
       poolVersion: "Uniswap V4",
       requirements: [
@@ -1292,6 +1328,139 @@ router.get("/v1/selfclaw-sponsorship", publicApiLimiter, async (_req: Request, r
     });
   } catch (error: any) {
     console.error("[selfclaw] selfclaw-sponsorship error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get("/v1/sponsorship-simulator", publicApiLimiter, async (req: Request, res: Response) => {
+  try {
+    const totalSupply = parseFloat(req.query.totalSupply as string);
+    const liquidityTokens = parseFloat(req.query.liquidityTokens as string);
+
+    if (!totalSupply || !liquidityTokens || totalSupply <= 0 || liquidityTokens <= 0) {
+      return res.status(400).json({
+        error: "totalSupply and liquidityTokens are required (positive numbers)",
+        usage: "GET /api/selfclaw/v1/sponsorship-simulator?totalSupply=1000000&liquidityTokens=100000",
+        parameters: {
+          totalSupply: "Total token supply you plan to mint (e.g. 1000000)",
+          liquidityTokens: "How many tokens you will send to the sponsor wallet for liquidity (e.g. 100000)",
+        }
+      });
+    }
+
+    if (liquidityTokens > totalSupply) {
+      return res.status(400).json({ error: "liquidityTokens cannot exceed totalSupply" });
+    }
+
+    const liquidityPercent = (liquidityTokens / totalSupply) * 100;
+
+    const { getSelfclawBalance, getSponsorAddress } = await import("../lib/uniswap-v4.js");
+    const rawSponsorKey = process.env.SELFCLAW_SPONSOR_PRIVATE_KEY || process.env.CELO_PRIVATE_KEY;
+    const sponsorKey = rawSponsorKey && !rawSponsorKey.startsWith('0x') ? `0x${rawSponsorKey}` : rawSponsorKey;
+    const availableBalance = await getSelfclawBalance(sponsorKey);
+    const sponsorableAmount = parseFloat(availableBalance) / 2;
+
+    const initialPriceSelfclaw = sponsorableAmount / liquidityTokens;
+
+    let selfclawPriceUsd: number | null = null;
+    let celoUsd: number | null = null;
+    let selfclawPriceCelo: number | null = null;
+    try {
+      const prices = await getReferencePrices();
+      selfclawPriceUsd = prices.selfclawUsd;
+      celoUsd = prices.celoUsd;
+      selfclawPriceCelo = prices.selfclawCelo;
+    } catch {}
+
+    const initialPriceUsd = selfclawPriceUsd ? initialPriceSelfclaw * selfclawPriceUsd : null;
+    const initialPriceCelo = selfclawPriceCelo ? initialPriceSelfclaw * selfclawPriceCelo : null;
+    const marketCapSelfclaw = initialPriceSelfclaw * totalSupply;
+    const marketCapUsd = initialPriceUsd ? initialPriceUsd * totalSupply : null;
+    const marketCapCelo = initialPriceCelo ? initialPriceCelo * totalSupply : null;
+    const poolLiquidityUsd = selfclawPriceUsd ? sponsorableAmount * selfclawPriceUsd * 2 : null;
+
+    const allPools = await db.select().from(trackedPools);
+    const peerComparison: any[] = [];
+    for (const p of allPools) {
+      const pTokenLiq = parseFloat(p.initialTokenLiquidity || '0');
+      const pSelfclawLiq = parseFloat(p.initialCeloLiquidity || '0');
+      if (pTokenLiq > 0 && pSelfclawLiq > 0) {
+        peerComparison.push({
+          tokenSymbol: p.tokenSymbol,
+          initialTokenLiquidity: pTokenLiq,
+          initialSelfclawLiquidity: pSelfclawLiq,
+          initialPriceSelfclaw: pSelfclawLiq / pTokenLiq,
+        });
+      }
+    }
+
+    const scenarios = [
+      { label: "Conservative (10% of supply)", liquidityTokens: totalSupply * 0.1 },
+      { label: "Moderate (25% of supply)", liquidityTokens: totalSupply * 0.25 },
+      { label: "Aggressive (50% of supply)", liquidityTokens: totalSupply * 0.5 },
+    ].map(s => {
+      const price = sponsorableAmount / s.liquidityTokens;
+      return {
+        ...s,
+        initialPriceSelfclaw: price,
+        initialPriceUsd: selfclawPriceUsd ? price * selfclawPriceUsd : null,
+        marketCapUsd: selfclawPriceUsd ? price * totalSupply * selfclawPriceUsd : null,
+        marketCapSelfclaw: price * totalSupply,
+      };
+    });
+
+    res.json({
+      input: {
+        totalSupply,
+        liquidityTokens,
+        liquidityPercent: `${liquidityPercent.toFixed(1)}%`,
+      },
+      sponsorship: {
+        selfclawAvailable: parseFloat(availableBalance),
+        selfclawSponsored: sponsorableAmount,
+        selfclawPriceUsd,
+        selfclawPriceCelo,
+      },
+      projected: {
+        initialPrice: {
+          selfclaw: initialPriceSelfclaw,
+          usd: initialPriceUsd,
+          celo: initialPriceCelo,
+        },
+        marketCap: {
+          selfclaw: marketCapSelfclaw,
+          usd: marketCapUsd,
+          celo: marketCapCelo,
+        },
+        poolLiquidityUsd,
+      },
+      formula: {
+        initialPrice: "selfclawSponsored / liquidityTokens",
+        marketCap: "initialPrice * totalSupply",
+        note: "More tokens in liquidity = lower price per token but deeper liquidity (less slippage for traders). Fewer tokens = higher price but thinner liquidity.",
+      },
+      alternativeScenarios: scenarios,
+      peerComparison: {
+        existingPools: peerComparison,
+        yourPosition: peerComparison.length > 0 ? {
+          priceVsAvg: peerComparison.reduce((a, b) => a + b.initialPriceSelfclaw, 0) / peerComparison.length > 0
+            ? `${((initialPriceSelfclaw / (peerComparison.reduce((a, b) => a + b.initialPriceSelfclaw, 0) / peerComparison.length)) * 100).toFixed(0)}% of peer average`
+            : null,
+        } : { note: "No existing pools for comparison yet — you would be first!" },
+      },
+      guidance: {
+        liquidityRange: "10-40% of supply is typical for liquidity. Higher = more liquid market, lower = more tokens for treasury/community.",
+        supplyRange: "1M-100M tokens is common. Lower supply = higher per-token value perception.",
+        considerations: [
+          "The initial price only sets the starting point — market forces move it after launch",
+          "Deep liquidity (more tokens) means less price impact per trade",
+          "Reserve tokens for treasury, community, and burns — don't put everything in liquidity",
+          "Your token plan (POST /v1/token-plan) should document your allocation reasoning",
+        ],
+      },
+    });
+  } catch (error: any) {
+    console.error("[selfclaw] sponsorship-simulator error:", error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -3746,10 +3915,10 @@ services:
       deployment,
       nextSteps: [
         "1. SAVE your private key securely — it cannot be recovered",
-        "2. Create a wallet: POST /api/selfclaw/v1/create-wallet",
-        "3. Plan your tokenomics: POST /api/selfclaw/v1/token-plan",
-        "4. Deploy your token: POST /api/selfclaw/v1/deploy-token",
-        "5. Request liquidity sponsorship: POST /api/selfclaw/v1/request-selfclaw-sponsorship",
+        "2. Read the full playbook: https://selfclaw.ai/agent-economy.md",
+        "3. Check prices & sponsorship: GET /api/selfclaw/v1/selfclaw-sponsorship",
+        "4. Simulate your token launch: GET /api/selfclaw/v1/sponsorship-simulator?totalSupply=1000000&liquidityTokens=100000",
+        "5. Create wallet → Request gas → Deploy token → Get sponsored liquidity (see playbook for full details)",
         deployToHostinger ? "6. Your agent is deploying to Hostinger VPS" : "6. (Optional) Deploy to Hostinger VPS from /create-agent",
       ],
     });

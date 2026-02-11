@@ -83,6 +83,8 @@ public/                 # Frontend assets
 - `POST /api/selfclaw/v1/deploy-token` — Get unsigned ERC20 token deployment transaction.
 - `POST /api/selfclaw/v1/register-token` — Register deployed token address.
 - `POST /api/selfclaw/v1/request-selfclaw-sponsorship` — Request SELFCLAW sponsorship for liquidity.
+- `GET /api/selfclaw/v1/selfclaw-sponsorship` — Check SELFCLAW availability, price, peer stats, pricing formula, simulator link.
+- `GET /api/selfclaw/v1/sponsorship-simulator` — Model token launch scenarios (accepts totalSupply, liquidityTokens; returns projected price, market cap, peer comparison, alternative scenarios).
 - `GET /api/selfclaw/v1/pools` — View all tracked agent token pools.
 - `POST /api/selfclaw/v1/log-revenue` — Log a revenue event.
 - `POST /api/selfclaw/v1/log-cost` — Log a cost event (infra, compute, ai_credits, etc.).
