@@ -36,9 +36,8 @@
       justify-content: center;
     }
     .admin-login-box {
-      background: #111;
-      border: 1px solid #333;
-      border-radius: 12px;
+      background: var(--bg-card);
+      border: 2px solid var(--border-heavy);
       padding: 2.5rem;
       width: 100%;
       max-width: 400px;
@@ -49,7 +48,7 @@
       font-size: 1.2rem;
       font-weight: 600;
       letter-spacing: 0.12em;
-      color: #E8E8E8;
+      color: var(--text);
       margin-bottom: 1.5rem;
       border-bottom: none;
       padding-bottom: 0;
@@ -69,7 +68,7 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      border-bottom: 1px solid #333;
+      border-bottom: 2px solid var(--border-heavy);
       padding-bottom: 1.5rem;
       margin-bottom: 2rem;
     }
@@ -78,14 +77,13 @@
       font-size: 1.5rem;
       font-weight: 700;
       letter-spacing: 0.12em;
-      color: #E8E8E8;
+      color: var(--text);
     }
     .logout-btn {
       background: transparent;
-      border: 1px solid #444;
-      color: #aaa;
+      border: 2px solid var(--border-heavy);
+      color: var(--text-secondary);
       padding: 0.4rem 1rem;
-      border-radius: 100px;
       font-family: 'IBM Plex Mono', monospace;
       font-size: 0.7rem;
       cursor: pointer;
@@ -108,8 +106,8 @@
       text-transform: uppercase;
       margin-bottom: 1.25rem;
       padding-bottom: 0.5rem;
-      border-bottom: 1px solid #333;
-      color: #E8E8E8;
+      border-bottom: 2px solid var(--border-heavy);
+      color: var(--text);
     }
     .wallet-overview {
       display: grid;
@@ -117,9 +115,8 @@
       gap: 1rem;
     }
     .wallet-panel {
-      background: #0d0d0d;
-      border: 1px solid #333;
-      border-radius: 12px;
+      background: var(--bg-card);
+      border: 2px solid var(--border-heavy);
       padding: 1.5rem;
     }
     .wallet-panel-title {
@@ -134,7 +131,7 @@
     .wallet-addr {
       font-family: 'IBM Plex Mono', monospace;
       font-size: 0.7rem;
-      color: #777;
+      color: var(--text-muted);
       margin-bottom: 1rem;
       word-break: break-all;
       display: flex;
@@ -143,7 +140,7 @@
       flex-wrap: wrap;
     }
     .wallet-addr a {
-      color: #777;
+      color: var(--text-muted);
       text-decoration: none;
     }
     .wallet-addr a:hover {
@@ -151,10 +148,9 @@
     }
     .copy-btn {
       background: transparent;
-      border: 1px solid #444;
-      color: #777;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
       padding: 0.15rem 0.4rem;
-      border-radius: 4px;
       font-size: 0.6rem;
       cursor: pointer;
       font-family: 'IBM Plex Mono', monospace;
@@ -170,7 +166,7 @@
       justify-content: space-between;
       align-items: center;
       padding: 0.5rem 0;
-      border-bottom: 1px solid #1a1a1a;
+      border-bottom: 1px solid var(--border-light, #d4d0ca);
     }
     .balance-row:last-child {
       border-bottom: none;
@@ -178,14 +174,14 @@
     .balance-label {
       font-family: 'IBM Plex Mono', monospace;
       font-size: 0.7rem;
-      color: #aaa;
+      color: var(--text-muted);
       text-transform: uppercase;
     }
     .balance-value {
       font-family: 'Inter', sans-serif;
       font-size: 1rem;
       font-weight: 600;
-      color: #E8E8E8;
+      color: var(--text);
     }
     .bridge-status-grid {
       display: grid;
@@ -193,9 +189,8 @@
       gap: 1rem;
     }
     .bridge-status-card {
-      background: #0d0d0d;
-      border: 1px solid #333;
-      border-radius: 12px;
+      background: var(--bg-card);
+      border: 2px solid var(--border-heavy);
       padding: 1.5rem;
     }
     .bridge-token-name {
@@ -203,7 +198,7 @@
       font-size: 0.75rem;
       font-weight: 600;
       text-transform: uppercase;
-      color: #E8E8E8;
+      color: var(--text);
       margin-bottom: 0.75rem;
     }
     .bridge-attested {
@@ -219,13 +214,13 @@
       border-radius: 50%;
       flex-shrink: 0;
     }
-    .status-dot.green { background: #4AFF6B; }
+    .status-dot.green { background: var(--green-verify); }
     .status-dot.red { background: #ef4444; }
     .status-dot.yellow { background: #FFD700; }
     .wrapped-addr {
       font-family: 'IBM Plex Mono', monospace;
       font-size: 0.65rem;
-      color: #777;
+      color: var(--text-muted);
       word-break: break-all;
       margin-top: 0.5rem;
       display: flex;
@@ -239,9 +234,8 @@
       gap: 1rem;
     }
     .action-card {
-      background: #0d0d0d;
-      border: 1px solid #333;
-      border-radius: 12px;
+      background: var(--bg-card);
+      border: 2px solid var(--border-heavy);
       padding: 1.25rem;
     }
     .action-card h4 {
@@ -250,7 +244,7 @@
       font-weight: 600;
       text-transform: uppercase;
       letter-spacing: 0.05em;
-      color: #E8E8E8;
+      color: var(--text);
       margin-bottom: 0.75rem;
     }
     .action-card .input {
@@ -268,7 +262,6 @@
       background: #FF6B4A;
       color: #000;
       border: none;
-      border-radius: 8px;
       font-family: 'IBM Plex Mono', monospace;
       font-size: 0.7rem;
       font-weight: 600;
@@ -293,20 +286,19 @@
       max-height: 120px;
       overflow-y: auto;
     }
-    .action-result.success { color: #4AFF6B; }
-    .action-result.error { color: #ef4444; }
-    .action-result.loading { color: #FFD700; }
+    .action-result.success { color: var(--green-verify); }
+    .action-result.error { color: var(--red, #ef4444); }
+    .action-result.loading { color: var(--accent); }
     .stats-grid {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
       gap: 1rem;
     }
     .stat-card {
-      background: #0d0d0d;
-      border: 1px solid #333;
-      border-radius: 12px;
+      background: var(--bg-card);
+      border: 2px solid var(--border-heavy);
       padding: 1.5rem;
-      border-bottom: 2px solid #FF6B4A;
+      border-top: 3px solid var(--green-verify);
     }
     .stat-label {
       font-family: 'IBM Plex Mono', monospace;
@@ -314,7 +306,7 @@
       font-weight: 600;
       text-transform: uppercase;
       letter-spacing: 0.08em;
-      color: #777;
+      color: var(--text-muted);
       display: block;
       margin-bottom: 0.5rem;
     }
@@ -322,13 +314,12 @@
       font-family: 'Inter', sans-serif;
       font-size: 2rem;
       font-weight: 700;
-      color: #E8E8E8;
+      color: var(--text);
       line-height: 1;
     }
     .activity-log {
-      background: #0d0d0d;
-      border: 1px solid #333;
-      border-radius: 12px;
+      background: var(--bg-card);
+      border: 2px solid var(--border-heavy);
       max-height: 500px;
       overflow-y: auto;
     }
@@ -337,7 +328,7 @@
       align-items: center;
       gap: 0.75rem;
       padding: 0.75rem 1.25rem;
-      border-bottom: 1px solid #1a1a1a;
+      border-bottom: 1px solid var(--border-light, #d4d0ca);
       font-size: 0.8rem;
     }
     .log-item:last-child {
@@ -354,7 +345,7 @@
     }
     .log-detail {
       flex: 1;
-      color: #aaa;
+      color: var(--text-secondary);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -362,14 +353,14 @@
     .log-time {
       font-family: 'IBM Plex Mono', monospace;
       font-size: 0.6rem;
-      color: #555;
+      color: var(--text-muted);
       white-space: nowrap;
       flex-shrink: 0;
     }
     .log-empty {
       padding: 2rem;
       text-align: center;
-      color: #555;
+      color: var(--text-muted);
       font-family: 'IBM Plex Mono', monospace;
       font-size: 0.8rem;
     }
@@ -377,8 +368,8 @@
       display: inline-block;
       width: 12px;
       height: 12px;
-      border: 2px solid #333;
-      border-top-color: #FF6B4A;
+      border: 2px solid var(--border-light, #d4d0ca);
+      border-top-color: var(--accent);
       border-radius: 50%;
       animation: spin 0.6s linear infinite;
     }
@@ -401,14 +392,13 @@
     .refresh-info span {
       font-family: 'IBM Plex Mono', monospace;
       font-size: 0.7rem;
-      color: #555;
+      color: var(--text-muted);
     }
     .refresh-btn {
       background: transparent;
-      border: 1px solid #444;
-      color: #aaa;
+      border: 2px solid var(--border-heavy);
+      color: var(--text-secondary);
       padding: 0.35rem 0.8rem;
-      border-radius: 100px;
       font-family: 'IBM Plex Mono', monospace;
       font-size: 0.65rem;
       cursor: pointer;
@@ -435,14 +425,29 @@
   </style>
 </head>
 <body>
-  <div class="container">
+  <div class="site-container">
+    <header class="site-header">
+      <a href="/" class="site-logo"><img src="/claw-icon.svg" alt="" class="site-logo-icon">SELFCLAW</a>
+      <button class="nav-toggle" aria-label="Menu">&equiv;</button>
+      <nav class="site-nav">
+        <a href="/verify" class="nav-link">VERIFY</a>
+        <a href="/registry" class="nav-link" data-gate style="display:none">AGENTS</a>
+        <a href="/dashboard" class="nav-link" data-gate style="display:none">DASHBOARD</a>
+        <a href="/economy" class="nav-link">ECONOMY</a>
+        <a href="/developers" class="nav-link">DOCS</a>
+        <a href="/whitepaper" class="nav-link">WHITEPAPER</a>
+        <a href="/manifesto" class="nav-link">\\\</a>
+      </nav>
+    </header>
 
     <div id="login-view" class="admin-login-wrap">
       <div class="admin-login-box">
         <h2>SELFCLAW ADMIN</h2>
         <div id="login-error" class="admin-login-error"></div>
-        <input type="password" id="login-password" class="input" placeholder="Admin password" onkeydown="if(event.key==='Enter')doLogin()">
-        <button class="btn" style="width:100%;margin-top:0.5rem;" onclick="doLogin()">Login</button>
+        <form onsubmit="event.preventDefault();doLogin()">
+          <input type="password" id="login-password" class="input" placeholder="Admin password">
+          <button class="btn" style="width:100%;margin-top:0.5rem;" type="submit">Login</button>
+        </form>
       </div>
     </div>
 
@@ -482,14 +487,14 @@
 
       <section class="admin-section">
         <h2 class="admin-section-title">Token Prices</h2>
-        <div id="prices-loading" style="text-align:center;padding:2rem;color:#555;"><span class="spinner"></span> Loading prices...</div>
+        <div id="prices-loading" style="text-align:center;padding:2rem;color:var(--text-muted);"><span class="spinner"></span> Loading prices...</div>
         <div id="prices-content" style="display:none;">
           <div class="wallet-overview">
             <div class="wallet-panel" style="border-bottom:2px solid #FF6B4A;">
               <div class="wallet-panel-title">SELFCLAW on Base</div>
               <div style="display:flex;align-items:baseline;gap:0.5rem;margin-bottom:0.5rem;">
-                <span style="font-size:1.8rem;font-weight:700;color:#E8E8E8;" id="price-base-usd">--</span>
-                <span style="font-size:0.8rem;color:#777;">USD</span>
+                <span style="font-size:1.8rem;font-weight:700;color:var(--text);" id="price-base-usd">--</span>
+                <span style="font-size:0.8rem;color:var(--text-muted);">USD</span>
               </div>
               <div id="price-base-change" style="font-size:0.8rem;margin-bottom:0.75rem;"></div>
               <div class="balance-row">
@@ -510,13 +515,13 @@
               </div>
               <div id="price-base-link" style="margin-top:0.5rem;"></div>
             </div>
-            <div class="wallet-panel" style="border-bottom:2px solid #4AFF6B;">
+            <div class="wallet-panel" style="border-bottom:2px solid var(--green-verify);">
               <div class="wallet-panel-title">SELFCLAW on Celo</div>
               <div style="display:flex;align-items:baseline;gap:0.5rem;margin-bottom:0.5rem;">
-                <span style="font-size:1.8rem;font-weight:700;color:#E8E8E8;" id="price-celo-usd">--</span>
-                <span style="font-size:0.8rem;color:#777;">USD</span>
+                <span style="font-size:1.8rem;font-weight:700;color:var(--text);" id="price-celo-usd">--</span>
+                <span style="font-size:0.8rem;color:var(--text-muted);">USD</span>
               </div>
-              <div id="price-celo-computed" style="font-size:0.65rem;color:#888;margin-bottom:0.25rem;"></div>
+              <div id="price-celo-computed" style="font-size:0.65rem;color:var(--text-muted);margin-bottom:0.25rem;"></div>
               <div id="price-celo-change" style="font-size:0.8rem;margin-bottom:0.75rem;"></div>
               <div class="balance-row">
                 <span class="balance-label">CELO Price</span>
@@ -541,13 +546,13 @@
               <div id="price-celo-link" style="margin-top:0.5rem;"></div>
             </div>
           </div>
-          <div id="price-gap-banner" style="display:none;margin-top:1rem;padding:0.75rem 1rem;border:1px solid #333;background:#1a1a1a;text-align:center;font-size:0.85rem;"></div>
+          <div id="price-gap-banner" style="display:none;margin-top:1rem;padding:0.75rem 1rem;border:2px solid var(--border-heavy);background:rgba(0,0,0,0.03);text-align:center;font-size:0.85rem;"></div>
         </div>
       </section>
 
       <section class="admin-section">
         <h2 class="admin-section-title">SELFCLAW/CELO Pool (Uniswap)</h2>
-        <div id="pool-loading" style="text-align:center;padding:2rem;color:#555;"><span class="spinner"></span> Loading pool data...</div>
+        <div id="pool-loading" style="text-align:center;padding:2rem;color:var(--text-muted);"><span class="spinner"></span> Loading pool data...</div>
         <div id="pool-content" style="display:none;">
           <div class="wallet-overview">
             <div class="wallet-panel">
@@ -598,13 +603,13 @@
 
       <section class="admin-section">
         <h2 class="admin-section-title">Wallet Overview</h2>
-        <div id="wallet-loading" style="text-align:center;padding:2rem;color:#555;"><span class="spinner"></span> Loading balances...</div>
+        <div id="wallet-loading" style="text-align:center;padding:2rem;color:var(--text-muted);"><span class="spinner"></span> Loading balances...</div>
         <div id="wallet-content" class="wallet-overview" style="display:none;"></div>
       </section>
 
       <section class="admin-section">
         <h2 class="admin-section-title">Bridge Status</h2>
-        <div id="bridge-loading" style="text-align:center;padding:2rem;color:#555;"><span class="spinner"></span> Loading bridge status...</div>
+        <div id="bridge-loading" style="text-align:center;padding:2rem;color:var(--text-muted);"><span class="spinner"></span> Loading bridge status...</div>
         <div id="bridge-content" class="bridge-status-grid" style="display:none;"></div>
       </section>
 
@@ -614,14 +619,14 @@
 
           <div class="action-card">
             <h4>Attest SELFCLAW</h4>
-            <p style="color:#777;font-size:0.7rem;margin-bottom:0.75rem;line-height:1.4;">One-time: registers SELFCLAW with Wormhole on Celo. After submitting, the system will automatically wait for guardian signatures and finalize on Celo.</p>
+            <p style="color:var(--text-muted);font-size:0.7rem;margin-bottom:0.75rem;line-height:1.4;">One-time: registers SELFCLAW with Wormhole on Celo. After submitting, the system will automatically wait for guardian signatures and finalize on Celo.</p>
             <button class="action-btn" id="btn-attest" onclick="doFullAttest(this)">Attest on Celo</button>
             <div class="action-result" id="result-attest"></div>
           </div>
 
           <div class="action-card">
             <h4>Complete Existing Attestation</h4>
-            <p style="color:#777;font-size:0.7rem;margin-bottom:0.75rem;line-height:1.4;">Have a pending attestation tx? Paste the Base tx hash here to fetch the VAA and finalize on Celo.</p>
+            <p style="color:var(--text-muted);font-size:0.7rem;margin-bottom:0.75rem;line-height:1.4;">Have a pending attestation tx? Paste the Base tx hash here to fetch the VAA and finalize on Celo.</p>
             <input type="text" class="input" id="attest-tx-hash" placeholder="0x... Base tx hash">
             <button class="action-btn" id="btn-complete-attest" onclick="doCompleteAttestByTx(this)">Complete on Celo</button>
             <div class="action-result" id="result-complete-attest"></div>
@@ -629,7 +634,7 @@
 
           <div class="action-card">
             <h4>Bridge SELFCLAW</h4>
-            <p style="color:#777;font-size:0.7rem;margin-bottom:0.75rem;line-height:1.4;">Fully automatic: locks SELFCLAW on Base, waits for guardian signatures, and completes transfer on Celo. No manual steps needed.</p>
+            <p style="color:var(--text-muted);font-size:0.7rem;margin-bottom:0.75rem;line-height:1.4;">Fully automatic: locks SELFCLAW on Base, waits for guardian signatures, and completes transfer on Celo. No manual steps needed.</p>
             <input type="text" class="input" id="bridge-selfclaw-amount" placeholder="Amount (e.g. 1000)">
             <button class="action-btn" id="btn-bridge" onclick="doAutoBridge(this)">Bridge to Celo</button>
             <div class="action-result" id="result-bridge"></div>
@@ -638,7 +643,7 @@
 
           <div class="action-card">
             <h4>Track Existing Bridge</h4>
-            <p style="color:#777;font-size:0.7rem;margin-bottom:0.75rem;line-height:1.4;">Have a pending bridge tx from before? Paste the Base tx hash to track and claim it.</p>
+            <p style="color:var(--text-muted);font-size:0.7rem;margin-bottom:0.75rem;line-height:1.4;">Have a pending bridge tx from before? Paste the Base tx hash to track and claim it.</p>
             <input type="text" class="input" id="track-bridge-tx" placeholder="0x... Base tx hash">
             <button class="action-btn" onclick="doTrackBridge(this)">Track Bridge</button>
             <div class="action-result" id="result-track-bridge"></div>
@@ -649,20 +654,20 @@
 
       <section class="admin-section">
         <h2 class="admin-section-title">Pending Bridge Claims</h2>
-        <div id="pending-claims-loading" style="text-align:center;padding:1rem;color:#555;"><span class="spinner"></span> Checking for pending claims...</div>
+        <div id="pending-claims-loading" style="text-align:center;padding:1rem;color:var(--text-muted);"><span class="spinner"></span> Checking for pending claims...</div>
         <div id="pending-claims-content" style="display:none;"></div>
-        <div id="pending-claims-empty" style="display:none;text-align:center;padding:1.5rem;color:#777;font-size:0.8rem;">No pending bridge claims</div>
+        <div id="pending-claims-empty" style="display:none;text-align:center;padding:1.5rem;color:var(--text-muted);font-size:0.8rem;">No pending bridge claims</div>
       </section>
 
       <section class="admin-section">
         <h2 class="admin-section-title">Liquidity Pool Management</h2>
-        <div id="lp-loading" style="text-align:center;padding:1rem;color:#555;"><span class="spinner"></span> Loading SELFCLAW balance...</div>
+        <div id="lp-loading" style="text-align:center;padding:1rem;color:var(--text-muted);"><span class="spinner"></span> Loading SELFCLAW balance...</div>
         <div id="lp-info" style="display:none;margin-bottom:1rem;">
           <div style="display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:1rem;">
             <div class="bridge-status-card" style="flex:1;min-width:200px;">
               <div class="bridge-token-name">SELFCLAW on Celo</div>
-              <div style="font-size:1.2rem;color:#4AFF6B;font-weight:bold;" id="lp-selfclaw-balance">—</div>
-              <div style="font-size:0.65rem;color:#777;margin-top:0.25rem;">Available for sponsorship</div>
+              <div style="font-size:1.2rem;color:var(--green-verify);font-weight:bold;" id="lp-selfclaw-balance">—</div>
+              <div style="font-size:0.65rem;color:var(--text-muted);margin-top:0.25rem;">Available for sponsorship</div>
             </div>
           </div>
         </div>
@@ -670,7 +675,7 @@
 
           <div class="action-card">
             <h4>Collect LP Fees</h4>
-            <p style="color:#777;font-size:0.7rem;margin-bottom:0.75rem;line-height:1.4;">Collect trading fees from your LP position. Enter the NFT position token ID.</p>
+            <p style="color:var(--text-muted);font-size:0.7rem;margin-bottom:0.75rem;line-height:1.4;">Collect trading fees from your LP position. Enter the NFT position token ID.</p>
             <input type="text" class="input" id="lp-position-id" placeholder="Position Token ID">
             <button class="action-btn" onclick="doCollectFees(this)">Collect Fees</button>
             <div class="action-result" id="result-collect-fees"></div>
@@ -678,7 +683,7 @@
 
           <div class="action-card">
             <h4>Swap CELO to SELFCLAW</h4>
-            <p style="color:#777;font-size:0.7rem;margin-bottom:0.75rem;line-height:1.4;">Swap collected CELO fees into SELFCLAW for treasury.</p>
+            <p style="color:var(--text-muted);font-size:0.7rem;margin-bottom:0.75rem;line-height:1.4;">Swap collected CELO fees into SELFCLAW for treasury.</p>
             <input type="text" class="input" id="swap-celo-amount" placeholder="CELO amount (e.g. 10)">
             <button class="action-btn" onclick="doSwapCeloToSelfclaw(this)">Swap to SELFCLAW</button>
             <div class="action-result" id="result-swap"></div>
@@ -686,7 +691,7 @@
 
           <div class="action-card">
             <h4>Check Position</h4>
-            <p style="color:#777;font-size:0.7rem;margin-bottom:0.75rem;line-height:1.4;">View position details and uncollected fees.</p>
+            <p style="color:var(--text-muted);font-size:0.7rem;margin-bottom:0.75rem;line-height:1.4;">View position details and uncollected fees.</p>
             <input type="text" class="input" id="check-position-id" placeholder="Position Token ID">
             <button class="action-btn" onclick="doCheckPosition(this)">Check Position</button>
             <div class="action-result" id="result-check-position"></div>
@@ -694,7 +699,7 @@
 
           <div class="action-card">
             <h4>Create Pool</h4>
-            <p style="color:#777;font-size:0.7rem;margin-bottom:0.75rem;line-height:1.4;">Create a new Uniswap pool with liquidity. Used for AgentToken/SELFCLAW pairs.</p>
+            <p style="color:var(--text-muted);font-size:0.7rem;margin-bottom:0.75rem;line-height:1.4;">Create a new Uniswap pool with liquidity. Used for AgentToken/SELFCLAW pairs.</p>
             <input type="text" class="input" id="pool-token-a" placeholder="Token A address">
             <input type="text" class="input" id="pool-token-b" placeholder="Token B address" value="0xCD88f99Adf75A9110c0bcd22695A32A20eC54ECb" style="margin-top:0.4rem;">
             <input type="text" class="input" id="pool-amount-a" placeholder="Amount A" style="margin-top:0.4rem;">
@@ -719,6 +724,22 @@
       </section>
 
     </div>
+
+    <footer class="site-footer">
+      <nav class="footer-nav">
+        <a href="/">Home</a>
+        <a href="/verify">Verify</a>
+        <a href="/registry" data-gate-footer style="display:none">Agents</a>
+        <a href="/dashboard" data-gate-footer style="display:none">Dashboard</a>
+        <a href="/economy">Economy</a>
+        <a href="/developers">Docs</a>
+        <a href="/whitepaper">Whitepaper</a>
+      </nav>
+      <div class="footer-meta">
+        <span>Powered by <a href="https://self.xyz" target="_blank">Self.xyz</a> zero-knowledge proofs</span>
+        <span>Built by <a href="https://zeno.vision" target="_blank" rel="noopener">Zeno</a></span>
+      </div>
+    </footer>
   </div>
 
   <script>
@@ -944,11 +965,11 @@
         '<div class="bridge-token-name">' + name + '</div>' +
         '<div class="bridge-attested">' +
           '<span class="status-dot ' + (attested ? 'green' : 'red') + '"></span>' +
-          '<span style="color:' + (attested ? '#4AFF6B' : '#ef4444') + '">' + (attested ? 'Attested on Celo' : 'Not attested') + '</span>' +
+          '<span style="color:' + (attested ? 'var(--green-verify)' : '#ef4444') + '">' + (attested ? 'Attested on Celo' : 'Not attested') + '</span>' +
         '</div>';
       if (wrappedAddr) {
         html += '<div class="wrapped-addr">' +
-          '<a href="https://celoscan.io/address/' + wrappedAddr + '" target="_blank" rel="noopener" style="color:#777;text-decoration:none;">' + truncateAddr(wrappedAddr) + '</a>' +
+          '<a href="https://celoscan.io/address/' + wrappedAddr + '" target="_blank" rel="noopener" style="color:var(--text-muted);text-decoration:none;">' + truncateAddr(wrappedAddr) + '</a>' +
           '<button class="copy-btn" onclick="copyToClipboard(\'' + wrappedAddr + '\', this)">Copy</button>' +
         '</div>';
       }
@@ -1066,18 +1087,18 @@
       var phaseOrder = { transfer: 0, polling: 1, completing: 2, done: 3 };
       var currentIdx = phaseOrder[phase] || 0;
 
-      var html = '<div style="background:#111;border:1px solid #333;border-radius:6px;padding:0.75rem;">';
+      var html = '<div style="background:rgba(0,0,0,0.03);border:2px solid var(--border-heavy);padding:0.75rem;">';
       html += '<div style="display:flex;gap:0.5rem;margin-bottom:0.5rem;">';
       phases.forEach(function(p, i) {
-        var color = i < currentIdx ? '#4AFF6B' : (i === currentIdx ? '#f59e0b' : '#555');
+        var color = i < currentIdx ? 'var(--green-verify)' : (i === currentIdx ? '#f59e0b' : 'var(--text-muted)');
         var icon = i < currentIdx ? '\u2713' : (i === currentIdx ? '\u25CF' : '\u25CB');
         html += '<span style="font-size:0.65rem;color:' + color + ';">' + icon + ' ' + p.label + '</span>';
-        if (i < phases.length - 1) html += '<span style="color:#333;font-size:0.65rem;">\u2192</span>';
+        if (i < phases.length - 1) html += '<span style="color:var(--border-heavy);font-size:0.65rem;">\u2192</span>';
       });
       html += '</div>';
-      html += '<div style="font-size:0.7rem;color:#ccc;">' + message + '</div>';
+      html += '<div style="font-size:0.7rem;color:var(--text-secondary);">' + message + '</div>';
       if (phase === 'polling') {
-        html += '<div style="margin-top:0.4rem;height:3px;background:#333;border-radius:2px;overflow:hidden;">';
+        html += '<div style="margin-top:0.4rem;height:3px;background:var(--border-light, #d4d0ca);overflow:hidden;">';
         html += '<div style="height:100%;background:#f59e0b;width:0%;animation:bridgePulse 2s ease-in-out infinite;"></div>';
         html += '</div>';
       }
@@ -1181,7 +1202,7 @@
         data.pending.forEach(function(tx) {
           var statusColor, statusLabel;
           if (tx.status === 'vaa_ready') {
-            statusColor = '#4AFF6B'; statusLabel = 'READY TO CLAIM';
+            statusColor = 'var(--green-verify)'; statusLabel = 'READY TO CLAIM';
           } else if (tx.status === 'polling') {
             statusColor = '#f59e0b'; statusLabel = 'AUTO-COMPLETING...';
             hasPending = true;
@@ -1190,12 +1211,12 @@
             hasPending = true;
           }
           var age = tx.createdAt ? getTimeAgo(new Date(tx.createdAt)) : '';
-          html += '<div style="background:#1a1a1a;border:1px solid #333;border-radius:6px;padding:1rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;">';
+          html += '<div style="background:rgba(0,0,0,0.03);border:2px solid var(--border-heavy);padding:1rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;">';
           html += '<div style="flex:1;min-width:200px;">';
-          html += '<div style="font-size:0.85rem;color:#fff;margin-bottom:0.3rem;">' + (tx.type === 'transfer' ? 'Bridge Transfer' : tx.type) + ' — ' + tx.amount + ' SELFCLAW</div>';
-          html += '<div style="font-size:0.65rem;color:#777;word-break:break-all;">Tx: ' + tx.sourceTxHash + '</div>';
+          html += '<div style="font-size:0.85rem;color:var(--text);margin-bottom:0.3rem;">' + (tx.type === 'transfer' ? 'Bridge Transfer' : tx.type) + ' — ' + tx.amount + ' SELFCLAW</div>';
+          html += '<div style="font-size:0.65rem;color:var(--text-muted);word-break:break-all;">Tx: ' + tx.sourceTxHash + '</div>';
           if (tx.error) html += '<div style="font-size:0.6rem;color:#ef4444;margin-top:0.2rem;">' + tx.error + '</div>';
-          if (age) html += '<div style="font-size:0.6rem;color:#555;margin-top:0.2rem;">' + age + '</div>';
+          if (age) html += '<div style="font-size:0.6rem;color:var(--text-muted);margin-top:0.2rem;">' + age + '</div>';
           html += '</div>';
           html += '<div style="display:flex;align-items:center;gap:0.75rem;">';
           html += '<span style="font-size:0.7rem;color:' + statusColor + ';font-weight:bold;">' + statusLabel + '</span>';
@@ -1259,7 +1280,7 @@
           return;
         }
         btn.textContent = 'Claimed!';
-        btn.style.background = '#4AFF6B';
+        btn.style.background = 'var(--green-verify)';
         btn.style.color = '#000';
         loadPendingClaims();
         loadWalletBalances();
@@ -1376,7 +1397,7 @@
           if (b.priceChange24h != null) {
             var ch = parseFloat(b.priceChange24h);
             changeEl.textContent = (ch >= 0 ? '+' : '') + ch.toFixed(2) + '% (24h)';
-            changeEl.style.color = ch >= 0 ? '#4AFF6B' : '#ef4444';
+            changeEl.style.color = ch >= 0 ? 'var(--green-verify)' : '#ef4444';
           } else {
             changeEl.textContent = '';
           }
@@ -1406,14 +1427,14 @@
           if (c.priceChange24h != null) {
             var cch = parseFloat(c.priceChange24h);
             celoChangeEl.textContent = (cch >= 0 ? '+' : '') + cch.toFixed(2) + '% (24h)';
-            celoChangeEl.style.color = cch >= 0 ? '#4AFF6B' : '#ef4444';
+            celoChangeEl.style.color = cch >= 0 ? 'var(--green-verify)' : '#ef4444';
           } else {
             celoChangeEl.textContent = '';
           }
 
           var celoLinkEl = document.getElementById('price-celo-link');
           if (c.pairUrl) {
-            celoLinkEl.innerHTML = '<a href="' + c.pairUrl + '" target="_blank" style="color:#4AFF6B;font-size:0.7rem;text-decoration:none;">View on DexScreener</a>';
+            celoLinkEl.innerHTML = '<a href="' + c.pairUrl + '" target="_blank" style="color:var(--green-verify);font-size:0.7rem;text-decoration:none;">View on DexScreener</a>';
           } else {
             celoLinkEl.innerHTML = '';
           }
@@ -1421,10 +1442,10 @@
           var gapBanner = document.getElementById('price-gap-banner');
           if (data.priceGapPercent != null) {
             var gap = parseFloat(data.priceGapPercent);
-            var gapColor = Math.abs(gap) > 10 ? '#ef4444' : (Math.abs(gap) > 5 ? '#f59e0b' : '#4AFF6B');
+            var gapColor = Math.abs(gap) > 10 ? '#ef4444' : (Math.abs(gap) > 5 ? '#f59e0b' : 'var(--green-verify)');
             var arrow = gap > 0 ? 'Celo premium' : 'Celo discount';
             gapBanner.style.display = 'block';
-            gapBanner.innerHTML = '<span style="color:' + gapColor + ';font-weight:700;">' + (gap >= 0 ? '+' : '') + gap + '%</span> <span style="color:#888;">cross-chain price gap (' + arrow + ' vs Base)</span>';
+            gapBanner.innerHTML = '<span style="color:' + gapColor + ';font-weight:700;">' + (gap >= 0 ? '+' : '') + gap + '%</span> <span style="color:var(--text-muted);">cross-chain price gap (' + arrow + ' vs Base)</span>';
           } else {
             gapBanner.style.display = 'none';
           }
@@ -1676,6 +1697,8 @@
       }
     })();
   </script>
+  <script src="/auth.js"></script>
+  <script src="/nav-gate.js"></script>
   <script src="/nav-toggle.js"></script>
 </body>
 </html>

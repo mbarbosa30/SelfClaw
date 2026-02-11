@@ -29,8 +29,6 @@
   <link rel="stylesheet" href="styles.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.4/ethers.umd.min.js"></script>
   <style>
-    .dashboard-page { max-width: 1080px; margin: 0 auto; padding: 0 var(--space-md); }
-
     .auth-gate {
       text-align: center; padding: 4rem 1rem;
     }
@@ -307,10 +305,8 @@
         <a href="/manifesto" class="nav-link">\\\</a>
       </nav>
     </header>
-  </div>
 
-  <div class="dashboard-page">
-    <section class="hero" style="padding: 2rem 0 var(--space-md);">
+    <section class="hero">
       <div class="hero-label">Agent Dashboard</div>
       <h1>My Agents</h1>
       <p class="hero-sub">Manage your verified agents, track economics, and fund operations.</p>
@@ -345,17 +341,23 @@
         <a href="/verify" class="action-btn primary">Verify an Agent</a>
       </div>
     </div>
-  </div>
 
-  <footer class="site-footer">
-    <div class="site-container">
-      <div class="footer-inner">
-        <span class="footer-brand">SelfClaw</span>
-        <span class="footer-sep">&mdash;</span>
-        <span class="footer-tagline">Verification infrastructure for agent economies</span>
+    <footer class="site-footer">
+      <nav class="footer-nav">
+        <a href="/">Home</a>
+        <a href="/verify">Verify</a>
+        <a href="/registry" data-gate-footer style="display:none">Agents</a>
+        <a href="/dashboard" data-gate-footer style="display:none">Dashboard</a>
+        <a href="/economy">Economy</a>
+        <a href="/developers">Docs</a>
+        <a href="/whitepaper">Whitepaper</a>
+      </nav>
+      <div class="footer-meta">
+        <span>Powered by <a href="https://self.xyz" target="_blank">Self.xyz</a> zero-knowledge proofs</span>
+        <span>Built by <a href="https://zeno.vision" target="_blank" rel="noopener">Zeno</a> · <a href="https://github.com/mbarbosa30/SelfClaw" target="_blank" rel="noopener">GitHub</a> · <a href="https://t.me/+GC2quXBnarw1MzU0" target="_blank" rel="noopener">Telegram</a></span>
       </div>
-    </div>
-  </footer>
+    </footer>
+  </div>
 
   <script src="/auth.js"></script>
   <script src="/nav-gate.js"></script>
@@ -674,21 +676,34 @@
 
     function updateValuationPreview(idx) {
       var supplyInput = document.getElementById('tf-supply-' + idx);
+      var liqInput = document.getElementById('tf-liq-' + idx);
       var previewEl = document.getElementById('tf-valuation-' + idx);
-      if (!supplyInput || !previewEl || !_sponsorshipCache) return;
+      if (!supplyInput || !liqInput || !previewEl || !_sponsorshipCache) return;
 
       var supply = parseFloat(supplyInput.value) || 0;
-      if (supply <= 0) { previewEl.textContent = '—'; return; }
+      var liqTokens = parseFloat(liqInput.value) || 0;
+      if (supply <= 0 || liqTokens <= 0) { previewEl.textContent = '—'; return; }
 
-      var halfUsd = _sponsorshipCache.halfValueUsd;
-      if (halfUsd != null && halfUsd > 0) {
-        var pricePerToken = halfUsd / supply;
-        var mcap = halfUsd;
-        var priceStr = pricePerToken < 0.001 ? pricePerToken.toExponential(2) : pricePerToken.toFixed(6);
-        previewEl.innerHTML = '<span style="color:var(--accent);font-weight:600;">~$' + mcap.toFixed(2) + '</span> initial pool value &middot; <span style="font-family:var(--font-mono);font-size:0.75rem;">$' + priceStr + '/token</span>';
-      } else {
-        previewEl.textContent = 'Price data unavailable';
-      }
+      var sponsorable = parseFloat(_sponsorshipCache.available || '0') / 2;
+      var selfclawPriceUsd = _sponsorshipCache.selfclawPriceUsd || _sponsorshipCache.halfValueUsd / sponsorable;
+      if (sponsorable <= 0 || !selfclawPriceUsd) { previewEl.textContent = 'Price data unavailable'; return; }
+
+      var priceInSelfclaw = sponsorable / liqTokens;
+      var priceUsd = priceInSelfclaw * selfclawPriceUsd;
+      var mcapUsd = priceUsd * supply;
+      var liqPercent = (liqTokens / supply * 100).toFixed(1);
+      var poolValueUsd = sponsorable * selfclawPriceUsd * 2;
+
+      var priceStr = priceUsd < 0.001 ? priceUsd.toExponential(2) : priceUsd.toFixed(6);
+      var mcapStr = mcapUsd >= 1000 ? '$' + (mcapUsd / 1000).toFixed(1) + 'K' : '$' + mcapUsd.toFixed(2);
+
+      previewEl.innerHTML = '<div style="display:flex;flex-wrap:wrap;gap:0.5rem;align-items:baseline;">' +
+        '<span style="color:var(--accent);font-weight:700;font-size:1rem;">' + mcapStr + '</span>' +
+        '<span style="color:var(--text-muted);font-size:0.7rem;">market cap</span>' +
+        '</div>' +
+        '<div style="font-size:0.7rem;color:var(--text-secondary);margin-top:0.25rem;">' +
+        '$' + priceStr + '/token &middot; ' + liqPercent + '% of supply in liquidity &middot; ~$' + poolValueUsd.toFixed(2) + ' pool value' +
+        '</div>';
     }
 
     function showTokenForm(idx) {
@@ -698,15 +713,19 @@
       container.innerHTML = '<div class="pipeline-inline-form">' +
         '<div class="form-row"><label>Token Name</label><input type="text" id="tf-name-' + idx + '" placeholder="My Agent Token"></div>' +
         '<div class="form-row"><label>Symbol</label><input type="text" id="tf-symbol-' + idx + '" placeholder="MAT" maxlength="10"></div>' +
-        '<div class="form-row"><label>Initial Supply</label><input type="number" id="tf-supply-' + idx + '" placeholder="1000000" value="1000000"></div>' +
+        '<div class="form-row"><label>Total Supply</label><input type="number" id="tf-supply-' + idx + '" placeholder="1000000" value="1000000"></div>' +
         '<div id="tf-sponsor-info-' + idx + '" style="border:2px solid var(--border-heavy);padding:0.75rem;margin-bottom:0.75rem;background:rgba(255,107,74,0.04);">' +
-          '<div style="font-family:var(--font-mono);font-size:0.6rem;letter-spacing:0.06em;color:var(--text-secondary);margin-bottom:0.4rem;font-weight:600;">SPONSORSHIP PAIRING</div>' +
-          '<div style="display:flex;align-items:baseline;gap:0.5rem;flex-wrap:wrap;margin-bottom:0.35rem;">' +
+          '<div style="font-family:var(--font-mono);font-size:0.6rem;letter-spacing:0.06em;color:var(--text-secondary);margin-bottom:0.4rem;font-weight:600;">YOUR VALUATION</div>' +
+          '<div style="display:flex;align-items:baseline;gap:0.5rem;flex-wrap:wrap;margin-bottom:0.5rem;">' +
             '<span id="tf-sp-amount-' + idx + '" style="font-family:var(--font-mono);font-size:1.1rem;font-weight:700;color:var(--text);">...</span>' +
-            '<span style="font-family:var(--font-mono);font-size:0.7rem;color:var(--text-secondary);">SELFCLAW available to pair</span>' +
+            '<span style="font-family:var(--font-mono);font-size:0.7rem;color:var(--text-secondary);">SELFCLAW will be paired (fixed)</span>' +
             '<span id="tf-sp-usd-' + idx + '" style="font-family:var(--font-mono);font-size:0.8rem;color:var(--accent);font-weight:600;"></span>' +
           '</div>' +
-          '<div id="tf-valuation-' + idx + '" style="font-size:0.75rem;color:var(--text-secondary);line-height:1.4;">Loading valuation...</div>' +
+          '<div class="form-row" style="margin-bottom:0.5rem;"><label>Tokens for Liquidity</label>' +
+            '<input type="number" id="tf-liq-' + idx + '" placeholder="100000" value="100000" style="width:100%;padding:0.35rem 0.5rem;border:2px solid var(--border);font-family:var(--font-mono);font-size:0.75rem;background:var(--bg);color:var(--text);">' +
+            '<div style="font-size:0.65rem;color:var(--text-muted);margin-top:0.15rem;">How many of your tokens to pair with SELFCLAW. This sets your initial price and market cap.</div>' +
+          '</div>' +
+          '<div id="tf-valuation-' + idx + '" style="font-size:0.75rem;color:var(--text-secondary);line-height:1.4;padding:0.5rem;border:1px solid var(--border-light);background:var(--bg);">Loading valuation...</div>' +
         '</div>' +
         '<div id="tf-pk-row-' + idx + '" style="display:none;"><div class="form-row"><label>Wallet Private Key</label><input type="password" id="tf-pk-' + idx + '" placeholder="Paste your wallet private key"></div></div>' +
         '<div class="pipeline-form-actions">' +
@@ -747,8 +766,12 @@
       });
 
       var supplyInput = document.getElementById('tf-supply-' + idx);
+      var liqInput = document.getElementById('tf-liq-' + idx);
       if (supplyInput) {
         supplyInput.addEventListener('input', function() { updateValuationPreview(idx); });
+      }
+      if (liqInput) {
+        liqInput.addEventListener('input', function() { updateValuationPreview(idx); });
       }
     }
 
@@ -769,13 +792,21 @@
       var supplyInput = document.getElementById('tf-supply-' + idx);
       var pkInput = document.getElementById('tf-pk-' + idx);
 
+      var liqInput = document.getElementById('tf-liq-' + idx);
+
       var tokenName = nameInput ? nameInput.value.trim() : '';
       var tokenSymbol = symbolInput ? symbolInput.value.trim() : '';
       var initialSupply = supplyInput ? supplyInput.value.trim() : '';
+      var liquidityTokens = liqInput ? liqInput.value.trim() : '';
 
       if (!tokenName || !tokenSymbol || !initialSupply) {
         showPipelineMsg(idx, 'Please fill in all token fields', 'error');
         return;
+      }
+
+      if (liquidityTokens && parseFloat(liquidityTokens) > 0) {
+        var agents2 = (_dashboardData && _dashboardData.agents) || [];
+        if (agents2[idx]) agents2[idx]._liquidityTokens = liquidityTokens;
       }
 
       var walletPk = null;
@@ -868,6 +899,13 @@
       if (!agent || !agent.token) return;
       var pubKey = agent.publicKey;
 
+      var liqAmount = agent._liquidityTokens || null;
+      if (!liqAmount) {
+        var liqPrompt = prompt('How many of your tokens do you want to put in the liquidity pool?\n\nThis sets your initial price and market cap.\nSELFCLAW sponsorship amount is fixed — you control the ratio.\n\nExample: 100000 (for 10% of 1M supply)');
+        if (!liqPrompt) return;
+        liqAmount = liqPrompt.trim();
+      }
+
       setBtnLoading(btn, true);
       clearPipelineMsg(idx);
 
@@ -877,7 +915,7 @@
         body: JSON.stringify({
           tokenAddress: agent.token.address,
           tokenSymbol: agent.token.symbol,
-          tokenAmount: '500'
+          tokenAmount: liqAmount
         })
       })
       .then(function(res) { return res.json(); })
