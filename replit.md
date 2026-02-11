@@ -104,6 +104,14 @@ public/                 # Frontend assets
 - **Wallet lookup**: `/v1/wallet/:identifier` accepts either agentPublicKey (exact match) or humanId (returns all wallets for that human if multiple exist).
 - **Self-custody**: Platform never stores private keys. Only wallet addresses are registered.
 
+### Price Oracle (Feb 2026)
+- **Price chain**: AgentToken → SELFCLAW (V4 pool) → CELO (V4 pool 0x92bf22...) → USD (V3 pool CELO/USDT 0x6cde5f...)
+- **Reference pools**: SELFCLAW/CELO V4 pool, SELFCLAW/USDT V4 pool, CELO/USDT V3 pool
+- **Caching**: 60s TTL for reference prices (CELO/USD, SELFCLAW/CELO)
+- **Snapshots**: Background job every 5 min saves price history to `token_price_snapshots` table
+- **API endpoints**: `/v1/prices/reference`, `/v1/agent/:id/price`, `/v1/agent/:id/price-history`, `/v1/agent/:id/reputation`, `/v1/prices/all-agents`
+- **Frontend**: Agent profile shows live USD price, market cap, sparkline SVG chart with period selector (1H/24H/7D/30D), ERC-8004 on-chain identity + reputation score
+
 ### Uniswap V4 Migration (Feb 2026)
 - **New agent token pools use Uniswap V4** (singleton PoolManager + Permit2 approvals). Existing SELFCLAW/CELO pool remains on V3 for price feeds.
 - **V4 Celo contracts** (verified from official Celo docs):

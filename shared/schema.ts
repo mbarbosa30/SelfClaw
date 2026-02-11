@@ -264,5 +264,25 @@ export const sandboxTestRuns = pgTable("sandbox_test_runs", {
 export type SandboxTestRun = typeof sandboxTestRuns.$inferSelect;
 export type InsertSandboxTestRun = typeof sandboxTestRuns.$inferInsert;
 
+export const tokenPriceSnapshots = pgTable("token_price_snapshots", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tokenAddress: varchar("token_address").notNull(),
+  tokenSymbol: varchar("token_symbol").notNull(),
+  poolId: varchar("pool_id").notNull(),
+  priceUsd: decimal("price_usd", { precision: 24, scale: 12 }),
+  priceCelo: decimal("price_celo", { precision: 24, scale: 12 }),
+  priceSelfclaw: decimal("price_selfclaw", { precision: 24, scale: 12 }),
+  marketCapUsd: decimal("market_cap_usd", { precision: 24, scale: 2 }),
+  totalSupply: varchar("total_supply"),
+  liquidity: varchar("liquidity"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_price_snapshots_token").on(table.tokenAddress),
+  index("idx_price_snapshots_created").on(table.createdAt),
+]);
+
+export type TokenPriceSnapshot = typeof tokenPriceSnapshots.$inferSelect;
+export type InsertTokenPriceSnapshot = typeof tokenPriceSnapshots.$inferInsert;
+
 export type User = typeof users.$inferSelect;
 export type UpsertUser = typeof users.$inferInsert;

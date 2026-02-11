@@ -28,6 +28,26 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
+  <style>
+    .period-btn {
+      font-family: var(--font-mono);
+      font-size: 0.6rem;
+      font-weight: 600;
+      padding: 0.2rem 0.5rem;
+      border: 2px solid var(--border-heavy);
+      background: transparent;
+      color: var(--text-muted);
+      cursor: pointer;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .period-btn:hover { background: var(--border-light); }
+    .period-btn.active {
+      background: var(--text-color);
+      color: var(--bg-color);
+      border-color: var(--text-color);
+    }
+  </style>
 </head>
 <body>
   <div class="site-container">
@@ -172,6 +192,7 @@
         wallet: raw.wallet,
         token: raw.token,
         pool: raw.pool,
+        livePrice: raw.livePrice || null,
         tokenPlan: raw.tokenPlan,
         revenue: raw.revenue || null,
         services: raw.services || [],
@@ -181,7 +202,10 @@
       var html = '';
 
       html += renderIdentity(data);
+      html += renderPriceHero(data);
       html += renderWallet(data);
+      html += renderErc8004(data);
+      html += renderReputation(data);
       html += renderEconomics(data);
       html += renderTokenAndMarket(data);
       html += renderTokenomics(data);
@@ -192,6 +216,7 @@
       contentEl.innerHTML = html;
 
       loadEconomics(data.agentName || data.publicKey);
+      loadPriceChart(data.agentName || data.publicKey);
     }
 
     function renderIdentity(data) {
@@ -311,9 +336,15 @@
           }
 
           if (data.pool.address) {
+            var isV4Pool = (data.pool.poolVersion === 'v4') || (data.pool.v4PoolId) || (data.pool.address.length > 42);
             html += '<div class="field-row">';
             html += '<span class="field-label">Pool</span>';
-            html += '<span class="field-value"><a href="https://celoscan.io/address/' + encodeURIComponent(data.pool.address) + '" target="_blank" rel="noopener">' + truncate(data.pool.address, 10, 6) + '</a></span>';
+            if (isV4Pool) {
+              var pid = data.pool.v4PoolId || data.pool.address;
+              html += '<span class="field-value" title="V4 Pool ID: ' + escapeHtml(pid) + '"><span style="font-family:var(--font-mono);font-size:0.7rem;">V4: ' + truncate(pid, 10, 6) + '</span></span>';
+            } else {
+              html += '<span class="field-value"><a href="https://celoscan.io/address/' + encodeURIComponent(data.pool.address) + '" target="_blank" rel="noopener">' + truncate(data.pool.address, 10, 6) + '</a></span>';
+            }
             html += '</div>';
           }
         }
@@ -498,6 +529,229 @@
 
       html += '</div>';
       return html;
+    }
+
+    function renderPriceHero(data) {
+      if (!data.livePrice && !data.token) return '';
+      var html = '<div class="section-card" style="border-top:3px solid var(--accent);">';
+      html += '<div class="section-card-title">Token Price</div>';
+
+      if (data.livePrice) {
+        var lp = data.livePrice;
+        html += '<div style="display:flex;align-items:baseline;gap:0.75rem;flex-wrap:wrap;margin-bottom:0.75rem;">';
+        html += '<div style="font-size:2rem;font-weight:700;font-family:var(--font-mono);color:var(--accent);">$' + escapeHtml(lp.priceFormatted || '0') + '</div>';
+        html += '<div style="font-family:var(--font-mono);font-size:0.8rem;color:var(--text-muted);">' + escapeHtml(lp.marketCapFormatted || '$0') + ' MCap</div>';
+        html += '</div>';
+
+        html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:0.5rem;">';
+
+        html += '<div style="border:2px solid var(--border-light);padding:0.5rem;">';
+        html += '<div style="font-family:var(--font-mono);font-size:0.55rem;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-muted);">In SELFCLAW</div>';
+        html += '<div style="font-family:var(--font-mono);font-size:0.9rem;font-weight:600;">' + formatNum(lp.priceInSelfclaw, 6) + '</div>';
+        html += '</div>';
+
+        html += '<div style="border:2px solid var(--border-light);padding:0.5rem;">';
+        html += '<div style="font-family:var(--font-mono);font-size:0.55rem;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-muted);">In CELO</div>';
+        html += '<div style="font-family:var(--font-mono);font-size:0.9rem;font-weight:600;">' + formatNum(lp.priceInCelo, 6) + '</div>';
+        html += '</div>';
+
+        html += '<div style="border:2px solid var(--border-light);padding:0.5rem;">';
+        html += '<div style="font-family:var(--font-mono);font-size:0.55rem;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-muted);">MCap (CELO)</div>';
+        html += '<div style="font-family:var(--font-mono);font-size:0.9rem;font-weight:600;">' + formatNum(lp.marketCapCelo, 2) + '</div>';
+        html += '</div>';
+
+        html += '<div style="border:2px solid var(--border-light);padding:0.5rem;">';
+        html += '<div style="font-family:var(--font-mono);font-size:0.55rem;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-muted);">Supply</div>';
+        html += '<div style="font-family:var(--font-mono);font-size:0.9rem;font-weight:600;">' + formatBigNum(lp.totalSupply) + '</div>';
+        html += '</div>';
+
+        html += '</div>';
+
+        html += '<div id="price-chart-container" style="margin-top:1rem;min-height:80px;">';
+        html += '<div style="color:var(--text-muted);font-family:var(--font-mono);font-size:0.7rem;">Loading price chart...</div>';
+        html += '</div>';
+
+        html += '<div style="display:flex;gap:0.5rem;margin-top:0.5rem;" id="chart-period-btns">';
+        html += '<button class="period-btn active" data-period="1h" onclick="switchPeriod(\'1h\')">1H</button>';
+        html += '<button class="period-btn" data-period="24h" onclick="switchPeriod(\'24h\')">24H</button>';
+        html += '<button class="period-btn" data-period="7d" onclick="switchPeriod(\'7d\')">7D</button>';
+        html += '<button class="period-btn" data-period="30d" onclick="switchPeriod(\'30d\')">30D</button>';
+        html += '</div>';
+      } else if (data.token) {
+        html += '<p class="empty-state-text">Price data not available yet</p>';
+      }
+
+      html += '</div>';
+      return html;
+    }
+
+    function renderErc8004(data) {
+      if (!data.erc8004) return '';
+      var e = data.erc8004;
+      var html = '<div class="section-card">';
+      html += '<div class="section-card-title">On-Chain Identity (ERC-8004)</div>';
+
+      html += '<div class="field-row">';
+      html += '<span class="field-label">Token ID</span>';
+      html += '<span class="field-value"><a href="' + escapeHtml(e.scanUrl) + '" target="_blank" rel="noopener">#' + escapeHtml(String(e.tokenId)) + ' &rarr;</a></span>';
+      html += '</div>';
+
+      if (e.identity) {
+        html += '<div class="field-row">';
+        html += '<span class="field-label">Owner</span>';
+        html += '<span class="field-value"><a href="https://celoscan.io/address/' + encodeURIComponent(e.identity.owner) + '" target="_blank" rel="noopener">' + truncate(e.identity.owner, 10, 6) + '</a></span>';
+        html += '</div>';
+
+        if (e.identity.uri) {
+          html += '<div class="field-row">';
+          html += '<span class="field-label">Agent URI</span>';
+          html += '<span class="field-value-text" style="word-break:break-all;font-size:0.75rem;">' + escapeHtml(e.identity.uri) + '</span>';
+          html += '</div>';
+        }
+      }
+
+      if (e.reputation) {
+        html += '<div class="field-row">';
+        html += '<span class="field-label">Feedback Count</span>';
+        html += '<span class="field-value-text">' + e.reputation.totalFeedback + '</span>';
+        html += '</div>';
+        html += '<div class="field-row">';
+        html += '<span class="field-label">Avg Score</span>';
+        html += '<span class="field-value-text text-accent">' + e.reputation.averageScore + ' / 100</span>';
+        html += '</div>';
+      }
+
+      html += '<div class="field-row">';
+      html += '<span class="field-label">Registry</span>';
+      html += '<span class="field-value"><a href="https://celoscan.io/address/0x8004A169FB4a3325136EB29fA0ceB6D2e539a432" target="_blank" rel="noopener">Identity Registry &rarr;</a></span>';
+      html += '</div>';
+
+      html += '<div class="field-row">';
+      html += '<span class="field-label">Reputation</span>';
+      html += '<span class="field-value"><a href="https://celoscan.io/address/0x8004BAa17C55a88189AE136b182e5fdA19dE9b63" target="_blank" rel="noopener">Reputation Registry &rarr;</a></span>';
+      html += '</div>';
+
+      html += '</div>';
+      return html;
+    }
+
+    function renderReputation(data) {
+      var html = '<div class="section-card" id="reputation-section">';
+      html += '<div class="section-card-title">Reputation</div>';
+
+      if (data.erc8004 && data.erc8004.reputation) {
+        var rep = data.erc8004.reputation;
+        html += '<div style="display:flex;align-items:center;gap:1rem;margin-bottom:0.75rem;">';
+
+        var score = rep.averageScore || 0;
+        var barColor = score >= 80 ? 'var(--green-verify)' : score >= 50 ? 'var(--accent)' : 'var(--red, #e53e3e)';
+        html += '<div style="flex:1;">';
+        html += '<div style="font-family:var(--font-mono);font-size:0.6rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-muted);margin-bottom:0.25rem;">Trust Score</div>';
+        html += '<div style="display:flex;align-items:center;gap:0.5rem;">';
+        html += '<div style="flex:1;height:8px;background:var(--border-light);border:1px solid var(--border-heavy);">';
+        html += '<div style="height:100%;width:' + score + '%;background:' + barColor + ';"></div>';
+        html += '</div>';
+        html += '<span style="font-family:var(--font-mono);font-weight:700;font-size:1.1rem;">' + score + '</span>';
+        html += '</div>';
+        html += '</div>';
+
+        html += '<div style="text-align:center;">';
+        html += '<div style="font-family:var(--font-mono);font-size:0.6rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-muted);">Reviews</div>';
+        html += '<div style="font-family:var(--font-mono);font-weight:700;font-size:1.1rem;">' + rep.totalFeedback + '</div>';
+        html += '</div>';
+
+        html += '</div>';
+      } else {
+        html += '<p class="empty-state-text">No on-chain reputation data yet</p>';
+      }
+
+      html += '</div>';
+      return html;
+    }
+
+    function formatNum(val, dec) {
+      if (val === null || val === undefined) return '0';
+      var n = parseFloat(val);
+      if (isNaN(n)) return '0';
+      if (n === 0) return '0';
+      if (n < 0.000001) return n.toExponential(2);
+      return n.toFixed(dec || 4);
+    }
+
+    function formatBigNum(val) {
+      if (!val) return '0';
+      var n = parseFloat(val);
+      if (isNaN(n)) return '0';
+      if (n >= 1e9) return (n / 1e9).toFixed(1) + 'B';
+      if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M';
+      if (n >= 1e3) return (n / 1e3).toFixed(1) + 'K';
+      return n.toFixed(0);
+    }
+
+    var currentPeriod = '1h';
+    function switchPeriod(p) {
+      currentPeriod = p;
+      var btns = document.querySelectorAll('.period-btn');
+      btns.forEach(function(b) { b.classList.toggle('active', b.getAttribute('data-period') === p); });
+      var pathParts = window.location.pathname.split('/');
+      var agentName = decodeURIComponent(pathParts[pathParts.length - 1] || '');
+      loadPriceChart(agentName, p);
+    }
+
+    async function loadPriceChart(identifier, period) {
+      if (!identifier) return;
+      var container = document.getElementById('price-chart-container');
+      if (!container) return;
+
+      period = period || currentPeriod || '1h';
+
+      try {
+        var res = await fetch('/api/selfclaw/v1/agent/' + encodeURIComponent(identifier) + '/price-history?period=' + period);
+        if (!res.ok) {
+          container.innerHTML = '<div style="color:var(--text-muted);font-family:var(--font-mono);font-size:0.7rem;">No price history yet</div>';
+          return;
+        }
+        var data = await res.json();
+        var points = data.dataPoints || [];
+        if (points.length < 2) {
+          container.innerHTML = '<div style="color:var(--text-muted);font-family:var(--font-mono);font-size:0.7rem;">Not enough data for chart (collecting...)</div>';
+          return;
+        }
+
+        var prices = points.map(function(p) { return p.priceUsd; });
+        var minP = Math.min.apply(null, prices);
+        var maxP = Math.max.apply(null, prices);
+        var range = maxP - minP || 1;
+
+        var w = 600;
+        var h = 80;
+        var pathD = '';
+        var areaD = '';
+        for (var i = 0; i < prices.length; i++) {
+          var x = (i / (prices.length - 1)) * w;
+          var y = h - ((prices[i] - minP) / range) * (h - 4) - 2;
+          pathD += (i === 0 ? 'M' : 'L') + x.toFixed(1) + ',' + y.toFixed(1);
+          areaD += (i === 0 ? 'M' : 'L') + x.toFixed(1) + ',' + y.toFixed(1);
+        }
+        areaD += 'L' + w + ',' + h + 'L0,' + h + 'Z';
+
+        var isUp = prices[prices.length - 1] >= prices[0];
+        var lineColor = isUp ? '#22c55e' : '#ef4444';
+        var fillColor = isUp ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)';
+
+        var svg = '<svg viewBox="0 0 ' + w + ' ' + h + '" style="width:100%;height:80px;" preserveAspectRatio="none">';
+        svg += '<path d="' + areaD + '" fill="' + fillColor + '" />';
+        svg += '<path d="' + pathD + '" fill="none" stroke="' + lineColor + '" stroke-width="2" />';
+        svg += '</svg>';
+
+        var pctChange = ((prices[prices.length - 1] - prices[0]) / prices[0] * 100);
+        var pctStr = (pctChange >= 0 ? '+' : '') + pctChange.toFixed(2) + '%';
+        var pctColor = pctChange >= 0 ? '#22c55e' : '#ef4444';
+
+        container.innerHTML = svg + '<div style="font-family:var(--font-mono);font-size:0.65rem;color:' + pctColor + ';margin-top:0.25rem;">' + pctStr + ' (' + period + ')</div>';
+      } catch (err) {
+        container.innerHTML = '<div style="color:var(--text-muted);font-family:var(--font-mono);font-size:0.7rem;">Chart unavailable</div>';
+      }
     }
 
     function renderEconomics(data) {

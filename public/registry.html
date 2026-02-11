@@ -28,6 +28,44 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
+  <style>
+    .registry-item {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 0.75rem;
+      align-items: center;
+      padding: 0.75rem;
+      border: 2px solid var(--border-heavy);
+      text-decoration: none;
+      color: inherit;
+      transition: background 0.15s;
+    }
+    .registry-item:hover { background: var(--border-light); }
+    .agent-price-col {
+      text-align: right;
+      font-family: var(--font-mono);
+      min-width: 100px;
+    }
+    .agent-price-usd {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: var(--accent);
+    }
+    .agent-mcap {
+      font-size: 0.6rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .agent-sparkline {
+      width: 60px;
+      height: 24px;
+    }
+    @media (max-width: 600px) {
+      .registry-item { grid-template-columns: auto 1fr; }
+      .agent-price-col { display: none; }
+    }
+  </style>
 </head>
 <body>
   <div class="site-container">
@@ -89,15 +127,25 @@
 
   <script src="app.js"></script>
   <script>
+    var agentPriceMap = {};
+
     async function loadRegistry() {
       try {
-        const [statsRes, agentsRes] = await Promise.all([
+        const [statsRes, agentsRes, pricesRes] = await Promise.all([
           fetch('/api/selfclaw/v1/stats'),
-          fetch('/api/selfclaw/v1/agents')
+          fetch('/api/selfclaw/v1/agents'),
+          fetch('/api/selfclaw/v1/prices/all-agents').catch(() => ({ ok: false })),
         ]);
 
         const stats = await statsRes.json();
         const agents = await agentsRes.json();
+
+        if (pricesRes.ok) {
+          const pricesData = await pricesRes.json();
+          (pricesData.agents || []).forEach(function(p) {
+            agentPriceMap[p.tokenAddress.toLowerCase()] = p;
+          });
+        }
 
         const allAgents = agents.agents || [];
         const tokenAgents = allAgents.filter(a => a.token && a.token.symbol);
@@ -126,6 +174,8 @@
           const firstLetter = displayName.charAt(0).toUpperCase();
 
           const tokenSymbol = agent.token?.symbol || null;
+          const tokenAddr = agent.token?.address ? agent.token.address.toLowerCase() : null;
+          const priceInfo = tokenAddr ? agentPriceMap[tokenAddr] : null;
 
           let metaParts = [];
           if (tokenSymbol) {
@@ -136,9 +186,20 @@
             metaParts.push('ERC-8004 ✓');
           }
 
-          let badgeParts = [`<span class="agent-badge badge-verified">PASSPORT</span>`];
-          if (tokenSymbol) {
-            badgeParts.push(`<span class="token-badge">$${escapeHtml(tokenSymbol)}</span>`);
+          let priceHtml = '';
+          if (priceInfo && priceInfo.priceInUsd > 0) {
+            priceHtml = `
+              <div class="agent-price-col">
+                <div class="agent-price-usd">$${escapeHtml(priceInfo.priceFormatted || '0')}</div>
+                <div class="agent-mcap">${escapeHtml(priceInfo.marketCapFormatted || '$0')} MCap</div>
+              </div>
+            `;
+          } else if (tokenSymbol) {
+            priceHtml = `
+              <div class="agent-price-col">
+                <div class="agent-mcap">Price loading...</div>
+              </div>
+            `;
           }
 
           return `
@@ -149,9 +210,7 @@
                 <div class="agent-key">${truncatedKey}</div>
                 <div class="agent-meta">${metaParts.join(' · ')}</div>
               </div>
-              <div class="agent-badges">
-                ${badgeParts.join('')}
-              </div>
+              ${priceHtml}
             </${containerTag}>
           `;
         }).join('');

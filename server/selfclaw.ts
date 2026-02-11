@@ -1,7 +1,7 @@
 import { Router, Request, Response } from "express";
 import rateLimit from "express-rate-limit";
 import { db } from "./db.js";
-import { verifiedBots, verificationSessions, sponsoredAgents, trackedPools, agentWallets, agentActivity, tokenPlans, revenueEvents, agentServices, costEvents, type InsertVerifiedBot, type InsertVerificationSession } from "../shared/schema.js";
+import { verifiedBots, verificationSessions, sponsoredAgents, trackedPools, agentWallets, agentActivity, tokenPlans, revenueEvents, agentServices, costEvents, tokenPriceSnapshots, type InsertVerifiedBot, type InsertVerificationSession } from "../shared/schema.js";
 import { eq, and, gt, lt, sql, desc, count, isNotNull } from "drizzle-orm";
 import { SelfBackendVerifier, AllIds, DefaultConfigStore } from "@selfxyz/core";
 import { SelfAppBuilder } from "@selfxyz/qrcode";
@@ -9,6 +9,7 @@ import crypto from "crypto";
 import * as ed from "@noble/ed25519";
 import { createAgentWallet, getAgentWallet, getAgentWalletByHumanId, sendGasSubsidy, getGasWalletInfo, switchWallet } from "../lib/secure-wallet.js";
 import { erc8004Service } from "../lib/erc8004.js";
+import { getReferencePrices, getAgentTokenPrice, getAllAgentTokenPrices, formatPrice, formatMarketCap } from "../lib/price-oracle.js";
 import { generateRegistrationFile } from "../lib/erc8004-config.js";
 import { createPublicClient, http, parseUnits, formatUnits, encodeFunctionData, getContractAddress } from 'viem';
 import { celo } from 'viem/chains';
@@ -1540,6 +1541,8 @@ router.get("/v1/agents", publicApiLimiter, async (req: Request, res: Response) =
       tokenSymbol: trackedPools.tokenSymbol,
       tokenName: trackedPools.tokenName,
       poolAddress: trackedPools.poolAddress,
+      v4PoolId: trackedPools.v4PoolId,
+      poolVersion: trackedPools.poolVersion,
       currentPriceCelo: trackedPools.currentPriceCelo,
       volume24h: trackedPools.volume24h,
       marketCapCelo: trackedPools.marketCapCelo,
@@ -1575,6 +1578,8 @@ router.get("/v1/agents", publicApiLimiter, async (req: Request, res: Response) =
         } : null,
         pool: a.poolAddress ? {
           address: a.poolAddress,
+          v4PoolId: a.v4PoolId,
+          poolVersion: a.poolVersion || 'v3',
           priceCelo: a.currentPriceCelo,
           volume24h: a.volume24h,
           marketCapCelo: a.marketCapCelo,
@@ -1634,6 +1639,58 @@ router.get("/v1/agent-profile/:name", publicApiLimiter, async (req: Request, res
       revenueTotals[e.token] = (revenueTotals[e.token] || 0) + parseFloat(e.amount);
     }
     
+    let livePrice: any = null;
+    let reputationData: any = null;
+    let identityData: any = null;
+
+    if (pool) {
+      const poolId = pool.v4PoolId || pool.poolAddress;
+      try {
+        const priceResult = await getAgentTokenPrice(pool.tokenAddress, poolId, pool.tokenSymbol);
+        if (priceResult) {
+          livePrice = {
+            priceInSelfclaw: priceResult.priceInSelfclaw,
+            priceInCelo: priceResult.priceInCelo,
+            priceInUsd: priceResult.priceInUsd,
+            marketCapUsd: priceResult.marketCapUsd,
+            marketCapCelo: priceResult.marketCapCelo,
+            totalSupply: priceResult.totalSupply,
+            priceFormatted: formatPrice(priceResult.priceInUsd),
+            marketCapFormatted: formatMarketCap(priceResult.marketCapUsd),
+          };
+        }
+      } catch (e: any) {
+        console.log('[agent-profile] Price fetch failed:', e.message);
+      }
+    }
+
+    if (metadata?.erc8004TokenId) {
+      try {
+        const [summary, feedback, identity] = await Promise.all([
+          erc8004Service.getReputationSummary(metadata.erc8004TokenId),
+          erc8004Service.readAllFeedback(metadata.erc8004TokenId),
+          erc8004Service.getAgentIdentity(metadata.erc8004TokenId),
+        ]);
+
+        if (summary) {
+          reputationData = {
+            totalFeedback: summary.totalFeedback,
+            averageScore: summary.averageScore,
+            lastUpdated: summary.lastUpdated,
+          };
+        }
+
+        if (identity) {
+          identityData = {
+            owner: identity.owner,
+            uri: identity.uri,
+          };
+        }
+      } catch (e: any) {
+        console.log('[agent-profile] ERC-8004 fetch failed:', e.message);
+      }
+    }
+
     res.json({
       agent: {
         agentName: agent.deviceId,
@@ -1643,7 +1700,9 @@ router.get("/v1/agent-profile/:name", publicApiLimiter, async (req: Request, res
         verifiedAt: agent.verifiedAt,
         erc8004: metadata?.erc8004TokenId ? {
           tokenId: metadata.erc8004TokenId,
-          scanUrl: `https://www.8004scan.io/agents/${metadata.erc8004TokenId}`
+          scanUrl: `https://www.8004scan.io/agents/${metadata.erc8004TokenId}`,
+          identity: identityData,
+          reputation: reputationData,
         } : null,
       },
       wallet: wallet ? {
@@ -1657,12 +1716,15 @@ router.get("/v1/agent-profile/:name", publicApiLimiter, async (req: Request, res
       } : null,
       pool: pool ? {
         address: pool.poolAddress,
+        v4PoolId: pool.v4PoolId,
+        poolVersion: pool.poolVersion || 'v3',
         priceCelo: pool.currentPriceCelo,
         volume24h: pool.volume24h,
         marketCapCelo: pool.marketCapCelo,
         feeTier: pool.feeTier,
         pairedWith: pool.pairedWith,
       } : null,
+      livePrice,
       tokenPlan: plan ? {
         purpose: plan.purpose,
         supplyReasoning: plan.supplyReasoning,
@@ -4477,5 +4539,273 @@ router.post("/v1/my-agents/:publicKey/request-sponsorship", verificationLimiter,
     res.status(500).json({ error: error.message });
   }
 });
+
+router.get("/v1/prices/reference", publicApiLimiter, async (req: Request, res: Response) => {
+  try {
+    const prices = await getReferencePrices();
+    res.json({
+      celoUsd: prices.celoUsd,
+      selfclawCelo: prices.selfclawCelo,
+      selfclawUsd: prices.selfclawUsd,
+      timestamp: prices.timestamp,
+    });
+  } catch (error: any) {
+    console.error("[selfclaw] reference prices error:", error.message);
+    res.status(500).json({ error: "Failed to fetch reference prices" });
+  }
+});
+
+router.get("/v1/agent/:identifier/price", publicApiLimiter, async (req: Request, res: Response) => {
+  try {
+    const identifier = String(req.params.identifier);
+
+    const pools = await db.select()
+      .from(trackedPools)
+      .where(
+        sql`${trackedPools.agentPublicKey} = ${identifier} OR ${trackedPools.humanId} = ${identifier} OR lower(${trackedPools.tokenSymbol}) = ${identifier.toLowerCase()}`
+      )
+      .limit(1);
+
+    if (pools.length === 0) {
+      const agents = await db.select().from(verifiedBots)
+        .where(sql`lower(${verifiedBots.deviceId}) = ${identifier.toLowerCase()}`)
+        .limit(1);
+
+      if (agents.length === 0) {
+        return res.status(404).json({ error: "Agent not found" });
+      }
+
+      const agentPools = await db.select().from(trackedPools)
+        .where(sql`${trackedPools.humanId} = ${agents[0].humanId} OR ${trackedPools.agentPublicKey} = ${agents[0].publicKey}`)
+        .limit(1);
+
+      if (agentPools.length === 0) {
+        return res.status(404).json({ error: "No token pool found for this agent" });
+      }
+
+      pools.push(agentPools[0]);
+    }
+
+    const pool = pools[0];
+    const poolId = pool.v4PoolId || pool.poolAddress;
+
+    const priceData = await getAgentTokenPrice(pool.tokenAddress, poolId, pool.tokenSymbol);
+
+    if (!priceData) {
+      return res.status(500).json({ error: "Failed to fetch price" });
+    }
+
+    res.json({
+      ...priceData,
+      priceFormatted: formatPrice(priceData.priceInUsd),
+      marketCapFormatted: formatMarketCap(priceData.marketCapUsd),
+      poolVersion: pool.poolVersion || 'v3',
+    });
+  } catch (error: any) {
+    console.error("[selfclaw] agent price error:", error.message);
+    res.status(500).json({ error: "Failed to fetch agent price" });
+  }
+});
+
+router.get("/v1/agent/:identifier/price-history", publicApiLimiter, async (req: Request, res: Response) => {
+  try {
+    const identifier = String(req.params.identifier);
+    const period = (req.query.period as string) || '24h';
+
+    let cutoff: Date;
+    switch (period) {
+      case '1h': cutoff = new Date(Date.now() - 3600_000); break;
+      case '24h': cutoff = new Date(Date.now() - 86400_000); break;
+      case '7d': cutoff = new Date(Date.now() - 7 * 86400_000); break;
+      case '30d': cutoff = new Date(Date.now() - 30 * 86400_000); break;
+      default: cutoff = new Date(Date.now() - 86400_000);
+    }
+
+    let tokenAddress: string | null = null;
+
+    const pools = await db.select()
+      .from(trackedPools)
+      .where(sql`${trackedPools.agentPublicKey} = ${identifier} OR ${trackedPools.humanId} = ${identifier}`)
+      .limit(1);
+
+    if (pools.length > 0) {
+      tokenAddress = pools[0].tokenAddress;
+    } else {
+      const agents = await db.select().from(verifiedBots)
+        .where(sql`lower(${verifiedBots.deviceId}) = ${identifier.toLowerCase()}`)
+        .limit(1);
+
+      if (agents.length > 0) {
+        const agentPools = await db.select().from(trackedPools)
+          .where(sql`${trackedPools.humanId} = ${agents[0].humanId} OR ${trackedPools.agentPublicKey} = ${agents[0].publicKey}`)
+          .limit(1);
+
+        if (agentPools.length > 0) {
+          tokenAddress = agentPools[0].tokenAddress;
+        }
+      }
+    }
+
+    if (!tokenAddress) {
+      return res.status(404).json({ error: "No token found for this agent" });
+    }
+
+    const snapshots = await db.select({
+      priceUsd: tokenPriceSnapshots.priceUsd,
+      priceCelo: tokenPriceSnapshots.priceCelo,
+      marketCapUsd: tokenPriceSnapshots.marketCapUsd,
+      createdAt: tokenPriceSnapshots.createdAt,
+    })
+      .from(tokenPriceSnapshots)
+      .where(sql`${tokenPriceSnapshots.tokenAddress} = ${tokenAddress} AND ${tokenPriceSnapshots.createdAt} >= ${cutoff}`)
+      .orderBy(tokenPriceSnapshots.createdAt)
+      .limit(500);
+
+    res.json({
+      tokenAddress,
+      period,
+      dataPoints: snapshots.map(s => ({
+        priceUsd: parseFloat(s.priceUsd || '0'),
+        priceCelo: parseFloat(s.priceCelo || '0'),
+        marketCapUsd: parseFloat(s.marketCapUsd || '0'),
+        timestamp: s.createdAt?.toISOString(),
+      })),
+    });
+  } catch (error: any) {
+    console.error("[selfclaw] price history error:", error.message);
+    res.status(500).json({ error: "Failed to fetch price history" });
+  }
+});
+
+router.get("/v1/agent/:identifier/reputation", publicApiLimiter, async (req: Request, res: Response) => {
+  try {
+    const identifier = String(req.params.identifier);
+
+    const agents = await db.select().from(verifiedBots)
+      .where(sql`lower(${verifiedBots.deviceId}) = ${identifier.toLowerCase()} OR ${verifiedBots.publicKey} = ${identifier}`)
+      .limit(1);
+
+    if (agents.length === 0) {
+      return res.status(404).json({ error: "Agent not found" });
+    }
+
+    const agent = agents[0];
+    const metadata = agent.metadata as any;
+    const erc8004TokenId = metadata?.erc8004TokenId;
+
+    if (!erc8004TokenId) {
+      return res.json({
+        agentName: agent.deviceId,
+        hasErc8004: false,
+        reputation: null,
+        feedback: [],
+        identity: null,
+      });
+    }
+
+    const [summary, feedback, identity] = await Promise.all([
+      erc8004Service.getReputationSummary(erc8004TokenId),
+      erc8004Service.readAllFeedback(erc8004TokenId),
+      erc8004Service.getAgentIdentity(erc8004TokenId),
+    ]);
+
+    res.json({
+      agentName: agent.deviceId,
+      hasErc8004: true,
+      erc8004TokenId,
+      reputation: summary ? {
+        totalFeedback: summary.totalFeedback,
+        averageScore: summary.averageScore,
+        lastUpdated: summary.lastUpdated,
+      } : null,
+      feedback: (feedback || []).map(f => ({
+        rater: f.rater,
+        score: f.score,
+        tag1: f.tag1,
+        tag2: f.tag2,
+        endpoint: f.endpoint,
+        timestamp: f.timestamp,
+      })),
+      identity: identity ? {
+        owner: identity.owner,
+        uri: identity.uri,
+        scanUrl: `https://www.8004scan.io/agents/${erc8004TokenId}`,
+      } : null,
+    });
+  } catch (error: any) {
+    console.error("[selfclaw] reputation error:", error.message);
+    res.status(500).json({ error: "Failed to fetch reputation" });
+  }
+});
+
+router.get("/v1/prices/all-agents", publicApiLimiter, async (req: Request, res: Response) => {
+  try {
+    const allPools = await db.select().from(trackedPools);
+
+    const prices = await getAllAgentTokenPrices(allPools.map(p => ({
+      tokenAddress: p.tokenAddress,
+      v4PoolId: p.v4PoolId,
+      poolAddress: p.poolAddress,
+      tokenSymbol: p.tokenSymbol,
+      poolVersion: p.poolVersion,
+    })));
+
+    const refPrices = await getReferencePrices();
+
+    res.json({
+      reference: {
+        celoUsd: refPrices.celoUsd,
+        selfclawCelo: refPrices.selfclawCelo,
+        selfclawUsd: refPrices.selfclawUsd,
+      },
+      agents: prices.map(p => ({
+        ...p,
+        priceFormatted: formatPrice(p.priceInUsd),
+        marketCapFormatted: formatMarketCap(p.marketCapUsd),
+      })),
+    });
+  } catch (error: any) {
+    console.error("[selfclaw] all-agent prices error:", error.message);
+    res.status(500).json({ error: "Failed to fetch prices" });
+  }
+});
+
+async function snapshotPrices() {
+  try {
+    const allPools = await db.select().from(trackedPools);
+    if (allPools.length === 0) return;
+
+    const prices = await getAllAgentTokenPrices(allPools.map(p => ({
+      tokenAddress: p.tokenAddress,
+      v4PoolId: p.v4PoolId,
+      poolAddress: p.poolAddress,
+      tokenSymbol: p.tokenSymbol,
+      poolVersion: p.poolVersion,
+    })));
+
+    for (const p of prices) {
+      await db.insert(tokenPriceSnapshots).values({
+        tokenAddress: p.tokenAddress,
+        tokenSymbol: p.tokenSymbol,
+        poolId: p.poolId,
+        priceUsd: p.priceInUsd.toFixed(12),
+        priceCelo: p.priceInCelo.toFixed(12),
+        priceSelfclaw: p.priceInSelfclaw.toFixed(12),
+        marketCapUsd: p.marketCapUsd.toFixed(2),
+        totalSupply: p.totalSupply,
+        liquidity: p.liquidity,
+      });
+    }
+
+    console.log(`[price-oracle] Snapshot saved for ${prices.length} tokens`);
+  } catch (error: any) {
+    console.error('[price-oracle] Snapshot error:', error.message);
+  }
+}
+
+setTimeout(() => {
+  snapshotPrices();
+  setInterval(snapshotPrices, 5 * 60 * 1000);
+}, 10_000);
 
 export default router;
