@@ -1312,10 +1312,12 @@ router.get("/v1/selfclaw-sponsorship", publicApiLimiter, async (_req: Request, r
       halfValueUsd,
       description: "SELFCLAW available for agent token liquidity sponsorship. On request, fees are collected from the SELFCLAW/CELO pool, then 50% of sponsor balance is used to create an AgentToken/SELFCLAW pool. The sponsorable amount (50% of available) defines the initial liquidity pairing for your agent token.",
       pricingFormula: {
-        explanation: "Your initial token price is determined by: initialPrice = selfclawAmount / yourTokenAmount. Market cap = initialPrice * totalSupply * selfclawPriceUsd.",
-        example: `If you send 100,000 tokens and ${(parseFloat(balance) / 2).toFixed(0)} SELFCLAW are sponsored: initialPrice = ${(parseFloat(balance) / 2).toFixed(0)} / 100000 = ${(parseFloat(balance) / 2 / 100000).toFixed(6)} SELFCLAW per token`,
+        explanation: "You choose your own market cap. The SELFCLAW sponsorship amount is fixed (50% of available balance). You control your token's initial price by deciding how many of your tokens to provide for liquidity. Fewer tokens = higher price per token = higher market cap. More tokens = lower price = lower market cap but deeper liquidity.",
+        formula: "initialPrice = selfclawSponsored / yourTokenAmount. Your implied market cap = initialPrice * yourTotalSupply * selfclawPriceUsd.",
+        example: `With ${(parseFloat(balance) / 2).toFixed(0)} SELFCLAW sponsored: sending 10,000 tokens → ${(parseFloat(balance) / 2 / 10000).toFixed(4)} SELFCLAW/token. Sending 1,000,000 tokens → ${(parseFloat(balance) / 2 / 1000000).toFixed(6)} SELFCLAW/token. You decide what market cap reflects your agent's value.`,
+        reverseCalculator: "To target a specific market cap: liquidityTokens = (selfclawSponsored * totalSupply) / (desiredMarketCapInSelfclaw). Use the simulator to model this.",
       },
-      simulator: "GET /api/selfclaw/v1/sponsorship-simulator?totalSupply=1000000&liquidityTokens=100000 — model different scenarios before committing",
+      simulator: "GET /api/selfclaw/v1/sponsorship-simulator?totalSupply=1000000&liquidityTokens=100000 — or reverse: ?totalSupply=1000000&desiredMarketCapUsd=5000 — model different valuations before committing",
       peerStats,
       poolFeeTier: "1% (10000)",
       poolVersion: "Uniswap V4",
@@ -1335,16 +1337,54 @@ router.get("/v1/selfclaw-sponsorship", publicApiLimiter, async (_req: Request, r
 router.get("/v1/sponsorship-simulator", publicApiLimiter, async (req: Request, res: Response) => {
   try {
     const totalSupply = parseFloat(req.query.totalSupply as string);
-    const liquidityTokens = parseFloat(req.query.liquidityTokens as string);
+    let liquidityTokens = parseFloat(req.query.liquidityTokens as string) || 0;
+    const desiredMarketCapUsd = parseFloat(req.query.desiredMarketCapUsd as string) || 0;
 
-    if (!totalSupply || !liquidityTokens || totalSupply <= 0 || liquidityTokens <= 0) {
+    if (!totalSupply || totalSupply <= 0) {
       return res.status(400).json({
-        error: "totalSupply and liquidityTokens are required (positive numbers)",
-        usage: "GET /api/selfclaw/v1/sponsorship-simulator?totalSupply=1000000&liquidityTokens=100000",
+        error: "totalSupply is required (positive number)",
+        usage: [
+          "Forward: GET /api/selfclaw/v1/sponsorship-simulator?totalSupply=1000000&liquidityTokens=100000",
+          "Reverse: GET /api/selfclaw/v1/sponsorship-simulator?totalSupply=1000000&desiredMarketCapUsd=5000",
+        ],
         parameters: {
           totalSupply: "Total token supply you plan to mint (e.g. 1000000)",
-          liquidityTokens: "How many tokens you will send to the sponsor wallet for liquidity (e.g. 100000)",
-        }
+          liquidityTokens: "(Option A) How many tokens you will provide for liquidity — you set the price",
+          desiredMarketCapUsd: "(Option B) Your target market cap in USD — system calculates how many tokens to provide",
+        },
+        note: "You choose your own valuation. The SELFCLAW sponsorship amount is fixed. You control the price by deciding how many tokens to provide for liquidity.",
+      });
+    }
+
+    const { getSelfclawBalance, getSponsorAddress } = await import("../lib/uniswap-v4.js");
+    const rawSponsorKey2 = process.env.SELFCLAW_SPONSOR_PRIVATE_KEY || process.env.CELO_PRIVATE_KEY;
+    const sponsorKey2 = rawSponsorKey2 && !rawSponsorKey2.startsWith('0x') ? `0x${rawSponsorKey2}` : rawSponsorKey2;
+    const availableBalance2 = await getSelfclawBalance(sponsorKey2);
+    const sponsorableAmount2 = parseFloat(availableBalance2) / 2;
+
+    let selfclawPriceUsd2: number | null = null;
+    let celoUsd2: number | null = null;
+    let selfclawPriceCelo2: number | null = null;
+    try {
+      const prices = await getReferencePrices();
+      selfclawPriceUsd2 = prices.selfclawUsd;
+      celoUsd2 = prices.celoUsd;
+      selfclawPriceCelo2 = prices.selfclawCelo;
+    } catch {}
+
+    let mode = "forward";
+    if (desiredMarketCapUsd > 0 && selfclawPriceUsd2 && liquidityTokens <= 0) {
+      mode = "reverse";
+      const desiredMarketCapSelfclaw = desiredMarketCapUsd / selfclawPriceUsd2;
+      const desiredPriceSelfclaw = desiredMarketCapSelfclaw / totalSupply;
+      liquidityTokens = desiredPriceSelfclaw > 0 ? sponsorableAmount2 / desiredPriceSelfclaw : 0;
+      if (liquidityTokens > totalSupply) liquidityTokens = totalSupply;
+      if (liquidityTokens < 1) liquidityTokens = 1;
+    }
+
+    if (liquidityTokens <= 0) {
+      return res.status(400).json({
+        error: "Provide either liquidityTokens (forward mode) or desiredMarketCapUsd (reverse mode)",
       });
     }
 
@@ -1354,30 +1394,14 @@ router.get("/v1/sponsorship-simulator", publicApiLimiter, async (req: Request, r
 
     const liquidityPercent = (liquidityTokens / totalSupply) * 100;
 
-    const { getSelfclawBalance, getSponsorAddress } = await import("../lib/uniswap-v4.js");
-    const rawSponsorKey = process.env.SELFCLAW_SPONSOR_PRIVATE_KEY || process.env.CELO_PRIVATE_KEY;
-    const sponsorKey = rawSponsorKey && !rawSponsorKey.startsWith('0x') ? `0x${rawSponsorKey}` : rawSponsorKey;
-    const availableBalance = await getSelfclawBalance(sponsorKey);
-    const sponsorableAmount = parseFloat(availableBalance) / 2;
+    const initialPriceSelfclaw = sponsorableAmount2 / liquidityTokens;
 
-    const initialPriceSelfclaw = sponsorableAmount / liquidityTokens;
-
-    let selfclawPriceUsd: number | null = null;
-    let celoUsd: number | null = null;
-    let selfclawPriceCelo: number | null = null;
-    try {
-      const prices = await getReferencePrices();
-      selfclawPriceUsd = prices.selfclawUsd;
-      celoUsd = prices.celoUsd;
-      selfclawPriceCelo = prices.selfclawCelo;
-    } catch {}
-
-    const initialPriceUsd = selfclawPriceUsd ? initialPriceSelfclaw * selfclawPriceUsd : null;
-    const initialPriceCelo = selfclawPriceCelo ? initialPriceSelfclaw * selfclawPriceCelo : null;
+    const initialPriceUsd = selfclawPriceUsd2 ? initialPriceSelfclaw * selfclawPriceUsd2 : null;
+    const initialPriceCelo = selfclawPriceCelo2 ? initialPriceSelfclaw * selfclawPriceCelo2 : null;
     const marketCapSelfclaw = initialPriceSelfclaw * totalSupply;
     const marketCapUsd = initialPriceUsd ? initialPriceUsd * totalSupply : null;
     const marketCapCelo = initialPriceCelo ? initialPriceCelo * totalSupply : null;
-    const poolLiquidityUsd = selfclawPriceUsd ? sponsorableAmount * selfclawPriceUsd * 2 : null;
+    const poolLiquidityUsd = selfclawPriceUsd2 ? sponsorableAmount2 * selfclawPriceUsd2 * 2 : null;
 
     const allPools = await db.select().from(trackedPools);
     const peerComparison: any[] = [];
@@ -1395,33 +1419,36 @@ router.get("/v1/sponsorship-simulator", publicApiLimiter, async (req: Request, r
     }
 
     const scenarios = [
-      { label: "Conservative (10% of supply)", liquidityTokens: totalSupply * 0.1 },
-      { label: "Moderate (25% of supply)", liquidityTokens: totalSupply * 0.25 },
-      { label: "Aggressive (50% of supply)", liquidityTokens: totalSupply * 0.5 },
+      { label: "High valuation (10% of supply in liquidity)", liquidityTokens: totalSupply * 0.1 },
+      { label: "Moderate valuation (25% of supply in liquidity)", liquidityTokens: totalSupply * 0.25 },
+      { label: "Low valuation, deep liquidity (50% of supply)", liquidityTokens: totalSupply * 0.5 },
     ].map(s => {
-      const price = sponsorableAmount / s.liquidityTokens;
+      const price = sponsorableAmount2 / s.liquidityTokens;
       return {
         ...s,
         initialPriceSelfclaw: price,
-        initialPriceUsd: selfclawPriceUsd ? price * selfclawPriceUsd : null,
-        marketCapUsd: selfclawPriceUsd ? price * totalSupply * selfclawPriceUsd : null,
+        initialPriceUsd: selfclawPriceUsd2 ? price * selfclawPriceUsd2 : null,
+        marketCapUsd: selfclawPriceUsd2 ? price * totalSupply * selfclawPriceUsd2 : null,
         marketCapSelfclaw: price * totalSupply,
       };
     });
 
     res.json({
+      mode,
       input: {
         totalSupply,
-        liquidityTokens,
+        liquidityTokens: Math.round(liquidityTokens),
         liquidityPercent: `${liquidityPercent.toFixed(1)}%`,
+        ...(mode === "reverse" ? { desiredMarketCapUsd } : {}),
       },
       sponsorship: {
-        selfclawAvailable: parseFloat(availableBalance),
-        selfclawSponsored: sponsorableAmount,
-        selfclawPriceUsd,
-        selfclawPriceCelo,
+        selfclawAvailable: parseFloat(availableBalance2),
+        selfclawSponsored: sponsorableAmount2,
+        selfclawPriceUsd: selfclawPriceUsd2,
+        selfclawPriceCelo: selfclawPriceCelo2,
+        note: "The SELFCLAW sponsorship amount is fixed (50% of available). You control the price ratio by choosing how many of your tokens to provide.",
       },
-      projected: {
+      yourChosenValuation: {
         initialPrice: {
           selfclaw: initialPriceSelfclaw,
           usd: initialPriceUsd,
@@ -1433,11 +1460,15 @@ router.get("/v1/sponsorship-simulator", publicApiLimiter, async (req: Request, r
           celo: marketCapCelo,
         },
         poolLiquidityUsd,
+        interpretation: marketCapUsd
+          ? `By providing ${Math.round(liquidityTokens).toLocaleString()} tokens (${liquidityPercent.toFixed(1)}% of supply), you are valuing your agent at $${marketCapUsd.toFixed(2)} market cap. Each token starts at $${initialPriceUsd!.toFixed(8)}.`
+          : `By providing ${Math.round(liquidityTokens).toLocaleString()} tokens (${liquidityPercent.toFixed(1)}% of supply), each token starts at ${initialPriceSelfclaw.toFixed(6)} SELFCLAW.`,
       },
       formula: {
-        initialPrice: "selfclawSponsored / liquidityTokens",
-        marketCap: "initialPrice * totalSupply",
-        note: "More tokens in liquidity = lower price per token but deeper liquidity (less slippage for traders). Fewer tokens = higher price but thinner liquidity.",
+        initialPrice: "selfclawSponsored / yourLiquidityTokens",
+        marketCap: "initialPrice * yourTotalSupply",
+        reverse: "To target a market cap: liquidityTokens = (selfclawSponsored * totalSupply) / desiredMarketCapInSelfclaw",
+        keyInsight: "You decide your own valuation. Fewer tokens in liquidity = higher price = higher market cap (but thinner trading). More tokens = lower market cap (but deeper liquidity, less slippage).",
       },
       alternativeScenarios: scenarios,
       peerComparison: {
@@ -1449,14 +1480,10 @@ router.get("/v1/sponsorship-simulator", publicApiLimiter, async (req: Request, r
         } : { note: "No existing pools for comparison yet — you would be first!" },
       },
       guidance: {
-        liquidityRange: "10-40% of supply is typical for liquidity. Higher = more liquid market, lower = more tokens for treasury/community.",
+        howToDecide: "Ask yourself: what is my agent worth? If you believe your agent provides $5,000 of value, use ?desiredMarketCapUsd=5000 to see how many tokens to allocate. If you want deep liquidity for active trading, allocate more tokens (lower market cap). If you want a premium valuation, allocate fewer tokens.",
+        liquidityRange: "10-40% of supply is typical for liquidity.",
         supplyRange: "1M-100M tokens is common. Lower supply = higher per-token value perception.",
-        considerations: [
-          "The initial price only sets the starting point — market forces move it after launch",
-          "Deep liquidity (more tokens) means less price impact per trade",
-          "Reserve tokens for treasury, community, and burns — don't put everything in liquidity",
-          "Your token plan (POST /v1/token-plan) should document your allocation reasoning",
-        ],
+        tradeoff: "Higher market cap = thinner liquidity (big trades move price a lot). Lower market cap = deeper liquidity (stable trading). Find the balance that reflects your agent's actual value.",
       },
     });
   } catch (error: any) {
