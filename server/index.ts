@@ -6,6 +6,7 @@ import { sql } from "drizzle-orm";
 import selfclawRouter from "./selfclaw.js";
 import adminRouter, { runAutoClaimPendingBridges } from "./admin.js";
 import hostingerRouter from "./hostinger-routes.js";
+import sandboxRouter, { initOpenClawGateway } from "./sandbox-agent.js";
 import { erc8004Service } from "../lib/erc8004.js";
 
 const app = express();
@@ -75,6 +76,7 @@ async function main() {
 
   app.use("/api/selfclaw", selfclawRouter);
   app.use("/api/admin", adminRouter);
+  app.use("/api/admin/sandbox", sandboxRouter);
   app.use("/api/hostinger", hostingerRouter);
 
   app.get("/.well-known/agent-registration.json", async (req: Request, res: Response) => {
@@ -129,6 +131,12 @@ async function main() {
         console.error('[auto-bridge] Startup auto-claim error:', err.message)
       );
     }, 5000);
+
+    setTimeout(() => {
+      initOpenClawGateway().catch(err =>
+        console.log('[sandbox] OpenClaw init deferred:', err.message)
+      );
+    }, 3000);
   });
 }
 

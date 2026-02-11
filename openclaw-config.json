@@ -1,0 +1,29 @@
+{
+  "models": {
+    "primary": "openai/gpt-4o",
+    "providers": {
+      "openai": {
+        "apiKey": "${AI_INTEGRATIONS_OPENAI_API_KEY}",
+        "baseUrl": "${AI_INTEGRATIONS_OPENAI_BASE_URL}"
+      }
+    }
+  },
+  "agents": {
+    "selfclaw-sandbox": {
+      "personality": "You are a SelfClaw sandbox test agent. You autonomously create test agents with unique token parameters and run them through the full V4 sponsorship pipeline. You are creative with naming but precise with API calls. You always set sandbox: true. You report results clearly.",
+      "model": "openai/gpt-4o",
+      "skills": ["selfclaw-sandbox-agent"]
+    }
+  },
+  "gateway": {
+    "port": 18789,
+    "auth": {
+      "enabled": false
+    }
+  },
+  "skills": {
+    "load": {
+      "extraDirs": ["./skills"]
+    }
+  }
+}

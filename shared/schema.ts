@@ -241,5 +241,28 @@ export const costEvents = pgTable("cost_events", {
 export type CostEvent = typeof costEvents.$inferSelect;
 export type InsertCostEvent = typeof costEvents.$inferInsert;
 
+export const sandboxTestRuns = pgTable("sandbox_test_runs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  agentName: varchar("agent_name").notNull(),
+  agentPublicKey: text("agent_public_key"),
+  tokenName: varchar("token_name"),
+  tokenSymbol: varchar("token_symbol"),
+  tokenSupply: varchar("token_supply"),
+  tokenAddress: varchar("token_address"),
+  walletAddress: varchar("wallet_address"),
+  v4PoolId: varchar("v4_pool_id"),
+  positionTokenId: varchar("position_token_id"),
+  selfclawAmount: varchar("selfclaw_amount"),
+  status: varchar("status").default("started"),
+  steps: jsonb("steps"),
+  error: text("error"),
+  durationMs: integer("duration_ms"),
+  createdAt: timestamp("created_at").defaultNow(),
+  completedAt: timestamp("completed_at"),
+});
+
+export type SandboxTestRun = typeof sandboxTestRuns.$inferSelect;
+export type InsertSandboxTestRun = typeof sandboxTestRuns.$inferInsert;
+
 export type User = typeof users.$inferSelect;
 export type UpsertUser = typeof users.$inferInsert;
