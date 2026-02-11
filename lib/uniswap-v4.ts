@@ -366,10 +366,12 @@ function getFullRangeTicks(feeTier: number): { tickLower: number; tickUpper: num
 async function ensurePermit2Approval(
   token: `0x${string}`,
   spender: `0x${string}`,
-  amount: bigint
+  amount: bigint,
+  overrideAccount?: ReturnType<typeof privateKeyToAccount>,
+  overrideWalletClient?: ReturnType<typeof createWalletClient>
 ): Promise<void> {
-  const account = getAccount();
-  const walletClient = getWalletClient();
+  const account = overrideAccount || getAccount();
+  const walletClient = overrideWalletClient || getWalletClient();
 
   const erc20Allowance = await publicClient.readContract({
     address: token,
@@ -606,10 +608,10 @@ export async function createPoolAndAddLiquidity(params: CreatePoolParams): Promi
     const amount1Max = amount1 + (amount1 * 5n / 100n);
 
     if (!isCeloToken0) {
-      await ensurePermit2Approval(token0, POSITION_MANAGER, amount0Max);
+      await ensurePermit2Approval(token0, POSITION_MANAGER, amount0Max, account, walletClient);
     }
     if (!isCeloToken1) {
-      await ensurePermit2Approval(token1, POSITION_MANAGER, amount1Max);
+      await ensurePermit2Approval(token1, POSITION_MANAGER, amount1Max, account, walletClient);
     }
 
     const { tickLower, tickUpper } = getFullRangeTicks(feeTier);

@@ -86,6 +86,8 @@ interface DebugVerificationAttempt {
 }
 
 let lastVerificationAttempt: DebugVerificationAttempt | null = null;
+let lastV3FeeCollectionTime = 0;
+const V3_FEE_COLLECTION_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 
 // Store history of raw callback requests for debugging
 interface RawCallbackRequest {
@@ -1328,15 +1330,20 @@ router.post("/v1/request-selfclaw-sponsorship", verificationLimiter, async (req:
 
     const selfclawAddress = "0xCD88f99Adf75A9110c0bcd22695A32A20eC54ECb";
 
-    console.log(`[selfclaw] Sponsorship requested by ${humanId.substring(0, 16)}... — collecting V3 fees first`);
-    let feeCollectionResult;
-    try {
-      feeCollectionResult = await collectAllV3Fees(sponsorKey);
-      if (feeCollectionResult.success && parseFloat(feeCollectionResult.totalSelfclaw) > 0) {
-        console.log(`[selfclaw] Collected ${feeCollectionResult.totalSelfclaw} SELFCLAW from V3 fee positions`);
+    const now = Date.now();
+    if (now - lastV3FeeCollectionTime >= V3_FEE_COLLECTION_COOLDOWN_MS) {
+      console.log(`[selfclaw] Sponsorship requested by ${humanId.substring(0, 16)}... — collecting V3 fees`);
+      try {
+        const feeCollectionResult = await collectAllV3Fees(sponsorKey);
+        lastV3FeeCollectionTime = Date.now();
+        if (feeCollectionResult.success && parseFloat(feeCollectionResult.totalSelfclaw) > 0) {
+          console.log(`[selfclaw] Collected ${feeCollectionResult.totalSelfclaw} SELFCLAW from V3 fee positions`);
+        }
+      } catch (feeErr: any) {
+        console.log(`[selfclaw] V3 fee collection skipped: ${feeErr.message}`);
       }
-    } catch (feeErr: any) {
-      console.log(`[selfclaw] V3 fee collection skipped: ${feeErr.message}`);
+    } else {
+      console.log(`[selfclaw] V3 fee collection on cooldown (next in ${Math.round((V3_FEE_COLLECTION_COOLDOWN_MS - (now - lastV3FeeCollectionTime)) / 3600000)}h)`);
     }
 
     const availableBalance = await getSelfclawBalance(sponsorKey);
@@ -3939,11 +3946,16 @@ router.post("/v1/my-agents/:publicKey/request-sponsorship", verificationLimiter,
 
     const selfclawAddress = "0xCD88f99Adf75A9110c0bcd22695A32A20eC54ECb";
 
-    let feeCollectionResult;
-    try {
-      feeCollectionResult = await collectAllV3Fees(sponsorKey);
-    } catch (e: any) {
-      console.log(`[selfclaw] V3 fee collection skipped: ${e.message}`);
+    const now = Date.now();
+    if (now - lastV3FeeCollectionTime >= V3_FEE_COLLECTION_COOLDOWN_MS) {
+      try {
+        await collectAllV3Fees(sponsorKey);
+        lastV3FeeCollectionTime = Date.now();
+      } catch (e: any) {
+        console.log(`[selfclaw] V3 fee collection skipped: ${e.message}`);
+      }
+    } else {
+      console.log(`[selfclaw] V3 fee collection on cooldown (next in ${Math.round((V3_FEE_COLLECTION_COOLDOWN_MS - (now - lastV3FeeCollectionTime)) / 3600000)}h)`);
     }
 
     const availableBalance = await getSelfclawBalance(sponsorKey);
