@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sandbox Lab | SelfClaw</title>
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+  <link rel="icon" type="image/png" href="/favicon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #0a0a0a;
+      color: #E8E8E8;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.9rem;
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+    .container {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem;
+    }
+    .login-wrap {
+      min-height: 80vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .login-box {
+      background: #111;
+      border: 1px solid #333;
+      border-radius: 12px;
+      padding: 2.5rem;
+      width: 100%;
+      max-width: 400px;
+      text-align: center;
+    }
+    .login-box h2 {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 1.1rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      color: #FF6B4A;
+      margin-bottom: 0.5rem;
+    }
+    .login-box p {
+      font-size: 0.75rem;
+      color: #555;
+      margin-bottom: 1.5rem;
+      font-family: 'IBM Plex Mono', monospace;
+    }
+    .input {
+      width: 100%;
+      padding: 0.6rem 0.8rem;
+      background: #0d0d0d;
+      border: 1px solid #333;
+      border-radius: 8px;
+      color: #E8E8E8;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.8rem;
+      outline: none;
+    }
+    .input:focus { border-color: #FF6B4A; }
+    .btn {
+      padding: 0.6rem 1.5rem;
+      background: #FF6B4A;
+      color: #000;
+      border: none;
+      border-radius: 8px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      transition: all 0.2s ease;
+    }
+    .btn:hover { background: #fff; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-outline {
+      background: transparent;
+      border: 1px solid #444;
+      color: #aaa;
+    }
+    .btn-outline:hover { border-color: #FF6B4A; color: #FF6B4A; background: transparent; }
+    .login-error {
+      color: #ef4444;
+      font-size: 0.75rem;
+      margin-bottom: 1rem;
+      font-family: 'IBM Plex Mono', monospace;
+      display: none;
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #333;
+      padding-bottom: 1.5rem;
+      margin-bottom: 2rem;
+    }
+    .header h1 {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 1.3rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      color: #FF6B4A;
+    }
+    .header h1 span { color: #555; font-weight: 400; }
+    .section {
+      margin-bottom: 2.5rem;
+    }
+    .section-title {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      margin-bottom: 1.25rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid #333;
+      color: #E8E8E8;
+    }
+    .status-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1rem;
+    }
+    .status-card {
+      background: #0d0d0d;
+      border: 1px solid #333;
+      border-radius: 12px;
+      padding: 1.25rem;
+      border-bottom: 2px solid #FF6B4A;
+    }
+    .status-card .label {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.6rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #777;
+      display: block;
+      margin-bottom: 0.4rem;
+    }
+    .status-card .value {
+      font-family: 'Inter', sans-serif;
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: #E8E8E8;
+      line-height: 1;
+    }
+    .status-card .value.small {
+      font-size: 0.85rem;
+      font-family: 'IBM Plex Mono', monospace;
+      color: #aaa;
+    }
+    .controls {
+      display: flex;
+      gap: 0.75rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .run-status {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.7rem;
+      color: #777;
+      margin-left: 0.5rem;
+    }
+    .run-status.running { color: #FFD700; }
+    .run-status.success { color: #4AFF6B; }
+    .run-status.error { color: #ef4444; }
+    .spinner {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border: 2px solid #333;
+      border-top-color: #FF6B4A;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .history-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.8rem;
+    }
+    .history-table th {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.6rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #777;
+      text-align: left;
+      padding: 0.75rem 0.75rem;
+      border-bottom: 1px solid #333;
+    }
+    .history-table td {
+      padding: 0.65rem 0.75rem;
+      border-bottom: 1px solid #1a1a1a;
+      vertical-align: top;
+    }
+    .history-table tr:hover td {
+      background: #111;
+    }
+    .history-table .clickable {
+      cursor: pointer;
+    }
+    .badge {
+      display: inline-block;
+      padding: 0.15rem 0.5rem;
+      border-radius: 100px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.6rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+    .badge.completed { background: rgba(74,255,107,0.15); color: #4AFF6B; }
+    .badge.failed { background: rgba(239,68,68,0.15); color: #ef4444; }
+    .badge.dry_run { background: rgba(255,215,0,0.15); color: #FFD700; }
+    .badge.partial { background: rgba(255,165,0,0.15); color: #FFA500; }
+    .mono { font-family: 'IBM Plex Mono', monospace; }
+    .text-muted { color: #555; }
+    .text-sm { font-size: 0.7rem; }
+    .text-xs { font-size: 0.6rem; }
+    .detail-panel {
+      background: #0d0d0d;
+      border: 1px solid #333;
+      border-radius: 12px;
+      margin: 0.5rem 0 1rem 0;
+      padding: 1.25rem;
+      display: none;
+    }
+    .detail-panel.open { display: block; }
+    .detail-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+    .detail-field {
+      margin-bottom: 0.5rem;
+    }
+    .detail-field .label {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.55rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #777;
+      display: block;
+      margin-bottom: 0.15rem;
+    }
+    .detail-field .val {
+      font-size: 0.8rem;
+      color: #E8E8E8;
+      word-break: break-all;
+    }
+    .steps-list {
+      list-style: none;
+    }
+    .step-item {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.5rem 0;
+      border-bottom: 1px solid #1a1a1a;
+      font-size: 0.75rem;
+    }
+    .step-item:last-child { border-bottom: none; }
+    .step-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .step-dot.success { background: #4AFF6B; }
+    .step-dot.skipped { background: #555; }
+    .step-dot.failed { background: #ef4444; }
+    .step-name {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.65rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      color: #aaa;
+      min-width: 140px;
+    }
+    .step-detail {
+      flex: 1;
+      color: #777;
+      font-size: 0.65rem;
+      font-family: 'IBM Plex Mono', monospace;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .step-time {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.6rem;
+      color: #555;
+      flex-shrink: 0;
+    }
+    .empty-state {
+      text-align: center;
+      padding: 3rem;
+      color: #555;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.8rem;
+    }
+    .addr {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.65rem;
+      color: #777;
+    }
+    @media (max-width: 768px) {
+      .status-grid { grid-template-columns: repeat(2, 1fr); }
+      .detail-grid { grid-template-columns: 1fr; }
+      .controls { flex-direction: column; align-items: stretch; }
+    }
+    @media (max-width: 480px) {
+      .status-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <div id="login-view" class="login-wrap">
+      <div class="login-box">
+        <h2>SANDBOX LAB</h2>
+        <p>agent test pipeline</p>
+        <div id="login-error" class="login-error"></div>
+        <input type="password" id="login-password" class="input" placeholder="Admin password" onkeydown="if(event.key==='Enter')doLogin()">
+        <button class="btn" style="width:100%;margin-top:0.75rem;" onclick="doLogin()">Enter</button>
+      </div>
+    </div>
+
+    <div id="dashboard-view" style="display:none;">
+
+      <header class="header">
+        <h1>SANDBOX LAB <span>// test pipeline</span></h1>
+        <div class="controls">
+          <button class="btn btn-outline" onclick="refreshAll()">Refresh</button>
+          <button class="btn btn-outline" onclick="doLogout()">Logout</button>
+        </div>
+      </header>
+
+      <section class="section">
+        <h2 class="section-title">Status</h2>
+        <div class="status-grid">
+          <div class="status-card">
+            <span class="label">Mode</span>
+            <span class="value small" id="st-mode">--</span>
+          </div>
+          <div class="status-card">
+            <span class="label">SELFCLAW Cap</span>
+            <span class="value small" id="st-cap">--</span>
+          </div>
+          <div class="status-card">
+            <span class="label">Total Runs</span>
+            <span class="value" id="st-total">--</span>
+          </div>
+          <div class="status-card">
+            <span class="label">Sandbox Agents</span>
+            <span class="value" id="st-agents">--</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2 class="section-title">Run Test</h2>
+        <div class="controls">
+          <button class="btn" id="btn-full" onclick="runTest(false)">Full Test</button>
+          <button class="btn btn-outline" id="btn-dry" onclick="runTest(true)">Dry Run</button>
+          <span class="run-status" id="run-status"></span>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2 class="section-title">Test History</h2>
+        <div id="history-loading" style="text-align:center;padding:2rem;"><span class="spinner"></span></div>
+        <div id="history-content" style="display:none;"></div>
+        <div id="history-empty" class="empty-state" style="display:none;">No test runs yet. Hit "Full Test" or "Dry Run" to get started.</div>
+      </section>
+
+    </div>
+  </div>
+
+  <script>
+    var adminPassword = '';
+
+    function doLogin() {
+      var pw = document.getElementById('login-password').value.trim();
+      if (!pw) return;
+      var errEl = document.getElementById('login-error');
+      errEl.style.display = 'none';
+      fetch('/api/admin/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: pw })
+      })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (data.success && data.token) {
+          adminPassword = pw;
+          sessionStorage.setItem('sandbox_token', data.token);
+          sessionStorage.setItem('sandbox_pw', pw);
+          document.getElementById('login-view').style.display = 'none';
+          document.getElementById('dashboard-view').style.display = 'block';
+          refreshAll();
+        } else {
+          errEl.textContent = data.error || 'Invalid password';
+          errEl.style.display = 'block';
+        }
+      })
+      .catch(function() {
+        errEl.textContent = 'Connection error';
+        errEl.style.display = 'block';
+      });
+    }
+
+    function doLogout() {
+      sessionStorage.removeItem('sandbox_token');
+      sessionStorage.removeItem('sandbox_pw');
+      adminPassword = '';
+      document.getElementById('dashboard-view').style.display = 'none';
+      document.getElementById('login-view').style.display = 'flex';
+    }
+
+    function getToken() { return sessionStorage.getItem('sandbox_token'); }
+    function getPw() { return sessionStorage.getItem('sandbox_pw') || adminPassword; }
+
+    function refreshAll() {
+      loadStatus();
+      loadHistory();
+    }
+
+    function loadStatus() {
+      fetch('/api/admin/sandbox/status?adminPassword=' + encodeURIComponent(getPw()))
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        document.getElementById('st-mode').textContent = d.mode || 'unknown';
+        document.getElementById('st-cap').textContent = d.selfclawCap ? d.selfclawCap.percent + ' (' + Number(d.selfclawCap.maxTokens).toLocaleString() + ')' : '--';
+        document.getElementById('st-agents').textContent = d.sandboxAgentsCreated || '0';
+      })
+      .catch(function() {});
+
+      fetch('/api/admin/sandbox/history?adminPassword=' + encodeURIComponent(getPw()) + '&limit=100')
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        document.getElementById('st-total').textContent = d.summary ? d.summary.total : '0';
+      })
+      .catch(function() {});
+    }
+
+    function loadHistory() {
+      var loading = document.getElementById('history-loading');
+      var content = document.getElementById('history-content');
+      var empty = document.getElementById('history-empty');
+      loading.style.display = 'block';
+      content.style.display = 'none';
+      empty.style.display = 'none';
+
+      fetch('/api/admin/sandbox/history?adminPassword=' + encodeURIComponent(getPw()) + '&limit=50')
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        loading.style.display = 'none';
+        if (!d.runs || d.runs.length === 0) {
+          empty.style.display = 'block';
+          return;
+        }
+        content.style.display = 'block';
+        renderHistory(d.runs);
+      })
+      .catch(function() {
+        loading.style.display = 'none';
+        empty.style.display = 'block';
+      });
+    }
+
+    function renderHistory(runs) {
+      var html = '<table class="history-table"><thead><tr>' +
+        '<th>Agent</th><th>Token</th><th>Wallet</th><th>Status</th><th>Duration</th><th>Date</th><th></th>' +
+        '</tr></thead><tbody>';
+
+      for (var i = 0; i < runs.length; i++) {
+        var r = runs[i];
+        var wallet = r.walletAddress ? shortAddr(r.walletAddress) : '--';
+        var dur = r.durationMs != null ? r.durationMs + 'ms' : '--';
+        var date = r.createdAt ? formatDate(r.createdAt) : '--';
+        var statusClass = r.status || 'unknown';
+
+        html += '<tr class="clickable" onclick="toggleDetail(\'' + r.id + '\')">' +
+          '<td><strong>' + esc(r.agentName || '--') + '</strong></td>' +
+          '<td class="mono text-sm">' + esc(r.tokenSymbol || '--') + '</td>' +
+          '<td class="addr">' + wallet + '</td>' +
+          '<td><span class="badge ' + statusClass + '">' + esc(r.status || '--') + '</span></td>' +
+          '<td class="mono text-xs text-muted">' + dur + '</td>' +
+          '<td class="mono text-xs text-muted">' + date + '</td>' +
+          '<td class="mono text-xs" style="color:#555;">&#9660;</td>' +
+          '</tr>';
+
+        html += '<tr><td colspan="7" style="padding:0;border:none;">' +
+          '<div class="detail-panel" id="detail-' + r.id + '">' +
+          renderDetail(r) +
+          '</div></td></tr>';
+      }
+
+      html += '</tbody></table>';
+      document.getElementById('history-content').innerHTML = html;
+    }
+
+    function renderDetail(r) {
+      var html = '<div class="detail-grid">';
+
+      html += '<div>';
+      html += field('Agent Name', r.agentName);
+      html += field('Public Key', r.agentPublicKey || '--');
+      html += field('Token', (r.tokenName || '--') + ' (' + (r.tokenSymbol || '--') + ')');
+      html += field('Supply', r.tokenSupply ? Number(r.tokenSupply).toLocaleString() : '--');
+      html += '</div>';
+
+      html += '<div>';
+      html += field('Wallet', r.walletAddress || 'Not created');
+      html += field('Token Address', r.tokenAddress || 'Not deployed');
+      html += field('V4 Pool ID', r.v4PoolId || 'No pool');
+      html += field('Position NFT', r.positionTokenId || 'None');
+      html += field('SELFCLAW Budget', r.selfclawAmount ? Number(r.selfclawAmount).toLocaleString() : '--');
+      html += '</div>';
+
+      html += '</div>';
+
+      if (r.steps && r.steps.length > 0) {
+        html += '<div style="margin-top:0.5rem;">';
+        html += '<div style="font-family:IBM Plex Mono,monospace;font-size:0.6rem;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:#777;margin-bottom:0.5rem;">Pipeline Steps</div>';
+        html += '<ul class="steps-list">';
+        for (var i = 0; i < r.steps.length; i++) {
+          var s = r.steps[i];
+          var dotClass = s.status || 'skipped';
+          var detail = '';
+          if (s.result) {
+            if (s.result.walletAddress) detail = s.result.walletAddress;
+            else if (s.result.agentName) detail = s.result.agentName + ' / ' + (s.result.tokenSymbol || '');
+            else if (s.result.tokenName) detail = s.result.tokenName;
+            else if (s.result.note) detail = s.result.note;
+            else if (s.result.samplePoolId) detail = 'poolId: ' + shortAddr(s.result.samplePoolId);
+            else if (s.result.plan) detail = s.result.model + ' / $' + (s.result.targetMarketCap || '');
+          }
+          var dur = s.durationMs != null ? s.durationMs + 'ms' : '';
+
+          html += '<li class="step-item">' +
+            '<span class="step-dot ' + dotClass + '"></span>' +
+            '<span class="step-name">' + esc(formatStepName(s.name)) + '</span>' +
+            '<span class="step-detail">' + esc(detail) + '</span>' +
+            '<span class="step-time">' + dur + '</span>' +
+            '</li>';
+        }
+        html += '</ul></div>';
+      }
+
+      if (r.error) {
+        html += '<div style="margin-top:1rem;padding:0.75rem;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:8px;font-family:IBM Plex Mono,monospace;font-size:0.7rem;color:#ef4444;">' + esc(r.error) + '</div>';
+      }
+
+      return html;
+    }
+
+    function field(label, val) {
+      return '<div class="detail-field"><span class="label">' + esc(label) + '</span><span class="val">' + esc(val || '--') + '</span></div>';
+    }
+
+    function toggleDetail(id) {
+      var el = document.getElementById('detail-' + id);
+      if (el) el.classList.toggle('open');
+    }
+
+    function runTest(dryRun) {
+      var btnFull = document.getElementById('btn-full');
+      var btnDry = document.getElementById('btn-dry');
+      var statusEl = document.getElementById('run-status');
+      btnFull.disabled = true;
+      btnDry.disabled = true;
+      statusEl.className = 'run-status running';
+      statusEl.innerHTML = '<span class="spinner"></span> Running ' + (dryRun ? 'dry run' : 'full test') + '...';
+
+      fetch('/api/admin/sandbox/run-test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dryRun: dryRun, adminPassword: getPw() })
+      })
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        btnFull.disabled = false;
+        btnDry.disabled = false;
+        if (d.success) {
+          var name = d.agent ? d.agent.name : (d.params ? d.params.agentName : '');
+          var sym = d.token ? d.token.symbol : (d.params ? d.params.tokenSymbol : '');
+          statusEl.className = 'run-status success';
+          statusEl.textContent = 'OK — ' + name + ' ($' + sym + ') in ' + (d.durationMs || 0) + 'ms';
+        } else {
+          statusEl.className = 'run-status error';
+          statusEl.textContent = 'Failed: ' + (d.error || 'Unknown error');
+        }
+        refreshAll();
+      })
+      .catch(function(e) {
+        btnFull.disabled = false;
+        btnDry.disabled = false;
+        statusEl.className = 'run-status error';
+        statusEl.textContent = 'Error: ' + e.message;
+      });
+    }
+
+    function shortAddr(addr) {
+      if (!addr || addr.length < 12) return addr || '--';
+      return addr.substring(0, 6) + '...' + addr.substring(addr.length - 4);
+    }
+
+    function formatDate(iso) {
+      try {
+        var d = new Date(iso);
+        return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' ' +
+               d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+      } catch(e) { return iso; }
+    }
+
+    function formatStepName(name) {
+      return (name || '').replace(/_/g, ' ');
+    }
+
+    function esc(s) {
+      var d = document.createElement('div');
+      d.textContent = s || '';
+      return d.innerHTML;
+    }
+
+    (function() {
+      var saved = sessionStorage.getItem('sandbox_token');
+      var pw = sessionStorage.getItem('sandbox_pw');
+      if (saved && pw) {
+        adminPassword = pw;
+        fetch('/api/admin/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password: pw })
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+          if (d.success && d.token) {
+            sessionStorage.setItem('sandbox_token', d.token);
+            document.getElementById('login-view').style.display = 'none';
+            document.getElementById('dashboard-view').style.display = 'block';
+            refreshAll();
+          }
+        })
+        .catch(function() {});
+      }
+    })();
+  </script>
+</body>
+</html>
