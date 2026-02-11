@@ -386,6 +386,8 @@ async function ensurePermit2Approval(
       abi: ERC20_ABI,
       functionName: 'approve',
       args: [PERMIT2, maxUint256],
+      chain: celo,
+      account,
     });
     await publicClient.waitForTransactionReceipt({ hash: approveTx });
   }
@@ -409,6 +411,8 @@ async function ensurePermit2Approval(
       abi: PERMIT2_ABI,
       functionName: 'approve',
       args: [token, spender, maxUint160, expiration],
+      chain: celo,
+      account,
     });
     await publicClient.waitForTransactionReceipt({ hash: permit2ApproveTx });
   }

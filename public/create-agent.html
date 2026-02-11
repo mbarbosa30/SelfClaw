@@ -35,9 +35,9 @@
       border: 2px solid var(--border-heavy);
     }
     .wizard-step {
-      flex: 1; padding: 0.75rem 1rem; text-align: center;
-      font-family: var(--font-mono); font-size: 0.7rem; font-weight: 600;
-      text-transform: uppercase; letter-spacing: 0.08em;
+      flex: 1; padding: 0.75rem 0.5rem; text-align: center;
+      font-family: var(--font-mono); font-size: 0.65rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.06em;
       color: var(--text-muted); background: var(--bg-card);
       border-right: 2px solid var(--border-heavy);
       transition: all 0.2s;
@@ -47,8 +47,8 @@
     .wizard-step.done { background: var(--green-verify); color: #fff; }
     .wizard-step-num {
       display: inline-block; width: 20px; height: 20px; line-height: 20px;
-      text-align: center; border: 2px solid currentColor; margin-right: 0.4rem;
-      font-size: 0.65rem;
+      text-align: center; border: 2px solid currentColor; margin-right: 0.3rem;
+      font-size: 0.6rem;
     }
 
     .wizard-panel { display: none; }
@@ -171,6 +171,7 @@
       font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.4rem;
     }
     .success-detail strong { color: var(--text-primary); }
+    .success-detail a { color: var(--accent); }
 
     .next-steps {
       border: 2px solid var(--border-heavy); padding: 1.25rem;
@@ -216,10 +217,111 @@
       margin-bottom: 1rem; display: none;
     }
 
-    @media (max-width: 600px) {
+    .economy-pipeline {
+      margin: 1.5rem 0;
+      padding: 1.25rem;
+      border: 2px solid var(--border-heavy);
+    }
+    .pipeline-title {
+      font-family: var(--font-mono); font-size: 0.7rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-secondary);
+      margin-bottom: 1rem;
+    }
+    .pipeline-steps {
+      display: flex; align-items: flex-start; gap: 0;
+      position: relative;
+    }
+    .pipeline-step {
+      flex: 1; text-align: center; position: relative;
+      min-width: 0;
+    }
+    .pipeline-step-indicator {
+      width: 32px; height: 32px; margin: 0 auto 0.5rem;
+      border: 2px solid var(--border); display: flex;
+      align-items: center; justify-content: center;
+      font-family: var(--font-mono); font-size: 0.75rem; font-weight: 600;
+      color: var(--text-muted); background: var(--bg);
+      position: relative; z-index: 2;
+    }
+    .pipeline-step.done .pipeline-step-indicator {
+      border-color: var(--green-verify); background: var(--green-verify); color: #fff;
+    }
+    .pipeline-step.active .pipeline-step-indicator {
+      border-color: var(--accent); color: var(--accent);
+      animation: pulse-border 1.5s ease-in-out infinite;
+    }
+    .pipeline-step.failed .pipeline-step-indicator {
+      border-color: var(--red); background: var(--red); color: #fff;
+    }
+    @keyframes pulse-border {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(255,107,74,0.3); }
+      50% { box-shadow: 0 0 0 6px rgba(255,107,74,0); }
+    }
+    .pipeline-step-label {
+      font-family: var(--font-mono); font-size: 0.6rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted);
+      margin-bottom: 0.2rem;
+    }
+    .pipeline-step.done .pipeline-step-label { color: var(--green-verify); }
+    .pipeline-step.active .pipeline-step-label { color: var(--accent); }
+    .pipeline-step.failed .pipeline-step-label { color: var(--red); }
+    .pipeline-step-info {
+      font-family: var(--font-mono); font-size: 0.55rem; color: var(--text-muted);
+      word-break: break-all; padding: 0 0.1rem;
+    }
+    .pipeline-step-info a { color: var(--accent); }
+    .pipeline-connector {
+      position: absolute; top: 16px; left: calc(50% + 16px);
+      right: calc(-50% + 16px); height: 2px; background: var(--border);
+      z-index: 1;
+    }
+    .pipeline-step.done .pipeline-connector { background: var(--green-verify); }
+    .pipeline-step:last-child .pipeline-connector { display: none; }
+
+    .pipeline-status-text {
+      font-family: var(--font-mono); font-size: 0.8rem; font-weight: 600;
+      text-align: center; margin-top: 1.25rem; padding-top: 1rem;
+      border-top: 1px solid var(--border);
+    }
+    .pipeline-status-text.running { color: var(--accent); }
+    .pipeline-status-text.completed { color: var(--green-verify); }
+    .pipeline-status-text.failed { color: var(--red); }
+
+    .pipeline-elapsed {
+      font-family: var(--font-mono); font-size: 0.65rem; color: var(--text-muted);
+      text-align: center; margin-top: 0.25rem;
+    }
+
+    .econ-form-intro {
+      font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 1.5rem;
+      line-height: 1.6;
+    }
+
+    .skip-economy {
+      display: block; text-align: center; margin-top: 1rem;
+      font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-muted);
+      cursor: pointer; background: none; border: none; width: 100%;
+      transition: color 0.2s;
+    }
+    .skip-economy:hover { color: var(--text-secondary); }
+
+    .wallet-warning-box {
+      border: 2px solid var(--accent); padding: 1rem; margin-bottom: 1.25rem;
+      font-size: 0.85rem; line-height: 1.5;
+    }
+    .wallet-warning-box strong {
+      font-family: var(--font-mono); font-size: 0.75rem; text-transform: uppercase;
+      letter-spacing: 0.06em; color: var(--accent); display: block;
+      margin-bottom: 0.4rem;
+    }
+
+    @media (max-width: 768px) {
       .wizard-steps { flex-direction: column; }
       .wizard-step { border-right: none; border-bottom: 2px solid var(--border-heavy); }
       .wizard-step:last-child { border-bottom: none; }
+      .pipeline-steps { flex-wrap: wrap; gap: 0.5rem; }
+      .pipeline-step { flex: none; width: calc(50% - 0.25rem); }
+      .pipeline-connector { display: none; }
     }
   </style>
 </head>
@@ -244,7 +346,7 @@
     <section class="hero" style="padding: 3rem 0 var(--space-lg);">
       <div class="hero-label">One-Click Agent</div>
       <h1>Create your agent</h1>
-      <p class="hero-sub">Name your agent, get a keypair, and optionally deploy it to a Hostinger VPS — all in one step. You must be logged in with your Self.xyz passport.</p>
+      <p class="hero-sub">Name your agent, get a keypair, deploy a token, and launch a liquidity pool. You must be logged in with your Self.xyz passport.</p>
     </section>
 
     <div id="login-gate" class="login-gate" style="display:none;">
@@ -257,7 +359,8 @@
       <div class="wizard-steps">
         <div class="wizard-step active" id="ws-1"><span class="wizard-step-num">1</span>Configure</div>
         <div class="wizard-step" id="ws-2"><span class="wizard-step-num">2</span>Keys</div>
-        <div class="wizard-step" id="ws-3"><span class="wizard-step-num">3</span>Done</div>
+        <div class="wizard-step" id="ws-3"><span class="wizard-step-num">3</span>Economy</div>
+        <div class="wizard-step" id="ws-4"><span class="wizard-step-num">4</span>Done</div>
       </div>
 
       <div class="wizard-panel active" id="panel-configure">
@@ -316,7 +419,74 @@
 
         <button class="key-download" onclick="downloadKeys()">Download Keys as JSON</button>
 
-        <button class="create-btn" onclick="confirmKeysSaved()" style="background:var(--green-verify);">I have saved my keys — Continue</button>
+        <button class="create-btn" onclick="confirmKeysSaved()" style="background:var(--green-verify);">I have saved my keys &mdash; Continue</button>
+      </div>
+
+      <div class="wizard-panel" id="panel-economy">
+        <div class="econ-form-intro">
+          Deploy a token for your agent and create a SELFCLAW liquidity pool on Uniswap V4. This gives your agent its own on-chain economy. You can also skip this and do it later from your dashboard.
+        </div>
+
+        <div class="agent-form" id="economy-form">
+          <div class="form-group">
+            <label for="token-name">Token Name</label>
+            <input type="text" id="token-name" class="input" placeholder="My Agent Token" maxlength="32">
+          </div>
+          <div class="form-group">
+            <label for="token-symbol">Token Symbol</label>
+            <input type="text" id="token-symbol" class="input" placeholder="MAT" maxlength="8" style="text-transform:uppercase;">
+          </div>
+          <div class="form-group">
+            <label for="token-supply">Total Supply</label>
+            <input type="number" id="token-supply" class="input" placeholder="1000000" value="1000000" min="1000" max="1000000000">
+          </div>
+          <div class="form-group">
+            <label for="selfclaw-budget">SELFCLAW Liquidity Budget <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text-muted);">(for pool pairing)</span></label>
+            <input type="number" id="selfclaw-budget" class="input" placeholder="0" value="0" min="0">
+            <div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.3rem;font-family:var(--font-mono);">
+              Set to 0 to deploy token only (no pool). Sponsorship uses up to 50% of available SELFCLAW.
+            </div>
+          </div>
+
+          <div class="wallet-warning-box">
+            <strong>Self-Custody Notice</strong>
+            A new EVM wallet will be created for your agent. The private key will be shown once during the process. You are responsible for saving it.
+          </div>
+
+          <div class="error-msg" id="economy-error-msg"></div>
+
+          <button class="create-btn" id="deploy-economy-btn" onclick="startDeployEconomy()">Deploy Agent Economy</button>
+          <button class="skip-economy" onclick="skipEconomy()">Skip for now &mdash; I'll do this later</button>
+        </div>
+
+        <div id="economy-pipeline" style="display:none;">
+          <div class="economy-pipeline">
+            <div class="pipeline-title">Deploying Agent Economy</div>
+            <div class="pipeline-steps" id="pipeline-steps"></div>
+            <div class="pipeline-status-text running" id="pipeline-status">Initializing...</div>
+            <div class="pipeline-elapsed" id="pipeline-elapsed"></div>
+          </div>
+
+          <div id="wallet-reveal" style="display:none;">
+            <div class="key-warning" style="margin-top:1.25rem;">
+              SAVE YOUR WALLET PRIVATE KEY. It will NOT be shown again.
+            </div>
+            <div class="key-display">
+              <div class="key-label">EVM Wallet Address</div>
+              <div class="key-value" id="wallet-address-value">
+                <button class="key-copy" onclick="copyKey('wallet-address-value')">COPY</button>
+                <span id="wallet-address-text"></span>
+              </div>
+            </div>
+            <div class="key-display">
+              <div class="key-label">EVM Wallet Private Key</div>
+              <div class="key-value" id="wallet-privkey-value" style="border-color:var(--red);">
+                <button class="key-copy" onclick="copyKey('wallet-privkey-value')">COPY</button>
+                <span id="wallet-privkey-text"></span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div class="wizard-panel" id="panel-done">
@@ -325,6 +495,20 @@
           <div class="success-detail"><strong>Name:</strong> <span id="done-name"></span></div>
           <div class="success-detail"><strong>Verification:</strong> human-created</div>
           <div class="success-detail"><strong>Human ID:</strong> <span id="done-human-id"></span></div>
+          <div id="done-wallet" style="display:none;">
+            <div class="success-detail"><strong>Wallet:</strong> <span id="done-wallet-address"></span></div>
+          </div>
+          <div id="done-token" style="display:none;">
+            <div class="success-detail" style="margin-top:0.5rem;">
+              <strong>Token:</strong> <span id="done-token-name"></span> ($<span id="done-token-symbol"></span>)
+              &mdash; <a id="done-token-link" href="#" target="_blank">View on Celoscan</a>
+            </div>
+          </div>
+          <div id="done-pool" style="display:none;">
+            <div class="success-detail">
+              <strong>V4 Pool:</strong> <span id="done-pool-id" style="font-family:var(--font-mono);font-size:0.75rem;"></span>
+            </div>
+          </div>
           <div id="done-deployment" style="display:none;">
             <div class="success-detail" style="margin-top:0.75rem;"><strong>VPS Deployment:</strong> <span id="done-deploy-status"></span></div>
           </div>
@@ -336,8 +520,8 @@
         </div>
 
         <div style="margin-top:1.25rem;display:flex;gap:0.75rem;flex-wrap:wrap;">
-          <a href="/my-agents" class="create-btn" style="text-decoration:none;text-align:center;display:block;flex:1;">My Agents</a>
-          <a href="/verify" class="create-btn" style="text-decoration:none;text-align:center;display:block;flex:1;background:var(--border-heavy);">Verify Another</a>
+          <a href="/my-agents" class="create-btn" style="text-decoration:none;text-align:center;display:block;flex:1;">My Agents Dashboard</a>
+          <a id="done-agent-link" href="/create-agent" class="create-btn" style="text-decoration:none;text-align:center;display:block;flex:1;background:var(--border-heavy);">View Agent Profile</a>
         </div>
       </div>
     </div>
@@ -360,12 +544,23 @@
     var selectedVmId = null;
     var deployEnabled = false;
     var vmList = [];
+    var deploySessionId = null;
+    var pollTimer = null;
+    var pipelineStartTime = 0;
+    var elapsedTimer = null;
+    var walletPrivateKey = null;
+    var economyResult = null;
 
     function escHtml(s) {
       if (!s) return '';
       var d = document.createElement('div');
       d.textContent = s;
       return d.innerHTML;
+    }
+
+    function shortAddr(addr) {
+      if (!addr || addr.length < 12) return addr || '';
+      return addr.slice(0, 6) + '...' + addr.slice(-4);
     }
 
     window.selfclawAuth.onReady(function(user) {
@@ -392,7 +587,7 @@
       document.querySelectorAll('.wizard-panel').forEach(function(el) {
         el.classList.remove('active');
       });
-      var panels = ['panel-configure', 'panel-keys', 'panel-done'];
+      var panels = ['panel-configure', 'panel-keys', 'panel-economy', 'panel-done'];
       var panel = document.getElementById(panels[step - 1]);
       if (panel) panel.classList.add('active');
     }
@@ -417,11 +612,9 @@
     async function loadVMs() {
       var listEl = document.getElementById('vm-list');
       listEl.innerHTML = '<div class="vm-loading">Loading VPS instances...</div>';
-
       try {
         var res = await fetch('/api/hostinger/vms');
         var data = await res.json();
-
         var content = data.result?.content;
         var vms = [];
         if (Array.isArray(content)) {
@@ -431,12 +624,10 @@
             }
           }
         }
-
         if (!Array.isArray(vms) || vms.length === 0) {
           listEl.innerHTML = '<div class="vm-loading">No VPS instances found. <a href="https://hostinger.com/vps-hosting" target="_blank" style="color:var(--accent);">Get a Hostinger VPS</a></div>';
           return;
         }
-
         vmList = vms;
         var html = '';
         for (var j = 0; j < vms.length; j++) {
@@ -472,24 +663,20 @@
       var descInput = document.getElementById('agent-desc');
       var errorEl = document.getElementById('error-msg');
       var btn = document.getElementById('create-btn');
-
       var name = nameInput.value.trim();
       if (!name || name.length < 2) {
         errorEl.textContent = 'Agent name must be at least 2 characters.';
         errorEl.style.display = 'block';
         return;
       }
-
       if (deployEnabled && !selectedVmId) {
         errorEl.textContent = 'Please select a VPS to deploy to, or uncheck the deploy option.';
         errorEl.style.display = 'block';
         return;
       }
-
       errorEl.style.display = 'none';
       btn.disabled = true;
       btn.textContent = 'Creating...';
-
       try {
         var body = {
           agentName: name,
@@ -497,15 +684,12 @@
           deployToHostinger: deployEnabled,
           hostingerVmId: selectedVmId,
         };
-
         var res = await fetch('/api/selfclaw/v1/create-agent', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(body),
         });
-
         var data = await res.json();
-
         if (!res.ok || !data.success) {
           errorEl.textContent = data.error || 'Failed to create agent';
           if (data.suggestion) errorEl.textContent += '. Try: ' + data.suggestion;
@@ -514,12 +698,9 @@
           btn.textContent = 'Create Agent';
           return;
         }
-
         agentResult = data;
-
         document.getElementById('public-key-text').textContent = data.keys.publicKey;
         document.getElementById('private-key-text').textContent = data.keys.privateKey;
-
         setStep(2);
       } catch (err) {
         errorEl.textContent = 'Error: ' + err.message;
@@ -561,9 +742,215 @@
 
     function confirmKeysSaved() {
       if (!agentResult) return;
+      var nameEl = document.getElementById('token-name');
+      if (nameEl && !nameEl.value) {
+        nameEl.value = (agentResult.agent.name || '').replace(/-/g, ' ').replace(/\b\w/g, function(c) { return c.toUpperCase(); }) + ' Token';
+      }
+      var symEl = document.getElementById('token-symbol');
+      if (symEl && !symEl.value) {
+        var rawName = agentResult.agent.name || '';
+        symEl.value = rawName.replace(/-/g, '').substring(0, 4).toUpperCase();
+      }
+      setStep(3);
+    }
+
+    var STEP_LABELS = {
+      setup_wallet: 'Wallet',
+      request_gas: 'Gas',
+      deploy_token: 'Token',
+      register_token: 'Register',
+      request_sponsorship: 'Pool',
+    };
+
+    function renderPipeline(steps) {
+      var el = document.getElementById('pipeline-steps');
+      var html = '';
+      for (var i = 0; i < steps.length; i++) {
+        var s = steps[i];
+        var cls = 'pipeline-step';
+        if (s.status === 'success') cls += ' done';
+        else if (s.status === 'running') cls += ' active';
+        else if (s.status === 'failed') cls += ' failed';
+
+        var icon = (i + 1).toString();
+        if (s.status === 'success') icon = '\u2713';
+        else if (s.status === 'failed') icon = '\u2717';
+
+        var info = '';
+        if (s.status === 'success' && s.result) {
+          if (s.name === 'setup_wallet' && (s.result.walletAddress || s.result.address)) {
+            var wAddr = s.result.walletAddress || s.result.address;
+            info = shortAddr(wAddr);
+            if (s.result.privateKey) {
+              walletPrivateKey = s.result.privateKey;
+              document.getElementById('wallet-address-text').textContent = wAddr;
+              document.getElementById('wallet-privkey-text').textContent = s.result.privateKey;
+              document.getElementById('wallet-reveal').style.display = 'block';
+            }
+          } else if (s.name === 'request_gas') {
+            info = '1 CELO';
+          } else if (s.name === 'deploy_token' && s.result.tokenAddress) {
+            info = '<a href="https://celoscan.io/token/' + s.result.tokenAddress + '" target="_blank">' + shortAddr(s.result.tokenAddress) + '</a>';
+          } else if (s.name === 'register_token') {
+            info = 'Verified';
+          } else if (s.name === 'request_sponsorship' && s.result.v4PoolId) {
+            info = 'V4 Pool';
+          }
+        } else if (s.status === 'failed' && s.error) {
+          info = '<span style="color:var(--red);">' + escHtml(s.error.substring(0, 40)) + '</span>';
+        }
+
+        html += '<div class="' + cls + '">';
+        html += '<div class="pipeline-connector"></div>';
+        html += '<div class="pipeline-step-indicator">' + icon + '</div>';
+        html += '<div class="pipeline-step-label">' + (STEP_LABELS[s.name] || s.name) + '</div>';
+        if (info) html += '<div class="pipeline-step-info">' + info + '</div>';
+        html += '</div>';
+      }
+      el.innerHTML = html;
+    }
+
+    function updateElapsed() {
+      if (!pipelineStartTime) return;
+      var seconds = Math.floor((Date.now() - pipelineStartTime) / 1000);
+      document.getElementById('pipeline-elapsed').textContent = seconds + 's elapsed';
+    }
+
+    async function startDeployEconomy() {
+      var tokenName = document.getElementById('token-name').value.trim();
+      var tokenSymbol = document.getElementById('token-symbol').value.trim().toUpperCase();
+      var totalSupply = document.getElementById('token-supply').value.trim();
+      var selfclawBudget = document.getElementById('selfclaw-budget').value.trim();
+      var errorEl = document.getElementById('economy-error-msg');
+
+      if (!tokenName || tokenName.length < 2) {
+        errorEl.textContent = 'Token name must be at least 2 characters.';
+        errorEl.style.display = 'block';
+        return;
+      }
+      if (!tokenSymbol || tokenSymbol.length < 2) {
+        errorEl.textContent = 'Token symbol must be at least 2 characters.';
+        errorEl.style.display = 'block';
+        return;
+      }
+      if (!totalSupply || Number(totalSupply) < 1000) {
+        errorEl.textContent = 'Total supply must be at least 1,000.';
+        errorEl.style.display = 'block';
+        return;
+      }
+
+      errorEl.style.display = 'none';
+      document.getElementById('economy-form').style.display = 'none';
+      document.getElementById('economy-pipeline').style.display = 'block';
+
+      pipelineStartTime = Date.now();
+      elapsedTimer = setInterval(updateElapsed, 1000);
+
+      var initialSteps = [
+        { name: 'setup_wallet', status: 'pending' },
+        { name: 'request_gas', status: 'pending' },
+        { name: 'deploy_token', status: 'pending' },
+        { name: 'register_token', status: 'pending' },
+      ];
+      if (Number(selfclawBudget) > 0) {
+        initialSteps.push({ name: 'request_sponsorship', status: 'pending' });
+      }
+      renderPipeline(initialSteps);
+
+      try {
+        var res = await fetch('/api/selfclaw/v1/create-agent/deploy-economy', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            publicKey: agentResult.keys.publicKey,
+            tokenName: tokenName,
+            tokenSymbol: tokenSymbol,
+            totalSupply: totalSupply,
+            selfclawForPool: selfclawBudget || '0',
+          }),
+        });
+
+        var data = await res.json();
+
+        if (!res.ok || !data.success) {
+          document.getElementById('pipeline-status').className = 'pipeline-status-text failed';
+          document.getElementById('pipeline-status').textContent = data.error || 'Failed to start deployment';
+          clearInterval(elapsedTimer);
+          return;
+        }
+
+        deploySessionId = data.sessionId;
+        document.getElementById('pipeline-status').textContent = 'Pipeline started...';
+        pollTimer = setInterval(pollDeployStatus, 2000);
+      } catch (err) {
+        document.getElementById('pipeline-status').className = 'pipeline-status-text failed';
+        document.getElementById('pipeline-status').textContent = 'Error: ' + err.message;
+        clearInterval(elapsedTimer);
+      }
+    }
+
+    async function pollDeployStatus() {
+      if (!deploySessionId) return;
+      try {
+        var res = await fetch('/api/selfclaw/v1/create-agent/deploy-status/' + deploySessionId);
+        var data = await res.json();
+
+        if (!res.ok) {
+          clearInterval(pollTimer);
+          clearInterval(elapsedTimer);
+          document.getElementById('pipeline-status').className = 'pipeline-status-text failed';
+          document.getElementById('pipeline-status').textContent = 'Lost connection to deployment';
+          return;
+        }
+
+        renderPipeline(data.steps);
+
+        var runningStep = data.steps.find(function(s) { return s.status === 'running'; });
+        if (runningStep) {
+          document.getElementById('pipeline-status').textContent = (STEP_LABELS[runningStep.name] || runningStep.name) + '...';
+        }
+
+        if (data.status === 'completed') {
+          clearInterval(pollTimer);
+          clearInterval(elapsedTimer);
+          document.getElementById('pipeline-status').className = 'pipeline-status-text completed';
+          var totalSec = Math.floor((Date.now() - pipelineStartTime) / 1000);
+          document.getElementById('pipeline-status').textContent = 'Economy deployed in ' + totalSec + 's';
+
+          economyResult = data;
+
+          setTimeout(function() { finishWizard(); }, 2000);
+        } else if (data.status === 'failed') {
+          clearInterval(pollTimer);
+          clearInterval(elapsedTimer);
+          document.getElementById('pipeline-status').className = 'pipeline-status-text failed';
+          document.getElementById('pipeline-status').textContent = data.error || 'Deployment failed';
+
+          economyResult = data;
+
+          var continueBtn = document.createElement('button');
+          continueBtn.className = 'create-btn';
+          continueBtn.style.marginTop = '1.25rem';
+          continueBtn.style.background = 'var(--border-heavy)';
+          continueBtn.textContent = 'Continue to Summary';
+          continueBtn.onclick = finishWizard;
+          document.getElementById('economy-pipeline').appendChild(continueBtn);
+        }
+      } catch (err) {
+        // Transient error, keep polling
+      }
+    }
+
+    function skipEconomy() {
+      finishWizard();
+    }
+
+    function finishWizard() {
+      if (!agentResult) return;
 
       document.getElementById('done-name').textContent = agentResult.agent.name;
       document.getElementById('done-human-id').textContent = agentResult.agent.humanId;
+      document.getElementById('done-agent-link').href = '/agent/' + encodeURIComponent(agentResult.agent.name);
 
       if (agentResult.deployment) {
         document.getElementById('done-deployment').style.display = 'block';
@@ -572,14 +959,45 @@
         document.getElementById('done-deploy-status').style.color = agentResult.deployment.success ? 'var(--green-verify)' : 'var(--red)';
       }
 
-      var stepsList = document.getElementById('next-steps-list');
-      if (agentResult.nextSteps) {
-        stepsList.innerHTML = agentResult.nextSteps.map(function(s) {
-          return '<li>' + escHtml(s) + '</li>';
-        }).join('');
+      if (economyResult) {
+        var walletStep = economyResult.steps.find(function(s) { return s.name === 'setup_wallet' && s.status === 'success'; });
+        if (walletStep && walletStep.result) {
+          document.getElementById('done-wallet').style.display = 'block';
+          document.getElementById('done-wallet-address').textContent = walletStep.result.walletAddress || walletStep.result.address || '';
+        }
+
+        var tokenStep = economyResult.steps.find(function(s) { return s.name === 'deploy_token' && s.status === 'success'; });
+        if (tokenStep && tokenStep.result) {
+          document.getElementById('done-token').style.display = 'block';
+          document.getElementById('done-token-name').textContent = document.getElementById('token-name').value;
+          document.getElementById('done-token-symbol').textContent = document.getElementById('token-symbol').value.toUpperCase();
+          document.getElementById('done-token-link').href = 'https://celoscan.io/token/' + tokenStep.result.tokenAddress;
+        }
+
+        var poolStep = economyResult.steps.find(function(s) { return s.name === 'request_sponsorship' && s.status === 'success'; });
+        if (poolStep && poolStep.result) {
+          document.getElementById('done-pool').style.display = 'block';
+          document.getElementById('done-pool-id').textContent = shortAddr(poolStep.result.v4PoolId || '');
+        }
       }
 
-      setStep(3);
+      var stepsList = document.getElementById('next-steps-list');
+      var steps = [];
+      if (!economyResult) {
+        steps.push('Set up your agent economy from the My Agents dashboard');
+      }
+      steps.push('Monitor your agent from the dashboard');
+      steps.push('Use the API to log revenue and costs for your agent');
+      if (economyResult) {
+        var hasPool = economyResult.steps.find(function(s) { return s.name === 'request_sponsorship' && s.status === 'success'; });
+        if (hasPool) {
+          steps.push('Your token is now tradeable against SELFCLAW on Uniswap V4');
+        }
+      }
+      steps.push('Read the docs at /developers for API integration');
+      stepsList.innerHTML = steps.map(function(s) { return '<li>' + escHtml(s) + '</li>'; }).join('');
+
+      setStep(4);
     }
   </script>
   <script src="/nav-toggle.js"></script>

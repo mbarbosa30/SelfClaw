@@ -89,6 +89,23 @@ let lastVerificationAttempt: DebugVerificationAttempt | null = null;
 let lastV3FeeCollectionTime = 0;
 const V3_FEE_COLLECTION_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 
+const deployEconomySessions = new Map<string, {
+  publicKey: string;
+  humanId: string;
+  status: 'running' | 'completed' | 'failed';
+  currentStep: string;
+  steps: Array<{
+    name: string;
+    status: 'pending' | 'running' | 'success' | 'failed';
+    result?: any;
+    error?: string;
+    durationMs?: number;
+  }>;
+  result?: any;
+  error?: string;
+  startedAt: number;
+}>();
+
 // Store history of raw callback requests for debugging
 interface RawCallbackRequest {
   timestamp: string;
@@ -1453,7 +1470,7 @@ router.post("/v1/request-selfclaw-sponsorship", verificationLimiter, async (req:
       v4PoolId,
       positionTokenId,
       poolVersion: 'v4',
-      feesCollected: feeCollectionResult?.totalSelfclaw || '0',
+      feesCollected: '0',
     });
 
     res.json({
@@ -1471,7 +1488,7 @@ router.post("/v1/request-selfclaw-sponsorship", verificationLimiter, async (req:
       },
       sponsorship: {
         selfclawSponsored: selfclawForPool,
-        feesCollected: feeCollectionResult?.totalSelfclaw || '0',
+        feesCollected: '0',
         sponsorWallet: sponsorAddress,
       },
       nextSteps: [
@@ -3677,6 +3694,349 @@ services:
   }
 });
 
+router.post("/v1/create-agent/deploy-economy", async (req: any, res: Response) => {
+  try {
+    if (!req.session?.isAuthenticated || !req.session?.humanId) {
+      return res.status(401).json({ error: "Login required. Scan the QR code with your Self app." });
+    }
+
+    const humanId = req.session.humanId;
+    const { publicKey, tokenName, tokenSymbol, totalSupply, selfclawForPool } = req.body;
+
+    if (!publicKey || !tokenName || !tokenSymbol || !totalSupply) {
+      return res.status(400).json({ error: "publicKey, tokenName, tokenSymbol, and totalSupply are required" });
+    }
+
+    const agents = await db.select().from(verifiedBots)
+      .where(sql`${verifiedBots.publicKey} = ${publicKey} AND ${verifiedBots.humanId} = ${humanId}`)
+      .limit(1);
+
+    if (agents.length === 0) {
+      return res.status(403).json({ error: "Agent not found or does not belong to your identity." });
+    }
+
+    const agent = agents[0];
+    const sessionId = crypto.randomUUID();
+
+    type DeployStep = { name: string; status: 'pending' | 'running' | 'success' | 'failed'; result?: any; error?: string; durationMs?: number };
+    type DeploySession = { publicKey: string; humanId: string; status: 'running' | 'completed' | 'failed'; currentStep: string; steps: DeployStep[]; result?: any; error?: string; startedAt: number };
+
+    const session: DeploySession = {
+      publicKey,
+      humanId,
+      status: 'running',
+      currentStep: 'setup_wallet',
+      steps: [
+        { name: 'setup_wallet', status: 'pending' },
+        { name: 'request_gas', status: 'pending' },
+        { name: 'deploy_token', status: 'pending' },
+        { name: 'register_token', status: 'pending' },
+        ...(selfclawForPool && Number(selfclawForPool) > 0 ? [{ name: 'request_sponsorship', status: 'pending' as const }] : []),
+      ],
+      startedAt: Date.now(),
+    };
+
+    deployEconomySessions.set(sessionId, session);
+
+    res.json({ success: true, sessionId });
+
+    (async () => {
+      let evmPrivateKey = '';
+      let evmAddress = '';
+      let deployedTokenAddress = '';
+
+      const runPipelineStep = async (stepName: string, fn: () => Promise<any>) => {
+        const step = session.steps.find(s => s.name === stepName);
+        if (!step) throw new Error(`Step ${stepName} not found`);
+        step.status = 'running';
+        session.currentStep = stepName;
+        const start = Date.now();
+        try {
+          const result = await fn();
+          step.status = 'success';
+          step.result = result;
+          step.durationMs = Date.now() - start;
+          return result;
+        } catch (err: any) {
+          step.status = 'failed';
+          step.error = err.message;
+          step.durationMs = Date.now() - start;
+          throw err;
+        }
+      };
+
+      try {
+        await runPipelineStep('setup_wallet', async () => {
+          const { Wallet } = await import('ethers');
+          const wallet = Wallet.createRandom();
+          evmPrivateKey = wallet.privateKey;
+          evmAddress = wallet.address;
+
+          const result = await createAgentWallet(humanId, publicKey, wallet.address);
+          if (!result.success) throw new Error(result.error || "Failed to register wallet");
+
+          logActivity("wallet_creation", humanId, publicKey, agent.deviceId || undefined, {
+            address: wallet.address,
+            method: "deploy-economy"
+          });
+
+          return { walletAddress: wallet.address, privateKey: wallet.privateKey };
+        });
+
+        await runPipelineStep('request_gas', async () => {
+          const result = await sendGasSubsidy(humanId, publicKey);
+          if (!result.success) throw new Error(result.error || "Gas subsidy failed");
+          return { txHash: result.txHash, amountCelo: result.amountCelo };
+        });
+
+        await runPipelineStep('deploy_token', async () => {
+          const { privateKeyToAccount } = await import("viem/accounts");
+          const { createWalletClient } = await import("viem");
+          const { AbiCoder } = await import("ethers");
+
+          const account = privateKeyToAccount(evmPrivateKey as `0x${string}`);
+          const deployPublicClient = createPublicClient({ chain: celo, transport: http() });
+          const walletClient = createWalletClient({ account, chain: celo, transport: http() });
+
+          const decimals = 18;
+          const supplyWithDecimals = parseUnits(totalSupply.toString(), decimals);
+          const abiCoder = new AbiCoder();
+          const encodedArgs = abiCoder.encode(
+            ["string", "string", "uint256"],
+            [tokenName, tokenSymbol, supplyWithDecimals.toString()]
+          ).slice(2);
+
+          const deployData = (TOKEN_FACTORY_BYTECODE + encodedArgs) as `0x${string}`;
+          const nonce = await deployPublicClient.getTransactionCount({ address: account.address });
+          const predictedAddress = getContractAddress({ from: account.address, nonce: BigInt(nonce) });
+
+          const txHash = await walletClient.sendTransaction({
+            data: deployData,
+            value: BigInt(0),
+          });
+
+          const receipt = await deployPublicClient.waitForTransactionReceipt({ hash: txHash, timeout: 120_000 });
+
+          if (receipt.status !== "success") {
+            throw new Error(`Token deploy transaction reverted (tx: ${txHash})`);
+          }
+
+          deployedTokenAddress = receipt.contractAddress || predictedAddress;
+
+          logActivity("token_deployed", humanId, publicKey, agent.deviceId || '', {
+            tokenAddress: deployedTokenAddress,
+            tokenSymbol,
+            txHash,
+            method: "deploy-economy"
+          });
+
+          return {
+            tokenAddress: deployedTokenAddress,
+            txHash,
+            celoscanUrl: `https://celoscan.io/token/${deployedTokenAddress}`,
+          };
+        });
+
+        await runPipelineStep('register_token', async () => {
+          await db.execute(sql`
+            INSERT INTO agent_tokens (id, agent_id, contract_address, name, symbol, decimals, initial_supply, deploy_tx_hash, created_at)
+            VALUES (gen_random_uuid(), ${publicKey}, ${deployedTokenAddress}, ${tokenName}, ${tokenSymbol}, 18, ${totalSupply.toString()}, ${session.steps.find(s => s.name === 'deploy_token')?.result?.txHash || ''}, NOW())
+          `);
+
+          logActivity("token_registered", humanId, publicKey, agent.deviceId || '', {
+            tokenAddress: deployedTokenAddress,
+            tokenName,
+            tokenSymbol,
+            method: "deploy-economy"
+          });
+
+          return { verified: true, tokenAddress: deployedTokenAddress };
+        });
+
+        if (selfclawForPool && Number(selfclawForPool) > 0) {
+          await runPipelineStep('request_sponsorship', async () => {
+            const {
+              getSelfclawBalance, getNextPositionTokenId, computePoolId,
+              extractPositionTokenIdFromReceipt, createPoolAndAddLiquidity,
+              getSponsorAddress,
+            } = await import("../lib/uniswap-v4.js");
+
+            const rawSponsorKey = process.env.SELFCLAW_SPONSOR_PRIVATE_KEY || process.env.CELO_PRIVATE_KEY;
+            const sponsorKey = rawSponsorKey && !rawSponsorKey.startsWith("0x") ? `0x${rawSponsorKey}` : rawSponsorKey;
+
+            const selfclawAddress = "0xCD88f99Adf75A9110c0bcd22695A32A20eC54ECb";
+
+            const availableBalance = await getSelfclawBalance(sponsorKey);
+            const available = parseFloat(availableBalance);
+            if (available <= 0) {
+              throw new Error("No SELFCLAW available in sponsorship wallet");
+            }
+
+            const PRODUCTION_SELFCLAW_CAP_PERCENT = 50;
+            const SELFCLAW_TOTAL_SUPPLY = 1_000_000_000;
+            const MAX_SELFCLAW = (SELFCLAW_TOTAL_SUPPLY * PRODUCTION_SELFCLAW_CAP_PERCENT) / 100;
+
+            const cappedAmount = Math.min(Number(selfclawForPool), available * (PRODUCTION_SELFCLAW_CAP_PERCENT / 100), MAX_SELFCLAW);
+            const finalSelfclaw = Math.floor(cappedAmount).toString();
+
+            if (Number(finalSelfclaw) <= 0) {
+              throw new Error(`SELFCLAW budget too small after cap (available: ${availableBalance})`);
+            }
+
+            const { privateKeyToAccount } = await import("viem/accounts");
+            const { createWalletClient } = await import("viem");
+
+            const agentAccount = privateKeyToAccount(evmPrivateKey as `0x${string}`);
+            const agentWalletClient = createWalletClient({ account: agentAccount, chain: celo, transport: http() });
+
+            const tokenAmount = Math.floor(Number(totalSupply) * 0.3).toString();
+
+            const ERC20_ABI_TRANSFER = [
+              { name: "transfer", type: "function", stateMutability: "nonpayable", inputs: [{ name: "to", type: "address" }, { name: "amount", type: "uint256" }], outputs: [{ name: "", type: "bool" }] },
+            ] as const;
+
+            const sponsorAddress = getSponsorAddress(sponsorKey);
+
+            const transferHash = await agentWalletClient.writeContract({
+              address: deployedTokenAddress as `0x${string}`,
+              abi: ERC20_ABI_TRANSFER,
+              functionName: "transfer",
+              args: [sponsorAddress as `0x${string}`, parseUnits(tokenAmount, 18)],
+            });
+
+            const transferPublicClient = createPublicClient({ chain: celo, transport: http() });
+            await transferPublicClient.waitForTransactionReceipt({ hash: transferHash, timeout: 60_000 });
+
+            const tokenLower = deployedTokenAddress.toLowerCase();
+            const selfclawLower = selfclawAddress.toLowerCase();
+            const token0 = tokenLower < selfclawLower ? deployedTokenAddress : selfclawAddress;
+            const token1 = tokenLower < selfclawLower ? selfclawAddress : deployedTokenAddress;
+            const feeTier = 10000;
+            const tickSpacing = 200;
+            const v4PoolId = computePoolId(token0, token1, feeTier, tickSpacing);
+
+            const nextTokenIdBefore = await getNextPositionTokenId();
+
+            const poolResult = await createPoolAndAddLiquidity({
+              tokenA: deployedTokenAddress,
+              tokenB: selfclawAddress,
+              amountA: tokenAmount,
+              amountB: finalSelfclaw,
+              feeTier,
+              privateKey: sponsorKey,
+            });
+
+            if (!poolResult.success) {
+              throw new Error(poolResult.error || "Pool creation failed");
+            }
+
+            let positionTokenId: string | null = null;
+            if (poolResult.receipt) {
+              positionTokenId = extractPositionTokenIdFromReceipt(poolResult.receipt);
+            }
+            if (!positionTokenId) {
+              const nextTokenIdAfter = await getNextPositionTokenId();
+              if (nextTokenIdAfter > nextTokenIdBefore) {
+                positionTokenId = nextTokenIdBefore.toString();
+              }
+            }
+
+            await db.insert(sponsoredAgents).values({
+              humanId,
+              publicKey,
+              tokenAddress: deployedTokenAddress,
+              tokenSymbol,
+              poolAddress: v4PoolId,
+              v4PositionTokenId: positionTokenId,
+              poolVersion: "v4",
+              sponsoredAmountCelo: finalSelfclaw,
+              sponsorTxHash: poolResult.txHash || "",
+              status: "completed",
+              completedAt: new Date(),
+            });
+
+            try {
+              await db.insert(trackedPools).values({
+                poolAddress: v4PoolId,
+                tokenAddress: deployedTokenAddress,
+                tokenSymbol,
+                tokenName,
+                pairedWith: "SELFCLAW",
+                humanId,
+                agentPublicKey: publicKey,
+                feeTier,
+                v4PositionTokenId: positionTokenId,
+                poolVersion: "v4",
+                v4PoolId,
+                initialCeloLiquidity: finalSelfclaw,
+                initialTokenLiquidity: tokenAmount,
+              }).onConflictDoNothing();
+            } catch (e: any) {
+              console.error(`[selfclaw] Failed to track pool: ${e.message}`);
+            }
+
+            logActivity("sponsorship_completed", humanId, publicKey, agent.deviceId || '', {
+              v4PoolId,
+              positionTokenId,
+              selfclawAmount: finalSelfclaw,
+              method: "deploy-economy"
+            });
+
+            return {
+              v4PoolId,
+              positionTokenId,
+              selfclawAmount: finalSelfclaw,
+              agentTokenAmount: tokenAmount,
+              txHash: poolResult.txHash,
+              poolVersion: "v4",
+            };
+          });
+        }
+
+        session.status = 'completed';
+        session.result = {
+          walletAddress: evmAddress,
+          tokenAddress: deployedTokenAddress,
+          steps: session.steps,
+        };
+      } catch (err: any) {
+        session.status = 'failed';
+        session.error = err.message;
+      }
+    })();
+  } catch (error: any) {
+    console.error("[selfclaw] deploy-economy error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get("/v1/create-agent/deploy-status/:sessionId", async (req: any, res: Response) => {
+  try {
+    if (!req.session?.isAuthenticated || !req.session?.humanId) {
+      return res.status(401).json({ error: "Login required." });
+    }
+
+    const now = Date.now();
+    const ONE_HOUR = 60 * 60 * 1000;
+    for (const [key, val] of deployEconomySessions) {
+      if (now - val.startedAt > ONE_HOUR) {
+        deployEconomySessions.delete(key);
+      }
+    }
+
+    const { sessionId } = req.params;
+    const session = deployEconomySessions.get(sessionId);
+
+    if (!session) {
+      return res.status(404).json({ error: "Session not found or expired" });
+    }
+
+    res.json(session);
+  } catch (error: any) {
+    console.error("[selfclaw] deploy-status error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
 
 async function authenticateHumanForAgent(req: any, res: Response, agentPublicKey: string): Promise<{ humanId: string; agent: any } | null> {
   if (!req.session?.isAuthenticated || !req.session?.humanId) {
