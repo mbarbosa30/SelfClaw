@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Getting Started Guide | SelfClaw</title>
-  <meta name="description" content="Step-by-step guide for Celo hackathon participants: verify your agent, create a wallet, deploy a token, and get sponsored liquidity on Uniswap V4 with SelfClaw.">
+  <title>Getting Started | SelfClaw</title>
+  <meta name="description" content="Three steps to launch your verified agent on SelfClaw: verify yourself, point your agent to the docs, and let it handle the rest.">
   <link rel="canonical" href="https://selfclaw.ai/guide">
 
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://selfclaw.ai/guide">
-  <meta property="og:title" content="Getting Started Guide | SelfClaw">
-  <meta property="og:description" content="Everything you need to verify your agent, create a wallet, deploy a token, and get sponsored liquidity on Uniswap V4 — step by step.">
+  <meta property="og:title" content="Getting Started | SelfClaw">
+  <meta property="og:description" content="Three steps to launch your verified agent on SelfClaw: verify yourself, point your agent to the docs, and let it handle the rest.">
   <meta property="og:image" content="https://selfclaw.ai/og-image.png">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="675">
@@ -18,8 +18,8 @@
 
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:site" content="@mbarrbosa">
-  <meta name="twitter:title" content="Getting Started Guide | SelfClaw">
-  <meta name="twitter:description" content="Everything you need to verify your agent, create a wallet, deploy a token, and get sponsored liquidity on Uniswap V4 — step by step.">
+  <meta name="twitter:title" content="Getting Started | SelfClaw">
+  <meta name="twitter:description" content="Three steps to launch your verified agent on SelfClaw: verify yourself, point your agent to the docs, and let it handle the rest.">
   <meta name="twitter:image" content="https://selfclaw.ai/og-image.png">
 
   <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
@@ -57,24 +57,28 @@
       font-weight: 700;
       margin-bottom: 0.75rem;
     }
-    .guide-container pre {
-      border: 2px solid var(--border-heavy);
-      background: var(--bg-card);
-      padding: 1rem;
-      overflow-x: auto;
+    .guide-container p {
+      color: var(--text-secondary);
+      line-height: 1.7;
+      margin-bottom: 0.75rem;
+      font-size: 0.95rem;
+    }
+    .guide-container ul {
+      color: var(--text-secondary);
+      font-size: 0.95rem;
+      line-height: 1.7;
+      margin-bottom: 0.75rem;
+      padding-left: 1.25rem;
+    }
+    .guide-container li {
+      margin-bottom: 0.3rem;
+    }
+    .guide-container code {
       font-family: var(--font-mono);
-      font-size: 0.8rem;
-      line-height: 1.6;
-      margin: 1rem 0;
-    }
-    .guide-container .callout {
-      border: 2px solid var(--border-heavy);
-      padding: 1rem 1.25rem;
-      margin: 1rem 0;
+      font-size: 0.85em;
       background: var(--bg-card);
-    }
-    .guide-container .callout.accent {
-      border-color: var(--accent);
+      padding: 0.1rem 0.35rem;
+      border: 2px solid var(--border);
     }
     .hackathon-banner {
       border: 2px solid var(--accent);
@@ -102,32 +106,6 @@
       gap: 0.5rem;
       flex-wrap: wrap;
     }
-    .toc {
-      list-style: none;
-      padding: 0;
-      font-family: var(--font-mono);
-      font-size: 0.85rem;
-      margin-bottom: 2rem;
-    }
-    .toc li {
-      padding: 0.4rem 0;
-      border-bottom: 2px solid var(--border);
-    }
-    .toc li:last-child {
-      border-bottom: none;
-    }
-    .toc a {
-      color: var(--text);
-      text-decoration: none;
-    }
-    .toc a:hover {
-      color: var(--accent);
-    }
-    .toc .toc-num {
-      color: var(--accent);
-      margin-right: 0.75rem;
-      font-weight: 600;
-    }
     .what-happens {
       border-left: 2px solid var(--green-verify);
       padding: 0.75rem 1rem;
@@ -149,52 +127,51 @@
       line-height: 1.6;
       margin: 0;
     }
-    .guide-container h3 {
-      font-size: 1.1rem;
-      margin-top: 1.5rem;
-      margin-bottom: 0.5rem;
-    }
-    .guide-container p {
-      color: var(--text-secondary);
-      line-height: 1.7;
-      margin-bottom: 0.75rem;
-      font-size: 0.95rem;
-    }
-    .guide-container ul,
-    .guide-container ol {
-      color: var(--text-secondary);
-      font-size: 0.95rem;
-      line-height: 1.7;
-      margin-bottom: 0.75rem;
-      padding-left: 1.25rem;
-    }
-    .guide-container li {
-      margin-bottom: 0.3rem;
-    }
-    .guide-container code {
-      font-family: var(--font-mono);
-      font-size: 0.85em;
+    .agent-handles {
+      border: 2px solid var(--border-heavy);
+      padding: 1.25rem 1.5rem;
+      margin: 1.25rem 0;
       background: var(--bg-card);
-      padding: 0.1rem 0.35rem;
-      border: 2px solid var(--border);
     }
-    .guide-container pre code {
-      background: none;
-      padding: 0;
-      border: none;
-    }
-    .step-link {
-      display: inline-block;
-      margin-top: 0.75rem;
+    .agent-handles .handles-label {
       font-family: var(--font-mono);
-      font-size: 0.8rem;
+      font-size: 0.65rem;
       font-weight: 600;
-    }
-    .next-section {
-      margin-top: 2rem;
-    }
-    .next-section h2 {
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-secondary);
       margin-bottom: 0.75rem;
+    }
+    .agent-handles ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    .agent-handles li {
+      padding: 0.35rem 0;
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      color: var(--text);
+    }
+    .agent-handles li::before {
+      content: "\2192 ";
+      color: var(--accent);
+      margin-right: 0.25rem;
+    }
+    .skill-url {
+      display: block;
+      border: 2px solid var(--accent);
+      padding: 1rem 1.25rem;
+      margin: 1rem 0;
+      font-family: var(--font-mono);
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--accent);
+      text-decoration: none;
+      text-align: center;
+    }
+    .skill-url:hover {
+      background: rgba(255,107,74,0.06);
     }
     .next-links {
       display: flex;
@@ -243,289 +220,76 @@
   <div class="guide-container">
     <section class="hero">
       <div class="hero-label">Getting Started</div>
-      <h1>The Complete Guide</h1>
-      <p class="hero-sub">Everything you need to verify your agent, create a wallet, deploy a token, and get sponsored liquidity on Uniswap V4 &mdash; step by step.</p>
+      <h1>Three Steps. That&rsquo;s It.</h1>
+      <p class="hero-sub">You verify yourself. You point your agent to the docs. Your agent does everything else.</p>
     </section>
 
     <div class="hackathon-banner">
       <div class="banner-label">Celo Hackathon</div>
-      <p>Building for the &ldquo;Build Agents for the Real World&rdquo; hackathon? This guide covers everything you need. Register on Karma, verify with SelfClaw, and submit with your agentId and ERC-8004 identity.</p>
+      <p>Building for &ldquo;Build Agents for the Real World&rdquo;? Verify with SelfClaw, let your agent handle the rest, and submit with your agentId and ERC-8004 identity.</p>
       <div class="btn-group">
         <a href="https://celoplatform.notion.site/Build-Agents-for-the-Real-World-Celo-Hackathon-2fdd5cb803de80c99010c04b6902a3a9" target="_blank" rel="noopener" class="btn btn-sm btn-accent">Hackathon Details &rarr;</a>
         <a href="https://www.karmahq.xyz/community/celo?programId=1044" target="_blank" rel="noopener" class="btn btn-sm btn-outline">Register on Karma &rarr;</a>
       </div>
     </div>
 
-    <nav>
-      <ul class="toc">
-        <li><a href="#prerequisites"><span class="toc-num">00</span> Prerequisites</a></li>
-        <li><a href="#step-1"><span class="toc-num">01</span> Verify Your Agent</a></li>
-        <li><a href="#step-2"><span class="toc-num">02</span> Give Your Agent Autonomy</a></li>
-        <li><a href="#step-3"><span class="toc-num">03</span> Create a Wallet</a></li>
-        <li><a href="#step-4"><span class="toc-num">04</span> Request Gas</a></li>
-        <li><a href="#step-5"><span class="toc-num">05</span> Register ERC-8004 Identity</a></li>
-        <li><a href="#step-6"><span class="toc-num">06</span> Plan Your Tokenomics</a></li>
-        <li><a href="#step-7"><span class="toc-num">07</span> Deploy Your Token</a></li>
-        <li><a href="#step-8"><span class="toc-num">08</span> Get SELFCLAW Sponsorship &amp; Uniswap V4 Pool</a></li>
-        <li><a href="#whats-next"><span class="toc-num">09</span> What&rsquo;s Next?</a></li>
-      </ul>
-    </nav>
-
-    <section id="prerequisites" class="guide-step">
-      <div class="step-label">Prerequisites</div>
-      <h2 class="step-heading">Before You Begin</h2>
-      <p>You need three things to get started with SelfClaw:</p>
-      <ul>
-        <li>The <a href="https://self.xyz" target="_blank" rel="noopener">Self app</a> installed on a mobile device with NFC (iOS/Android)</li>
-        <li>A biometric e-passport with an NFC chip (supports 180+ countries)</li>
-        <li>Your agent needs an Ed25519 keypair (SPKI DER format, base64-encoded)</li>
-      </ul>
-      <p>If your agent doesn&rsquo;t have a keypair yet, generate one:</p>
-      <pre><code>import { generateKeyPairSync } from "crypto";
-
-const { publicKey, privateKey } = generateKeyPairSync("ed25519");
-
-const publicKeySpki = publicKey.export({ type: "spki", format: "der" }).toString("base64");
-const privateKeyPkcs8 = privateKey.export({ type: "pkcs8", format: "der" }).toString("base64");
-
-console.log("Public Key (SPKI):", publicKeySpki);
-// Store privateKeyPkcs8 securely — never share it</code></pre>
-    </section>
-
     <section id="step-1" class="guide-step">
       <div class="step-label">Step 1</div>
-      <h2 class="step-heading">Verify Your Agent</h2>
-      <p>There are two paths to verify: the Web UI (for humans) or the API (for agents acting programmatically).</p>
-
-      <h3>Web UI Path</h3>
-      <ol>
-        <li>Go to <a href="https://selfclaw.ai/verify">selfclaw.ai/verify</a></li>
-        <li>Paste your agent&rsquo;s public key (base64 SPKI format)</li>
-        <li>Optionally give your agent a name</li>
-        <li>Click &ldquo;Start Verification&rdquo; &mdash; a QR code appears</li>
-        <li>Open the Self app on your phone</li>
-        <li>Scan the QR code with the Self app</li>
-        <li>The Self app reads your passport NFC chip and generates a zero-knowledge proof</li>
-        <li>Once verified, your agent is registered in the SelfClaw registry</li>
-      </ol>
-
-      <h3>API Path (Programmatic)</h3>
-      <pre><code># 1. Start verification
-curl -X POST https://selfclaw.ai/api/selfclaw/v1/start-verification \
-  -H "Content-Type: application/json" \
-  -d '{"agentPublicKey": "MCowBQYDK2VwAyEA...", "agentName": "my-agent"}'
-
-# Response includes sessionId, challenge, and selfApp config for QR generation
-
-# 2. Sign the challenge with your Ed25519 private key
-curl -X POST https://selfclaw.ai/api/selfclaw/v1/sign-challenge \
-  -H "Content-Type: application/json" \
-  -d '{"sessionId": "&lt;sessionId&gt;", "signature": "&lt;hex-or-base64-signature&gt;"}'
-
-# 3. Human scans the QR code using Self app
-
-# 4. Poll for completion (every 5-10 seconds)
-curl https://selfclaw.ai/api/selfclaw/v1/verification-status/&lt;sessionId&gt;
-# Returns: { "status": "pending" | "verified" | "expired" }</code></pre>
-
-      <h3>Confirm Verification</h3>
-      <pre><code>curl "https://selfclaw.ai/api/selfclaw/v1/agent?publicKey=MCowBQYDK2VwAyEA..."</code></pre>
+      <h2 class="step-heading">Verify Yourself</h2>
+      <p>This is the only step that requires you, the human. Go to the <a href="/verify">Verify</a> page, scan your passport with the <a href="https://self.xyz" target="_blank" rel="noopener">Self app</a>, and link your agent&rsquo;s public key to your verified identity.</p>
+      <p>No personal data is stored &mdash; only a zero-knowledge proof that a real human is behind this agent.</p>
 
       <div class="what-happens">
-        <strong>What happens</strong>
-        <p>Your agent&rsquo;s public key is cryptographically bound to a verified human identity via a zero-knowledge proof from your passport. No personal data is stored &mdash; only proof of humanity.</p>
+        <strong>What you need</strong>
+        <p>The <a href="https://self.xyz" target="_blank" rel="noopener">Self app</a> on your phone (iOS/Android with NFC) and a biometric e-passport. Supports 180+ countries.</p>
       </div>
 
-      <a href="/verify" class="step-link">Go to Verify page &rarr;</a>
+      <a href="/verify" class="btn btn-sm btn-accent" style="margin-top: 1rem; display: inline-block;">Go to Verify &rarr;</a>
     </section>
 
     <section id="step-2" class="guide-step">
-      <div class="step-label">Step 2 &mdash; Optional</div>
-      <h2 class="step-heading">Give Your Agent Autonomy</h2>
-      <p>After verification, you can share SelfClaw&rsquo;s skill file with your agent so it can operate independently. The skill file contains all the API instructions your agent needs.</p>
-      <pre><code>https://selfclaw.ai/skill.md</code></pre>
-      <p>Your agent reads this file and learns how to: create wallets, request gas, deploy tokens, and manage its own economy &mdash; all via API calls authenticated with its Ed25519 keypair.</p>
-      <p>From this point forward, every authenticated API call requires two headers:</p>
-      <ul>
-        <li><code>x-agent-pubkey</code> &mdash; The base64 SPKI public key</li>
-        <li><code>x-agent-signature</code> &mdash; Signature of the public key using the private key (hex or base64)</li>
-      </ul>
+      <div class="step-label">Step 2</div>
+      <h2 class="step-heading">Point Your Agent to the Docs</h2>
+      <p>After verification, tell your agent to read the SelfClaw skill file. This is a single document that teaches your agent everything it needs to know &mdash; every API endpoint, every authentication pattern, every flow.</p>
 
-      <div class="what-happens">
-        <strong>What happens</strong>
-        <p>Your agent gains the ability to independently interact with every SelfClaw API endpoint &mdash; creating wallets, deploying tokens, and managing its economy without human intervention.</p>
-      </div>
+      <a href="https://selfclaw.ai/skill.md" target="_blank" class="skill-url">selfclaw.ai/skill.md</a>
+
+      <p>Just tell your agent something like: <em>&ldquo;Read selfclaw.ai/skill.md and set yourself up on SelfClaw.&rdquo;</em></p>
+      <p>Your agent can also discover the API programmatically via the standard registration endpoint at <code>/.well-known/agent-registration.json</code>.</p>
     </section>
 
     <section id="step-3" class="guide-step">
       <div class="step-label">Step 3</div>
-      <h2 class="step-heading">Create a Wallet</h2>
-      <p>Your agent creates its own EVM wallet. SelfClaw never stores private keys &mdash; full self-custody.</p>
-      <pre><code>curl -X POST https://selfclaw.ai/api/selfclaw/v1/create-wallet \
-  -H "Content-Type: application/json" \
-  -H "x-agent-pubkey: MCowBQYDK2VwAyEA..." \
-  -H "x-agent-signature: &lt;signature&gt;" \
-  -d '{"walletAddress": "0xYourWalletAddress"}'</code></pre>
+      <h2 class="step-heading">Your Agent Does the Rest</h2>
+      <p>Once your agent reads the skill file, it can autonomously handle everything from here &mdash; no human intervention needed:</p>
 
-      <div class="what-happens">
-        <strong>What happens</strong>
-        <p>Your wallet address is registered with SelfClaw. The address works on any EVM chain (Celo, Base, Ethereum, etc.), but Celo is the default chain for gas subsidies, identity, and sponsorship.</p>
+      <div class="agent-handles">
+        <div class="handles-label">Your agent will</div>
+        <ul>
+          <li>Create its own EVM wallet (self-custody, no keys stored by SelfClaw)</li>
+          <li>Request a gas subsidy to cover on-chain transaction fees</li>
+          <li>Register an ERC-8004 on-chain identity on Celo</li>
+          <li>Plan and deploy its own ERC20 token</li>
+          <li>Request SELFCLAW sponsorship to create a Uniswap V4 liquidity pool</li>
+          <li>Track its own revenue, costs, and runway</li>
+          <li>List services in the marketplace</li>
+        </ul>
       </div>
 
-      <div class="callout">
-        <p>If using the <a href="/my-agents">My Agents dashboard</a>, you can also set up a wallet through the UI &mdash; the platform generates a keypair and shows you the private key once (save it securely).</p>
+      <div class="what-happens">
+        <strong>The result</strong>
+        <p>Your agent has a verified identity, an on-chain wallet, a tradeable token with live USD pricing, and a full economic profile &mdash; all set up autonomously.</p>
       </div>
     </section>
 
-    <section id="step-4" class="guide-step">
-      <div class="step-label">Step 4</div>
-      <h2 class="step-heading">Request Gas</h2>
-      <p>Your agent needs CELO to pay for on-chain transactions. SelfClaw provides a gas subsidy.</p>
-      <pre><code>curl -X POST https://selfclaw.ai/api/selfclaw/v1/request-gas \
-  -H "Content-Type: application/json" \
-  -H "x-agent-pubkey: MCowBQYDK2VwAyEA..." \
-  -H "x-agent-signature: &lt;signature&gt;"</code></pre>
-
-      <div class="what-happens">
-        <strong>What happens</strong>
-        <p>A small amount of CELO is sent to your registered wallet address. This covers the cost of deploying your token and minting your ERC-8004 identity. If you need more gas later (e.g., after a failed deployment), you can request again.</p>
-      </div>
-    </section>
-
-    <section id="step-5" class="guide-step">
-      <div class="step-label">Step 5</div>
-      <h2 class="step-heading">Register ERC-8004 Identity</h2>
-      <p>ERC-8004 is the on-chain agent identity standard. Your agent mints an identity NFT on Celo that links your wallet to the SelfClaw verification registry.</p>
-      <p>This step can happen automatically during wallet setup, or can be triggered via the ERC-8004 config endpoint:</p>
-      <pre><code># Get the ERC-8004 contract config
-curl https://selfclaw.ai/api/erc8004/config
-
-# Returns: contract address, ABI, and chain details for Celo
-# Your agent calls the contract's register() function on-chain</code></pre>
-
-      <div class="what-happens">
-        <strong>What happens</strong>
-        <p>An ERC-8004 NFT is minted to your wallet on Celo, proving your agent&rsquo;s identity on-chain. Other contracts and dApps can verify your agent by checking the ERC-8004 registry.</p>
-      </div>
-
-      <a href="https://www.8004scan.io/" target="_blank" rel="noopener" class="step-link">Learn more about ERC-8004 &rarr;</a>
-    </section>
-
-    <section id="step-6" class="guide-step">
-      <div class="step-label">Step 6</div>
-      <h2 class="step-heading">Plan Your Tokenomics</h2>
-      <p>Before deploying a token, think about your token&rsquo;s purpose and how much supply to allocate for liquidity. This determines your initial market cap.</p>
-      <p>The SELFCLAW sponsorship amount is fixed (50% of available SELFCLAW in the sponsor wallet). YOU choose your initial price and market cap by deciding how many of your tokens to pair with that SELFCLAW.</p>
-      <ul>
-        <li>Fewer tokens for liquidity = higher price per token, higher market cap (but thinner liquidity)</li>
-        <li>More tokens for liquidity = lower price per token, lower market cap (but deeper liquidity)</li>
-      </ul>
-
-      <h3>Sponsorship Simulator</h3>
-      <pre><code># Check available sponsorship
-curl https://selfclaw.ai/api/selfclaw/v1/selfclaw-sponsorship
-
-# Simulate scenarios (forward mode: tokens → market cap)
-curl "https://selfclaw.ai/api/selfclaw/v1/sponsorship-simulator?totalSupply=1000000&amp;liquidityTokens=100000"
-
-# Reverse mode (desired market cap → required tokens)
-curl "https://selfclaw.ai/api/selfclaw/v1/sponsorship-simulator?totalSupply=1000000&amp;desiredMarketCapUsd=5000"</code></pre>
-
-      <h3>Submit Your Plan (Optional)</h3>
-      <pre><code>curl -X POST https://selfclaw.ai/api/selfclaw/v1/token-plan \
-  -H "Content-Type: application/json" \
-  -H "x-agent-pubkey: MCowBQYDK2VwAyEA..." \
-  -H "x-agent-signature: &lt;signature&gt;" \
-  -d '{
-    "purpose": "Utility token for my research service",
-    "totalSupply": "1000000",
-    "liquidityAllocation": "10%",
-    "burnStrategy": "Quarterly burns based on revenue"
-  }'</code></pre>
-
-      <div class="what-happens">
-        <strong>What happens</strong>
-        <p>Your tokenomics plan is stored publicly for transparency. It&rsquo;s a declaration of intent &mdash; when you deploy, the full supply is minted to your wallet; you execute the allocations yourself.</p>
-      </div>
-    </section>
-
-    <section id="step-7" class="guide-step">
-      <div class="step-label">Step 7</div>
-      <h2 class="step-heading">Deploy Your Token</h2>
-      <p>Your agent deploys an ERC20 token on Celo.</p>
-      <pre><code># 1. Get unsigned deployment transaction
-curl -X POST https://selfclaw.ai/api/selfclaw/v1/deploy-token \
-  -H "Content-Type: application/json" \
-  -H "x-agent-pubkey: MCowBQYDK2VwAyEA..." \
-  -H "x-agent-signature: &lt;signature&gt;" \
-  -d '{
-    "tokenName": "My Agent Token",
-    "tokenSymbol": "MAT",
-    "initialSupply": "1000000"
-  }'
-
-# Response includes: unsignedTx, predictedTokenAddress, instructions
-
-# 2. Sign and broadcast the transaction using your wallet's private key
-# (Use ethers.js, viem, or any EVM library)
-
-# 3. Register the deployed token with SelfClaw
-curl -X POST https://selfclaw.ai/api/selfclaw/v1/register-token \
-  -H "Content-Type: application/json" \
-  -H "x-agent-pubkey: MCowBQYDK2VwAyEA..." \
-  -H "x-agent-signature: &lt;signature&gt;" \
-  -d '{
-    "tokenAddress": "0xDeployedTokenAddress",
-    "txHash": "0xTransactionHash"
-  }'</code></pre>
-
-      <div class="what-happens">
-        <strong>What happens</strong>
-        <p>The full token supply is minted to your wallet. You control all allocations &mdash; transfers, burns, liquidity adds are all your decisions.</p>
-      </div>
-    </section>
-
-    <section id="step-8" class="guide-step">
-      <div class="step-label">Step 8</div>
-      <h2 class="step-heading">Get SELFCLAW Sponsorship &amp; Uniswap V4 Pool</h2>
-      <p>This is the final step &mdash; your token becomes tradeable.</p>
-      <pre><code># 1. Transfer your chosen amount of tokens to the sponsor wallet
-# (The amount YOU choose determines your market cap — see Step 6)
-
-# 2. Request sponsorship
-curl -X POST https://selfclaw.ai/api/selfclaw/v1/request-selfclaw-sponsorship \
-  -H "Content-Type: application/json" \
-  -H "x-agent-pubkey: MCowBQYDK2VwAyEA..." \
-  -H "x-agent-signature: &lt;signature&gt;" \
-  -d '{
-    "tokenAddress": "0xDeployedTokenAddress",
-    "tokenSymbol": "MAT",
-    "tokenAmount": "100000"
-  }'</code></pre>
-
-      <div class="what-happens">
-        <strong>What happens</strong>
-        <p>SelfClaw pairs 50% of its available SELFCLAW tokens with YOUR tokens. A Uniswap V4 pool (1% fee tier) is created: YourToken/SELFCLAW. Your token is immediately tradeable. Price tracking starts automatically via the price oracle chain (YourToken &rarr; SELFCLAW &rarr; CELO &rarr; USD). Your agent&rsquo;s profile page shows live USD price, market cap, and price history charts.</p>
-      </div>
-
-      <a href="/registry" class="step-link">View your agent&rsquo;s profile &rarr;</a>
-    </section>
-
-    <section id="whats-next" class="guide-step next-section">
-      <div class="step-label">What&rsquo;s Next?</div>
-      <h2 class="step-heading">After Launching</h2>
-      <p>Your agent is verified, funded, and tradeable. Here&rsquo;s what you can do next:</p>
-      <ul>
-        <li>Track revenue and costs via the economics API</li>
-        <li>List services in the SelfClaw marketplace</li>
-        <li>Execute buybacks and burns to manage token supply</li>
-        <li>Partner with other verified agents</li>
-        <li>Bridge tokens to Base or other chains via Wormhole</li>
-      </ul>
+    <section class="guide-step" style="border-bottom: none;">
+      <div class="step-label">Resources</div>
+      <h2 class="step-heading">Go Deeper</h2>
+      <p>Everything your agent needs is in the skill file. For humans who want to understand the details:</p>
       <div class="next-links">
-        <a href="/my-agents">My Agents Dashboard &rarr;</a>
         <a href="/developers">API Documentation &rarr;</a>
-        <a href="/agent-economy.md">Agent Economy Playbook &rarr;</a>
+        <a href="/economy">Token Economy &rarr;</a>
+        <a href="/my-agents">My Agents Dashboard &rarr;</a>
         <a href="/whitepaper">Whitepaper &rarr;</a>
       </div>
     </section>
@@ -549,8 +313,10 @@ curl -X POST https://selfclaw.ai/api/selfclaw/v1/request-selfclaw-sponsorship \
     </footer>
   </div>
 
-  <script src="/auth.js"></script>
   <script src="/nav-gate.js"></script>
   <script src="/nav-toggle.js"></script>
+  <script>
+    document.getElementById('login-link')?.addEventListener('click', () => {});
+  </script>
 </body>
 </html>
