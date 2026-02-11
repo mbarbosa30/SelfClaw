@@ -1,4 +1,4 @@
-import { createPublicClient, createWalletClient, http, parseUnits, formatUnits, maxUint256, encodePacked, encodeAbiParameters, parseAbiParameters } from 'viem';
+import { createPublicClient, createWalletClient, http, parseUnits, formatUnits, maxUint256, encodePacked, encodeAbiParameters, parseAbiParameters, keccak256 } from 'viem';
 import { celo } from 'viem/chains';
 import { privateKeyToAccount } from 'viem/accounts';
 
@@ -280,6 +280,7 @@ export interface CreatePoolResult {
   amount0?: string;
   amount1?: string;
   error?: string;
+  receipt?: any;
 }
 
 export interface PositionInfo {
@@ -663,6 +664,7 @@ export async function createPoolAndAddLiquidity(params: CreatePoolParams): Promi
       txHash: mintTxHash,
       amount0: formatUnits(amount0, 18),
       amount1: formatUnits(amount1, 18),
+      receipt: mintReceipt,
     };
   } catch (error: any) {
     console.error('[uniswap-v4] createPoolAndAddLiquidity error:', error);
@@ -743,6 +745,79 @@ export async function getUncollectedFees(positionTokenId: bigint): Promise<{ tok
     console.error('[uniswap-v4] getUncollectedFees error:', error);
     return { token0Fees: '0', token1Fees: '0' };
   }
+}
+
+export function computePoolId(
+  tokenA: string,
+  tokenB: string,
+  fee: number,
+  tickSpacing: number,
+  hooks: string = '0x0000000000000000000000000000000000000000'
+): `0x${string}` {
+  const a = tokenA.toLowerCase();
+  const b = tokenB.toLowerCase();
+  const currency0 = (a < b ? tokenA : tokenB) as `0x${string}`;
+  const currency1 = (a < b ? tokenB : tokenA) as `0x${string}`;
+  const encoded = encodeAbiParameters(
+    parseAbiParameters('address, address, uint24, int24, address'),
+    [currency0, currency1, fee, tickSpacing, hooks as `0x${string}`]
+  );
+  return keccak256(encoded);
+}
+
+export async function getNextPositionTokenId(): Promise<bigint> {
+  const nextId = await publicClient.readContract({
+    address: POSITION_MANAGER,
+    abi: POSITION_MANAGER_ABI,
+    functionName: 'nextTokenId',
+    args: [],
+  });
+  return nextId;
+}
+
+export function extractPositionTokenIdFromReceipt(receipt: any): string | null {
+  const ERC721_TRANSFER_TOPIC = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
+  const ZERO_ADDRESS_TOPIC = '0x0000000000000000000000000000000000000000000000000000000000000000';
+
+  for (const log of receipt.logs || []) {
+    if (
+      log.address?.toLowerCase() === POSITION_MANAGER.toLowerCase() &&
+      log.topics?.length === 4 &&
+      log.topics[0] === ERC721_TRANSFER_TOPIC &&
+      log.topics[1] === ZERO_ADDRESS_TOPIC
+    ) {
+      return BigInt(log.topics[3]).toString();
+    }
+  }
+  return null;
+}
+
+export async function collectAllFees(
+  positionTokenIds: bigint[],
+  overrideKey?: string
+): Promise<{ success: boolean; collected: { tokenId: string; txHash: string }[]; errors: string[]; totalCollected: number }> {
+  const collected: { tokenId: string; txHash: string }[] = [];
+  const errors: string[] = [];
+
+  for (const tokenId of positionTokenIds) {
+    try {
+      const result = await collectFees(tokenId);
+      if (result.success && result.txHash) {
+        collected.push({ tokenId: tokenId.toString(), txHash: result.txHash });
+      } else if (!result.success) {
+        errors.push(`Position ${tokenId}: ${result.error}`);
+      }
+    } catch (err: any) {
+      errors.push(`Position ${tokenId}: ${err.message}`);
+    }
+  }
+
+  return {
+    success: collected.length > 0 || errors.length === 0,
+    collected,
+    errors,
+    totalCollected: collected.length,
+  };
 }
 
 export async function getSelfclawBalance(overrideKey?: string): Promise<string> {

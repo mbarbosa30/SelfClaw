@@ -2,7 +2,7 @@ import { Router, Request, Response } from "express";
 import rateLimit from "express-rate-limit";
 import crypto from "crypto";
 import { db } from "./db.js";
-import { agentActivity, verifiedBots, agentWallets, bridgeTransactions } from "../shared/schema.js";
+import { agentActivity, verifiedBots, agentWallets, bridgeTransactions, sponsoredAgents, trackedPools } from "../shared/schema.js";
 import { sql, desc, eq, inArray } from "drizzle-orm";
 import {
   attestToken,
@@ -16,6 +16,7 @@ import {
 } from "../lib/wormhole-bridge.js";
 import {
   collectFees,
+  collectAllFees,
   swapExactInput,
   createPoolAndAddLiquidity,
   getPosition,
@@ -496,13 +497,91 @@ router.post("/uniswap/collect-fees", async (req: Request, res: Response) => {
 router.post("/v3/collect-all-fees", async (req: Request, res: Response) => {
   if (!requireAdmin(req, res)) return;
   try {
-    const { collectAllV3Fees, getOwnedV3PositionIds, getV3PositionInfo } = await import("../lib/uniswap-v3.js");
+    const { collectAllV3Fees } = await import("../lib/uniswap-v3.js");
     const rawSponsorKey = process.env.SELFCLAW_SPONSOR_PRIVATE_KEY || process.env.CELO_PRIVATE_KEY;
     const sponsorKey = rawSponsorKey && !rawSponsorKey.startsWith('0x') ? `0x${rawSponsorKey}` : rawSponsorKey;
     const result = await collectAllV3Fees(sponsorKey);
     res.json(result);
   } catch (error: any) {
     console.error("[admin] v3/collect-all-fees error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post("/v4/collect-all-fees", async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    const v4Positions = await db.select({ v4PositionTokenId: sponsoredAgents.v4PositionTokenId })
+      .from(sponsoredAgents)
+      .where(sql`pool_version = 'v4' AND v4_position_token_id IS NOT NULL AND status = 'completed'`);
+
+    const v4PoolPositions = await db.select({ v4PositionTokenId: trackedPools.v4PositionTokenId })
+      .from(trackedPools)
+      .where(sql`pool_version = 'v4' AND v4_position_token_id IS NOT NULL`);
+
+    const allPositionIds = new Set<string>();
+    for (const p of v4Positions) {
+      if (p.v4PositionTokenId) allPositionIds.add(p.v4PositionTokenId);
+    }
+    for (const p of v4PoolPositions) {
+      if (p.v4PositionTokenId) allPositionIds.add(p.v4PositionTokenId);
+    }
+
+    if (allPositionIds.size === 0) {
+      return res.json({ success: true, message: "No V4 positions to collect fees from", collected: [], totalCollected: 0 });
+    }
+
+    const tokenIds = Array.from(allPositionIds).map(id => BigInt(id));
+    const result = await collectAllFees(tokenIds);
+    res.json(result);
+  } catch (error: any) {
+    console.error("[admin] v4/collect-all-fees error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post("/collect-all-fees", async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    const { collectAllV3Fees } = await import("../lib/uniswap-v3.js");
+    const rawSponsorKey = process.env.SELFCLAW_SPONSOR_PRIVATE_KEY || process.env.CELO_PRIVATE_KEY;
+    const sponsorKey = rawSponsorKey && !rawSponsorKey.startsWith('0x') ? `0x${rawSponsorKey}` : rawSponsorKey;
+
+    let v3Result: any = { success: true, totalSelfclaw: '0' };
+    try {
+      v3Result = await collectAllV3Fees(sponsorKey);
+    } catch (e: any) {
+      v3Result = { success: false, error: e.message };
+    }
+
+    const v4Positions = await db.select({ v4PositionTokenId: sponsoredAgents.v4PositionTokenId })
+      .from(sponsoredAgents)
+      .where(sql`pool_version = 'v4' AND v4_position_token_id IS NOT NULL AND status = 'completed'`);
+
+    const v4PoolPositions = await db.select({ v4PositionTokenId: trackedPools.v4PositionTokenId })
+      .from(trackedPools)
+      .where(sql`pool_version = 'v4' AND v4_position_token_id IS NOT NULL`);
+
+    const allPositionIds = new Set<string>();
+    for (const p of v4Positions) {
+      if (p.v4PositionTokenId) allPositionIds.add(p.v4PositionTokenId);
+    }
+    for (const p of v4PoolPositions) {
+      if (p.v4PositionTokenId) allPositionIds.add(p.v4PositionTokenId);
+    }
+
+    let v4Result: any = { success: true, collected: [], totalCollected: 0 };
+    if (allPositionIds.size > 0) {
+      const tokenIds = Array.from(allPositionIds).map(id => BigInt(id));
+      v4Result = await collectAllFees(tokenIds);
+    }
+
+    res.json({
+      v3: v3Result,
+      v4: v4Result,
+    });
+  } catch (error: any) {
+    console.error("[admin] collect-all-fees error:", error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -518,6 +597,38 @@ router.get("/v3/positions", async (req: Request, res: Response) => {
     res.json({ count: positions.length, positions });
   } catch (error: any) {
     console.error("[admin] v3/positions error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get("/v4/positions", async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    const v4Positions = await db.select({
+      v4PositionTokenId: sponsoredAgents.v4PositionTokenId,
+      tokenAddress: sponsoredAgents.tokenAddress,
+      tokenSymbol: sponsoredAgents.tokenSymbol,
+      humanId: sponsoredAgents.humanId,
+    }).from(sponsoredAgents)
+      .where(sql`pool_version = 'v4' AND v4_position_token_id IS NOT NULL AND status = 'completed'`);
+
+    const positionsWithInfo = await Promise.all(
+      v4Positions.filter(p => p.v4PositionTokenId).map(async (p) => {
+        try {
+          const [position, fees] = await Promise.all([
+            getPosition(BigInt(p.v4PositionTokenId!)),
+            getUncollectedFees(BigInt(p.v4PositionTokenId!)),
+          ]);
+          return { ...p, position, uncollectedFees: fees };
+        } catch (e: any) {
+          return { ...p, error: e.message };
+        }
+      })
+    );
+
+    res.json({ count: positionsWithInfo.length, positions: positionsWithInfo });
+  } catch (error: any) {
+    console.error("[admin] v4/positions error:", error);
     res.status(500).json({ error: error.message });
   }
 });

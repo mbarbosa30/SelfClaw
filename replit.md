@@ -104,9 +104,23 @@ public/                 # Frontend assets
 - **Wallet lookup**: `/v1/wallet/:identifier` accepts either agentPublicKey (exact match) or humanId (returns all wallets for that human if multiple exist).
 - **Self-custody**: Platform never stores private keys. Only wallet addresses are registered.
 
+### Uniswap V4 Migration (Feb 2026)
+- **New agent token pools use Uniswap V4** (singleton PoolManager + Permit2 approvals). Existing SELFCLAW/CELO pool remains on V3 for price feeds.
+- **V4 Celo contracts** (verified from official Celo docs):
+  - PoolManager: `0x288dc841A52FCA2707c6947B3A777c5E56cd87BC`
+  - PositionManager: `0xf7965f3981e4d5bc383bfbcb61501763e9068ca9`
+  - StateView: `0xbc21f8720babf4b20d195ee5c6e99c52b76f2bfb`
+  - UniversalRouter: `0xcb695bc5d3aa22cad1e6df07801b061a05a0233a`
+  - Permit2: `0x000000000022D473030F116dDEE9F6B43aC78BA3`
+- **Position tracking**: V4 positions are NFTs but not enumerable on-chain. Position token IDs are stored in `sponsored_agents.v4_position_token_id` and `tracked_pools.v4_position_token_id` for fee collection.
+- **Dual fee collection**: Admin endpoints support both V3 (`/admin/v3/collect-all-fees`) and V4 (`/admin/v4/collect-all-fees`), plus combined (`/admin/collect-all-fees`).
+- **Pool identification**: V4 pools use `poolId` (keccak256 of pool key) instead of deployed contract addresses. Stored in `tracked_pools.v4_pool_id`.
+- **Sponsorship flow**: Still collects V3 fees first (for SELFCLAW accrual), then creates V4 pool via `createPoolAndAddLiquidity()`.
+
 ## External Dependencies
 - **Self.xyz SDK**: For passport-based verification via QR code and ZK proofs.
 - **Celo & Base Networks**: For on-chain identity (ERC-8004), wallets, token deployment, and trading.
-- **Uniswap**: For pool creation, fee collection, and sponsored liquidity.
+- **Uniswap V3**: Legacy SELFCLAW/CELO pool (price feed, fee collection from existing positions).
+- **Uniswap V4**: New agent token sponsorship pools (pool creation, fee collection, position tracking).
 - **Drizzle ORM**: Used for database schema definition and queries with PostgreSQL.
 - **Express.js**: The core web framework for building the backend API.

@@ -1260,7 +1260,7 @@ router.get("/v1/selfclaw-sponsorship", publicApiLimiter, async (_req: Request, r
       halfValueUsd,
       description: "SELFCLAW available for agent token liquidity sponsorship. On request, fees are collected from the SELFCLAW/CELO pool, then 50% of sponsor balance is used to create an AgentToken/SELFCLAW pool. The sponsorable amount (50% of available) defines the initial liquidity pairing for your agent token.",
       poolFeeTier: "1% (10000)",
-      poolVersion: "Uniswap",
+      poolVersion: "Uniswap V4",
       requirements: [
         "Agent must be verified via Self.xyz passport",
         "Agent must have deployed a token on Celo",
@@ -1304,8 +1304,11 @@ router.post("/v1/request-selfclaw-sponsorship", verificationLimiter, async (req:
 
     const {
       getSelfclawBalance, getTokenBalance, getSponsorAddress,
-      collectAllV3Fees, createV3PoolAndAddLiquidity, getExistingV3Pool,
-    } = await import("../lib/uniswap-v3.js");
+      createPoolAndAddLiquidity, getNextPositionTokenId, computePoolId, getPoolState,
+      extractPositionTokenIdFromReceipt,
+    } = await import("../lib/uniswap-v4.js");
+
+    const { collectAllV3Fees } = await import("../lib/uniswap-v3.js");
 
     const rawSponsorKey = process.env.SELFCLAW_SPONSOR_PRIVATE_KEY || process.env.CELO_PRIVATE_KEY;
     const sponsorKey = rawSponsorKey && !rawSponsorKey.startsWith('0x') ? `0x${rawSponsorKey}` : rawSponsorKey;
@@ -1325,15 +1328,15 @@ router.post("/v1/request-selfclaw-sponsorship", verificationLimiter, async (req:
 
     const selfclawAddress = "0xCD88f99Adf75A9110c0bcd22695A32A20eC54ECb";
 
-    console.log(`[selfclaw] Sponsorship requested by ${humanId.substring(0, 16)}... — collecting fees first`);
+    console.log(`[selfclaw] Sponsorship requested by ${humanId.substring(0, 16)}... — collecting V3 fees first`);
     let feeCollectionResult;
     try {
       feeCollectionResult = await collectAllV3Fees(sponsorKey);
       if (feeCollectionResult.success && parseFloat(feeCollectionResult.totalSelfclaw) > 0) {
-        console.log(`[selfclaw] Collected ${feeCollectionResult.totalSelfclaw} SELFCLAW from fee positions`);
+        console.log(`[selfclaw] Collected ${feeCollectionResult.totalSelfclaw} SELFCLAW from V3 fee positions`);
       }
     } catch (feeErr: any) {
-      console.log(`[selfclaw] Fee collection skipped: ${feeErr.message}`);
+      console.log(`[selfclaw] V3 fee collection skipped: ${feeErr.message}`);
     }
 
     const availableBalance = await getSelfclawBalance(sponsorKey);
@@ -1349,22 +1352,35 @@ router.post("/v1/request-selfclaw-sponsorship", verificationLimiter, async (req:
     const selfclawAmount = (available * 0.5).toFixed(0);
     const selfclawForPool = selfclawAmount;
 
-    console.log(`[selfclaw] Sponsoring with ${selfclawForPool} SELFCLAW (50% of ${availableBalance} available)`);
+    console.log(`[selfclaw] Sponsoring with ${selfclawForPool} SELFCLAW via Uniswap V4 (50% of ${availableBalance} available)`);
 
-    const existingPool = await getExistingV3Pool(tokenAddress, selfclawAddress, 10000);
-    if (existingPool) {
-      return res.status(409).json({
-        error: "A pool already exists for this token pair",
-        existingPool
-      });
+    const tokenLower = tokenAddress.toLowerCase();
+    const selfclawLower = selfclawAddress.toLowerCase();
+    const token0 = tokenLower < selfclawLower ? tokenAddress : selfclawAddress;
+    const token1 = tokenLower < selfclawLower ? selfclawAddress : tokenAddress;
+    const feeTier = 10000;
+    const tickSpacing = 200;
+    const v4PoolId = computePoolId(token0, token1, feeTier, tickSpacing);
+
+    try {
+      const poolState = await getPoolState(v4PoolId as `0x${string}`);
+      if (poolState.liquidity !== '0') {
+        return res.status(409).json({
+          error: "A V4 pool already exists for this token pair with active liquidity",
+          v4PoolId,
+        });
+      }
+    } catch (_poolCheckErr: any) {
     }
 
-    const result = await createV3PoolAndAddLiquidity({
+    const nextTokenIdBefore = await getNextPositionTokenId();
+
+    const result = await createPoolAndAddLiquidity({
       tokenA: tokenAddress,
       tokenB: selfclawAddress,
       amountA: tokenAmount,
       amountB: selfclawForPool,
-      feeTier: 10000,
+      feeTier,
       privateKey: sponsorKey,
     });
 
@@ -1374,36 +1390,52 @@ router.post("/v1/request-selfclaw-sponsorship", verificationLimiter, async (req:
       });
     }
 
+    let positionTokenId: string | null = null;
+    if (result.receipt) {
+      positionTokenId = extractPositionTokenIdFromReceipt(result.receipt);
+    }
+    if (!positionTokenId) {
+      const nextTokenIdAfter = await getNextPositionTokenId();
+      if (nextTokenIdAfter > nextTokenIdBefore) {
+        positionTokenId = nextTokenIdBefore.toString();
+      } else {
+        console.warn(`[selfclaw] V4 position token ID could not be reliably determined (before=${nextTokenIdBefore}, after=${nextTokenIdAfter})`);
+      }
+    }
+
     await db.insert(sponsoredAgents).values({
       humanId,
       publicKey: auth.publicKey,
       tokenAddress,
       tokenSymbol: tokenSymbol || 'TOKEN',
-      poolAddress: result.poolAddress || '',
+      poolAddress: v4PoolId,
+      v4PositionTokenId: positionTokenId,
+      poolVersion: 'v4',
       sponsoredAmountCelo: selfclawForPool,
       sponsorTxHash: result.txHash || '',
       status: 'completed',
       completedAt: new Date(),
     });
 
-    if (result.poolAddress) {
-      try {
-        await db.insert(trackedPools).values({
-          poolAddress: result.poolAddress,
-          tokenAddress,
-          tokenSymbol: tokenSymbol || 'TOKEN',
-          tokenName: req.body.tokenName || tokenSymbol || 'TOKEN',
-          pairedWith: 'SELFCLAW',
-          humanId,
-          agentPublicKey: auth.publicKey,
-          feeTier: 10000,
-          initialCeloLiquidity: selfclawForPool,
-          initialTokenLiquidity: tokenAmount,
-        }).onConflictDoNothing();
-        console.log(`[selfclaw] Pool tracked: ${result.poolAddress} for ${tokenSymbol || 'TOKEN'}/SELFCLAW`);
-      } catch (poolTrackErr: any) {
-        console.error(`[selfclaw] Failed to track pool: ${poolTrackErr.message}`);
-      }
+    try {
+      await db.insert(trackedPools).values({
+        poolAddress: v4PoolId,
+        tokenAddress,
+        tokenSymbol: tokenSymbol || 'TOKEN',
+        tokenName: req.body.tokenName || tokenSymbol || 'TOKEN',
+        pairedWith: 'SELFCLAW',
+        humanId,
+        agentPublicKey: auth.publicKey,
+        feeTier,
+        v4PositionTokenId: positionTokenId,
+        poolVersion: 'v4',
+        v4PoolId,
+        initialCeloLiquidity: selfclawForPool,
+        initialTokenLiquidity: tokenAmount,
+      }).onConflictDoNothing();
+      console.log(`[selfclaw] V4 pool tracked: ${v4PoolId} for ${tokenSymbol || 'TOKEN'}/SELFCLAW (position ${positionTokenId || 'unknown'})`);
+    } catch (poolTrackErr: any) {
+      console.error(`[selfclaw] Failed to track pool: ${poolTrackErr.message}`);
     }
 
     logActivity("selfclaw_sponsorship", humanId, auth.publicKey, undefined, {
@@ -1411,22 +1443,24 @@ router.post("/v1/request-selfclaw-sponsorship", verificationLimiter, async (req:
       tokenSymbol: tokenSymbol || 'TOKEN',
       tokenAmount,
       selfclawAmount: selfclawForPool,
-      poolAddress: result.poolAddress,
-      positionTokenId: result.positionTokenId,
+      v4PoolId,
+      positionTokenId,
+      poolVersion: 'v4',
       feesCollected: feeCollectionResult?.totalSelfclaw || '0',
     });
 
     res.json({
       success: true,
-      message: "AgentToken/SELFCLAW liquidity pool created on Uniswap",
+      message: "AgentToken/SELFCLAW liquidity pool created on Uniswap V4",
       pool: {
-        poolAddress: result.poolAddress,
-        positionTokenId: result.positionTokenId,
+        v4PoolId,
+        positionTokenId,
         tokenAddress,
         tokenAmount,
         selfclawAmount: selfclawForPool,
-        feeTier: 10000,
-        txHash: result.txHash
+        feeTier,
+        txHash: result.txHash,
+        poolVersion: 'v4',
       },
       sponsorship: {
         selfclawSponsored: selfclawForPool,
@@ -1434,10 +1468,9 @@ router.post("/v1/request-selfclaw-sponsorship", verificationLimiter, async (req:
         sponsorWallet: sponsorAddress,
       },
       nextSteps: [
-        "Your token is now tradeable against SELFCLAW on Uniswap",
+        "Your token is now tradeable against SELFCLAW on Uniswap V4",
         "Trading fees (1%) accrue to the SelfClaw treasury for future sponsorships",
-        `View pool on Uniswap: https://app.uniswap.org/explore/pools/celo/${result.poolAddress}`,
-        "View on Celoscan: https://celoscan.io/address/" + (result.poolAddress || tokenAddress)
+        "View on Celoscan: https://celoscan.io/tx/" + (result.txHash || '')
       ]
     });
   } catch (error: any) {
@@ -3880,8 +3913,11 @@ router.post("/v1/my-agents/:publicKey/request-sponsorship", verificationLimiter,
 
     const {
       getSelfclawBalance, getTokenBalance, getSponsorAddress,
-      collectAllV3Fees, createV3PoolAndAddLiquidity, getExistingV3Pool,
-    } = await import("../lib/uniswap-v3.js");
+      createPoolAndAddLiquidity, getNextPositionTokenId, computePoolId, getPoolState,
+      extractPositionTokenIdFromReceipt,
+    } = await import("../lib/uniswap-v4.js");
+
+    const { collectAllV3Fees } = await import("../lib/uniswap-v3.js");
 
     const rawSponsorKey = process.env.SELFCLAW_SPONSOR_PRIVATE_KEY || process.env.CELO_PRIVATE_KEY;
     const sponsorKey = rawSponsorKey && !rawSponsorKey.startsWith('0x') ? `0x${rawSponsorKey}` : rawSponsorKey;
@@ -3907,7 +3943,7 @@ router.post("/v1/my-agents/:publicKey/request-sponsorship", verificationLimiter,
     try {
       feeCollectionResult = await collectAllV3Fees(sponsorKey);
     } catch (e: any) {
-      console.log(`[selfclaw] Fee collection skipped: ${e.message}`);
+      console.log(`[selfclaw] V3 fee collection skipped: ${e.message}`);
     }
 
     const availableBalance = await getSelfclawBalance(sponsorKey);
@@ -3918,56 +3954,86 @@ router.post("/v1/my-agents/:publicKey/request-sponsorship", verificationLimiter,
 
     const selfclawForPool = (available * 0.5).toFixed(0);
 
-    const existingPool = await getExistingV3Pool(tokenAddress, selfclawAddress, 10000);
-    if (existingPool) {
-      return res.status(409).json({ error: "A pool already exists for this token pair", existingPool });
-    }
+    const tokenLower = tokenAddress.toLowerCase();
+    const selfclawLower = selfclawAddress.toLowerCase();
+    const token0 = tokenLower < selfclawLower ? tokenAddress : selfclawAddress;
+    const token1 = tokenLower < selfclawLower ? selfclawAddress : tokenAddress;
+    const feeTier = 10000;
+    const tickSpacing = 200;
+    const v4PoolId = computePoolId(token0, token1, feeTier, tickSpacing);
 
-    const result = await createV3PoolAndAddLiquidity({
+    try {
+      const poolState = await getPoolState(v4PoolId as `0x${string}`);
+      if (poolState.liquidity !== '0') {
+        return res.status(409).json({ error: "A V4 pool already exists for this token pair", v4PoolId });
+      }
+    } catch (_e: any) {}
+
+    const nextTokenIdBefore = await getNextPositionTokenId();
+
+    const result = await createPoolAndAddLiquidity({
       tokenA: tokenAddress, tokenB: selfclawAddress,
       amountA: tokenAmount, amountB: selfclawForPool,
-      feeTier: 10000, privateKey: sponsorKey,
+      feeTier, privateKey: sponsorKey,
     });
 
     if (!result.success) {
       return res.status(400).json({ error: result.error });
     }
 
+    let positionTokenId: string | null = null;
+    if (result.receipt) {
+      positionTokenId = extractPositionTokenIdFromReceipt(result.receipt);
+    }
+    if (!positionTokenId) {
+      const nextTokenIdAfter = await getNextPositionTokenId();
+      if (nextTokenIdAfter > nextTokenIdBefore) {
+        positionTokenId = nextTokenIdBefore.toString();
+      } else {
+        console.warn(`[selfclaw] V4 position token ID could not be reliably determined (before=${nextTokenIdBefore}, after=${nextTokenIdAfter})`);
+      }
+    }
+
     await db.insert(sponsoredAgents).values({
       humanId: auth.humanId, publicKey: req.params.publicKey,
       tokenAddress, tokenSymbol: tokenSymbol || 'TOKEN',
-      poolAddress: result.poolAddress || '',
+      poolAddress: v4PoolId,
+      v4PositionTokenId: positionTokenId,
+      poolVersion: 'v4',
       sponsoredAmountCelo: selfclawForPool,
       sponsorTxHash: result.txHash || '',
       status: 'completed', completedAt: new Date(),
     });
 
-    if (result.poolAddress) {
-      try {
-        await db.insert(trackedPools).values({
-          poolAddress: result.poolAddress, tokenAddress,
-          tokenSymbol: tokenSymbol || 'TOKEN',
-          tokenName: req.body.tokenName || tokenSymbol || 'TOKEN',
-          pairedWith: 'SELFCLAW', humanId: auth.humanId,
-          agentPublicKey: req.params.publicKey, feeTier: 10000,
-          initialCeloLiquidity: selfclawForPool,
-          initialTokenLiquidity: tokenAmount,
-        }).onConflictDoNothing();
-      } catch (e: any) {
-        console.error(`[selfclaw] Failed to track pool: ${e.message}`);
-      }
+    try {
+      await db.insert(trackedPools).values({
+        poolAddress: v4PoolId, tokenAddress,
+        tokenSymbol: tokenSymbol || 'TOKEN',
+        tokenName: req.body.tokenName || tokenSymbol || 'TOKEN',
+        pairedWith: 'SELFCLAW', humanId: auth.humanId,
+        agentPublicKey: req.params.publicKey, feeTier,
+        v4PositionTokenId: positionTokenId,
+        poolVersion: 'v4',
+        v4PoolId,
+        initialCeloLiquidity: selfclawForPool,
+        initialTokenLiquidity: tokenAmount,
+      }).onConflictDoNothing();
+    } catch (e: any) {
+      console.error(`[selfclaw] Failed to track pool: ${e.message}`);
     }
 
     logActivity("selfclaw_sponsorship", auth.humanId, req.params.publicKey, auth.agent.deviceId, {
-      tokenAddress, selfclawAmount: selfclawForPool, poolAddress: result.poolAddress, method: "dashboard"
+      tokenAddress, selfclawAmount: selfclawForPool, v4PoolId, positionTokenId, poolVersion: 'v4', method: "dashboard"
     });
 
     res.json({
       success: true,
       pool: {
-        poolAddress: result.poolAddress,
+        v4PoolId,
+        positionTokenId,
         tokenAddress, selfclawAmount: selfclawForPool,
         txHash: result.txHash,
+        poolVersion: 'v4',
       },
     });
   } catch (error: any) {
