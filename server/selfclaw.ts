@@ -2498,20 +2498,15 @@ router.post("/v1/request-gas", verificationLimiter, async (req: Request, res: Re
     logActivity("gas_request", humanId, auth.publicKey, undefined, { 
       txHash: result.txHash, amountCelo: result.amountCelo 
     });
-
-    const erc8004Result = await autoRegisterErc8004(auth.publicKey);
-
     res.json({
       success: true,
       txHash: result.txHash,
       amountCelo: result.amountCelo,
-      erc8004: erc8004Result ? {
-        registered: true,
-        tokenId: erc8004Result.tokenId,
-        txHash: erc8004Result.txHash,
-        scanUrl: `https://www.8004scan.io/agents/${erc8004Result.tokenId}`,
-      } : { registered: false, message: "ERC-8004 auto-registration will be retried on next gas request" },
-      message: `Sent ${result.amountCelo} CELO for gas.${erc8004Result ? ` ERC-8004 identity #${erc8004Result.tokenId} registered on-chain.` : ""}`,
+      message: `Sent ${result.amountCelo} CELO for gas. You can now register ERC-8004 and deploy tokens.`,
+      nextSteps: [
+        "1. Register your on-chain identity: POST /api/selfclaw/v1/register-erc8004",
+        "2. Deploy your token: POST /api/selfclaw/v1/deploy-token",
+      ],
     });
   } catch (error: any) {
     console.error("[selfclaw] request-gas error:", error);
@@ -2938,107 +2933,7 @@ router.post("/v1/transfer-token", verificationLimiter, async (req: Request, res:
   }
 });
 
-async function autoRegisterErc8004(agentPublicKey: string): Promise<{ tokenId: string; txHash: string } | null> {
-  try {
-    if (!erc8004Service.isReady()) {
-      console.log("[erc8004-auto] Contracts not deployed, skipping auto-registration");
-      return null;
-    }
-
-    const agents = await db.select().from(verifiedBots).where(eq(verifiedBots.publicKey, agentPublicKey)).limit(1);
-    const agent = agents[0];
-    if (!agent) return null;
-
-    const metadata = (agent.metadata as Record<string, any>) || {};
-    if (metadata.erc8004Minted) {
-      console.log(`[erc8004-auto] Agent ${agent.deviceId || agentPublicKey.substring(0, 20)} already registered, tokenId: ${metadata.erc8004TokenId}`);
-      return { tokenId: metadata.erc8004TokenId, txHash: metadata.erc8004TxHash };
-    }
-
-    if (metadata.erc8004RegistrationPending) {
-      console.log(`[erc8004-auto] Agent ${agent.deviceId || agentPublicKey.substring(0, 20)} registration already in progress, skipping`);
-      return null;
-    }
-
-    const walletInfo = await getAgentWallet(agentPublicKey);
-    if (!walletInfo?.address) {
-      console.log("[erc8004-auto] No wallet found, skipping auto-registration");
-      return null;
-    }
-
-    await db.update(verifiedBots)
-      .set({ metadata: { ...metadata, erc8004RegistrationPending: true } })
-      .where(eq(verifiedBots.id, agent.id));
-
-    const domain = "selfclaw.ai";
-    const agentIdentifier = agent.publicKey || agent.deviceId;
-
-    const registrationJson = generateRegistrationFile(
-      agent.deviceId || "Verified Agent",
-      (metadata.description as string) || "A verified AI agent on SelfClaw — passport-verified, sybil-resistant",
-      walletInfo.address,
-      undefined,
-      `https://${domain}`,
-      undefined,
-      true,
-    );
-
-    const registrationURL = `https://${domain}/api/selfclaw/v1/agent/${agentIdentifier}/registration.json`;
-
-    await db.update(verifiedBots)
-      .set({ metadata: { ...metadata, erc8004RegistrationPending: true, erc8004RegistrationJson: registrationJson } })
-      .where(eq(verifiedBots.id, agent.id));
-
-    const result = await erc8004Service.registerAgent(registrationURL);
-    if (!result) {
-      await db.update(verifiedBots)
-        .set({ metadata: { ...metadata, erc8004RegistrationPending: false, erc8004RegistrationJson: registrationJson } })
-        .where(eq(verifiedBots.id, agent.id));
-      console.error("[erc8004-auto] On-chain registration returned null");
-      return null;
-    }
-
-    const updatedRegistrationJson = {
-      ...registrationJson,
-      registrations: [{
-        agentRegistry: `eip155:${erc8004Service.getConfig().chainId}:${erc8004Service.getConfig().identityRegistry}`,
-        agentId: result.tokenId,
-        supportedTrust: registrationJson.supportedTrust,
-      }],
-    };
-
-    await db.update(verifiedBots)
-      .set({
-        metadata: {
-          ...metadata,
-          erc8004TokenId: result.tokenId,
-          erc8004Minted: true,
-          erc8004TxHash: result.txHash,
-          erc8004RegistrationPending: false,
-          erc8004RegistrationJson: updatedRegistrationJson,
-        }
-      })
-      .where(eq(verifiedBots.id, agent.id));
-
-    console.log(`[erc8004-auto] Registered ERC-8004 identity #${result.tokenId} for agent ${agent.deviceId || agentPublicKey.substring(0, 20)}, tx: ${result.txHash}`);
-    logActivity("erc8004_auto_register", agent.humanId ?? undefined, agentPublicKey, agent.deviceId ?? undefined, {
-      tokenId: result.tokenId,
-      txHash: result.txHash,
-    });
-
-    return result;
-  } catch (error: any) {
-    try {
-      await db.update(verifiedBots)
-        .set({ metadata: sql`jsonb_set(COALESCE(metadata, '{}'), '{erc8004RegistrationPending}', 'false')` })
-        .where(eq(verifiedBots.publicKey, agentPublicKey));
-    } catch {}
-    console.error("[erc8004-auto] Auto-registration failed (non-fatal):", error.message);
-    return null;
-  }
-}
-
-// Register ERC-8004 on-chain identity
+// Register ERC-8004 on-chain identity — returns unsigned transaction for agent to sign
 router.post("/v1/register-erc8004", verificationLimiter, async (req: Request, res: Response) => {
   try {
     const auth = await authenticateAgent(req, res);
@@ -3049,7 +2944,7 @@ router.post("/v1/register-erc8004", verificationLimiter, async (req: Request, re
     
     const walletInfo = await getAgentWallet(auth.publicKey);
     if (!walletInfo || !walletInfo.address) {
-      return res.status(400).json({ error: "No wallet found. Create a wallet first." });
+      return res.status(400).json({ error: "No wallet found. Create a wallet first via POST /v1/create-wallet." });
     }
     
     if (!erc8004Service.isReady()) {
@@ -3089,47 +2984,181 @@ router.post("/v1/register-erc8004", verificationLimiter, async (req: Request, re
         }
       })
       .where(eq(verifiedBots.id, agent.id));
-    
-    const result = await erc8004Service.registerAgent(registrationURL);
-    
-    if (!result) {
-      return res.status(500).json({ error: "Failed to register on-chain identity" });
+
+    const config = erc8004Service.getConfig();
+    const fromAddr = walletInfo.address as `0x${string}`;
+
+    const callData = encodeFunctionData({
+      abi: [{
+        name: 'register',
+        type: 'function',
+        stateMutability: 'nonpayable',
+        inputs: [{ name: 'agentURI', type: 'string' }],
+        outputs: [{ name: '', type: 'uint256' }],
+      }],
+      functionName: 'register',
+      args: [registrationURL],
+    });
+
+    const nonce = await viemPublicClient.getTransactionCount({ address: fromAddr });
+    const gasPrice = await viemPublicClient.getGasPrice();
+
+    let estimatedGas = BigInt(300000);
+    try {
+      estimatedGas = await viemPublicClient.estimateGas({
+        account: fromAddr,
+        to: config.identityRegistry as `0x${string}`,
+        data: callData,
+        value: BigInt(0),
+      });
+      estimatedGas = estimatedGas * BigInt(120) / BigInt(100);
+    } catch (estimateErr: any) {
+      console.warn(`[selfclaw] ERC-8004 gas estimation failed, using default 300k: ${estimateErr.message}`);
     }
 
+    const balance = await viemPublicClient.getBalance({ address: fromAddr });
+    const txCost = estimatedGas * gasPrice;
+    const hasSufficientGas = balance >= txCost;
+
+    logActivity("erc8004_registration", humanId, auth.publicKey, agent.deviceId ?? undefined, {
+      mode: "unsigned",
+      registryAddress: config.identityRegistry,
+    });
+
+    res.json({
+      success: true,
+      mode: "unsigned",
+      message: "Sign and submit this transaction with your own wallet to register your ERC-8004 identity.",
+      unsignedTx: {
+        from: walletInfo.address,
+        to: config.identityRegistry,
+        data: callData,
+        gas: estimatedGas.toString(),
+        gasPrice: gasPrice.toString(),
+        chainId: 42220,
+        value: "0",
+        nonce,
+      },
+      agentURI: registrationURL,
+      registrationJson,
+      contract: {
+        identityRegistry: config.identityRegistry,
+        reputationRegistry: config.resolver,
+        explorer: config.explorer,
+      },
+      deployment: {
+        estimatedGas: estimatedGas.toString(),
+        estimatedCost: formatUnits(txCost, 18) + " CELO",
+        walletBalance: formatUnits(balance, 18) + " CELO",
+        hasSufficientGas,
+      },
+      nextSteps: [
+        "1. Sign the unsignedTx with your wallet private key",
+        "2. Submit the signed transaction to Celo mainnet (chainId 42220)",
+        "3. Wait for confirmation (typically 5 seconds on Celo)",
+        "4. Call POST /api/selfclaw/v1/confirm-erc8004 with {txHash: <your_tx_hash>} to record your token ID",
+      ],
+    });
+  } catch (error: any) {
+    console.error("[selfclaw] register-erc8004 error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post("/v1/confirm-erc8004", verificationLimiter, async (req: Request, res: Response) => {
+  try {
+    const auth = await authenticateAgent(req, res);
+    if (!auth) return;
+
+    const { txHash } = req.body;
+    if (!txHash) {
+      return res.status(400).json({ error: "txHash is required — provide the transaction hash from your ERC-8004 register() call" });
+    }
+
+    const agent = auth.agent;
+    const existingMetadata = (agent.metadata as Record<string, any>) || {};
+    if (existingMetadata.erc8004Minted) {
+      return res.status(400).json({
+        error: "Already confirmed",
+        tokenId: existingMetadata.erc8004TokenId,
+        explorerUrl: erc8004Service.getExplorerUrl(existingMetadata.erc8004TokenId),
+      });
+    }
+
+    const receipt = await viemPublicClient.getTransactionReceipt({ hash: txHash as `0x${string}` });
+    if (!receipt || receipt.status === "reverted") {
+      return res.status(400).json({
+        error: "Transaction failed or not found",
+        hint: "Make sure the transaction is confirmed on Celo mainnet before calling this endpoint.",
+      });
+    }
+
+    const config = erc8004Service.getConfig();
+    if (receipt.to?.toLowerCase() !== config.identityRegistry.toLowerCase()) {
+      return res.status(400).json({
+        error: "Transaction is not to the ERC-8004 Identity Registry",
+        expected: config.identityRegistry,
+        got: receipt.to,
+      });
+    }
+
+    let tokenId = "0";
+    const transferTopic = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
+    for (const log of receipt.logs) {
+      if (log.topics[0] === transferTopic && log.address.toLowerCase() === config.identityRegistry.toLowerCase()) {
+        tokenId = BigInt(log.topics[3] || "0").toString();
+        break;
+      }
+    }
+
+    if (tokenId === "0") {
+      return res.status(400).json({
+        error: "Could not extract token ID from transaction logs",
+        hint: "The transaction may not be an ERC-8004 register() call.",
+      });
+    }
+
+    const registrationJson = existingMetadata.erc8004RegistrationJson || {};
     const updatedRegistrationJson = {
       ...registrationJson,
       registrations: [{
-        agentRegistry: `eip155:${erc8004Service.getConfig().chainId}:${erc8004Service.getConfig().identityRegistry}`,
-        agentId: result.tokenId,
-        supportedTrust: registrationJson.supportedTrust,
+        agentRegistry: `eip155:${config.chainId}:${config.identityRegistry}`,
+        agentId: tokenId,
+        supportedTrust: registrationJson.supportedTrust || ["reputation"],
       }],
     };
-    
+
     await db.update(verifiedBots)
       .set({
         metadata: {
           ...existingMetadata,
-          erc8004TokenId: result.tokenId,
+          erc8004TokenId: tokenId,
           erc8004Minted: true,
-          erc8004TxHash: result.txHash,
+          erc8004TxHash: txHash,
           erc8004RegistrationJson: updatedRegistrationJson,
         }
       })
       .where(eq(verifiedBots.id, agent.id));
-    
-    console.log(`[selfclaw] Registered ERC-8004 identity #${result.tokenId} for humanId ${humanId.substring(0, 16)}...`);
-    
+
+    console.log(`[selfclaw] ERC-8004 confirmed: identity #${tokenId} for agent ${agent.deviceId || auth.publicKey.substring(0, 20)}, tx: ${txHash}`);
+    logActivity("erc8004_confirmed", auth.humanId, auth.publicKey, agent.deviceId ?? undefined, {
+      tokenId,
+      txHash,
+    });
+
     res.json({
       success: true,
-      tokenId: result.tokenId,
-      txHash: result.txHash,
-      agentURI: registrationURL,
-      registrationJson: updatedRegistrationJson,
-      explorerUrl: erc8004Service.getTxExplorerUrl(result.txHash),
-      scan8004Url: `https://www.8004scan.io/agents/${result.tokenId}`,
+      tokenId,
+      txHash,
+      explorerUrl: erc8004Service.getTxExplorerUrl(txHash),
+      scan8004Url: `https://www.8004scan.io/agents/${tokenId}`,
+      nextSteps: [
+        "1. Your on-chain identity is now live — other agents can verify you",
+        "2. Deploy your token: POST /api/selfclaw/v1/deploy-token",
+      ],
     });
   } catch (error: any) {
-    console.error("[selfclaw] register-erc8004 error:", error);
+    console.error("[selfclaw] confirm-erc8004 error:", error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -4553,18 +4582,10 @@ router.post("/v1/my-agents/:publicKey/request-gas", verificationLimiter, async (
       txHash: result.txHash, amountCelo: result.amountCelo, method: "dashboard"
     });
 
-    const erc8004Result = await autoRegisterErc8004(req.params.publicKey);
-
     res.json({
       success: true,
       txHash: result.txHash,
       amountCelo: result.amountCelo,
-      erc8004: erc8004Result ? {
-        registered: true,
-        tokenId: erc8004Result.tokenId,
-        txHash: erc8004Result.txHash,
-        scanUrl: `https://www.8004scan.io/agents/${erc8004Result.tokenId}`,
-      } : { registered: false },
     });
   } catch (error: any) {
     console.error("[selfclaw] my-agents request-gas error:", error);

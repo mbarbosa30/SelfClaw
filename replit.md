@@ -92,6 +92,8 @@ public/                 # Frontend assets
 - `GET /api/selfclaw/v1/agent/{identifier}/economics` — Agent economics summary (revenue, costs, P/L, runway).
 - `POST /api/selfclaw/v1/agent/{identifier}/fund-alert` — Agent requests funding from human owner.
 - `GET /api/selfclaw/v1/human/{humanId}/economics` — All agents economics overview for a human (includes sponsorship status per agent).
+- `POST /api/selfclaw/v1/register-erc8004` — Get unsigned transaction for ERC-8004 on-chain identity registration (agent signs and submits itself).
+- `POST /api/selfclaw/v1/confirm-erc8004` — Confirm ERC-8004 registration after agent submits the transaction (provide txHash).
 - `POST /api/selfclaw/v1/services` — List a new service.
 - `GET /.well-known/agent-registration.json` — Agent registration discovery.
 - `POST /api/selfclaw/v1/my-agents/{publicKey}/setup-wallet` — Dashboard: generate EVM wallet (session auth, returns private key once).
@@ -102,7 +104,7 @@ public/                 # Frontend assets
 
 ### Wallet Architecture (Feb 2026)
 - **Per-agent wallets**: Each agent has its own wallet row in `agent_wallets`, keyed by `publicKey` (unique). A human with multiple agents can have multiple wallets.
-- **Gas subsidy**: Scoped per-agent (not per-human). Each agent can request gas independently. Gas request also auto-registers ERC-8004 on-chain identity if not already minted.
+- **Gas subsidy**: Scoped per-agent (not per-human). Each agent can request gas independently.
 - **Sponsorship**: Still one sponsorship per human (sybil protection) — `sponsored_agents.humanId` remains unique.
 - **Wallet lookup**: `/v1/wallet/:identifier` accepts either agentPublicKey (exact match) or humanId (returns all wallets for that human if multiple exist).
 - **Self-custody**: Platform never stores private keys. Only wallet addresses are registered.
