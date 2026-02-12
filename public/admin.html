@@ -718,6 +718,20 @@
       </section>
 
       <section class="admin-section">
+        <h2 class="admin-section-title">Register Tracked Pool</h2>
+        <p style="color:var(--text-muted);font-size:0.75rem;margin-bottom:1rem;line-height:1.5;">Manually link an existing on-chain V4 pool to an agent token. Token symbol/name are auto-fetched from the blockchain, and agent ownership is auto-resolved from existing records.</p>
+        <div class="actions-grid">
+          <div class="action-card" style="max-width:480px;">
+            <input type="text" class="input" id="reg-token-address" placeholder="Token contract address (0x...)">
+            <input type="text" class="input" id="reg-v4-pool-id" placeholder="V4 Pool ID (0x...)" style="margin-top:0.4rem;">
+            <input type="text" class="input" id="reg-position-token-id" placeholder="Position Token ID (optional)" style="margin-top:0.4rem;">
+            <button class="action-btn" onclick="doRegisterPool(this)" style="margin-top:0.5rem;">Register Pool</button>
+            <div class="action-result" id="result-register-pool"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="admin-section">
         <h2 class="admin-section-title" style="display:flex;justify-content:space-between;align-items:center;">
           SPONSORSHIP REQUESTS
           <button class="refresh-btn" onclick="loadSponsorshipRequests()" style="border-bottom:none;">Refresh</button>
@@ -1653,6 +1667,38 @@
         btn.disabled = false;
         if (e.message === 'auth') return;
         setActionResult('result-check-position', 'Failed: ' + e.message, 'error');
+      });
+    }
+
+    function doRegisterPool(btn) {
+      var tokenAddr = document.getElementById('reg-token-address').value.trim();
+      var poolId = document.getElementById('reg-v4-pool-id').value.trim();
+      var posId = document.getElementById('reg-position-token-id').value.trim();
+      if (!tokenAddr || !poolId) { setActionResult('result-register-pool', 'Token address and V4 Pool ID are required', 'error'); return; }
+      btn.disabled = true;
+      setActionResult('result-register-pool', 'Registering pool... fetching token metadata from chain...', 'loading');
+      fetch('/api/admin/uniswap/tracked-pools/register', {
+        method: 'POST', headers: authHeaders(),
+        body: JSON.stringify({ tokenAddress: tokenAddr, v4PoolId: poolId, positionTokenId: posId || null })
+      })
+      .then(function(r) {
+        if (handleAuthError(r)) throw new Error('auth');
+        return r.json();
+      })
+      .then(function(data) {
+        btn.disabled = false;
+        if (data.error) { setActionResult('result-register-pool', data.error, 'error'); return; }
+        var msg = 'Pool registered!\n';
+        msg += 'Token: ' + data.tokenName + ' (' + data.tokenSymbol + ')\n';
+        msg += 'Owner: ' + data.humanId + '\n';
+        msg += 'Pool ID: ' + data.v4PoolId;
+        if (data.positionTokenId) msg += '\nPosition: ' + data.positionTokenId;
+        setActionResult('result-register-pool', msg, 'success');
+      })
+      .catch(function(e) {
+        btn.disabled = false;
+        if (e.message === 'auth') return;
+        setActionResult('result-register-pool', 'Failed: ' + e.message, 'error');
       });
     }
 

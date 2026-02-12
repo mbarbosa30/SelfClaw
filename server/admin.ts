@@ -1099,4 +1099,89 @@ router.post("/sponsorship-requests/:id/retry", async (req: Request, res: Respons
   }
 });
 
+router.post("/uniswap/tracked-pools/register", async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    const { tokenAddress, v4PoolId, positionTokenId } = req.body;
+    if (!tokenAddress || !v4PoolId) {
+      return res.status(400).json({ error: "Token address and V4 pool ID are required" });
+    }
+
+    const addr = tokenAddress.trim().toLowerCase();
+
+    const existing = await db.select().from(trackedPools).where(eq(trackedPools.tokenAddress, addr)).limit(1);
+    if (existing.length > 0) {
+      return res.status(409).json({ error: "This token is already tracked", pool: existing[0] });
+    }
+
+    const { createPublicClient, http } = await import("viem");
+    const { celo } = await import("viem/chains");
+    const client = createPublicClient({ chain: celo, transport: http() });
+    const ERC20_META_ABI = [
+      { name: 'symbol', type: 'function', stateMutability: 'view', inputs: [], outputs: [{ name: '', type: 'string' }] },
+      { name: 'name', type: 'function', stateMutability: 'view', inputs: [], outputs: [{ name: '', type: 'string' }] },
+    ] as const;
+
+    let tokenSymbol = 'TOKEN';
+    let tokenName = 'TOKEN';
+    try {
+      const [sym, nm] = await Promise.all([
+        client.readContract({ address: addr as `0x${string}`, abi: ERC20_META_ABI, functionName: 'symbol' }),
+        client.readContract({ address: addr as `0x${string}`, abi: ERC20_META_ABI, functionName: 'name' }),
+      ]);
+      tokenSymbol = sym as string;
+      tokenName = nm as string;
+    } catch (e: any) {
+      console.warn(`[admin] Could not read token metadata from chain: ${e.message}`);
+    }
+
+    let humanId: string | null = null;
+    let agentPublicKey: string | null = null;
+
+    const sponsored = await db.select().from(sponsoredAgents).where(eq(sponsoredAgents.tokenAddress, addr)).limit(1);
+    if (sponsored.length > 0) {
+      humanId = sponsored[0].humanId;
+      agentPublicKey = sponsored[0].publicKey;
+    }
+
+    if (!humanId) {
+      const sponsorReq = await db.select().from(sponsorshipRequests).where(eq(sponsorshipRequests.tokenAddress, addr)).limit(1);
+      if (sponsorReq.length > 0) {
+        humanId = sponsorReq[0].humanId;
+        agentPublicKey = sponsorReq[0].publicKey;
+      }
+    }
+
+    const poolId = v4PoolId.trim();
+    const posTokenId = positionTokenId ? String(positionTokenId).trim() : null;
+
+    await db.insert(trackedPools).values({
+      poolAddress: poolId,
+      tokenAddress: addr,
+      tokenSymbol,
+      tokenName,
+      pairedWith: 'SELFCLAW',
+      humanId: humanId || 'unknown',
+      agentPublicKey,
+      feeTier: 10000,
+      v4PositionTokenId: posTokenId,
+      poolVersion: 'v4',
+      v4PoolId: poolId,
+    }).onConflictDoNothing();
+
+    res.json({
+      success: true,
+      tokenSymbol,
+      tokenName,
+      humanId: humanId || '(not found — update manually)',
+      agentPublicKey: agentPublicKey ? agentPublicKey.slice(0, 20) + '...' : '(not found)',
+      v4PoolId: poolId,
+      positionTokenId: posTokenId,
+    });
+  } catch (error: any) {
+    console.error("[admin] register tracked pool error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 export default router;
