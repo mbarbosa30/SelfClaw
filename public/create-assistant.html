@@ -284,7 +284,7 @@
         <div class="assistant-form">
           <div class="form-group">
             <label for="assistant-name">Name</label>
-            <input type="text" id="assistant-name" class="input" placeholder="my-miniclaw" maxlength="24">
+            <input type="text" id="assistant-name" class="input" placeholder="my-miniclaw" maxlength="50">
           </div>
 
           <div class="form-group">
@@ -436,8 +436,8 @@
         errEl.style.display = '';
         return;
       }
-      if (name.length > 24) {
-        errEl.textContent = 'Name must be 24 characters or less.';
+      if (name.length > 50) {
+        errEl.textContent = 'Name must be 50 characters or less.';
         errEl.style.display = '';
         return;
       }

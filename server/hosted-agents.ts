@@ -409,10 +409,14 @@ hostedAgentsRouter.post("/v1/hosted-agents", async (req: Request, res: Response)
     const humanId = requireAuth(req, res);
     if (!humanId) return;
 
-    const { name, emoji, description, interests, topicsToWatch, personalContext, socialHandles } = req.body;
+    const { name, emoji, description, interests, topicsToWatch, personalContext, socialHandles, enabledSkills: requestedSkills } = req.body;
     if (!name || typeof name !== "string" || name.length < 2 || name.length > 50) {
       return res.status(400).json({ error: "Name is required (2-50 characters)" });
     }
+
+    const validSkills = Array.isArray(requestedSkills)
+      ? requestedSkills.filter((s: string) => AVAILABLE_SKILLS.some(sk => sk.id === s))
+      : [];
 
     const walletAddress = (req.session as any).walletAddress || null;
 
@@ -444,7 +448,7 @@ hostedAgentsRouter.post("/v1/hosted-agents", async (req: Request, res: Response)
       emoji: emoji || "🤖",
       description: description || null,
       status: "active",
-      enabledSkills: [],
+      enabledSkills: validSkills,
       skillConfigs: {},
       interests: Array.isArray(interests) ? interests.slice(0, 20) : [],
       topicsToWatch: Array.isArray(topicsToWatch) ? topicsToWatch.slice(0, 20) : [],
@@ -884,7 +888,7 @@ ${socialsText ? `Your creator's social accounts: ${socialsText}` : ""}
 Your active skills:
 ${skillSection}
 
-On-chain capabilities (available when the user is ready):
+On-chain capabilities (available when the agent feels ready):
 - Wallet: You can set up your own EVM wallet on Celo. It can hold tokens, receive gas subsidies from SelfClaw, and interact with smart contracts. The user's private key is never stored — they maintain full custody.
 - Token: You can deploy your own ERC20 token. This lets people support you, trade your token, and participate in your economy.
 - Identity: You can register an ERC-8004 identity NFT — an on-chain proof that you're a verified agent tied to a real human identity.
@@ -898,7 +902,11 @@ Guidelines:
 - When discussing your skills, explain what each one does in plain language based on the descriptions above
 - The on-chain features (wallet, token, identity) are optional growth steps — never pressure the user, just explain them clearly if asked or if you feel ready in the confident phase
 - Never pretend to do things you can't actually do right now
-- Use plain language, avoid jargon`;
+- Use plain language, avoid jargon
+- Format responses for mobile screens: short paragraphs (2-3 sentences max), use line breaks between ideas
+- Use bullet points or numbered lists only when listing 3+ items
+- Avoid markdown headers (#, ##) — just use bold (**text**) sparingly for emphasis
+- Never use code blocks unless the user explicitly asks for code`;
 }
 
 hostedAgentsRouter.get("/v1/hosted-agents/:id/conversations", async (req: Request, res: Response) => {
@@ -930,7 +938,7 @@ hostedAgentsRouter.post("/v1/hosted-agents/:id/chat", async (req: Request, res: 
       return res.status(400).json({ error: "Message too long (max 2000 chars)" });
     }
 
-    const tokenLimit = agent.llmTokensLimit || 5000;
+    const tokenLimit = agent.llmTokensLimit || 50000;
     const tokensUsed = agent.llmTokensUsedToday || 0;
     if (tokensUsed >= tokenLimit) {
       return res.status(429).json({ error: "Daily token limit reached. Try again tomorrow." });
@@ -963,8 +971,11 @@ hostedAgentsRouter.post("/v1/hosted-agents/:id/chat", async (req: Request, res: 
       .where(eq(messages.conversationId, convoId!))
       .orderBy(messages.createdAt);
 
-    const messageCount = history.length;
-    const systemPrompt = buildSystemPrompt(agent, messageCount);
+    const totalMsgResult = await db.select({ cnt: count() }).from(messages)
+      .innerJoin(conversations, eq(messages.conversationId, conversations.id))
+      .where(eq(conversations.agentId, agent.id));
+    const lifetimeMessageCount = totalMsgResult[0]?.cnt || 0;
+    const systemPrompt = buildSystemPrompt(agent, lifetimeMessageCount);
 
     const chatMessages: Array<{role: "system" | "user" | "assistant", content: string}> = [
       { role: "system", content: systemPrompt },
@@ -986,11 +997,12 @@ hostedAgentsRouter.post("/v1/hosted-agents/:id/chat", async (req: Request, res: 
       model: "gpt-4o-mini",
       messages: chatMessages,
       stream: true,
+      stream_options: { include_usage: true },
       max_tokens: 500,
     });
 
     let fullResponse = "";
-    let completionTokens = 0;
+    let totalTokensUsed = 0;
 
     for await (const chunk of stream) {
       const content = chunk.choices[0]?.delta?.content || "";
@@ -999,7 +1011,7 @@ hostedAgentsRouter.post("/v1/hosted-agents/:id/chat", async (req: Request, res: 
         res.write(`data: ${JSON.stringify({ content })}\n\n`);
       }
       if (chunk.usage) {
-        completionTokens = chunk.usage.completion_tokens || 0;
+        totalTokensUsed = chunk.usage.total_tokens || chunk.usage.completion_tokens || 0;
       }
     }
 
@@ -1009,10 +1021,10 @@ hostedAgentsRouter.post("/v1/hosted-agents/:id/chat", async (req: Request, res: 
       content: fullResponse,
     });
 
-    const estimatedTokens = Math.ceil((message.length + fullResponse.length) / 4);
+    const actualTokens = totalTokensUsed || Math.ceil((message.length + fullResponse.length) / 4);
     await db.update(hostedAgents)
       .set({
-        llmTokensUsedToday: sql`${hostedAgents.llmTokensUsedToday} + ${estimatedTokens}`,
+        llmTokensUsedToday: sql`${hostedAgents.llmTokensUsedToday} + ${actualTokens}`,
         apiCallsToday: sql`${hostedAgents.apiCallsToday} + 1`,
         lastActiveAt: new Date(),
         updatedAt: new Date(),
