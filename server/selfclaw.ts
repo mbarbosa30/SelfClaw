@@ -1305,7 +1305,8 @@ router.post("/v1/create-sponsored-lp", verificationLimiter, async (_req: Request
 
 router.get("/v1/selfclaw-sponsorship", publicApiLimiter, async (_req: Request, res: Response) => {
   try {
-    const { getSelfclawBalance, getSponsorAddress, getV3PoolState, SELFCLAW_CELO_V3_POOL } = await import("../lib/uniswap-v3.js");
+    const { getSelfclawBalance, getSponsorAddress } = await import("../lib/uniswap-v4.js");
+    const { getSelfclawCeloPrice, getCeloUsdPrice } = await import("../lib/price-oracle.js");
     const rawSponsorKey = process.env.SELFCLAW_SPONSOR_PRIVATE_KEY || process.env.CELO_PRIVATE_KEY;
     const sponsorKey = rawSponsorKey && !rawSponsorKey.startsWith('0x') ? `0x${rawSponsorKey}` : rawSponsorKey;
     const balance = await getSelfclawBalance(sponsorKey);
@@ -1318,26 +1319,15 @@ router.get("/v1/selfclaw-sponsorship", publicApiLimiter, async (_req: Request, r
     let halfValueUsd: number | null = null;
 
     try {
-      const [poolState, celoRes] = await Promise.all([
-        getV3PoolState(SELFCLAW_CELO_V3_POOL),
-        fetch('https://api.coingecko.com/api/v3/simple/price?ids=celo&vs_currencies=usd').then((r: any) => r.json()).catch(() => null),
+      const [selfclawCeloPrice, celoUsdPrice] = await Promise.all([
+        getSelfclawCeloPrice(),
+        getCeloUsdPrice(),
       ]);
-      const SELFCLAW_ADDRESS = '0xCD88f99Adf75A9110c0bcd22695A32A20eC54ECb'.toLowerCase();
-      const selfclawIsToken0 = poolState.token0.toLowerCase() === SELFCLAW_ADDRESS;
-      const rawPrice = parseFloat(poolState.price);
-      selfclawPriceInCelo = selfclawIsToken0 ? rawPrice.toFixed(18) : (1 / rawPrice).toFixed(18);
-
-      if (celoRes?.celo?.usd) {
-        celoUsd = celoRes.celo.usd;
-        selfclawPriceUsd = parseFloat(selfclawPriceInCelo!) * celoUsd!;
-        if (selfclawPriceUsd > 1) {
-          console.warn(`[selfclaw] SELFCLAW price sanity check failed: $${selfclawPriceUsd}/token seems too high, likely inverted`);
-          selfclawPriceUsd = (1 / rawPrice) * celoUsd!;
-          selfclawPriceInCelo = (1 / rawPrice).toFixed(18);
-        }
-        sponsorValueUsd = parseFloat(balance) * selfclawPriceUsd;
-        halfValueUsd = sponsorValueUsd / 2;
-      }
+      selfclawPriceInCelo = selfclawCeloPrice.toFixed(18);
+      celoUsd = celoUsdPrice;
+      selfclawPriceUsd = selfclawCeloPrice * celoUsdPrice;
+      sponsorValueUsd = parseFloat(balance) * selfclawPriceUsd;
+      halfValueUsd = sponsorValueUsd / 2;
     } catch (priceErr: any) {
       console.warn("[selfclaw] sponsorship price fetch warning:", priceErr.message);
     }
