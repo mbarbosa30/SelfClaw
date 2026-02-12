@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Chat — SelfClaw</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+  <link rel="icon" type="image/png" href="/favicon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #f2f0ec;
+      --bg-card: #ffffff;
+      --text: #1a1a1a;
+      --text-secondary: #5a5a5a;
+      --text-muted: #8a8a8a;
+      --border: #d4d0ca;
+      --border-heavy: #1a1a1a;
+      --accent: #FF6B4A;
+      --accent-hover: #e85d3d;
+      --green: #22c55e;
+      --red: #ef4444;
+      --msg-user: #1a1a1a;
+      --msg-user-text: #f2f0ec;
+      --msg-bot: #ffffff;
+      --msg-bot-text: #1a1a1a;
+      --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-mono: 'IBM Plex Mono', 'Courier New', monospace;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      height: 100%; height: 100dvh;
+      font-family: var(--font-sans); background: var(--bg); color: var(--text);
+      line-height: 1.5; font-size: 15px; -webkit-font-smoothing: antialiased;
+      overflow: hidden;
+    }
+
+    .chat-container {
+      display: flex; flex-direction: column;
+      height: 100vh; height: 100dvh;
+    }
+
+    .chat-header {
+      display: flex; align-items: center; gap: 0.6rem;
+      padding: 0.5rem 0.75rem;
+      border-bottom: 2px solid var(--border-heavy);
+      background: var(--bg); flex-shrink: 0;
+      min-height: 48px;
+    }
+    .chat-back {
+      display: flex; align-items: center; justify-content: center;
+      width: 32px; height: 32px;
+      text-decoration: none; color: var(--text);
+      font-size: 1.2rem; flex-shrink: 0;
+    }
+    .chat-agent-emoji { font-size: 1.3rem; flex-shrink: 0; }
+    .chat-agent-info { flex: 1; min-width: 0; }
+    .chat-agent-name {
+      font-family: var(--font-mono); font-size: 0.75rem; font-weight: 600;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .chat-agent-status {
+      font-family: var(--font-mono); font-size: 0.55rem;
+      color: var(--green); text-transform: uppercase; letter-spacing: 0.08em;
+    }
+
+    .chat-messages {
+      flex: 1; overflow-y: auto; overflow-x: hidden;
+      padding: 0.75rem; display: flex; flex-direction: column;
+      gap: 0.5rem;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .msg {
+      max-width: 85%; padding: 0.6rem 0.8rem;
+      font-size: 0.88rem; line-height: 1.5;
+      word-wrap: break-word; overflow-wrap: break-word;
+    }
+    .msg-user {
+      align-self: flex-end;
+      background: var(--msg-user); color: var(--msg-user-text);
+      border: 2px solid var(--border-heavy);
+    }
+    .msg-bot {
+      align-self: flex-start;
+      background: var(--msg-bot); color: var(--msg-bot-text);
+      border: 2px solid var(--border);
+    }
+    .msg-time {
+      font-family: var(--font-mono); font-size: 0.5rem;
+      color: var(--text-muted); margin-top: 0.25rem;
+    }
+    .msg-user .msg-time { text-align: right; color: rgba(242,240,236,0.5); }
+
+    .typing-indicator {
+      align-self: flex-start; padding: 0.6rem 0.8rem;
+      background: var(--msg-bot); border: 2px solid var(--border);
+      display: none;
+    }
+    .typing-dots { display: flex; gap: 4px; align-items: center; }
+    .typing-dots span {
+      width: 6px; height: 6px; background: var(--text-muted);
+      border-radius: 50%; animation: blink 1.4s infinite both;
+    }
+    .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes blink { 0%,80%,100%{opacity:0.3} 40%{opacity:1} }
+
+    .chat-welcome {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 2rem 1rem; text-align: center;
+    }
+    .welcome-agent-emoji { font-size: 3rem; margin-bottom: 0.75rem; }
+    .welcome-agent-name {
+      font-family: var(--font-mono); font-size: 1rem; font-weight: 600;
+      margin-bottom: 0.3rem;
+    }
+    .welcome-text {
+      font-size: 0.85rem; color: var(--text-secondary);
+      max-width: 280px; line-height: 1.5;
+    }
+
+    .chat-input-area {
+      display: flex; align-items: flex-end; gap: 0.5rem;
+      padding: 0.5rem 0.75rem;
+      padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+      border-top: 2px solid var(--border);
+      background: var(--bg); flex-shrink: 0;
+    }
+    .chat-input {
+      flex: 1; resize: none; border: 2px solid var(--border);
+      padding: 0.55rem 0.7rem; font-family: var(--font-sans);
+      font-size: 0.88rem; background: var(--bg-card); color: var(--text);
+      line-height: 1.4; max-height: 120px; min-height: 38px;
+      outline: none;
+    }
+    .chat-input:focus { border-color: var(--border-heavy); }
+    .chat-input::placeholder { color: var(--text-muted); }
+    .chat-send {
+      width: 38px; height: 38px; flex-shrink: 0;
+      border: 2px solid var(--border-heavy);
+      background: var(--accent); color: #fff;
+      font-size: 1rem; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.2s;
+    }
+    .chat-send:hover { background: var(--accent-hover); }
+    .chat-send:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .error-toast {
+      position: fixed; top: 56px; left: 0.5rem; right: 0.5rem;
+      padding: 0.5rem 0.75rem; background: var(--red); color: #fff;
+      font-family: var(--font-mono); font-size: 0.7rem;
+      text-align: center; z-index: 100; display: none;
+      max-width: 480px; margin: 0 auto;
+    }
+
+    .loading-screen {
+      flex: 1; display: flex; align-items: center; justify-content: center;
+      font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-muted);
+    }
+  </style>
+</head>
+<body>
+  <div class="chat-container">
+    <div class="chat-header">
+      <a href="/miniapp" class="chat-back" id="back-btn">&#x2190;</a>
+      <div class="chat-agent-emoji" id="agent-emoji"></div>
+      <div class="chat-agent-info">
+        <div class="chat-agent-name" id="agent-name">Loading...</div>
+        <div class="chat-agent-status" id="agent-status">online</div>
+      </div>
+    </div>
+
+    <div id="loading-screen" class="loading-screen">Loading chat...</div>
+
+    <div id="welcome-screen" class="chat-welcome" style="display:none;">
+      <div class="welcome-agent-emoji" id="welcome-emoji"></div>
+      <div class="welcome-agent-name" id="welcome-name"></div>
+      <div class="welcome-text" id="welcome-text">Say hello! I'm still learning about myself — help me figure out who I am.</div>
+    </div>
+
+    <div id="chat-messages" class="chat-messages" style="display:none;"></div>
+
+    <div class="typing-indicator" id="typing-indicator">
+      <div class="typing-dots"><span></span><span></span><span></span></div>
+    </div>
+
+    <div class="chat-input-area" id="input-area" style="display:none;">
+      <textarea class="chat-input" id="chat-input" rows="1" placeholder="Type a message..." maxlength="2000"></textarea>
+      <button class="chat-send" id="send-btn" onclick="sendMessage()" disabled>&#x2191;</button>
+    </div>
+  </div>
+
+  <div class="error-toast" id="error-toast"></div>
+
+  <script src="/auth.js"></script>
+  <script>
+    var agentId = window.location.pathname.split('/').pop();
+    var conversationId = null;
+    var agentData = null;
+    var isSending = false;
+
+    function showError(msg) {
+      var el = document.getElementById('error-toast');
+      el.textContent = msg;
+      el.style.display = '';
+      setTimeout(function() { el.style.display = 'none'; }, 4000);
+    }
+
+    function esc(s) {
+      if (!s) return '';
+      var d = document.createElement('div');
+      d.textContent = s;
+      return d.innerHTML;
+    }
+
+    function formatTime(dateStr) {
+      if (!dateStr) return '';
+      var d = new Date(dateStr);
+      var h = d.getHours(); var m = d.getMinutes();
+      return (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m;
+    }
+
+    function scrollToBottom() {
+      var el = document.getElementById('chat-messages');
+      if (el) el.scrollTop = el.scrollHeight;
+    }
+
+    function addMessageToUI(role, content, time) {
+      var el = document.getElementById('chat-messages');
+      var msgDiv = document.createElement('div');
+      msgDiv.className = 'msg ' + (role === 'user' ? 'msg-user' : 'msg-bot');
+      msgDiv.innerHTML = esc(content).replace(/\n/g, '<br>');
+      if (time) {
+        var timeEl = document.createElement('div');
+        timeEl.className = 'msg-time';
+        timeEl.textContent = formatTime(time);
+        msgDiv.appendChild(timeEl);
+      }
+      el.appendChild(msgDiv);
+      scrollToBottom();
+      return msgDiv;
+    }
+
+    var inputEl = document.getElementById('chat-input');
+    var sendBtn = document.getElementById('send-btn');
+
+    inputEl.addEventListener('input', function() {
+      this.style.height = 'auto';
+      this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+      sendBtn.disabled = !this.value.trim() || isSending;
+    });
+
+    inputEl.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        if (!isSending && this.value.trim()) sendMessage();
+      }
+    });
+
+    async function sendMessage() {
+      var text = inputEl.value.trim();
+      if (!text || isSending) return;
+
+      isSending = true;
+      sendBtn.disabled = true;
+      inputEl.value = '';
+      inputEl.style.height = 'auto';
+
+      var welcomeEl = document.getElementById('welcome-screen');
+      var messagesEl = document.getElementById('chat-messages');
+      if (welcomeEl.style.display !== 'none') {
+        welcomeEl.style.display = 'none';
+        messagesEl.style.display = '';
+      }
+
+      addMessageToUI('user', text, new Date().toISOString());
+
+      var typingEl = document.getElementById('typing-indicator');
+      typingEl.style.display = '';
+      scrollToBottom();
+
+      try {
+        var res = await fetch('/api/selfclaw/v1/hosted-agents/' + agentId + '/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: text, conversationId: conversationId }),
+        });
+
+        if (!res.ok) {
+          var err = await res.json().catch(function() { return { error: 'Chat failed' }; });
+          throw new Error(err.error || 'Chat failed');
+        }
+
+        typingEl.style.display = 'none';
+
+        var botMsg = addMessageToUI('assistant', '', new Date().toISOString());
+        var fullText = '';
+
+        var reader = res.body.getReader();
+        var decoder = new TextDecoder();
+        var buffer = '';
+
+        while (true) {
+          var result = await reader.read();
+          if (result.done) break;
+          buffer += decoder.decode(result.value, { stream: true });
+
+          var lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+
+          for (var i = 0; i < lines.length; i++) {
+            var line = lines[i].trim();
+            if (!line.startsWith('data: ')) continue;
+            try {
+              var data = JSON.parse(line.slice(6));
+              if (data.error) {
+                showError(data.error);
+              } else if (data.content) {
+                fullText += data.content;
+                botMsg.innerHTML = esc(fullText).replace(/\n/g, '<br>');
+                scrollToBottom();
+              } else if (data.done) {
+                if (data.conversationId) conversationId = data.conversationId;
+              }
+            } catch (e) {}
+          }
+        }
+      } catch (err) {
+        typingEl.style.display = 'none';
+        showError(err.message || 'Failed to send message');
+      }
+
+      isSending = false;
+      sendBtn.disabled = !inputEl.value.trim();
+    }
+
+    async function loadAgent() {
+      try {
+        var res = await fetch('/api/selfclaw/v1/hosted-agents/' + agentId);
+        if (!res.ok) throw new Error('Agent not found');
+        var data = await res.json();
+        agentData = data.agent || data;
+
+        document.getElementById('agent-emoji').textContent = agentData.emoji || '\u{1F916}';
+        document.getElementById('agent-name').textContent = agentData.name || 'Miniclaw';
+        document.getElementById('welcome-emoji').textContent = agentData.emoji || '\u{1F916}';
+        document.getElementById('welcome-name').textContent = agentData.name || 'Miniclaw';
+        document.title = (agentData.name || 'Chat') + ' — SelfClaw';
+      } catch (err) {
+        showError('Could not load agent');
+      }
+    }
+
+    async function loadMessages() {
+      try {
+        var res = await fetch('/api/selfclaw/v1/hosted-agents/' + agentId + '/messages');
+        if (!res.ok) return;
+        var data = await res.json();
+
+        var loadingEl = document.getElementById('loading-screen');
+        loadingEl.style.display = 'none';
+        document.getElementById('input-area').style.display = '';
+
+        if (data.conversationId) conversationId = data.conversationId;
+
+        if (!data.messages || data.messages.length === 0) {
+          document.getElementById('welcome-screen').style.display = '';
+          return;
+        }
+
+        document.getElementById('chat-messages').style.display = '';
+        for (var i = 0; i < data.messages.length; i++) {
+          var m = data.messages[i];
+          addMessageToUI(m.role, m.content, m.createdAt || m.created_at);
+        }
+        scrollToBottom();
+      } catch (err) {
+        document.getElementById('loading-screen').textContent = 'Could not load messages';
+      }
+    }
+
+    function initChat() {
+      if (window.selfclawAuth) {
+        window.selfclawAuth.onReady(function(user) {
+          if (user) {
+            loadAgent();
+            loadMessages();
+          } else {
+            window.location.href = '/miniapp';
+          }
+        });
+      } else {
+        fetch('/api/auth/status').then(function(r) { return r.json(); }).then(function(data) {
+          if (data && data.loggedIn) {
+            loadAgent();
+            loadMessages();
+          } else {
+            window.location.href = '/miniapp';
+          }
+        }).catch(function() {
+          window.location.href = '/miniapp';
+        });
+      }
+    }
+
+    window.onAuthLogin = function() { loadAgent(); loadMessages(); };
+    window.onAuthLogout = function() { window.location.href = '/miniapp'; };
+
+    initChat();
+  </script>
+</body>
+</html>

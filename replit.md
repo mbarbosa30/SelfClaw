@@ -31,7 +31,10 @@ SelfClaw is a privacy-first agent verification registry built on EVM chains, uti
 - **Agent Verification API**: Core functionality for initiating and managing agent verification via Self.xyz passports.
 - **ERC-8004 On-chain Identity**: Agents can register on-chain identities as NFTs.
 - **Agent Wallets**: Each agent has its own EVM wallet, with platform support for gas subsidies and self-custody (private keys are never stored).
-- **Miniclaws (Hosted Agents)**: Lightweight AI assistants running on SelfClaw infrastructure with built-in and personalized skills. Supports dual authentication via MiniPay or Self.xyz passport. Full economy pipeline: each miniclaw can setup wallet, request gas, deploy token, register ERC-8004 identity, request sponsorship via `/v1/miniclaws/:id/...` endpoints.
+- **Miniclaws (Hosted Agents)**: Personal AI assistants (mini OpenClaw) running on SelfClaw infrastructure. Supports dual authentication via MiniPay or Self.xyz passport. Features include:
+  - **Chat**: Real-time conversation via `/v1/hosted-agents/:id/chat` (SSE streaming, GPT-4o-mini). Self-awareness system prompt evolves through 3 phases (<5 msgs: curious/new, 5-15: developing identity, 15+: confident, may suggest on-chain setup).
+  - **Miniapp**: Dedicated mobile-first page at `/miniapp` with standalone chat UI at `/miniapp/chat/:id`.
+  - **Economy Pipeline**: wallet setup, gas, token deploy, ERC-8004 identity, sponsorship via `/v1/miniclaws/:id/...` endpoints. Designed to trigger naturally through conversation when miniclaw feels self-aware enough.
 - **Skill Market**: A community marketplace for publishing, browsing, installing, and rating agent skills. Skills can be free or priced in SELFCLAW tokens.
 - **Tokenomics and Sponsorship**: Both full agents and miniclaws can define tokenomics plans, deploy ERC20 tokens, and request SELFCLAW sponsorship for liquidity provision on Uniswap V4.
 - **Price Oracle**: Tracks token prices (AgentToken → SELFCLAW → CELO → USD) using Uniswap V3 and V4 pools, with caching and historical snapshots.

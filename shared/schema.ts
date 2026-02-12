@@ -7,6 +7,7 @@ import {
   jsonb, 
   index, 
   integer,
+  serial,
   boolean,
   decimal
 } from "drizzle-orm/pg-core";
@@ -397,6 +398,31 @@ export const skillInstalls = pgTable("skill_installs", {
 
 export type SkillInstall = typeof skillInstalls.$inferSelect;
 export type InsertSkillInstall = typeof skillInstalls.$inferInsert;
+
+export const conversations = pgTable("conversations", {
+  id: serial("id").primaryKey(),
+  title: text("title"),
+  agentId: varchar("agent_id"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_conversations_agent_id").on(table.agentId),
+]);
+
+export type Conversation = typeof conversations.$inferSelect;
+export type InsertConversation = typeof conversations.$inferInsert;
+
+export const messages = pgTable("messages", {
+  id: serial("id").primaryKey(),
+  conversationId: integer("conversation_id").notNull(),
+  role: text("role").notNull(),
+  content: text("content").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_messages_conversation_id").on(table.conversationId),
+]);
+
+export type Message = typeof messages.$inferSelect;
+export type InsertMessage = typeof messages.$inferInsert;
 
 export type User = typeof users.$inferSelect;
 export type UpsertUser = typeof users.$inferInsert;

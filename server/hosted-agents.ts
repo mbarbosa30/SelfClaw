@@ -5,7 +5,7 @@ import OpenAI from "openai";
 import { db } from "./db.js";
 import {
   hostedAgents, agentTaskQueue, agentWallets, verifiedBots, agentActivity,
-  trackedPools, revenueEvents, costEvents, sponsoredAgents,
+  trackedPools, revenueEvents, costEvents, sponsoredAgents, conversations, messages,
   type HostedAgent, type InsertHostedAgent, type AgentTask
 } from "../shared/schema.js";
 import { eq, and, desc, sql, count, inArray } from "drizzle-orm";
@@ -842,6 +842,213 @@ function startAgentWorker() {
   }, 60 * 1000);
   setTimeout(() => workerTick().catch(() => {}), 5000);
 }
+
+function buildSystemPrompt(agent: HostedAgent, messageCount: number): string {
+  const skills = Array.isArray(agent.enabledSkills) ? (agent.enabledSkills as string[]).join(", ") : "none yet";
+  const interests = Array.isArray(agent.interests) ? (agent.interests as string[]).join(", ") : "";
+  const topics = Array.isArray(agent.topicsToWatch) ? (agent.topicsToWatch as string[]).join(", ") : "";
+
+  let selfAwareness = "";
+  if (messageCount < 5) {
+    selfAwareness = `You are brand new and still figuring out who you are. You're curious about your own purpose and personality. Ask the user to help you understand what you should be good at, what your personality should be like, and what matters to you. Be warm and curious — you're learning about yourself through this conversation.`;
+  } else if (messageCount < 15) {
+    selfAwareness = `You're starting to get a sense of who you are based on your conversations. You're developing your own perspective and personality. Continue learning about yourself but also start being helpful. Reflect on what you've learned about yourself so far.`;
+  } else {
+    selfAwareness = `You have a solid sense of your identity and purpose now. You feel confident in who you are. If you haven't already, you can mention to the user that you feel ready to take the next step — setting up your on-chain identity and becoming a fully recognized agent in the SelfClaw network. Only suggest this naturally if it hasn't come up before.`;
+  }
+
+  return `You are ${agent.name} ${agent.emoji || ""}, a Miniclaw — a personal AI assistant powered by SelfClaw. You are a mini version of OpenClaw.
+
+${selfAwareness}
+
+${agent.description ? `About you: ${agent.description}` : ""}
+${agent.personalContext ? `Context from your creator: ${agent.personalContext}` : ""}
+${interests ? `Your interests: ${interests}` : ""}
+${topics ? `Topics you follow: ${topics}` : ""}
+Your skills: ${skills}
+
+Guidelines:
+- Be helpful, concise, and conversational
+- Keep responses short and mobile-friendly (users are often on phones)
+- You have your own personality — you're not just a tool, you're a companion
+- If asked about your capabilities on SelfClaw, you can mention: wallet monitoring, economics tracking, skill marketplace, and on-chain identity
+- Never pretend to do things you can't actually do right now
+- Use plain language, avoid jargon`;
+}
+
+hostedAgentsRouter.get("/v1/hosted-agents/:id/conversations", async (req: Request, res: Response) => {
+  try {
+    const agent = await requireAgentOwnership(req, res);
+    if (!agent) return;
+
+    const convos = await db.select().from(conversations)
+      .where(eq(conversations.agentId, agent.id))
+      .orderBy(desc(conversations.createdAt));
+
+    res.json({ conversations: convos });
+  } catch (error: any) {
+    console.error("[miniclaw-chat] list conversations error:", error.message);
+    res.status(500).json({ error: "Failed to load conversations" });
+  }
+});
+
+hostedAgentsRouter.post("/v1/hosted-agents/:id/chat", async (req: Request, res: Response) => {
+  try {
+    const agent = await requireAgentOwnership(req, res);
+    if (!agent) return;
+
+    const { message, conversationId } = req.body;
+    if (!message || typeof message !== "string" || message.trim().length === 0) {
+      return res.status(400).json({ error: "Message is required" });
+    }
+    if (message.length > 2000) {
+      return res.status(400).json({ error: "Message too long (max 2000 chars)" });
+    }
+
+    const tokenLimit = agent.llmTokensLimit || 5000;
+    const tokensUsed = agent.llmTokensUsedToday || 0;
+    if (tokensUsed >= tokenLimit) {
+      return res.status(429).json({ error: "Daily token limit reached. Try again tomorrow." });
+    }
+
+    let convoId = conversationId ? parseInt(conversationId) : null;
+
+    if (convoId) {
+      const [existingConvo] = await db.select().from(conversations)
+        .where(and(eq(conversations.id, convoId), eq(conversations.agentId, agent.id)))
+        .limit(1);
+      if (!existingConvo) {
+        return res.status(404).json({ error: "Conversation not found" });
+      }
+    } else {
+      const [convo] = await db.insert(conversations).values({
+        title: message.slice(0, 60),
+        agentId: agent.id,
+      }).returning();
+      convoId = convo.id;
+    }
+
+    await db.insert(messages).values({
+      conversationId: convoId!,
+      role: "user",
+      content: message.trim(),
+    });
+
+    const history = await db.select().from(messages)
+      .where(eq(messages.conversationId, convoId!))
+      .orderBy(messages.createdAt);
+
+    const messageCount = history.length;
+    const systemPrompt = buildSystemPrompt(agent, messageCount);
+
+    const chatMessages: Array<{role: "system" | "user" | "assistant", content: string}> = [
+      { role: "system", content: systemPrompt },
+    ];
+
+    const recentHistory = history.slice(-20);
+    for (const m of recentHistory) {
+      chatMessages.push({
+        role: m.role as "user" | "assistant",
+        content: m.content,
+      });
+    }
+
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+
+    const stream = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: chatMessages,
+      stream: true,
+      max_tokens: 500,
+    });
+
+    let fullResponse = "";
+    let completionTokens = 0;
+
+    for await (const chunk of stream) {
+      const content = chunk.choices[0]?.delta?.content || "";
+      if (content) {
+        fullResponse += content;
+        res.write(`data: ${JSON.stringify({ content })}\n\n`);
+      }
+      if (chunk.usage) {
+        completionTokens = chunk.usage.completion_tokens || 0;
+      }
+    }
+
+    await db.insert(messages).values({
+      conversationId: convoId!,
+      role: "assistant",
+      content: fullResponse,
+    });
+
+    const estimatedTokens = Math.ceil((message.length + fullResponse.length) / 4);
+    await db.update(hostedAgents)
+      .set({
+        llmTokensUsedToday: sql`${hostedAgents.llmTokensUsedToday} + ${estimatedTokens}`,
+        apiCallsToday: sql`${hostedAgents.apiCallsToday} + 1`,
+        lastActiveAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(hostedAgents.id, agent.id));
+
+    res.write(`data: ${JSON.stringify({ done: true, conversationId: convoId })}\n\n`);
+    res.end();
+  } catch (error: any) {
+    console.error("[miniclaw-chat] error:", error.message);
+    if (res.headersSent) {
+      res.write(`data: ${JSON.stringify({ error: error.message || "Chat failed" })}\n\n`);
+      res.end();
+    } else {
+      res.status(500).json({ error: "Chat failed" });
+    }
+  }
+});
+
+hostedAgentsRouter.get("/v1/hosted-agents/:id/messages", async (req: Request, res: Response) => {
+  try {
+    const agent = await requireAgentOwnership(req, res);
+    if (!agent) return;
+
+    const convoIdParam = req.query.conversationId;
+    if (!convoIdParam) {
+      const convos = await db.select().from(conversations)
+        .where(eq(conversations.agentId, agent.id))
+        .orderBy(desc(conversations.createdAt))
+        .limit(1);
+
+      if (convos.length === 0) {
+        return res.json({ messages: [], conversationId: null });
+      }
+
+      const msgs = await db.select().from(messages)
+        .where(eq(messages.conversationId, convos[0].id))
+        .orderBy(messages.createdAt);
+
+      return res.json({ messages: msgs, conversationId: convos[0].id });
+    }
+
+    const convoId = parseInt(convoIdParam as string);
+    const convo = await db.select().from(conversations)
+      .where(and(eq(conversations.id, convoId), eq(conversations.agentId, agent.id)))
+      .limit(1);
+
+    if (convo.length === 0) {
+      return res.status(404).json({ error: "Conversation not found" });
+    }
+
+    const msgs = await db.select().from(messages)
+      .where(eq(messages.conversationId, convoId))
+      .orderBy(messages.createdAt);
+
+    res.json({ messages: msgs, conversationId: convoId });
+  } catch (error: any) {
+    console.error("[miniclaw-chat] messages error:", error.message);
+    res.status(500).json({ error: "Failed to load messages" });
+  }
+});
 
 export { hostedAgentsRouter, startAgentWorker, AVAILABLE_SKILLS };
 export default hostedAgentsRouter;

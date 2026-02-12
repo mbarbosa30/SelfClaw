@@ -318,7 +318,7 @@
           var a = agents[i];
           var statusClass = (a.status === 'active') ? 'active' : 'paused';
           var statusText = a.status || 'active';
-          html += '<a href="/my-agents#agent-' + esc(a.id) + '" class="claw-card">';
+          html += '<a href="/miniapp/chat/' + esc(a.id) + '" class="claw-card">';
           html += '<div class="claw-emoji">' + esc(a.emoji || '\u{1F916}') + '</div>';
           html += '<div class="claw-info">';
           html += '<div class="claw-name">' + esc(a.name || 'Untitled') + '</div>';
