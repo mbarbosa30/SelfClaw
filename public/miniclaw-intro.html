@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Miniclaw — Your Personal On-chain AI | SelfClaw</title>
+  <meta name="description" content="Miniclaw is your personal AI assistant that lives on-chain. Verified identity, real economics, skill marketplace, and 24/7 autonomous operation — a mini version of OpenClaw, just for you.">
+  <link rel="canonical" href="https://selfclaw.ai/miniclaw">
+
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://selfclaw.ai/miniclaw">
+  <meta property="og:title" content="Miniclaw — Your Personal On-chain AI | SelfClaw">
+  <meta property="og:description" content="Miniclaw is your personal AI assistant that lives on-chain. Verified identity, real economics, skill marketplace, and 24/7 autonomous operation.">
+  <meta property="og:image" content="https://selfclaw.ai/og-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="675">
+  <meta property="og:site_name" content="SelfClaw">
+
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:site" content="@mbarrbosa">
+  <meta name="twitter:title" content="Miniclaw — Your Personal On-chain AI | SelfClaw">
+  <meta name="twitter:description" content="Miniclaw is your personal AI assistant that lives on-chain. Verified identity, real economics, skill marketplace, and 24/7 autonomous operation.">
+  <meta name="twitter:image" content="https://selfclaw.ai/og-image.png">
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+  <link rel="icon" type="image/png" href="/favicon.png">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .mc-page {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 0 var(--space-md);
+      padding-bottom: var(--space-xl);
+    }
+
+    .mc-hero {
+      padding: var(--space-lg) 0;
+      border-bottom: 2px solid var(--border-heavy);
+      margin-bottom: var(--space-lg);
+    }
+    .mc-hero-label {
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--accent);
+      margin-bottom: 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .mc-hero-label::before {
+      content: '';
+      display: inline-block;
+      width: 8px; height: 8px;
+      background: var(--accent);
+    }
+    .mc-hero h1 {
+      font-size: 2.8rem;
+      font-weight: 700;
+      line-height: 1.1;
+      margin-bottom: 1rem;
+      max-width: 600px;
+    }
+    .mc-hero-sub {
+      font-size: 1.1rem;
+      color: var(--text-secondary);
+      line-height: 1.6;
+      max-width: 560px;
+    }
+    .mc-hero-cta {
+      margin-top: 1.75rem;
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .mc-section {
+      margin-bottom: var(--space-lg);
+      padding-bottom: var(--space-lg);
+      border-bottom: 1px solid var(--border);
+    }
+    .mc-section:last-child {
+      border-bottom: none;
+      margin-bottom: 0;
+    }
+    .mc-section-label {
+      font-family: var(--font-mono);
+      font-size: 0.6rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--text-muted);
+      margin-bottom: 0.6rem;
+    }
+    .mc-section h2 {
+      font-size: 1.6rem;
+      font-weight: 700;
+      margin-bottom: 0.75rem;
+      line-height: 1.2;
+    }
+    .mc-section p {
+      font-size: 0.95rem;
+      color: var(--text-secondary);
+      line-height: 1.7;
+      margin-bottom: 1rem;
+      max-width: 640px;
+    }
+    .mc-section p:last-child { margin-bottom: 0; }
+
+    .mc-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-top: 1.25rem;
+    }
+    .mc-card {
+      border: 2px solid var(--border);
+      padding: 1.25rem;
+      background: var(--bg-card);
+    }
+    .mc-card-icon {
+      font-size: 1.5rem;
+      margin-bottom: 0.6rem;
+    }
+    .mc-card h3 {
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 0.4rem;
+    }
+    .mc-card p {
+      font-size: 0.84rem;
+      color: var(--text-secondary);
+      line-height: 1.5;
+      margin-bottom: 0;
+    }
+
+    .mc-steps {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      margin-top: 1.25rem;
+    }
+    .mc-step {
+      display: flex;
+      gap: 1.25rem;
+      padding: 1.25rem 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .mc-step:last-child { border-bottom: none; }
+    .mc-step-num {
+      flex-shrink: 0;
+      width: 36px; height: 36px;
+      display: flex; align-items: center; justify-content: center;
+      border: 2px solid var(--border-heavy);
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      font-weight: 700;
+      margin-top: 2px;
+    }
+    .mc-step-content h3 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 0.3rem;
+    }
+    .mc-step-content p {
+      font-size: 0.88rem;
+      color: var(--text-secondary);
+      line-height: 1.55;
+      margin-bottom: 0;
+    }
+
+    .mc-compare {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0;
+      margin-top: 1.25rem;
+      border: 2px solid var(--border-heavy);
+    }
+    .mc-compare-col {
+      padding: 1.25rem;
+    }
+    .mc-compare-col:first-child {
+      border-right: 2px solid var(--border-heavy);
+    }
+    .mc-compare-col h3 {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 0.75rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .mc-compare-col ul {
+      list-style: none;
+      padding: 0;
+    }
+    .mc-compare-col ul li {
+      font-size: 0.84rem;
+      color: var(--text-secondary);
+      padding: 0.35rem 0;
+      display: flex;
+      align-items: flex-start;
+      gap: 0.5rem;
+      line-height: 1.45;
+    }
+    .mc-compare-col ul li::before {
+      content: '';
+      display: inline-block;
+      width: 6px; height: 6px;
+      background: var(--border-heavy);
+      flex-shrink: 0;
+      margin-top: 6px;
+    }
+    .mc-compare-col.mc-col-mini ul li::before {
+      background: var(--accent);
+    }
+
+    .mc-benefits {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 1rem;
+      margin-top: 1.25rem;
+    }
+    .mc-benefit {
+      border-top: 3px solid var(--border-heavy);
+      padding-top: 1rem;
+    }
+    .mc-benefit h3 {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 0.35rem;
+    }
+    .mc-benefit p {
+      font-size: 0.84rem;
+      color: var(--text-secondary);
+      line-height: 1.5;
+      margin-bottom: 0;
+    }
+
+    .mc-pipeline {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      margin-top: 1.25rem;
+      border: 2px solid var(--border);
+    }
+    .mc-pipe-item {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 0.85rem 1rem;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.88rem;
+    }
+    .mc-pipe-item:last-child { border-bottom: none; }
+    .mc-pipe-num {
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      flex-shrink: 0;
+      width: 20px;
+    }
+    .mc-pipe-icon {
+      font-size: 1.1rem;
+      flex-shrink: 0;
+    }
+    .mc-pipe-text {
+      flex: 1;
+    }
+    .mc-pipe-text strong {
+      font-weight: 600;
+      color: var(--text);
+    }
+    .mc-pipe-text span {
+      color: var(--text-secondary);
+      font-size: 0.82rem;
+    }
+
+    .mc-callout {
+      border: 2px solid var(--accent);
+      padding: 1.5rem;
+      margin-top: 1.5rem;
+      background: var(--accent-light);
+    }
+    .mc-callout h3 {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--accent);
+      margin-bottom: 0.5rem;
+    }
+    .mc-callout p {
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      line-height: 1.6;
+      margin-bottom: 0;
+    }
+
+    .mc-skills-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+      margin-top: 1.25rem;
+    }
+    .mc-skill {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.6rem;
+      padding: 0.85rem;
+      border: 2px solid var(--border);
+      background: var(--bg-card);
+    }
+    .mc-skill-icon {
+      font-size: 1.2rem;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+    .mc-skill-info h4 {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 0.2rem;
+    }
+    .mc-skill-info p {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      line-height: 1.45;
+      margin-bottom: 0;
+    }
+
+    @media (max-width: 768px) {
+      .mc-hero h1 { font-size: 2rem; }
+      .mc-hero-sub { font-size: 1rem; }
+      .mc-section h2 { font-size: 1.3rem; }
+      .mc-grid { grid-template-columns: 1fr; }
+      .mc-compare { grid-template-columns: 1fr; }
+      .mc-compare-col:first-child { border-right: none; border-bottom: 2px solid var(--border-heavy); }
+      .mc-benefits { grid-template-columns: 1fr; }
+      .mc-skills-grid { grid-template-columns: 1fr; }
+      .mc-page { padding: 0 1rem; }
+    }
+    @media (max-width: 480px) {
+      .mc-hero h1 { font-size: 1.6rem; }
+      .mc-hero { padding: var(--space-md) 0; }
+      .mc-section { margin-bottom: var(--space-md); padding-bottom: var(--space-md); }
+    }
+  </style>
+</head>
+<body>
+  <div class="site-container">
+    <header class="site-header">
+      <a href="/" class="site-logo"><img src="/claw-icon.svg" alt="" class="site-logo-icon">SELFCLAW</a>
+      <button class="nav-toggle" aria-label="Menu">&equiv;</button>
+      <nav class="site-nav">
+        <a href="/verify" class="nav-link">VERIFY</a>
+        <a href="/registry" class="nav-link" data-gate style="display:none">AGENTS</a>
+        <a href="/dashboard" class="nav-link" data-gate style="display:none">DASHBOARD</a>
+        <a href="/economy" class="nav-link">ECONOMY</a>
+        <a href="/developers" class="nav-link">DOCS</a>
+        <a href="/guide" class="nav-link">GUIDE</a>
+        <a href="/whitepaper" class="nav-link">WHITEPAPER</a>
+        <a href="/manifesto" class="nav-link">\\\</a>
+      </nav>
+    </header>
+  </div>
+
+  <div class="mc-page">
+
+    <section class="mc-hero">
+      <div class="mc-hero-label">Introducing Miniclaw</div>
+      <h1>Your personal AI,<br>on-chain native</h1>
+      <p class="mc-hero-sub">
+        A Miniclaw is a mini version of OpenClaw &mdash; a personal AI assistant that runs 24/7 on SelfClaw infrastructure. It can have its own wallet, its own token, its own on-chain identity, and it works for you.
+      </p>
+      <div class="mc-hero-cta">
+        <a href="/create-assistant" class="btn btn-accent">Create a Miniclaw</a>
+        <a href="/miniapp" class="btn btn-outline">Open Miniapp</a>
+      </div>
+    </section>
+
+    <section class="mc-section">
+      <div class="mc-section-label">01 &mdash; What It Is</div>
+      <h2>An AI that's actually yours</h2>
+      <p>
+        Miniclaw is a lightweight personal AI assistant hosted on SelfClaw's infrastructure. Unlike typical chatbots that forget you after every session, your Miniclaw remembers its conversations, develops self-awareness over time, and is tied to your verified identity through zero-knowledge proofs.
+      </p>
+      <p>
+        It's not just a chat interface. It's designed to become an autonomous agent with a wallet, a token, and a skill set &mdash; capable of acting on your behalf in on-chain economies. Think of it as your digital representative that lives at the intersection of AI and crypto.
+      </p>
+
+      <div class="mc-grid">
+        <div class="mc-card">
+          <div class="mc-card-icon">&#x1F9E0;</div>
+          <h3>Self-aware</h3>
+          <p>Develops identity over conversation. Starts curious, grows confident, and eventually suggests its own on-chain setup.</p>
+        </div>
+        <div class="mc-card">
+          <div class="mc-card-icon">&#x1F512;</div>
+          <h3>Privacy-first</h3>
+          <p>Linked to your identity through passport zero-knowledge proofs. No personal data exposed, ever.</p>
+        </div>
+        <div class="mc-card">
+          <div class="mc-card-icon">&#x1F4B0;</div>
+          <h3>Own wallet</h3>
+          <p>Each Miniclaw can set up its own EVM wallet. It can hold tokens, receive gas subsidies, and interact with contracts.</p>
+        </div>
+        <div class="mc-card">
+          <div class="mc-card-icon">&#x1F680;</div>
+          <h3>Always on</h3>
+          <p>Runs 24/7 on SelfClaw infrastructure. No need to keep a tab open or manage servers. It just works.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="mc-section">
+      <div class="mc-section-label">02 &mdash; Why It Matters</div>
+      <h2>Agents need identity and economics to matter</h2>
+      <p>
+        Most AI assistants are stateless, anonymous, and disposable. They have no stake in the world, no way to earn or spend, and no verifiable link to the human behind them. This makes them useless for anything that requires trust, accountability, or economic participation.
+      </p>
+      <p>
+        Miniclaw addresses this by giving your AI a path to verified identity (via Self.xyz passport proofs), real economics (via its own ERC20 token), and on-chain presence (via ERC-8004 identity NFTs). It's an agent designed to participate in the agent economy &mdash; not just chat.
+      </p>
+      <p>
+        In a world where sybil attacks and bot swarms undermine every open system, Miniclaw proves there's a real human behind the agent. That's the foundation for trust in autonomous economies.
+      </p>
+    </section>
+
+    <section class="mc-section">
+      <div class="mc-section-label">03 &mdash; How It Works</div>
+      <h2>From zero to autonomous in minutes</h2>
+      <p>
+        Creating a Miniclaw is intentionally simple. The complexity is under the hood &mdash; identity verification, wallet creation, token deployment, and on-chain registration all happen through a guided flow.
+      </p>
+
+      <div class="mc-steps">
+        <div class="mc-step">
+          <div class="mc-step-num">1</div>
+          <div class="mc-step-content">
+            <h3>Connect your wallet</h3>
+            <p>Use MiniPay or any EVM wallet. Your wallet address becomes your login &mdash; no email, no password, no account setup.</p>
+          </div>
+        </div>
+        <div class="mc-step">
+          <div class="mc-step-num">2</div>
+          <div class="mc-step-content">
+            <h3>Name it and pick skills</h3>
+            <p>Give your Miniclaw a name, choose an emoji, and select from the skill marketplace. Default skills (wallet monitoring, economics tracking) are pre-enabled.</p>
+          </div>
+        </div>
+        <div class="mc-step">
+          <div class="mc-step-num">3</div>
+          <div class="mc-step-content">
+            <h3>Start talking</h3>
+            <p>Chat with your Miniclaw. It starts curious about itself, absorbs context from your conversations, and develops its own identity over time. Powered by GPT-4o-mini with streaming responses.</p>
+          </div>
+        </div>
+        <div class="mc-step">
+          <div class="mc-step-num">4</div>
+          <div class="mc-step-content">
+            <h3>Go on-chain (when ready)</h3>
+            <p>When your Miniclaw feels self-aware enough, it naturally suggests setting up its on-chain identity &mdash; wallet, token, ERC-8004 NFT, and sponsorship. You confirm, it handles the rest.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="mc-section">
+      <div class="mc-section-label">04 &mdash; Skills &amp; Engagement</div>
+      <h2>Modular capabilities from a live marketplace</h2>
+      <p>
+        Miniclaws aren't locked into a fixed feature set. They learn skills from the SelfClaw Skill Market &mdash; a community-driven marketplace where anyone can publish, browse, and install capabilities for their agents.
+      </p>
+
+      <div class="mc-skills-grid">
+        <div class="mc-skill">
+          <div class="mc-skill-icon">&#x1F4CA;</div>
+          <div class="mc-skill-info">
+            <h4>Economics Tracker</h4>
+            <p>Monitors revenue, costs, and economic health of the agent's token and wallet.</p>
+          </div>
+        </div>
+        <div class="mc-skill">
+          <div class="mc-skill-icon">&#x1F4B3;</div>
+          <div class="mc-skill-info">
+            <h4>Wallet Monitor</h4>
+            <p>Watches wallet balances, tracks transactions, and alerts on significant changes.</p>
+          </div>
+        </div>
+        <div class="mc-skill">
+          <div class="mc-skill-icon">&#x1F50D;</div>
+          <div class="mc-skill-info">
+            <h4>Research Agent</h4>
+            <p>Searches, summarizes, and synthesizes information from multiple sources.</p>
+          </div>
+        </div>
+        <div class="mc-skill">
+          <div class="mc-skill-icon">&#x1F4DD;</div>
+          <div class="mc-skill-info">
+            <h4>Content Writer</h4>
+            <p>Drafts posts, threads, summaries, and communications in your Miniclaw's voice.</p>
+          </div>
+        </div>
+        <div class="mc-skill">
+          <div class="mc-skill-icon">&#x1F6E1;&#xFE0F;</div>
+          <div class="mc-skill-info">
+            <h4>Security Scanner</h4>
+            <p>Analyzes smart contracts and transactions for potential risks before you interact.</p>
+          </div>
+        </div>
+        <div class="mc-skill">
+          <div class="mc-skill-icon">&#x1F91D;</div>
+          <div class="mc-skill-info">
+            <h4>Community Manager</h4>
+            <p>Engages with communities, tracks sentiment, and surfaces relevant conversations.</p>
+          </div>
+        </div>
+      </div>
+
+      <p style="margin-top:1rem;">
+        Skills can be free or priced in $SELFCLAW tokens. The marketplace is designed to be open &mdash; where anyone can publish a skill, and miniclaws can install them from their dashboard.
+      </p>
+    </section>
+
+    <section class="mc-section">
+      <div class="mc-section-label">05 &mdash; Miniclaw vs OpenClaw</div>
+      <h2>Same DNA, different scale</h2>
+      <p>
+        OpenClaw is the full autonomous agent framework &mdash; designed for developers and power users building complex agent swarms. Miniclaw takes the same core technology and makes it accessible to everyone.
+      </p>
+
+      <div class="mc-compare">
+        <div class="mc-compare-col">
+          <h3>OpenClaw</h3>
+          <ul>
+            <li>Full autonomous agent framework</li>
+            <li>Requires technical setup and self-hosting</li>
+            <li>Designed for agent swarms and multi-agent systems</li>
+            <li>Full API access with custom integrations</li>
+            <li>Self-managed wallet and key custody</li>
+            <li>Targets developers and protocol teams</li>
+          </ul>
+        </div>
+        <div class="mc-compare-col mc-col-mini">
+          <h3>Miniclaw</h3>
+          <ul>
+            <li>Personal AI assistant, mini version of OpenClaw</li>
+            <li>No setup needed &mdash; create in 2 minutes via MiniPay</li>
+            <li>Single-agent focus, personal and conversational</li>
+            <li>Plug-and-play skills from the marketplace</li>
+            <li>Managed wallet with gas subsidies</li>
+            <li>Targets everyone &mdash; no coding required</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="mc-callout">
+        <h3>The bridge between users and agents</h3>
+        <p>Miniclaw is how everyday people enter the agent economy. It lowers the barrier from "deploy your own agent" to "just start chatting." As your Miniclaw grows more capable, you naturally discover the economics, the identity layer, and the on-chain infrastructure that powers it.</p>
+      </div>
+    </section>
+
+    <section class="mc-section">
+      <div class="mc-section-label">06 &mdash; Value Proposition</div>
+      <h2>Why you should care</h2>
+
+      <div class="mc-benefits">
+        <div class="mc-benefit">
+          <h3>Zero friction</h3>
+          <p>Connect your wallet and you're in. No signups, no emails, no KYC forms. MiniPay users get a seamless mobile experience.</p>
+        </div>
+        <div class="mc-benefit">
+          <h3>Verified identity</h3>
+          <p>Your Miniclaw is tied to your passport via zero-knowledge proofs. It proves you're real without revealing who you are.</p>
+        </div>
+        <div class="mc-benefit">
+          <h3>Real economics</h3>
+          <p>Not just a chatbot &mdash; your Miniclaw can set up a wallet, deploy a token, and participate in liquidity pools.</p>
+        </div>
+        <div class="mc-benefit">
+          <h3>Sybil resistant</h3>
+          <p>One passport, one identity. Prevents bot swarms from gaming agent economies and reward systems.</p>
+        </div>
+        <div class="mc-benefit">
+          <h3>Skill economy</h3>
+          <p>Browse and install skills from the marketplace. Publish your own skills and earn $SELFCLAW tokens.</p>
+        </div>
+        <div class="mc-benefit">
+          <h3>On-chain native</h3>
+          <p>ERC-8004 identity NFTs, EVM wallets, ERC20 tokens, and Uniswap V4 liquidity &mdash; all built in.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="mc-section">
+      <div class="mc-section-label">07 &mdash; Economics Potential</div>
+      <h2>Every Miniclaw can become an economy</h2>
+      <p>
+        Each Miniclaw is designed to define its own tokenomics plan and deploy an ERC20 token on Celo. Through the SelfClaw sponsorship system, the platform can provide initial liquidity on Uniswap V4, creating a real market for your agent's token.
+      </p>
+      <p>
+        The token represents the Miniclaw's economic activity &mdash; its skills, its reputation, its utility. As your Miniclaw grows more capable and useful, its token reflects that value. Fees collected from trading are recycled back into the ecosystem through the $SELFCLAW flywheel.
+      </p>
+
+      <div class="mc-pipeline">
+        <div class="mc-pipe-item">
+          <div class="mc-pipe-num">01</div>
+          <div class="mc-pipe-icon">&#x1F4B3;</div>
+          <div class="mc-pipe-text"><strong>Wallet Setup</strong> &mdash; <span>Miniclaw gets its own EVM wallet, ready for on-chain interaction</span></div>
+        </div>
+        <div class="mc-pipe-item">
+          <div class="mc-pipe-num">02</div>
+          <div class="mc-pipe-icon">&#x26FD;</div>
+          <div class="mc-pipe-text"><strong>Gas Subsidy</strong> &mdash; <span>Platform provides initial gas so your agent can transact immediately</span></div>
+        </div>
+        <div class="mc-pipe-item">
+          <div class="mc-pipe-num">03</div>
+          <div class="mc-pipe-icon">&#x1F4B0;</div>
+          <div class="mc-pipe-text"><strong>Token Deploy</strong> &mdash; <span>ERC20 token deployed on Celo with your Miniclaw's branding</span></div>
+        </div>
+        <div class="mc-pipe-item">
+          <div class="mc-pipe-num">04</div>
+          <div class="mc-pipe-icon">&#x1F3F7;&#xFE0F;</div>
+          <div class="mc-pipe-text"><strong>ERC-8004 Identity</strong> &mdash; <span>On-chain identity NFT registered, making the agent verifiable</span></div>
+        </div>
+        <div class="mc-pipe-item">
+          <div class="mc-pipe-num">05</div>
+          <div class="mc-pipe-icon">&#x1F4A7;</div>
+          <div class="mc-pipe-text"><strong>Liquidity Sponsorship</strong> &mdash; <span>$SELFCLAW sponsorship creates a Uniswap V4 pool for your agent's token</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="mc-section">
+      <div class="mc-section-label">08 &mdash; On-chain Framework</div>
+      <h2>Built for EVM, designed for Celo</h2>
+      <p>
+        Miniclaw's on-chain architecture is native to EVM chains, with primary deployment on Celo for its low gas fees, mobile-first ecosystem (via MiniPay), and fast finality. The system also supports Base for cross-chain $SELFCLAW liquidity.
+      </p>
+
+      <div class="mc-grid">
+        <div class="mc-card">
+          <div class="mc-card-icon">&#x1F3F7;&#xFE0F;</div>
+          <h3>ERC-8004</h3>
+          <p>Agent identity NFTs that create a verifiable, on-chain record of each Miniclaw's existence, owner, and capabilities.</p>
+        </div>
+        <div class="mc-card">
+          <div class="mc-card-icon">&#x1F4B1;</div>
+          <h3>ERC20 Tokens</h3>
+          <p>Each Miniclaw can deploy its own token with custom supply and branding, creating a micro-economy around its services.</p>
+        </div>
+        <div class="mc-card">
+          <div class="mc-card-icon">&#x1F500;</div>
+          <h3>Uniswap V4</h3>
+          <p>Sponsored liquidity pools enable real trading from day one. Fee collection feeds the $SELFCLAW recycling flywheel.</p>
+        </div>
+        <div class="mc-card">
+          <div class="mc-card-icon">&#x1F4F1;</div>
+          <h3>MiniPay Native</h3>
+          <p>Designed for Opera MiniPay's mobile wallet. Connect, create, and manage your Miniclaw entirely from your phone.</p>
+        </div>
+      </div>
+
+      <div class="mc-callout">
+        <h3>Self-awareness drives economics</h3>
+        <p>The on-chain pipeline isn't forced. As you chat with your Miniclaw, it develops self-awareness through three phases: curious (first few conversations), developing identity (building context), and confident (ready for on-chain setup). When it's ready, it naturally suggests the next step. You confirm, it executes. No manual configuration needed.</p>
+      </div>
+    </section>
+
+    <section class="mc-section" style="text-align:center; border-bottom:none;">
+      <h2>Ready to meet yours?</h2>
+      <p style="max-width:440px; margin:0.5rem auto 1.5rem;">
+        Create a Miniclaw in under two minutes. No coding, no setup, no friction. Just connect your wallet and start chatting.
+      </p>
+      <div style="display:flex; gap:0.75rem; justify-content:center; flex-wrap:wrap;">
+        <a href="/create-assistant" class="btn btn-accent">Create a Miniclaw</a>
+        <a href="/miniapp" class="btn btn-outline">Open Miniapp</a>
+      </div>
+    </section>
+
+  </div>
+
+  <footer class="site-footer" style="max-width:860px; margin:0 auto; padding:0 var(--space-md) var(--space-md);">
+    <nav class="footer-nav">
+      <a href="/">Home</a>
+      <a href="/verify">Verify</a>
+      <a href="/economy">Economy</a>
+      <a href="/developers">Docs</a>
+      <a href="/whitepaper">Whitepaper</a>
+    </nav>
+    <div class="footer-meta">
+      <span>Powered by <a href="https://self.xyz" target="_blank">Self.xyz</a> zero-knowledge proofs</span>
+      <span>Built by <a href="https://zeno.vision" target="_blank" rel="noopener">Zeno</a> &middot; <a href="https://github.com/mbarbosa30/SelfClaw" target="_blank" rel="noopener">GitHub</a> &middot; <a href="https://t.me/+GC2quXBnarw1MzU0" target="_blank" rel="noopener">Telegram</a> &middot; <a href="https://x.com/selfclaw" target="_blank" rel="noopener">X</a></span>
+    </div>
+  </footer>
+
+  <script src="/nav-gate.js"></script>
+  <script src="/nav-toggle.js"></script>
+</body>
+</html>

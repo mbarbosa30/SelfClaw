@@ -84,6 +84,7 @@ app.get("/skill-market", (_req: Request, res: Response) => sendHtml(res, "skill-
 app.get("/miniapp", (_req: Request, res: Response) => sendHtml(res, "miniapp.html"));
 app.get("/miniapp/chat/:id", (_req: Request, res: Response) => sendHtml(res, "miniclaw-chat.html"));
 app.get("/guide", (_req: Request, res: Response) => sendHtml(res, "guide.html"));
+app.get("/miniclaw", (_req: Request, res: Response) => sendHtml(res, "miniclaw-intro.html"));
 
 app.get("/how-it-works", (_req: Request, res: Response) => res.redirect(301, "/"));
 app.get("/pricing", (_req: Request, res: Response) => res.redirect(301, "/"));
