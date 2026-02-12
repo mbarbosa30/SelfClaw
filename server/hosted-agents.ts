@@ -864,7 +864,7 @@ async function extractMemories(agentId: string, conversationId: number, userMess
     const existingFacts = existing.map(m => `[${m.category}] ${m.fact}`).join("\n");
 
     const extraction = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gpt-5-nano",
       messages: [
         {
           role: "system",
@@ -888,7 +888,7 @@ ${existingFacts || "None yet"}`
           content: `User said: "${userMessage}"\nAssistant replied: "${assistantResponse.slice(0, 500)}"`
         }
       ],
-      max_tokens: 300,
+      max_completion_tokens: 300,
       temperature: 0.3,
       response_format: { type: "json_object" },
     });
@@ -949,7 +949,7 @@ async function summarizeOlderMessages(agentId: string, conversationId: number, a
     const convoText = messagesToSummarize.map(m => `${m.role}: ${m.content.slice(0, 200)}`).join("\n");
 
     const summaryResult = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gpt-5-nano",
       messages: [
         {
           role: "system",
@@ -957,7 +957,7 @@ async function summarizeOlderMessages(agentId: string, conversationId: number, a
         },
         { role: "user", content: convoText }
       ],
-      max_tokens: 200,
+      max_completion_tokens: 200,
       temperature: 0.3,
     });
 
@@ -1256,11 +1256,11 @@ hostedAgentsRouter.post("/v1/hosted-agents/:id/chat", async (req: Request, res: 
     res.setHeader("Connection", "keep-alive");
 
     const stream = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gpt-5.2",
       messages: chatMessages,
       stream: true,
       stream_options: { include_usage: true },
-      max_tokens: 500,
+      max_completion_tokens: 800,
     });
 
     let fullResponse = "";
