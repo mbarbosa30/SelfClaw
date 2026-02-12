@@ -413,8 +413,10 @@ async function startAgentVerification() {
     const wsSessionId = selfAppConfig.sessionId;
     selfSocket = connectToSelfRelayer(wsSessionId, selfAppConfig, 
       () => {
-        console.log('[SelfClaw] Verification successful via WebSocket!');
-        handleVerificationSuccess(pubkey, agentName);
+        console.log('[SelfClaw] WebSocket says proof verified, confirming with server...');
+        var statusEl = document.getElementById('verification-status');
+        if (statusEl) statusEl.innerHTML = '<span style="color: #FF6B4A;">Proof verified! Saving to registry...</span>';
+        startVerificationPolling(currentVerificationSession.sessionId, pubkey, agentName);
       },
       (err) => {
         console.error('[SelfClaw] Verification error via WebSocket:', err);

@@ -48,8 +48,12 @@ function getCanonicalDomain(): string {
   const domains = process.env.REPLIT_DOMAINS;
   if (!domains) return "localhost:5000";
   const parts = domains.split(",").map(d => d.trim()).filter(Boolean);
-  const custom = parts.find(d => d.endsWith(".ai") || d.endsWith(".com") || d.endsWith(".app"));
-  return custom || parts[parts.length - 1] || domains;
+  const priorities = [".ai", ".com", ".app"];
+  for (const suffix of priorities) {
+    const match = parts.find(d => d.endsWith(suffix));
+    if (match) return match;
+  }
+  return parts[parts.length - 1] || domains;
 }
 const CANONICAL_DOMAIN = getCanonicalDomain();
 const SELFCLAW_ENDPOINT = process.env.SELFCLAW_CALLBACK_URL 

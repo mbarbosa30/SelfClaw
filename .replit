@@ -42,12 +42,11 @@ build = ["npm", "run", "build"]
 [userenv]
 
 [userenv.production]
-SELFCLAW_CALLBACK_URL = "https://selfclaw.app/api/selfclaw/v1/callback"
 SELFCLAW_STAGING = "false"
 SELFCLAW_AUTH_CALLBACK_URL = "https://selfclaw.app/api/auth/self/callback"
 
 [userenv.shared]
+SELFCLAW_CALLBACK_URL = "https://selfclaw.ai/api/selfclaw/v1/callback"
 
 [userenv.development]
 SELFCLAW_STAGING = "false"
-SELFCLAW_CALLBACK_URL = "https://selfclaw.app/api/selfclaw/v1/callback"
