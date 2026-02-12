@@ -133,12 +133,12 @@ async function smartAdvisorHandler(agent: HostedAgent, ctx: SkillContext): Promi
     });
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gpt-5-nano",
       messages: [
         { role: "system", content: "You are a concise AI advisor for autonomous agents on the SelfClaw platform. Analyze the agent's state and suggest 2-3 actionable improvements. Keep response under 200 words." },
         { role: "user", content: `Analyze this agent's state and suggest improvements:\n${stateStr}` },
       ],
-      max_tokens: 300,
+      max_completion_tokens: 300,
     });
 
     const advice = completion.choices[0]?.message?.content || "No advice generated.";
@@ -185,12 +185,12 @@ Based on the user's interests and current portfolio, provide:
 Keep response under 250 words. Be specific and actionable, not generic.`;
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gpt-5-nano",
       messages: [
         { role: "system", content: "You are a concise crypto/AI research analyst. Focus on actionable, specific insights." },
         { role: "user", content: prompt },
       ],
-      max_tokens: 400,
+      max_completion_tokens: 400,
     });
 
     const research = completion.choices[0]?.message?.content || "No research generated.";
@@ -236,12 +236,12 @@ Generate 2-3 short social media post drafts the user could share. Include:
 Keep each draft under 280 characters (Twitter-length). Use a natural, not overly promotional tone.`;
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gpt-5-nano",
       messages: [
         { role: "system", content: "You create concise, engaging social media posts. No hashtag spam. Authentic voice." },
         { role: "user", content: prompt },
       ],
-      max_tokens: 400,
+      max_completion_tokens: 400,
     });
 
     const content = completion.choices[0]?.message?.content || "No content generated.";
@@ -290,12 +290,12 @@ Note: You don't have access to real-time news feeds, so generate plausible, educ
 Keep total response under 300 words.`;
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gpt-5-nano",
       messages: [
         { role: "system", content: "You create concise, informative news digests. Be transparent that this is AI-generated analysis, not live news." },
         { role: "user", content: prompt },
       ],
-      max_tokens: 500,
+      max_completion_tokens: 500,
     });
 
     const digest = completion.choices[0]?.message?.content || "No news digest generated.";
@@ -457,21 +457,6 @@ hostedAgentsRouter.post("/v1/hosted-agents", async (req: Request, res: Response)
       socialHandles: (socialHandles && typeof socialHandles === 'object') ? socialHandles : {},
     }).returning();
 
-    const walletKeypair = crypto.generateKeyPairSync("ed25519");
-    const walletPubDer = walletKeypair.publicKey.export({ type: "spki", format: "der" });
-    const walletPubB64 = Buffer.from(walletPubDer).toString("base64");
-    const generatedWalletAddress = "0x" + crypto.createHash("sha256").update(walletPubDer).digest("hex").slice(0, 40);
-
-    try {
-      await db.insert(agentWallets).values({
-        humanId,
-        publicKey: walletPubB64,
-        address: generatedWalletAddress,
-      });
-    } catch (walletErr: any) {
-      console.log("[hosted-agents] Wallet auto-create skipped:", walletErr.message);
-    }
-
     await logAgentActivity("hosted_agent_created", humanId, publicKeyB64, name, { agentId: agent.id });
 
     console.log("[hosted-agents] Created agent:", agent.id, "for human:", humanId);
@@ -485,8 +470,6 @@ hostedAgentsRouter.post("/v1/hosted-agents", async (req: Request, res: Response)
         createdAt: agent.createdAt,
       },
       privateKey: privateKeyB64,
-      walletAddress: generatedWalletAddress,
-      warning: "Save the private key now. It will not be shown again.",
     });
   } catch (error: any) {
     console.error("[hosted-agents] Create error:", error);

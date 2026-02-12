@@ -8,6 +8,7 @@ import { SelfAppBuilder } from "@selfxyz/qrcode";
 import crypto from "crypto";
 import * as ed from "@noble/ed25519";
 import { createAgentWallet, getAgentWallet, getAgentWalletByHumanId, sendGasSubsidy, getGasWalletInfo, switchWallet } from "../lib/secure-wallet.js";
+import { encryptPrivateKey, getDecryptedWalletKey } from "./wallet-crypto.js";
 import { erc8004Service } from "../lib/erc8004.js";
 import { getReferencePrices, getAgentTokenPrice, getAllAgentTokenPrices, formatPrice, formatMarketCap } from "../lib/price-oracle.js";
 import { generateRegistrationFile } from "../lib/erc8004-config.js";
@@ -4910,6 +4911,7 @@ router.post("/v1/miniclaws/:id/setup-wallet", verificationLimiter, async (req: a
         alreadyExists: true,
         address: existingWallet.address,
         gasReceived: existingWallet.gasReceived,
+        keyStored: !!existingWallet.encryptedPrivateKey,
       });
     }
 
@@ -4921,8 +4923,18 @@ router.post("/v1/miniclaws/:id/setup-wallet", verificationLimiter, async (req: a
       return res.status(400).json({ error: result.error });
     }
 
+    const { encrypted, iv, tag } = encryptPrivateKey(wallet.privateKey, auth.humanId);
+    await db.update(agentWallets)
+      .set({
+        encryptedPrivateKey: encrypted,
+        encryptionIv: iv,
+        encryptionTag: tag,
+        updatedAt: new Date(),
+      })
+      .where(eq(agentWallets.publicKey, mcPublicKey));
+
     logActivity("wallet_creation", auth.humanId, mcPublicKey, "miniclaw", {
-      address: wallet.address, method: "miniclaw-dashboard", miniclawId: req.params.id
+      address: wallet.address, method: "miniclaw-dashboard", miniclawId: req.params.id, keyStored: true
     });
 
     res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
@@ -4933,7 +4945,8 @@ router.post("/v1/miniclaws/:id/setup-wallet", verificationLimiter, async (req: a
       success: true,
       address: wallet.address,
       privateKey: wallet.privateKey,
-      warning: "SAVE THIS PRIVATE KEY NOW. It will NOT be shown again. SelfClaw never stores private keys.",
+      keyStored: true,
+      warning: "Your private key is securely encrypted and stored. You can also save a backup copy above.",
     });
   } catch (error: any) {
     console.error("[selfclaw] miniclaw setup-wallet error:", error);
@@ -5014,12 +5027,43 @@ router.post("/v1/miniclaws/:id/deploy-token", verificationLimiter, async (req: a
     const balance = await viemPublicClient.getBalance({ address: fromAddr });
     const txCost = estimatedGas * gasPrice;
 
+    const privateKey = await getDecryptedWalletKey(walletInfo, auth.humanId);
+    if (privateKey && balance >= txCost) {
+      const { Wallet, JsonRpcProvider } = await import('ethers');
+      const provider = new JsonRpcProvider('https://forno.celo.org');
+      const signer = new Wallet(privateKey, provider);
+      const tx = await signer.sendTransaction({
+        data: deployData,
+        gasLimit: estimatedGas,
+        gasPrice,
+        chainId: 42220,
+        value: 0,
+        nonce,
+      });
+
+      logActivity("token_deployment", auth.humanId, mcPublicKey, "miniclaw", {
+        predictedTokenAddress: predictedAddress, symbol, name, supply: initialSupply,
+        method: "server-signed", miniclawId: req.params.id, txHash: tx.hash,
+      });
+
+      return res.json({
+        success: true,
+        mode: "signed",
+        txHash: tx.hash,
+        predictedTokenAddress: predictedAddress,
+        name, symbol, supply: initialSupply,
+        celoscanUrl: `https://celoscan.io/tx/${tx.hash}`,
+        nextStep: `Token deployment submitted. Call POST /api/selfclaw/v1/miniclaws/${req.params.id}/register-token with {tokenAddress: "${predictedAddress}", txHash: "${tx.hash}"} after confirmation.`,
+      });
+    }
+
     logActivity("token_deployment", auth.humanId, mcPublicKey, "miniclaw", {
       predictedTokenAddress: predictedAddress, symbol, name, supply: initialSupply, method: "miniclaw-dashboard", miniclawId: req.params.id
     });
 
     res.json({
       success: true,
+      mode: "unsigned",
       unsignedTx: {
         from: walletInfo.address,
         data: deployData,
@@ -5188,6 +5232,39 @@ router.post("/v1/miniclaws/:id/register-erc8004", verificationLimiter, async (re
     const balance = await viemPublicClient.getBalance({ address: fromAddr });
     const txCost = estimatedGas * gasPrice;
     const hasSufficientGas = balance >= txCost;
+
+    const privateKey = await getDecryptedWalletKey(walletInfo, auth.humanId);
+    if (privateKey && hasSufficientGas) {
+      const { Wallet, JsonRpcProvider } = await import('ethers');
+      const provider = new JsonRpcProvider('https://forno.celo.org');
+      const signer = new Wallet(privateKey, provider);
+      const tx = await signer.sendTransaction({
+        to: config.identityRegistry,
+        data: callData,
+        gasLimit: estimatedGas,
+        gasPrice,
+        chainId: 42220,
+        value: 0,
+        nonce,
+      });
+
+      logActivity("erc8004_registration", auth.humanId, mcPublicKey, "miniclaw", {
+        walletAddress: walletInfo.address, method: "server-signed", miniclawId: req.params.id,
+        registryAddress: config.identityRegistry, txHash: tx.hash,
+      });
+
+      return res.json({
+        success: true,
+        mode: "signed",
+        txHash: tx.hash,
+        agentURI: registrationURL,
+        agentName,
+        description,
+        walletAddress: walletInfo.address,
+        celoscanUrl: `https://celoscan.io/tx/${tx.hash}`,
+        nextStep: `ERC-8004 registration submitted. Call POST /api/selfclaw/v1/miniclaws/${req.params.id}/confirm-erc8004 with {txHash: "${tx.hash}"} after confirmation.`,
+      });
+    }
 
     logActivity("erc8004_registration", auth.humanId, mcPublicKey, "miniclaw", {
       walletAddress: walletInfo.address, method: "miniclaw-dashboard", miniclawId: req.params.id,

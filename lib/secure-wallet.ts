@@ -157,6 +157,9 @@ export async function getAgentWallet(agentPublicKey: string): Promise<{
   publicKey?: string;
   gasReceived?: boolean;
   balance?: { celo: string; };
+  encryptedPrivateKey?: string | null;
+  encryptionIv?: string | null;
+  encryptionTag?: string | null;
 } | null> {
   try {
     const wallets = await db.select()
@@ -178,7 +181,10 @@ export async function getAgentWallet(agentPublicKey: string): Promise<{
       gasReceived: wallet.gasReceived || false,
       balance: {
         celo: formatUnits(celoBalance, 18)
-      }
+      },
+      encryptedPrivateKey: wallet.encryptedPrivateKey,
+      encryptionIv: wallet.encryptionIv,
+      encryptionTag: wallet.encryptionTag,
     };
   } catch (error) {
     console.error('[secure-wallet] Get wallet error:', error);
