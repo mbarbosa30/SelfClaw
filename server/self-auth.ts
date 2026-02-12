@@ -15,7 +15,7 @@ import { eq, sql } from "drizzle-orm";
 const router = Router();
 
 // Self.xyz Configuration for Authentication
-const SELF_AUTH_SCOPE = "selfclaw-auth";
+const SELF_AUTH_SCOPE = "selfclaw-verify";
 const SELF_STAGING = process.env.SELFCLAW_STAGING === "true";
 function getCanonicalDomain(): string {
   const domains = process.env.REPLIT_DOMAINS;
