@@ -520,7 +520,9 @@
       try {
         var res = await fetch('/api/selfclaw/v1/hosted-agents/skills');
         if (!res.ok) throw new Error('Failed to load skills');
-        skillsData = await res.json();
+        var data = await res.json();
+        skillsData = data.skills || data;
+        if (!Array.isArray(skillsData)) skillsData = [];
         renderSkills();
       } catch (err) {
         container.innerHTML = '<div class="skills-loading">Failed to load skills. Please try again.</div>';
@@ -625,12 +627,15 @@
 
     function showDone() {
       setStep(4);
-      document.getElementById('done-name').textContent = createdAgent.name || '';
-      document.getElementById('done-emoji').textContent = createdAgent.emoji || selectedEmoji || '';
+      var agentData = createdAgent.agent || createdAgent;
+      document.getElementById('done-name').textContent = agentData.name || '';
+      document.getElementById('done-emoji').textContent = agentData.emoji || selectedEmoji || '';
 
-      var creds = createdAgent.credentials || {};
-      document.getElementById('public-key-text').textContent = creds.publicKey || '';
-      document.getElementById('private-key-text').textContent = creds.privateKey || '';
+      document.getElementById('public-key-text').textContent = agentData.publicKey || '';
+      document.getElementById('private-key-text').textContent = createdAgent.privateKey || '';
+
+      document.getElementById('next-steps').style.display = '';
+      document.getElementById('goto-btn').style.display = '';
     }
 
     function copyKey(containerId) {
@@ -647,19 +652,20 @@
 
     function downloadKeys() {
       if (!createdAgent) return;
-      var creds = createdAgent.credentials || {};
+      var agentData = createdAgent.agent || createdAgent;
       var data = {
-        name: createdAgent.name || '',
-        emoji: createdAgent.emoji || selectedEmoji || '',
-        publicKey: creds.publicKey || '',
-        privateKey: creds.privateKey || '',
+        name: agentData.name || '',
+        emoji: agentData.emoji || selectedEmoji || '',
+        publicKey: agentData.publicKey || '',
+        privateKey: createdAgent.privateKey || '',
+        walletAddress: createdAgent.walletAddress || '',
         createdAt: new Date().toISOString()
       };
       var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
       var url = URL.createObjectURL(blob);
       var a = document.createElement('a');
       a.href = url;
-      a.download = (createdAgent.name || 'assistant') + '-keys.json';
+      a.download = (agentData.name || 'miniclaw') + '-keys.json';
       a.click();
       URL.revokeObjectURL(url);
     }
