@@ -101,14 +101,44 @@
       background: var(--msg-bot); border: 2px solid var(--border);
       display: none;
     }
+    .typing-row { display: flex; gap: 8px; align-items: center; }
+    .typing-label {
+      font-family: var(--font-mono); font-size: 0.65rem;
+      color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em;
+      animation: pulse-text 2s ease-in-out infinite;
+    }
+    @keyframes pulse-text { 0%,100%{opacity:0.5} 50%{opacity:1} }
     .typing-dots { display: flex; gap: 4px; align-items: center; }
     .typing-dots span {
-      width: 6px; height: 6px; background: var(--text-muted);
-      border-radius: 50%; animation: blink 1.4s infinite both;
+      width: 6px; height: 6px; background: var(--accent);
+      border-radius: 50%; animation: bounce 1.4s infinite both;
     }
-    .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
-    .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
-    @keyframes blink { 0%,80%,100%{opacity:0.3} 40%{opacity:1} }
+    .typing-dots span:nth-child(2) { animation-delay: 0.15s; }
+    .typing-dots span:nth-child(3) { animation-delay: 0.3s; }
+    @keyframes bounce {
+      0%,80%,100% { transform: translateY(0); opacity: 0.4; }
+      40% { transform: translateY(-6px); opacity: 1; }
+    }
+
+    .msg-bot strong { font-weight: 600; }
+    .msg-bot em { font-style: italic; }
+    .msg-bot ul, .msg-bot ol {
+      margin: 0.3rem 0; padding-left: 1.3rem;
+    }
+    .msg-bot li { margin-bottom: 0.15rem; }
+    .msg-bot p { margin-bottom: 0.4rem; }
+    .msg-bot p:last-child { margin-bottom: 0; }
+    .msg-bot code {
+      font-family: var(--font-mono); font-size: 0.82em;
+      background: rgba(0,0,0,0.06); padding: 0.1em 0.35em;
+    }
+    .msg-bot pre {
+      background: rgba(0,0,0,0.06); padding: 0.5rem 0.6rem;
+      margin: 0.3rem 0; overflow-x: auto;
+      font-family: var(--font-mono); font-size: 0.8em;
+      line-height: 1.4;
+    }
+    .msg-bot pre code { background: none; padding: 0; }
 
     .chat-welcome {
       flex: 1; display: flex; flex-direction: column;
@@ -275,7 +305,10 @@
     <div id="chat-messages" class="chat-messages" style="display:none;"></div>
 
     <div class="typing-indicator" id="typing-indicator">
-      <div class="typing-dots"><span></span><span></span><span></span></div>
+      <div class="typing-row">
+        <div class="typing-dots"><span></span><span></span><span></span></div>
+        <div class="typing-label">thinking</div>
+      </div>
     </div>
 
     <div class="chat-input-area" id="input-area" style="display:none;">
@@ -308,6 +341,79 @@
       return d.innerHTML;
     }
 
+    function renderMarkdown(text) {
+      if (!text) return '';
+      var h = esc(text);
+      var codeBlocks = [];
+      h = h.replace(/```(\w*)\n?([\s\S]*?)```/g, function(_, lang, code) {
+        var idx = codeBlocks.length;
+        codeBlocks.push('<pre><code>' + code.replace(/\n$/, '') + '</code></pre>');
+        return '\x00CB' + idx + '\x00';
+      });
+      h = h.replace(/`([^`\n]+)`/g, '<code>$1</code>');
+      h = h.replace(/\*\*([^\*]+?)\*\*/g, '<strong>$1</strong>');
+      h = h.replace(/([^*]|^)\*([^*]+?)\*([^*]|$)/g, '$1<em>$2</em>$3');
+      var lines = h.split('\n');
+      var out = [];
+      var inList = false;
+      var listType = '';
+      for (var i = 0; i < lines.length; i++) {
+        var line = lines[i];
+        if (line.indexOf('\x00CB') !== -1) {
+          if (inList) { out.push('</' + listType + '>'); inList = false; }
+          if (out.length > 0 && out[out.length - 1] !== '') out.push('');
+          out.push(line);
+          out.push('');
+          continue;
+        }
+        var ulMatch = line.match(/^[\-\*]\s+(.+)/);
+        var olMatch = line.match(/^\d+[\.\)]\s+(.+)/);
+        if (ulMatch) {
+          if (!inList || listType !== 'ul') {
+            if (inList) out.push('</' + listType + '>');
+            out.push('<ul>'); inList = true; listType = 'ul';
+          }
+          out.push('<li>' + ulMatch[1] + '</li>');
+        } else if (olMatch) {
+          if (!inList || listType !== 'ol') {
+            if (inList) out.push('</' + listType + '>');
+            out.push('<ol>'); inList = true; listType = 'ol';
+          }
+          out.push('<li>' + olMatch[1] + '</li>');
+        } else {
+          if (inList) { out.push('</' + listType + '>'); inList = false; }
+          if (line.trim() === '') {
+            if (out.length > 0 && out[out.length - 1] !== '') out.push('');
+          } else {
+            out.push(line);
+          }
+        }
+      }
+      if (inList) out.push('</' + listType + '>');
+      var result = [];
+      var para = [];
+      for (var j = 0; j < out.length; j++) {
+        var l = out[j];
+        if (l === '') {
+          if (para.length) { result.push('<p>' + para.join('<br>') + '</p>'); para = []; }
+        } else if (l.indexOf('\x00CB') !== -1) {
+          if (para.length) { result.push('<p>' + para.join('<br>') + '</p>'); para = []; }
+          result.push(l);
+        } else if (l.charAt(0) === '<' && (l.indexOf('<ul') === 0 || l.indexOf('<ol') === 0 || l.indexOf('<li') === 0 || l.indexOf('</') === 0 || l.indexOf('<pre') === 0)) {
+          if (para.length) { result.push('<p>' + para.join('<br>') + '</p>'); para = []; }
+          result.push(l);
+        } else {
+          para.push(l);
+        }
+      }
+      if (para.length) result.push('<p>' + para.join('<br>') + '</p>');
+      var final = result.join('\n');
+      final = final.replace(/\x00CB(\d+)\x00/g, function(_, idx) {
+        return codeBlocks[parseInt(idx)];
+      });
+      return final;
+    }
+
     function formatTime(dateStr) {
       if (!dateStr) return '';
       var d = new Date(dateStr);
@@ -324,7 +430,11 @@
       var el = document.getElementById('chat-messages');
       var msgDiv = document.createElement('div');
       msgDiv.className = 'msg ' + (role === 'user' ? 'msg-user' : 'msg-bot');
-      msgDiv.innerHTML = esc(content).replace(/\n/g, '<br>');
+      if (role === 'user') {
+        msgDiv.innerHTML = esc(content).replace(/\n/g, '<br>');
+      } else {
+        msgDiv.innerHTML = renderMarkdown(content);
+      }
       if (time) {
         var timeEl = document.createElement('div');
         timeEl.className = 'msg-time';
@@ -412,7 +522,9 @@
                 showError(data.error);
               } else if (data.content) {
                 fullText += data.content;
-                botMsg.innerHTML = esc(fullText).replace(/\n/g, '<br>');
+                var timeEl = botMsg.querySelector('.msg-time');
+                botMsg.innerHTML = renderMarkdown(fullText);
+                if (timeEl) botMsg.appendChild(timeEl);
                 scrollToBottom();
               } else if (data.done) {
                 if (data.conversationId) conversationId = data.conversationId;
