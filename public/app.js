@@ -177,7 +177,7 @@ async function loadMyAgents() {
       const o = agent.onchain;
       const uid = 'agent-' + idx;
 
-      const rawPrompt = 'Read https://selfclaw.ai/llms.txt and integrate SelfClaw verification for agent ' + name + '. The agent public key is ' + agent.publicKey + '.';
+      const rawPrompt = 'Read https://selfclaw.ai/skill.md and set up agent ' + name + ' on SelfClaw. The agent public key is ' + agent.publicKey + '.';
 
       let badges = '';
       if (o.hasWallet) {
@@ -509,11 +509,11 @@ function handleVerificationSuccess(pubkey, agentName) {
       <div style="margin-bottom: 2rem; border: 2px solid var(--border-heavy); padding: 1.25rem; background: rgba(255,107,74,0.04);">
         <div style="font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.08em; color: var(--accent); margin-bottom: 0.75rem; font-weight: 600;">SHARE THIS WITH YOUR AGENT</div>
         <div style="padding: 1rem; background: var(--bg-code); border: 2px solid var(--border-heavy); margin-bottom: 0.75rem;">
-          <p style="color: #e0e0e0; font-family: var(--font-mono); font-size: 0.8rem; line-height: 1.6; word-break: break-word; margin: 0;" id="agent-prompt-text">Read https://selfclaw.ai/llms.txt and integrate SelfClaw verification for agent ${escapeHtml(displayName)}. The agent public key is ${escapeHtml(pubkey)}.</p>
+          <p style="color: #e0e0e0; font-family: var(--font-mono); font-size: 0.8rem; line-height: 1.6; word-break: break-word; margin: 0;" id="agent-prompt-text">Read https://selfclaw.ai/skill.md and set up agent ${escapeHtml(displayName)} on SelfClaw. The agent public key is ${escapeHtml(pubkey)}.</p>
         </div>
         <button onclick="copyAgentPrompt()" class="btn btn-accent btn-full" id="copy-prompt-btn">Copy Prompt</button>
         <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.75rem; line-height: 1.4;">
-          Paste this prompt into your AI agent's chat or config. It will read the instructions and integrate verification automatically.
+          Paste this prompt into your AI agent's chat or config. It will read the instructions and set itself up on SelfClaw automatically.
         </div>
       </div>
 
