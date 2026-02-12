@@ -1049,6 +1049,7 @@
     }
 
     function doFullAttest(btn) {
+      if (!confirm('Attest SELFCLAW on Celo via Wormhole? This submits an irreversible on-chain transaction.')) return;
       btn.disabled = true;
       setActionResult('result-attest', 'Step 1/3: Submitting attestation on Base...', 'loading');
 
@@ -1076,6 +1077,7 @@
     function doAutoBridge(btn) {
       var amount = document.getElementById('bridge-selfclaw-amount').value.trim();
       if (!amount) return;
+      if (!confirm('Bridge ' + amount + ' SELFCLAW from Base to Celo? This is an irreversible blockchain transaction.')) return;
       btn.disabled = true;
       var progressDiv = document.getElementById('bridge-progress');
       progressDiv.style.display = 'block';
@@ -1596,6 +1598,7 @@
     function doSwapCeloToSelfclaw(btn) {
       var amount = document.getElementById('swap-celo-amount').value.trim();
       if (!amount) return;
+      if (!confirm('Swap ' + amount + ' CELO to SELFCLAW? This is an irreversible on-chain swap.')) return;
       btn.disabled = true;
       setActionResult('result-swap', 'Swapping ' + amount + ' CELO to SELFCLAW...', 'loading');
       fetch('/api/admin/uniswap/swap-celo-to-selfclaw', {
@@ -1660,6 +1663,7 @@
       var amountB = document.getElementById('pool-amount-b').value.trim();
       var feeTier = parseInt(document.getElementById('pool-fee-tier').value);
       if (!tokenA || !tokenB || !amountA || !amountB) return;
+      if (!confirm('Create a new pool with ' + amountA + ' Token A and ' + amountB + ' Token B? This deploys an irreversible on-chain pool.')) return;
       btn.disabled = true;
       setActionResult('result-create-pool', 'Creating pool and adding liquidity...', 'loading');
       fetch('/api/admin/uniswap/create-pool', {
@@ -1712,24 +1716,32 @@
           var tbody = document.getElementById('sponsorship-tbody');
           var html = '';
           var statusColors = { pending: '#d4d0ca', processing: '#6B4AFF', completed: '#00C853', failed: '#FF4A4A' };
+          function esc(str) {
+            if (!str) return '';
+            var d = document.createElement('div');
+            d.appendChild(document.createTextNode(str));
+            return d.innerHTML;
+          }
           items.forEach(function(req) {
             var sc = statusColors[req.status] || '#d4d0ca';
-            var humanShort = req.humanId ? (req.humanId.length > 12 ? req.humanId.slice(0, 12) + '...' : req.humanId) : '--';
-            var errShort = req.errorMessage ? (req.errorMessage.length > 30 ? req.errorMessage.slice(0, 30) + '...' : req.errorMessage) : '--';
+            var humanRaw = req.humanId || '';
+            var humanShort = humanRaw.length > 12 ? humanRaw.slice(0, 12) + '...' : humanRaw;
+            var errRaw = req.errorMessage || '';
+            var errShort = errRaw.length > 30 ? errRaw.slice(0, 30) + '...' : errRaw;
             var created = req.createdAt ? getTimeAgo(new Date(req.createdAt)) : '--';
             html += '<tr style="border-bottom:1px solid var(--border-light, #d4d0ca);">';
-            html += '<td style="padding:0.5rem;"><span style="display:inline-block;padding:0.15rem 0.5rem;font-family:\'IBM Plex Mono\',monospace;font-size:0.6rem;font-weight:600;text-transform:uppercase;color:#fff;background:' + sc + ';">' + (req.status || 'unknown') + '</span></td>';
-            html += '<td style="padding:0.5rem;font-family:\'IBM Plex Mono\',monospace;font-size:0.65rem;" title="' + (req.humanId || '') + '">' + humanShort + '</td>';
-            html += '<td style="padding:0.5rem;font-family:\'IBM Plex Mono\',monospace;font-size:0.65rem;">' + (req.tokenSymbol || '--') + '</td>';
-            html += '<td style="padding:0.5rem;font-size:0.75rem;">' + (req.tokenAmount || '--') + '</td>';
-            html += '<td style="padding:0.5rem;font-size:0.75rem;">' + (req.selfclawAmount || '--') + '</td>';
-            html += '<td style="padding:0.5rem;font-family:\'IBM Plex Mono\',monospace;font-size:0.65rem;">' + (req.source || '--') + '</td>';
+            html += '<td style="padding:0.5rem;"><span style="display:inline-block;padding:0.15rem 0.5rem;font-family:\'IBM Plex Mono\',monospace;font-size:0.6rem;font-weight:600;text-transform:uppercase;color:#fff;background:' + sc + ';">' + esc(req.status || 'unknown') + '</span></td>';
+            html += '<td style="padding:0.5rem;font-family:\'IBM Plex Mono\',monospace;font-size:0.65rem;" title="' + esc(humanRaw) + '">' + esc(humanShort || '--') + '</td>';
+            html += '<td style="padding:0.5rem;font-family:\'IBM Plex Mono\',monospace;font-size:0.65rem;">' + esc(req.tokenSymbol || '--') + '</td>';
+            html += '<td style="padding:0.5rem;font-size:0.75rem;">' + esc(req.tokenAmount || '--') + '</td>';
+            html += '<td style="padding:0.5rem;font-size:0.75rem;">' + esc(req.selfclawAmount || '--') + '</td>';
+            html += '<td style="padding:0.5rem;font-family:\'IBM Plex Mono\',monospace;font-size:0.65rem;">' + esc(req.source || '--') + '</td>';
             html += '<td style="padding:0.5rem;font-size:0.75rem;text-align:center;">' + (req.retryCount || 0) + '/' + (req.maxRetries || 3) + '</td>';
-            html += '<td style="padding:0.5rem;font-size:0.65rem;color:#FF4A4A;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + (req.errorMessage || '').replace(/"/g, '&quot;') + '">' + errShort + '</td>';
+            html += '<td style="padding:0.5rem;font-size:0.65rem;color:#FF4A4A;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + esc(errRaw) + '">' + esc(errShort || '--') + '</td>';
             html += '<td style="padding:0.5rem;font-family:\'IBM Plex Mono\',monospace;font-size:0.6rem;color:var(--text-muted);">' + created + '</td>';
             html += '<td style="padding:0.5rem;">';
             if (req.status === 'failed' && (req.retryCount || 0) < (req.maxRetries || 3)) {
-              html += '<button class="action-btn" style="padding:0.3rem 0.7rem;font-size:0.6rem;width:auto;" onclick="retrySponsorshipRequest(\'' + req.id + '\', this)">Retry</button>';
+              html += '<button class="action-btn" style="padding:0.3rem 0.7rem;font-size:0.6rem;width:auto;" onclick="retrySponsorshipRequest(' + JSON.stringify(req.id) + ', this)">Retry</button>';
             }
             html += '</td>';
             html += '</tr>';

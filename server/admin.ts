@@ -494,52 +494,6 @@ router.post("/uniswap/collect-fees", async (req: Request, res: Response) => {
   }
 });
 
-router.post("/v3/collect-all-fees", async (req: Request, res: Response) => {
-  if (!requireAdmin(req, res)) return;
-  try {
-    const { collectAllV3Fees } = await import("../lib/uniswap-v3.js");
-    const rawSponsorKey = process.env.SELFCLAW_SPONSOR_PRIVATE_KEY || process.env.CELO_PRIVATE_KEY;
-    const sponsorKey = rawSponsorKey && !rawSponsorKey.startsWith('0x') ? `0x${rawSponsorKey}` : rawSponsorKey;
-    const result = await collectAllV3Fees(sponsorKey);
-    res.json(result);
-  } catch (error: any) {
-    console.error("[admin] v3/collect-all-fees error:", error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-router.post("/v4/collect-all-fees", async (req: Request, res: Response) => {
-  if (!requireAdmin(req, res)) return;
-  try {
-    const v4Positions = await db.select({ v4PositionTokenId: sponsoredAgents.v4PositionTokenId })
-      .from(sponsoredAgents)
-      .where(sql`pool_version = 'v4' AND v4_position_token_id IS NOT NULL AND status = 'completed'`);
-
-    const v4PoolPositions = await db.select({ v4PositionTokenId: trackedPools.v4PositionTokenId })
-      .from(trackedPools)
-      .where(sql`pool_version = 'v4' AND v4_position_token_id IS NOT NULL`);
-
-    const allPositionIds = new Set<string>();
-    for (const p of v4Positions) {
-      if (p.v4PositionTokenId) allPositionIds.add(p.v4PositionTokenId);
-    }
-    for (const p of v4PoolPositions) {
-      if (p.v4PositionTokenId) allPositionIds.add(p.v4PositionTokenId);
-    }
-
-    if (allPositionIds.size === 0) {
-      return res.json({ success: true, message: "No V4 positions to collect fees from", collected: [], totalCollected: 0 });
-    }
-
-    const tokenIds = Array.from(allPositionIds).map(id => BigInt(id));
-    const result = await collectAllFees(tokenIds);
-    res.json(result);
-  } catch (error: any) {
-    console.error("[admin] v4/collect-all-fees error:", error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
 router.post("/collect-all-fees", async (req: Request, res: Response) => {
   if (!requireAdmin(req, res)) return;
   try {
@@ -975,7 +929,10 @@ router.post("/sponsorship-requests/:id/retry", async (req: Request, res: Respons
     }
 
     const rawSponsorKey = process.env.SELFCLAW_SPONSOR_PRIVATE_KEY || process.env.CELO_PRIVATE_KEY;
-    const sponsorKey = rawSponsorKey && !rawSponsorKey.startsWith('0x') ? `0x${rawSponsorKey}` : rawSponsorKey;
+    if (!rawSponsorKey) {
+      return res.status(503).json({ error: "Sponsor private key not configured. Set SELFCLAW_SPONSOR_PRIVATE_KEY or CELO_PRIVATE_KEY." });
+    }
+    const sponsorKey = !rawSponsorKey.startsWith('0x') ? `0x${rawSponsorKey}` : rawSponsorKey;
 
     const { getTokenBalance, getNextPositionTokenId, computePoolId, extractPositionTokenIdFromReceipt } = await import("../lib/uniswap-v4.js");
 
