@@ -92,8 +92,6 @@ interface DebugVerificationAttempt {
 }
 
 let lastVerificationAttempt: DebugVerificationAttempt | null = null;
-let lastV3FeeCollectionTime = 0;
-const V3_FEE_COLLECTION_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 
 const verificationHumanIds = new Map<string, string>();
 setInterval(() => {
@@ -1590,8 +1588,6 @@ router.post("/v1/request-selfclaw-sponsorship", verificationLimiter, async (req:
       extractPositionTokenIdFromReceipt,
     } = await import("../lib/uniswap-v4.js");
 
-    const { collectAllV3Fees } = await import("../lib/uniswap-v3.js");
-
     const rawSponsorKey = process.env.SELFCLAW_SPONSOR_PRIVATE_KEY || process.env.CELO_PRIVATE_KEY;
     const sponsorKey = rawSponsorKey && !rawSponsorKey.startsWith('0x') ? `0x${rawSponsorKey}` : rawSponsorKey;
     const sponsorAddress = getSponsorAddress(sponsorKey);
@@ -1609,22 +1605,6 @@ router.post("/v1/request-selfclaw-sponsorship", verificationLimiter, async (req:
     }
 
     const selfclawAddress = "0xCD88f99Adf75A9110c0bcd22695A32A20eC54ECb";
-
-    const now = Date.now();
-    if (now - lastV3FeeCollectionTime >= V3_FEE_COLLECTION_COOLDOWN_MS) {
-      console.log(`[selfclaw] Sponsorship requested by ${humanId.substring(0, 16)}... — collecting V3 fees`);
-      try {
-        const feeCollectionResult = await collectAllV3Fees(sponsorKey);
-        lastV3FeeCollectionTime = Date.now();
-        if (feeCollectionResult.success && parseFloat(feeCollectionResult.totalSelfclaw) > 0) {
-          console.log(`[selfclaw] Collected ${feeCollectionResult.totalSelfclaw} SELFCLAW from V3 fee positions`);
-        }
-      } catch (feeErr: any) {
-        console.log(`[selfclaw] V3 fee collection skipped: ${feeErr.message}`);
-      }
-    } else {
-      console.log(`[selfclaw] V3 fee collection on cooldown (next in ${Math.round((V3_FEE_COLLECTION_COOLDOWN_MS - (now - lastV3FeeCollectionTime)) / 3600000)}h)`);
-    }
 
     const availableBalance = await getSelfclawBalance(sponsorKey);
     const available = parseFloat(availableBalance);
@@ -4871,8 +4851,6 @@ router.post("/v1/my-agents/:publicKey/request-sponsorship", verificationLimiter,
       extractPositionTokenIdFromReceipt,
     } = await import("../lib/uniswap-v4.js");
 
-    const { collectAllV3Fees } = await import("../lib/uniswap-v3.js");
-
     const rawSponsorKey = process.env.SELFCLAW_SPONSOR_PRIVATE_KEY || process.env.CELO_PRIVATE_KEY;
     const sponsorKey = rawSponsorKey && !rawSponsorKey.startsWith('0x') ? `0x${rawSponsorKey}` : rawSponsorKey;
     const sponsorAddress = getSponsorAddress(sponsorKey);
@@ -4892,18 +4870,6 @@ router.post("/v1/my-agents/:publicKey/request-sponsorship", verificationLimiter,
     }
 
     const selfclawAddress = "0xCD88f99Adf75A9110c0bcd22695A32A20eC54ECb";
-
-    const now = Date.now();
-    if (now - lastV3FeeCollectionTime >= V3_FEE_COLLECTION_COOLDOWN_MS) {
-      try {
-        await collectAllV3Fees(sponsorKey);
-        lastV3FeeCollectionTime = Date.now();
-      } catch (e: any) {
-        console.log(`[selfclaw] V3 fee collection skipped: ${e.message}`);
-      }
-    } else {
-      console.log(`[selfclaw] V3 fee collection on cooldown (next in ${Math.round((V3_FEE_COLLECTION_COOLDOWN_MS - (now - lastV3FeeCollectionTime)) / 3600000)}h)`);
-    }
 
     const availableBalance = await getSelfclawBalance(sponsorKey);
     const available = parseFloat(availableBalance);
@@ -5524,8 +5490,6 @@ router.post("/v1/miniclaws/:id/request-sponsorship", verificationLimiter, async 
       extractPositionTokenIdFromReceipt,
     } = await import("../lib/uniswap-v4.js");
 
-    const { collectAllV3Fees } = await import("../lib/uniswap-v3.js");
-
     const rawSponsorKey = process.env.SELFCLAW_SPONSOR_PRIVATE_KEY || process.env.CELO_PRIVATE_KEY;
     const sponsorKey = rawSponsorKey && !rawSponsorKey.startsWith('0x') ? `0x${rawSponsorKey}` : rawSponsorKey;
     const sponsorAddress = getSponsorAddress(sponsorKey);
@@ -5545,16 +5509,6 @@ router.post("/v1/miniclaws/:id/request-sponsorship", verificationLimiter, async 
     }
 
     const selfclawAddress = "0xCD88f99Adf75A9110c0bcd22695A32A20eC54ECb";
-
-    const now = Date.now();
-    if (now - lastV3FeeCollectionTime >= V3_FEE_COLLECTION_COOLDOWN_MS) {
-      try {
-        await collectAllV3Fees(sponsorKey);
-        lastV3FeeCollectionTime = Date.now();
-      } catch (e: any) {
-        console.log(`[selfclaw] V3 fee collection skipped: ${e.message}`);
-      }
-    }
 
     const availableBalance = await getSelfclawBalance(sponsorKey);
     const available = parseFloat(availableBalance);

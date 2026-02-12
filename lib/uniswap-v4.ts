@@ -363,6 +363,77 @@ function getFullRangeTicks(feeTier: number): { tickLower: number; tickUpper: num
   return { tickLower: -alignedMax, tickUpper: alignedMax };
 }
 
+function tickToSqrtPriceX96(tick: number): bigint {
+  const absTick = Math.abs(tick);
+  const Q96 = 2n ** 96n;
+
+  let ratio = 1n << 128n;
+  if (absTick & 0x1) ratio = (ratio * 0xfffcb933bd6fad37aa2d162d1a594001n) >> 128n;
+  if (absTick & 0x2) ratio = (ratio * 0xfff97272373d413259a46990580e213an) >> 128n;
+  if (absTick & 0x4) ratio = (ratio * 0xfff2e50f5f656932ef12357cf3c7fdccn) >> 128n;
+  if (absTick & 0x8) ratio = (ratio * 0xffe5caca7e10e4e61c3624eaa0941cd0n) >> 128n;
+  if (absTick & 0x10) ratio = (ratio * 0xffcb9843d60f6159c9db58835c926644n) >> 128n;
+  if (absTick & 0x20) ratio = (ratio * 0xff973b41fa98c081472e6896dfb254c0n) >> 128n;
+  if (absTick & 0x40) ratio = (ratio * 0xff2ea16466c96a3843ec78b326b52861n) >> 128n;
+  if (absTick & 0x80) ratio = (ratio * 0xfe5dee046a99a2a811c461f1969c3053n) >> 128n;
+  if (absTick & 0x100) ratio = (ratio * 0xfcbe86c7900a88aedcffc83b479aa3a4n) >> 128n;
+  if (absTick & 0x200) ratio = (ratio * 0xf987a7253ac413176f2b074cf7815e54n) >> 128n;
+  if (absTick & 0x400) ratio = (ratio * 0xf3392b0822b70005940c7a398e4b70f3n) >> 128n;
+  if (absTick & 0x800) ratio = (ratio * 0xe7159475a2c29b7443b29c7fa6e889d9n) >> 128n;
+  if (absTick & 0x1000) ratio = (ratio * 0xd097f3bdfd2022b8845ad8f792aa5825n) >> 128n;
+  if (absTick & 0x2000) ratio = (ratio * 0xa9f746462d870fdf8a65dc1f90e061e5n) >> 128n;
+  if (absTick & 0x4000) ratio = (ratio * 0x70d869a156d2a1b890bb3df62baf32f7n) >> 128n;
+  if (absTick & 0x8000) ratio = (ratio * 0x31be135f97d08fd981231505542fcfa6n) >> 128n;
+  if (absTick & 0x10000) ratio = (ratio * 0x9aa508b5b7a84e1c677de54f3e99bc9n) >> 128n;
+  if (absTick & 0x20000) ratio = (ratio * 0x5d6af8dedb81196699c329225ee604n) >> 128n;
+  if (absTick & 0x40000) ratio = (ratio * 0x2216e584f5fa1ea926041bedfe98n) >> 128n;
+  if (absTick & 0x80000) ratio = (ratio * 0x48a170391f7dc42444e8fa2n) >> 128n;
+
+  if (tick > 0) {
+    ratio = ((1n << 256n) - 1n) / ratio;
+  }
+
+  return (ratio >> 32n) + (ratio % (1n << 32n) > 0n ? 1n : 0n) >> 32n;
+}
+
+function calculateLiquidityForFullRange(
+  sqrtPriceX96: bigint,
+  amount0: bigint,
+  amount1: bigint,
+  tickLower: number,
+  tickUpper: number
+): bigint {
+  const Q96 = 2n ** 96n;
+  const sqrtPriceLower = tickToSqrtPriceX96(tickLower);
+  const sqrtPriceUpper = tickToSqrtPriceX96(tickUpper);
+
+  let liquidity0 = 0n;
+  let liquidity1 = 0n;
+
+  if (sqrtPriceX96 > sqrtPriceLower && sqrtPriceUpper > sqrtPriceLower) {
+    const denom = sqrtPriceX96 - sqrtPriceLower;
+    if (denom > 0n) {
+      liquidity1 = (amount1 * Q96) / denom;
+    }
+  }
+
+  if (sqrtPriceUpper > sqrtPriceX96 && sqrtPriceUpper > sqrtPriceLower) {
+    const numerator = sqrtPriceX96 * sqrtPriceUpper;
+    const denom = sqrtPriceUpper - sqrtPriceX96;
+    if (denom > 0n && numerator > 0n) {
+      liquidity0 = (amount0 * numerator) / (denom * Q96);
+    }
+  }
+
+  if (liquidity0 === 0n && liquidity1 === 0n) {
+    return bigintSqrt(amount0 * amount1);
+  }
+
+  if (liquidity0 === 0n) return liquidity1;
+  if (liquidity1 === 0n) return liquidity0;
+  return liquidity0 < liquidity1 ? liquidity0 : liquidity1;
+}
+
 async function ensurePermit2Approval(
   token: `0x${string}`,
   spender: `0x${string}`,
@@ -597,19 +668,37 @@ export async function createPoolAndAddLiquidity(params: CreatePoolParams): Promi
       hooks: '0x0000000000000000000000000000000000000000' as `0x${string}`,
     };
 
-    const initTx = await walletClient.writeContract({
-      address: POOL_MANAGER,
-      abi: POOL_MANAGER_ABI,
-      functionName: 'initialize',
-      args: [poolKey, sqrtPriceX96],
-    });
-    await publicClient.waitForTransactionReceipt({ hash: initTx });
+    console.log(`[uniswap-v4] Initializing pool: ${token0} / ${token1}, fee=${feeTier}, sqrtPriceX96=${sqrtPriceX96}`);
+
+    try {
+      const initTx = await walletClient.writeContract({
+        address: POOL_MANAGER,
+        abi: POOL_MANAGER_ABI,
+        functionName: 'initialize',
+        args: [poolKey, sqrtPriceX96],
+      });
+      const initReceipt = await publicClient.waitForTransactionReceipt({ hash: initTx });
+      if (initReceipt.status === 'reverted') {
+        console.log('[uniswap-v4] Pool initialize reverted — pool may already exist, continuing...');
+      } else {
+        console.log(`[uniswap-v4] Pool initialized: ${initTx}`);
+      }
+    } catch (initErr: any) {
+      const msg = initErr.message || '';
+      if (msg.includes('PoolAlreadyInitialized') || msg.includes('already initialized') || msg.includes('execution reverted')) {
+        console.log('[uniswap-v4] Pool already initialized, continuing to add liquidity...');
+      } else {
+        throw initErr;
+      }
+    }
 
     const isCeloToken0 = token0.toLowerCase() === CELO_NATIVE.toLowerCase();
     const isCeloToken1 = token1.toLowerCase() === CELO_NATIVE.toLowerCase();
 
-    const amount0Max = amount0 + (amount0 * 5n / 100n);
-    const amount1Max = amount1 + (amount1 * 5n / 100n);
+    const amount0Max = amount0 + (amount0 * 10n / 100n);
+    const amount1Max = amount1 + (amount1 * 10n / 100n);
+
+    console.log(`[uniswap-v4] Approving tokens via Permit2... amount0Max=${formatUnits(amount0Max, 18)}, amount1Max=${formatUnits(amount1Max, 18)}`);
 
     if (!isCeloToken0) {
       await ensurePermit2Approval(token0, POSITION_MANAGER, amount0Max, account, walletClient);
@@ -621,11 +710,13 @@ export async function createPoolAndAddLiquidity(params: CreatePoolParams): Promi
     const { tickLower, tickUpper } = getFullRangeTicks(feeTier);
     const deadline = BigInt(Math.floor(Date.now() / 1000) + 1800);
 
-    const liquidity = bigintSqrt(amount0 * amount1);
+    const liquidity = calculateLiquidityForFullRange(sqrtPriceX96, amount0, amount1, tickLower, tickUpper);
+
+    console.log(`[uniswap-v4] Minting position: liquidity=${liquidity}, ticks=[${tickLower}, ${tickUpper}]`);
 
     const actions = encodePacked(
-      ['uint8', 'uint8'],
-      [V4_ACTIONS.MINT_POSITION, V4_ACTIONS.SETTLE_PAIR]
+      ['uint8', 'uint8', 'uint8', 'uint8'],
+      [V4_ACTIONS.MINT_POSITION, V4_ACTIONS.SETTLE_PAIR, V4_ACTIONS.CLOSE_CURRENCY, V4_ACTIONS.CLOSE_CURRENCY]
     );
 
     const mintParams = encodeAbiParameters(
@@ -647,12 +738,39 @@ export async function createPoolAndAddLiquidity(params: CreatePoolParams): Promi
       [token0, token1]
     );
 
-    const unlockData = encodeAbiParameters(
-      parseAbiParameters('bytes, bytes[]'),
-      [actions, [mintParams, settlePairParams]]
+    const closeCurrency0Params = encodeAbiParameters(
+      parseAbiParameters('address'),
+      [token0]
     );
 
-    const celoValue = isCeloToken0 ? amount0 : isCeloToken1 ? amount1 : 0n;
+    const closeCurrency1Params = encodeAbiParameters(
+      parseAbiParameters('address'),
+      [token1]
+    );
+
+    const unlockData = encodeAbiParameters(
+      parseAbiParameters('bytes, bytes[]'),
+      [actions, [mintParams, settlePairParams, closeCurrency0Params, closeCurrency1Params]]
+    );
+
+    const celoValue = isCeloToken0 ? amount0Max : isCeloToken1 ? amount1Max : 0n;
+
+    try {
+      await publicClient.simulateContract({
+        address: POSITION_MANAGER,
+        abi: POSITION_MANAGER_ABI,
+        functionName: 'modifyLiquidities',
+        args: [unlockData, deadline],
+        value: celoValue,
+        account: account.address,
+      });
+      console.log('[uniswap-v4] Simulation passed, sending transaction...');
+    } catch (simErr: any) {
+      console.error('[uniswap-v4] Simulation failed:', simErr.message?.substring(0, 500));
+      const details = simErr.cause?.data || simErr.data || simErr.shortMessage || '';
+      console.error('[uniswap-v4] Revert details:', typeof details === 'object' ? JSON.stringify(details) : String(details).substring(0, 500));
+      return { success: false, error: `Pool creation simulation failed: ${simErr.shortMessage || simErr.message}` };
+    }
 
     const mintTxHash = await walletClient.writeContract({
       address: POSITION_MANAGER,
@@ -665,8 +783,10 @@ export async function createPoolAndAddLiquidity(params: CreatePoolParams): Promi
     const mintReceipt = await publicClient.waitForTransactionReceipt({ hash: mintTxHash });
 
     if (mintReceipt.status === 'reverted') {
-      return { success: false, error: 'Mint transaction reverted' };
+      return { success: false, error: `Mint transaction reverted: ${mintTxHash}` };
     }
+
+    console.log(`[uniswap-v4] Position minted successfully: ${mintTxHash}`);
 
     return {
       success: true,
@@ -676,8 +796,10 @@ export async function createPoolAndAddLiquidity(params: CreatePoolParams): Promi
       receipt: mintReceipt,
     };
   } catch (error: any) {
-    console.error('[uniswap-v4] createPoolAndAddLiquidity error:', error);
-    return { success: false, error: error.message || 'Failed to create pool and add liquidity' };
+    console.error('[uniswap-v4] createPoolAndAddLiquidity error:', error.message?.substring(0, 500));
+    const details = error.cause?.data || error.data || error.shortMessage || '';
+    console.error('[uniswap-v4] Error details:', typeof details === 'object' ? JSON.stringify(details) : String(details).substring(0, 500));
+    return { success: false, error: error.shortMessage || error.message || 'Failed to create pool and add liquidity' };
   }
 }
 
