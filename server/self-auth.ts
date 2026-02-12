@@ -106,10 +106,18 @@ setInterval(() => {
   }
 }, 60 * 1000);
 
-// Generate humanId from public signals (consistent with selfclaw.ts)
+// Generate humanId from nullifier (publicSignals[0]) — stable per passport + scope
 function generateHumanId(publicSignals: any[]): string {
+  const nullifier = publicSignals[0];
+  if (!nullifier) {
+    console.error("[self-auth] WARNING: No nullifier in publicSignals, falling back to full hash");
+    return crypto.createHash("sha256")
+      .update(JSON.stringify(publicSignals))
+      .digest("hex")
+      .substring(0, 16);
+  }
   return crypto.createHash("sha256")
-    .update(JSON.stringify(publicSignals))
+    .update(String(nullifier))
     .digest("hex")
     .substring(0, 16);
 }
@@ -480,6 +488,7 @@ router.post("/wallet/minipay-connect", async (req: any, res: Response) => {
     }
 
     const now = Date.now();
+    const clientIp = (req.ip || req.headers['x-forwarded-for'] || 'unknown') as string;
     const rateEntry = minipayRateLimit.get(clientIp);
     if (rateEntry) {
       if (rateEntry.resetAt < now) {
