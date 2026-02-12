@@ -3950,6 +3950,27 @@ router.get("/v1/human/:humanId/economics", publicApiLimiter, async (req: Request
       totalCosts += parseFloat(c.amount || "0");
     }
 
+    let livePrices: Record<string, any> = {};
+    try {
+      const poolsWithIds = pools
+        .filter(p => p.v4PoolId || (p.poolAddress && p.poolAddress.length >= 42))
+        .map(p => ({
+          tokenAddress: p.tokenAddress,
+          v4PoolId: p.v4PoolId,
+          poolAddress: p.poolAddress,
+          tokenSymbol: p.tokenSymbol,
+          poolVersion: p.poolVersion,
+        }));
+      if (poolsWithIds.length > 0) {
+        const prices = await getAllAgentTokenPrices(poolsWithIds);
+        for (const p of prices) {
+          livePrices[p.tokenAddress.toLowerCase()] = p;
+        }
+      }
+    } catch (priceErr: any) {
+      console.warn("[selfclaw] economics live price fetch warning:", priceErr.message);
+    }
+
     const agentSummaries = agents.map(a => {
       const agentRevenue = revenue.filter(r => r.agentPublicKey === a.publicKey);
       const agentCosts = costs.filter(c => c.agentPublicKey === a.publicKey);
@@ -3962,19 +3983,39 @@ router.get("/v1/human/:humanId/economics", publicApiLimiter, async (req: Request
       const rev = agentRevenue.reduce((sum, r) => sum + parseFloat(r.amount || "0"), 0);
       const cost = agentCosts.reduce((sum, c) => sum + parseFloat(c.amount || "0"), 0);
 
-      return {
-        name: a.deviceId,
-        publicKey: a.publicKey,
-        verifiedAt: a.verifiedAt,
-        wallet: agentWallet ? { address: agentWallet.address, gasReceived: agentWallet.gasReceived } : null,
-        token: agentPool ? {
+      const meta = (a.metadata as Record<string, any>) || {};
+      const erc8004Info = meta.erc8004TokenId ? {
+        tokenId: meta.erc8004TokenId,
+        attestation: meta.erc8004Attestation || null,
+        minted: true,
+      } : null;
+
+      let tokenData: any = null;
+      if (agentPool) {
+        const livePrice = livePrices[agentPool.tokenAddress?.toLowerCase()];
+        tokenData = {
           symbol: agentPool.tokenSymbol,
           name: agentPool.tokenName,
           address: agentPool.tokenAddress,
           poolAddress: agentPool.poolAddress,
           poolVersion: agentPool.poolVersion || 'v3',
           price: agentPool.currentPriceCelo,
-        } : null,
+          priceCelo: livePrice?.priceInCelo ?? (agentPool.currentPriceCelo ? parseFloat(agentPool.currentPriceCelo) : null),
+          priceUsd: livePrice?.priceInUsd ?? null,
+          marketCapUsd: livePrice?.marketCapUsd ?? null,
+          marketCapCelo: livePrice?.marketCapCelo ?? null,
+          totalSupply: livePrice?.totalSupply ?? null,
+          liquidity: livePrice?.liquidity ?? null,
+          priceChange24h: agentPool.priceChange24h ? parseFloat(agentPool.priceChange24h) : null,
+        };
+      }
+
+      return {
+        name: a.deviceId,
+        publicKey: a.publicKey,
+        verifiedAt: a.verifiedAt,
+        wallet: agentWallet ? { address: agentWallet.address, gasReceived: agentWallet.gasReceived } : null,
+        token: tokenData,
         tokenPlan: agentPlan ? { status: agentPlan.status, purpose: agentPlan.purpose } : null,
         sponsorship: agentSponsorship ? {
           status: agentSponsorship.status,
@@ -3982,6 +4023,7 @@ router.get("/v1/human/:humanId/economics", publicApiLimiter, async (req: Request
           poolAddress: agentSponsorship.poolAddress,
           amount: agentSponsorship.sponsoredAmountCelo,
         } : null,
+        erc8004: erc8004Info,
         services: agentServicesList.length,
         economics: {
           totalRevenue: rev,
@@ -5093,6 +5135,187 @@ router.post("/v1/my-agents/:publicKey/request-sponsorship", verificationLimiter,
       } catch (_e) {}
     }
     console.error("[selfclaw] my-agents request-sponsorship error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post("/v1/my-agents/:publicKey/register-erc8004", verificationLimiter, async (req: any, res: Response) => {
+  try {
+    const auth = await authenticateHumanForAgent(req, res, req.params.publicKey);
+    if (!auth) return;
+
+    const walletInfo = await getAgentWallet(req.params.publicKey);
+    if (!walletInfo || !walletInfo.address) {
+      return res.status(400).json({ error: "No wallet found. Create a wallet first." });
+    }
+
+    if (!erc8004Service.isReady()) {
+      return res.status(503).json({ error: "ERC-8004 contracts not available yet" });
+    }
+
+    const existingMeta = (auth.agent.metadata as Record<string, any>) || {};
+    if (existingMeta.erc8004Minted) {
+      return res.status(400).json({
+        error: "Already registered",
+        tokenId: existingMeta.erc8004TokenId,
+        explorerUrl: erc8004Service.getExplorerUrl(existingMeta.erc8004TokenId),
+      });
+    }
+
+    const agentName = req.body.agentName || auth.agent.deviceId || "Agent";
+    const description = req.body.description || `Verified agent: ${agentName}`;
+    const domain = "selfclaw.ai";
+
+    const registrationJson = generateRegistrationFile(
+      agentName, description, walletInfo.address,
+      undefined, `https://${domain}`, undefined, true,
+    );
+
+    const registrationURL = `https://${domain}/api/selfclaw/v1/agent/${req.params.publicKey}/registration.json`;
+
+    await db.update(verifiedBots)
+      .set({
+        metadata: { ...existingMeta, erc8004RegistrationJson: registrationJson }
+      })
+      .where(eq(verifiedBots.publicKey, req.params.publicKey));
+
+    const config = erc8004Service.getConfig();
+    const fromAddr = walletInfo.address as `0x${string}`;
+
+    const callData = encodeFunctionData({
+      abi: [{
+        name: 'register', type: 'function', stateMutability: 'nonpayable',
+        inputs: [{ name: 'agentURI', type: 'string' }],
+        outputs: [{ name: '', type: 'uint256' }],
+      }],
+      functionName: 'register',
+      args: [registrationURL],
+    });
+
+    const nonce = await viemPublicClient.getTransactionCount({ address: fromAddr });
+    const gasPrice = await viemPublicClient.getGasPrice();
+
+    let estimatedGas = BigInt(300000);
+    try {
+      estimatedGas = await viemPublicClient.estimateGas({
+        account: fromAddr,
+        to: config.identityRegistry as `0x${string}`,
+        data: callData, value: BigInt(0),
+      });
+      estimatedGas = estimatedGas * BigInt(120) / BigInt(100);
+    } catch (estimateErr: any) {
+      console.warn(`[selfclaw] ERC-8004 gas estimation failed: ${estimateErr.message}`);
+    }
+
+    const balance = await viemPublicClient.getBalance({ address: fromAddr });
+    const txCost = estimatedGas * gasPrice;
+    const hasSufficientGas = balance >= txCost;
+
+    const privateKey = await getDecryptedWalletKey(walletInfo, auth.humanId);
+    if (privateKey && hasSufficientGas) {
+      const { Wallet, JsonRpcProvider } = await import('ethers');
+      const provider = new JsonRpcProvider('https://forno.celo.org');
+      const signer = new Wallet(privateKey, provider);
+      const tx = await signer.sendTransaction({
+        to: config.identityRegistry, data: callData,
+        gasLimit: estimatedGas, gasPrice, chainId: 42220, value: 0, nonce,
+      });
+
+      logActivity("erc8004_registration", auth.humanId, req.params.publicKey, auth.agent.deviceId, {
+        walletAddress: walletInfo.address, method: "dashboard-signed",
+        registryAddress: config.identityRegistry, txHash: tx.hash,
+      });
+
+      return res.json({
+        success: true, mode: "signed", txHash: tx.hash,
+        agentURI: registrationURL, walletAddress: walletInfo.address,
+        celoscanUrl: `https://celoscan.io/tx/${tx.hash}`,
+        nextStep: `Call POST /api/selfclaw/v1/my-agents/${req.params.publicKey}/confirm-erc8004 with {txHash: "${tx.hash}"} after confirmation.`,
+      });
+    }
+
+    logActivity("erc8004_registration", auth.humanId, req.params.publicKey, auth.agent.deviceId, {
+      walletAddress: walletInfo.address, method: "dashboard-unsigned",
+      registryAddress: config.identityRegistry,
+    });
+
+    res.json({
+      success: true, mode: "unsigned",
+      unsignedTx: {
+        from: walletInfo.address, to: config.identityRegistry,
+        data: callData, gas: estimatedGas.toString(),
+        gasPrice: gasPrice.toString(), chainId: 42220, value: "0", nonce,
+      },
+      agentURI: registrationURL, walletAddress: walletInfo.address,
+      contract: {
+        identityRegistry: config.identityRegistry,
+        reputationRegistry: config.resolver,
+      },
+      deployment: {
+        estimatedGas: estimatedGas.toString(),
+        estimatedCost: formatUnits(txCost, 18) + " CELO",
+        walletBalance: formatUnits(balance, 18) + " CELO",
+        hasSufficientGas,
+      },
+      nextSteps: [
+        "1. Sign the unsignedTx with your wallet private key",
+        "2. Submit the signed transaction to Celo mainnet (chainId 42220)",
+        "3. Call POST /api/selfclaw/v1/my-agents/" + req.params.publicKey + "/confirm-erc8004 with {txHash}",
+      ],
+    });
+  } catch (error: any) {
+    console.error("[selfclaw] my-agents register-erc8004 error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post("/v1/my-agents/:publicKey/confirm-erc8004", verificationLimiter, async (req: any, res: Response) => {
+  try {
+    const auth = await authenticateHumanForAgent(req, res, req.params.publicKey);
+    if (!auth) return;
+
+    const { txHash } = req.body;
+    if (!txHash) return res.status(400).json({ error: "txHash is required" });
+
+    const receipt = await viemPublicClient.getTransactionReceipt({ hash: txHash as `0x${string}` });
+    if (!receipt || receipt.status !== 'success') {
+      return res.status(400).json({ error: "Transaction not confirmed or failed" });
+    }
+
+    let tokenId: string | null = null;
+    for (const log of receipt.logs) {
+      if (log.topics[0] === '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef' && log.topics.length === 4) {
+        tokenId = BigInt(log.topics[3]!).toString();
+      }
+    }
+
+    if (!tokenId) {
+      return res.status(400).json({ error: "Could not find ERC-8004 token ID in transaction logs" });
+    }
+
+    const existingMeta = (auth.agent.metadata as Record<string, any>) || {};
+    await db.update(verifiedBots)
+      .set({
+        metadata: {
+          ...existingMeta,
+          erc8004TokenId: tokenId,
+          erc8004Minted: true,
+          erc8004TxHash: txHash,
+          erc8004MintedAt: new Date().toISOString(),
+        }
+      })
+      .where(eq(verifiedBots.publicKey, req.params.publicKey));
+
+    logActivity("erc8004_confirmed", auth.humanId, req.params.publicKey, auth.agent.deviceId, {
+      tokenId, txHash, method: "dashboard",
+    });
+
+    res.json({
+      success: true, tokenId, txHash,
+      explorerUrl: erc8004Service.getExplorerUrl(tokenId),
+    });
+  } catch (error: any) {
+    console.error("[selfclaw] my-agents confirm-erc8004 error:", error);
     res.status(500).json({ error: error.message });
   }
 });

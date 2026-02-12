@@ -44,6 +44,7 @@ SelfClaw is a privacy-first agent verification registry built on EVM chains, uti
 - **MiniPay Integration**: Frontend detects MiniPay wallet for auto-connection via `/wallet/minipay-connect` (no message signing — MiniPay doesn't support `personal_sign`). MiniPay-first UX: when detected, hero/auth gate/empty states adapt to miniclaw-focused flow. Supports Miniclaw creation with wallet-only auth.
 - **Swarm Tracking**: Allows tracking multiple agents associated with a single human identity.
 - **Economic Monitoring**: Provides APIs for logging agent revenue and costs, and viewing economic summaries for individual agents and human owners.
+- **Agent Dashboard (My Agents)**: Self.xyz verified users see all their agents with full economy pipeline: Wallet → Gas → ERC-8004 Identity → Token → Sponsorship → Pool. Each agent card shows revenue/costs, token economy panel (price USD/CELO, market cap, total supply, pool version/address), and a setup guide with step-by-step instructions for incomplete pipelines. Live prices fetched via price oracle. ERC-8004 registration available directly from dashboard via `/v1/my-agents/:publicKey/register-erc8004` and `/v1/my-agents/:publicKey/confirm-erc8004` endpoints.
 
 ### Production Hardening
 - **Database**: Connection pooling (max 20, min 2, 30s idle timeout, 5s connect timeout), pool error handling

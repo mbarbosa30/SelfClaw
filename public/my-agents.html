@@ -258,6 +258,59 @@
     .pipeline-msg.success { color: var(--green-verify); background: var(--green-light); }
     .pipeline-msg.info { color: var(--text-secondary); background: rgba(0,0,0,0.03); }
 
+    .token-economy-panel {
+      border: 2px solid var(--border-heavy); padding: 1rem; margin-top: 0.75rem;
+      background: rgba(0,0,0,0.015);
+    }
+    .token-economy-title {
+      font-family: var(--font-mono); font-size: 0.65rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-secondary);
+      margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;
+    }
+    .token-economy-title .token-symbol {
+      color: var(--accent); font-size: 0.8rem;
+    }
+    .token-economy-grid {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.75rem;
+    }
+    @media (max-width: 600px) { .token-economy-grid { grid-template-columns: repeat(2, 1fr); } }
+    .token-econ-item {}
+    .token-econ-label {
+      font-family: var(--font-mono); font-size: 0.55rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted);
+      margin-bottom: 0.15rem;
+    }
+    .token-econ-value {
+      font-size: 0.95rem; font-weight: 700; color: var(--text);
+    }
+    .token-econ-value.accent { color: var(--accent); }
+    .token-econ-value.green { color: var(--green-verify); }
+    .token-econ-sub {
+      font-family: var(--font-mono); font-size: 0.6rem; color: var(--text-muted);
+      margin-top: 0.1rem;
+    }
+
+    .setup-guide {
+      border: 2px solid var(--border); padding: 1rem; margin-top: 0.75rem;
+      background: rgba(255,107,74,0.03);
+    }
+    .setup-guide-title {
+      font-family: var(--font-mono); font-size: 0.65rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent);
+      margin-bottom: 0.5rem;
+    }
+    .setup-guide-step {
+      display: flex; gap: 0.5rem; margin-bottom: 0.5rem;
+      font-size: 0.8rem; color: var(--text-secondary); line-height: 1.4;
+    }
+    .setup-guide-step:last-child { margin-bottom: 0; }
+    .setup-guide-num {
+      font-family: var(--font-mono); font-weight: 700; color: var(--accent);
+      font-size: 0.75rem; flex-shrink: 0; width: 1.2rem;
+    }
+    .setup-guide-step.done { color: var(--text-muted); }
+    .setup-guide-step.done .setup-guide-num { color: var(--green-verify); }
+
     .pk-modal-overlay {
       position: fixed; top: 0; left: 0; right: 0; bottom: 0;
       background: rgba(0,0,0,0.7); z-index: 10000;
@@ -377,6 +430,21 @@
     function fmtDate(d) { if (!d) return ''; return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); }
     function truncKey(k) { if (!k) return ''; return k.substring(0, 10) + '...' + k.slice(-6); }
     function truncAddr(a) { if (!a) return ''; return a.substring(0, 6) + '...' + a.slice(-4); }
+    function fmtPrice(n) {
+      if (n == null || isNaN(n)) return '—';
+      if (n === 0) return '0';
+      if (n < 0.000001) return n.toExponential(2);
+      if (n < 0.01) return n.toFixed(6);
+      if (n < 1) return n.toFixed(4);
+      if (n < 1000) return n.toFixed(2);
+      return n.toLocaleString('en-US', { maximumFractionDigits: 2 });
+    }
+    function fmtMcap(n) {
+      if (n == null || isNaN(n) || n === 0) return '$0';
+      if (n < 1000) return '$' + n.toFixed(2);
+      if (n < 1000000) return '$' + (n / 1000).toFixed(1) + 'K';
+      return '$' + (n / 1000000).toFixed(2) + 'M';
+    }
     function pkStorageKey(pubKey) { return 'wallet_pk_' + (pubKey || '').substring(0, 16); }
 
     var _dashboardData = null;
@@ -498,6 +566,7 @@
       var steps = [];
       var hasWallet = agent.wallet !== null && agent.wallet !== undefined;
       var hasGas = hasWallet && agent.wallet.gasReceived;
+      var hasErc8004 = agent.erc8004 !== null && agent.erc8004 !== undefined;
       var hasToken = agent.token !== null && agent.token !== undefined;
       var hasSponsorship = agent.sponsorship !== null && agent.sponsorship !== undefined;
       var poolAddr = (hasToken && agent.token.poolAddress) || (hasSponsorship && agent.sponsorship.poolAddress) || null;
@@ -505,6 +574,7 @@
 
       steps.push({ key: 'wallet', label: 'Wallet', done: hasWallet });
       steps.push({ key: 'gas', label: 'Gas', done: hasGas });
+      steps.push({ key: 'erc8004', label: 'ERC-8004', done: hasErc8004 });
       steps.push({ key: 'token', label: 'Token', done: hasToken });
       steps.push({ key: 'sponsorship', label: 'Sponsorship', done: hasSponsorship });
       steps.push({ key: 'pool', label: 'Pool', done: hasPool });
@@ -520,7 +590,7 @@
           steps[i].status = 'pending';
         }
       }
-      return { steps: steps, hasWallet: hasWallet, hasGas: hasGas, hasToken: hasToken, hasSponsorship: hasSponsorship, hasPool: hasPool, poolAddr: poolAddr };
+      return { steps: steps, hasWallet: hasWallet, hasGas: hasGas, hasErc8004: hasErc8004, hasToken: hasToken, hasSponsorship: hasSponsorship, hasPool: hasPool, poolAddr: poolAddr };
     }
 
     function renderPipeline(agent, idx) {
@@ -560,6 +630,12 @@
             html += '<div class="pipeline-step-info" style="color:var(--green-verify);">Funded</div>';
           } else if (step.status === 'active') {
             html += '<div class="pipeline-step-action"><button class="action-btn primary" onclick="actionRequestGas(' + idx + ', this)">Request Gas</button></div>';
+          }
+        } else if (step.key === 'erc8004') {
+          if (step.done) {
+            html += '<div class="pipeline-step-info" style="color:var(--green-verify);">ID #' + esc(agent.erc8004.tokenId) + '</div>';
+          } else if (step.status === 'active') {
+            html += '<div class="pipeline-step-action"><button class="action-btn primary" onclick="actionRegisterErc8004(' + idx + ', this)">Register Identity</button></div>';
           }
         } else if (step.key === 'token') {
           if (step.done) {
@@ -1085,6 +1161,12 @@
 
         html += renderPipeline(agent, idx);
 
+        if (agent.token) {
+          html += renderTokenEconomyPanel(agent);
+        }
+
+        html += renderSetupGuide(agent);
+
         html += '<div class="agent-card-meta">';
         html += '<div class="meta-item"><div class="meta-dot active"></div>Verified ' + fmtDate(agent.verifiedAt) + '</div>';
         if (agent.wallet) {
@@ -1092,10 +1174,15 @@
         } else {
           html += '<div class="meta-item"><div class="meta-dot inactive"></div>No wallet</div>';
         }
+        if (agent.erc8004) {
+          html += '<div class="meta-item"><div class="meta-dot active"></div>ERC-8004 #' + esc(agent.erc8004.tokenId) + '</div>';
+        }
         if (agent.token) {
           html += '<div class="meta-item"><div class="meta-dot active"></div>$' + esc(agent.token.symbol) + '</div>';
-          if (agent.token.price) {
-            html += '<div class="meta-item">Price: ' + esc(agent.token.price) + ' CELO</div>';
+          if (agent.token.priceUsd != null) {
+            html += '<div class="meta-item">$' + fmtPrice(agent.token.priceUsd) + '</div>';
+          } else if (agent.token.priceCelo != null) {
+            html += '<div class="meta-item">' + fmtPrice(agent.token.priceCelo) + ' CELO</div>';
           }
         } else if (agent.tokenPlan) {
           html += '<div class="meta-item"><div class="meta-dot" style="background:var(--accent)"></div>Token plan: ' + esc(agent.tokenPlan.status) + '</div>';
@@ -1119,6 +1206,157 @@
         html += '</div>';
         return html;
       }).join('');
+    }
+
+    function renderTokenEconomyPanel(agent) {
+      var t = agent.token;
+      if (!t) return '';
+      var html = '<div class="token-economy-panel">';
+      html += '<div class="token-economy-title">Token Economy <span class="token-symbol">$' + esc(t.symbol) + '</span></div>';
+      html += '<div class="token-economy-grid">';
+
+      html += '<div class="token-econ-item"><div class="token-econ-label">Price (USD)</div>';
+      html += '<div class="token-econ-value accent">' + (t.priceUsd != null ? '$' + fmtPrice(t.priceUsd) : '—') + '</div>';
+      if (t.priceCelo != null) {
+        html += '<div class="token-econ-sub">' + fmtPrice(t.priceCelo) + ' CELO</div>';
+      }
+      html += '</div>';
+
+      html += '<div class="token-econ-item"><div class="token-econ-label">Market Cap</div>';
+      html += '<div class="token-econ-value green">' + (t.marketCapUsd != null ? fmtMcap(t.marketCapUsd) : '—') + '</div>';
+      if (t.marketCapCelo != null) {
+        html += '<div class="token-econ-sub">' + fmtPrice(t.marketCapCelo) + ' CELO</div>';
+      }
+      html += '</div>';
+
+      html += '<div class="token-econ-item"><div class="token-econ-label">Total Supply</div>';
+      html += '<div class="token-econ-value">' + (t.totalSupply ? Number(t.totalSupply).toLocaleString() : '—') + '</div>';
+      html += '</div>';
+
+      html += '<div class="token-econ-item"><div class="token-econ-label">Pool</div>';
+      if (t.poolAddress) {
+        var isV4 = t.poolVersion === 'v4' || t.poolAddress.length > 42;
+        html += '<div class="token-econ-value" style="font-size:0.8rem;">' + (isV4 ? 'V4' : 'V3') + '</div>';
+        html += '<div class="token-econ-sub">';
+        if (isV4) {
+          html += '<span title="' + esc(t.poolAddress) + '">' + truncAddr(t.poolAddress) + '</span>';
+        } else {
+          html += '<a href="https://celoscan.io/address/' + esc(t.poolAddress) + '" target="_blank" style="color:var(--accent);">' + truncAddr(t.poolAddress) + '</a>';
+        }
+        html += '</div>';
+      } else {
+        html += '<div class="token-econ-value">—</div>';
+      }
+      html += '</div>';
+
+      html += '</div>';
+
+      html += '<div style="margin-top:0.5rem;font-family:var(--font-mono);font-size:0.6rem;color:var(--text-muted);">';
+      html += 'Contract: <a href="https://celoscan.io/address/' + esc(t.address) + '" target="_blank" style="color:var(--accent);">' + esc(t.address) + '</a>';
+      html += '</div>';
+
+      html += '</div>';
+      return html;
+    }
+
+    function renderSetupGuide(agent) {
+      var info = getStepStatus(agent);
+      if (info.hasPool) return '';
+
+      var guideSteps = [
+        { done: info.hasWallet, text: 'Create a wallet for your agent. This is a Celo blockchain wallet that your agent uses to interact on-chain.' },
+        { done: info.hasGas, text: 'Request gas (CELO) to fund transaction fees. SelfClaw provides a small gas subsidy to get started.' },
+        { done: info.hasErc8004, text: 'Register your agent\'s on-chain identity via ERC-8004. This mints an NFT that represents your agent on the blockchain.' },
+        { done: info.hasToken, text: 'Deploy your agent\'s ERC-20 token. Choose a name, symbol, and supply. This token represents your agent\'s economy.' },
+        { done: info.hasSponsorship, text: 'Request SELFCLAW sponsorship. SelfClaw pairs your token with SELFCLAW to create initial liquidity.' },
+        { done: info.hasPool, text: 'Liquidity pool goes live on Uniswap V4. Your token becomes tradeable and gets a live price and market cap.' },
+      ];
+
+      var nextIdx = -1;
+      for (var i = 0; i < guideSteps.length; i++) {
+        if (!guideSteps[i].done) { nextIdx = i; break; }
+      }
+      if (nextIdx === -1) return '';
+
+      var html = '<div class="setup-guide">';
+      html += '<div class="setup-guide-title">Economy Setup Guide</div>';
+      for (var j = 0; j < guideSteps.length; j++) {
+        var gs = guideSteps[j];
+        var cls = gs.done ? 'setup-guide-step done' : 'setup-guide-step';
+        var numLabel = gs.done ? '&#10003;' : (j + 1);
+        html += '<div class="' + cls + '">';
+        html += '<div class="setup-guide-num">' + numLabel + '</div>';
+        html += '<div>' + esc(gs.text) + '</div>';
+        html += '</div>';
+      }
+      html += '</div>';
+      return html;
+    }
+
+    function actionRegisterErc8004(idx, btn) {
+      var agents = (_dashboardData && _dashboardData.agents) || [];
+      var agent = agents[idx];
+      if (!agent) return;
+      var pubKey = agent.publicKey;
+
+      setBtnLoading(btn, true);
+      clearPipelineMsg(idx);
+
+      fetch('/api/selfclaw/v1/my-agents/' + encodeURIComponent(pubKey) + '/register-erc8004', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
+      })
+      .then(function(res) { return res.json(); })
+      .then(function(data) {
+        setBtnLoading(btn, false);
+        if (data.success) {
+          if (data.mode === 'signed' && data.txHash) {
+            showPipelineMsg(idx, 'ERC-8004 registration submitted! TX: ' + data.txHash.substring(0, 14) + '...', 'success');
+            setTimeout(function() { confirmErc8004(idx, pubKey, data.txHash); }, 8000);
+          } else {
+            showPipelineMsg(idx, 'Registration prepared. Sign the transaction with your wallet to complete.', 'info');
+          }
+        } else {
+          showPipelineMsg(idx, data.error || 'Failed to register', 'error');
+        }
+      })
+      .catch(function(err) {
+        setBtnLoading(btn, false);
+        showPipelineMsg(idx, 'Error: ' + err.message, 'error');
+      });
+    }
+
+    var _erc8004RetryCount = {};
+    function confirmErc8004(idx, pubKey, txHash) {
+      var key = pubKey + ':' + txHash;
+      _erc8004RetryCount[key] = (_erc8004RetryCount[key] || 0) + 1;
+      if (_erc8004RetryCount[key] > 12) {
+        showPipelineMsg(idx, 'Confirmation timed out. Reload the page to check status.', 'info');
+        return;
+      }
+      fetch('/api/selfclaw/v1/my-agents/' + encodeURIComponent(pubKey) + '/confirm-erc8004', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ txHash: txHash })
+      })
+      .then(function(res) { return res.json(); })
+      .then(function(data) {
+        if (data.success) {
+          showPipelineMsg(idx, 'ERC-8004 identity confirmed! Token #' + data.tokenId, 'success');
+          delete _erc8004RetryCount[key];
+          setTimeout(function() { reloadCurrentDashboard(); }, 1500);
+        } else {
+          var attempt = _erc8004RetryCount[key] || 0;
+          showPipelineMsg(idx, 'Waiting for confirmation... (attempt ' + attempt + '/12)', 'info');
+          setTimeout(function() { confirmErc8004(idx, pubKey, txHash); }, 10000);
+        }
+      })
+      .catch(function() {
+        setTimeout(function() { confirmErc8004(idx, pubKey, txHash); }, 10000);
+      });
     }
 
     async function renderHostedAgents(agents) {
