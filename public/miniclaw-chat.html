@@ -302,12 +302,12 @@
       <div class="welcome-text" id="welcome-text">Say hello! I'm still learning about myself — help me figure out who I am.</div>
     </div>
 
-    <div id="chat-messages" class="chat-messages" style="display:none;"></div>
-
-    <div class="typing-indicator" id="typing-indicator">
-      <div class="typing-row">
-        <div class="typing-dots"><span></span><span></span><span></span></div>
-        <div class="typing-label">thinking</div>
+    <div id="chat-messages" class="chat-messages" style="display:none;">
+      <div class="typing-indicator" id="typing-indicator">
+        <div class="typing-row">
+          <div class="typing-dots"><span></span><span></span><span></span></div>
+          <div class="typing-label">thinking</div>
+        </div>
       </div>
     </div>
 
@@ -428,6 +428,7 @@
 
     function addMessageToUI(role, content, time) {
       var el = document.getElementById('chat-messages');
+      var typingEl = document.getElementById('typing-indicator');
       var msgDiv = document.createElement('div');
       msgDiv.className = 'msg ' + (role === 'user' ? 'msg-user' : 'msg-bot');
       if (role === 'user') {
@@ -441,7 +442,7 @@
         timeEl.textContent = formatTime(time);
         msgDiv.appendChild(timeEl);
       }
-      el.appendChild(msgDiv);
+      el.insertBefore(msgDiv, typingEl);
       scrollToBottom();
       return msgDiv;
     }
@@ -573,7 +574,10 @@
         if (data.conversationId) conversationId = data.conversationId;
 
         var messagesEl = document.getElementById('chat-messages');
+        var typingEl = document.getElementById('typing-indicator');
         messagesEl.innerHTML = '';
+        messagesEl.appendChild(typingEl);
+        typingEl.style.display = 'none';
 
         if (!data.messages || data.messages.length === 0) {
           messagesEl.style.display = 'none';
