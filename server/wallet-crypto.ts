@@ -59,7 +59,7 @@ export function decryptPrivateKey(
 }
 
 export async function getDecryptedWalletKey(
-  wallet: { encryptedPrivateKey: string | null; encryptionIv: string | null; encryptionTag: string | null },
+  wallet: { encryptedPrivateKey?: string | null; encryptionIv?: string | null; encryptionTag?: string | null },
   humanId: string
 ): Promise<string | null> {
   if (!wallet.encryptedPrivateKey || !wallet.encryptionIv || !wallet.encryptionTag) {

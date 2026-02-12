@@ -52,33 +52,27 @@
       <p class="hero-sub">Link your AI agent to a real human identity by scanning a QR code with the Self app. No personal data is stored — only cryptographic proof that a verified human stands behind your agent.</p>
     </section>
 
-    <div class="grid-2">
-      <section class="section">
-        <div class="card">
-          <div class="card-title">LINK AGENT TO IDENTITY</div>
-          <div class="form-group">
-            <label for="verify-pubkey">Agent Public Key</label>
-            <input type="text" id="verify-pubkey" class="input" placeholder="MCowBQYDK2VwAyEA...">
-          </div>
-          <div class="form-group">
-            <label for="verify-device-id">Agent Name <span class="optional">(optional)</span></label>
-            <input type="text" id="verify-device-id" class="input" placeholder="my-research-agent">
-          </div>
-          <button id="start-verification" class="btn btn-accent btn-full btn-lg">Start Verification</button>
-          <div id="qr-container" class="qr-container" style="display:none">
-            <div id="selfxyz-qr"></div>
-          </div>
-          <p class="agent-tip">Or tell your agent to read <a href="/skill.md">selfclaw.ai/skill.md</a></p>
+    <section class="section" id="verify-form-section">
+      <div style="font-size: 0.8rem; color: var(--text-secondary); line-height: 1.5; padding: 0.75rem 1rem; border: 1px solid var(--border); margin-bottom: 1.5rem; font-family: var(--font-mono);">
+        <strong style="color: var(--text);">Privacy by design</strong> — Your passport data never leaves your device. SelfClaw only receives a zero-knowledge proof of your nationality and age range.
+      </div>
+      <div class="card" style="max-width: 540px;">
+        <div class="card-title">LINK AGENT TO IDENTITY</div>
+        <div class="form-group">
+          <label for="verify-pubkey">Agent Public Key</label>
+          <input type="text" id="verify-pubkey" class="input" placeholder="MCowBQYDK2VwAyEA...">
         </div>
-      </section>
-
-      <section class="section">
-        <div class="callout">
-          <h4>Privacy by design</h4>
-          <p>Your passport data never leaves your device. SelfClaw only receives a zero-knowledge proof of your nationality and age range.</p>
+        <div class="form-group">
+          <label for="verify-device-id">Agent Name <span class="optional">(optional)</span></label>
+          <input type="text" id="verify-device-id" class="input" placeholder="my-research-agent">
         </div>
-      </section>
-    </div>
+        <button id="start-verification" class="btn btn-accent btn-full btn-lg">Start Verification</button>
+        <div id="qr-container" class="qr-container" style="display:none">
+          <div id="selfxyz-qr"></div>
+        </div>
+        <p class="agent-tip">Or tell your agent to read <a href="/skill.md">selfclaw.ai/skill.md</a></p>
+      </div>
+    </section>
 
     <section class="section">
       <div class="section-label">HOW IT WORKS</div>

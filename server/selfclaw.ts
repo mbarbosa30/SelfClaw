@@ -1270,10 +1270,19 @@ router.get("/v1/selfclaw-sponsorship", publicApiLimiter, async (_req: Request, r
         getV3PoolState(SELFCLAW_CELO_V3_POOL),
         fetch('https://api.coingecko.com/api/v3/simple/price?ids=celo&vs_currencies=usd').then((r: any) => r.json()).catch(() => null),
       ]);
-      selfclawPriceInCelo = poolState.price;
+      const SELFCLAW_ADDRESS = '0xCD88f99Adf75A9110c0bcd22695A32A20eC54ECb'.toLowerCase();
+      const selfclawIsToken0 = poolState.token0.toLowerCase() === SELFCLAW_ADDRESS;
+      const rawPrice = parseFloat(poolState.price);
+      selfclawPriceInCelo = selfclawIsToken0 ? rawPrice.toFixed(18) : (1 / rawPrice).toFixed(18);
+
       if (celoRes?.celo?.usd) {
         celoUsd = celoRes.celo.usd;
         selfclawPriceUsd = parseFloat(selfclawPriceInCelo!) * celoUsd!;
+        if (selfclawPriceUsd > 1) {
+          console.warn(`[selfclaw] SELFCLAW price sanity check failed: $${selfclawPriceUsd}/token seems too high, likely inverted`);
+          selfclawPriceUsd = (1 / rawPrice) * celoUsd!;
+          selfclawPriceInCelo = (1 / rawPrice).toFixed(18);
+        }
         sponsorValueUsd = parseFloat(balance) * selfclawPriceUsd;
         halfValueUsd = sponsorValueUsd / 2;
       }

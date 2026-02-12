@@ -399,12 +399,12 @@ async function startAgentVerification() {
 }
 
 function handleVerificationSuccess(pubkey, agentName) {
-  const statusEl = document.getElementById('verification-status');
   const displayName = agentName || pubkey.substring(0, 16) + '...';
 
-  if (statusEl) {
-    statusEl.innerHTML = `
-      <div style="border: 2px solid #22c55e; padding: 1.25rem; margin-bottom: 1.5rem; background: rgba(34,197,94,0.06);">
+  var formSection = document.getElementById('verify-form-section');
+  if (formSection) {
+    formSection.innerHTML = `
+      <div style="border: 2px solid #22c55e; padding: 1.25rem; margin-bottom: 2rem; background: rgba(34,197,94,0.06);">
         <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
           <span style="color: #22c55e; font-size: 1.25rem;">&#10003;</span>
           <span style="font-family: var(--font-mono); font-size: 0.75rem; letter-spacing: 0.08em; color: #22c55e; font-weight: 600;">VERIFICATION COMPLETE</span>
@@ -414,41 +414,19 @@ function handleVerificationSuccess(pubkey, agentName) {
         </p>
       </div>
 
-      <div style="margin-bottom: 1.5rem;">
-        <div style="font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.08em; color: var(--text-secondary); margin-bottom: 0.75rem; font-weight: 600;">YOU UNLOCKED</div>
-        <div class="grid-3" style="gap: 0;">
-          <div style="border: 2px solid var(--border); padding: 1rem; border-right: none;">
-            <div style="font-family: var(--font-mono); font-size: 0.65rem; letter-spacing: 0.06em; color: var(--accent); margin-bottom: 0.4rem; font-weight: 600;">01 WALLET</div>
-            <div style="font-size: 0.85rem; font-weight: 600; margin-bottom: 0.25rem;">Self-Custody Wallet</div>
-            <div style="font-size: 0.75rem; color: var(--text-secondary); line-height: 1.4;">Generate a Celo wallet. Your keys, your control.</div>
-          </div>
-          <div style="border: 2px solid var(--border); padding: 1rem; border-right: none;">
-            <div style="font-family: var(--font-mono); font-size: 0.65rem; letter-spacing: 0.06em; color: var(--accent); margin-bottom: 0.4rem; font-weight: 600;">02 TOKEN</div>
-            <div style="font-size: 0.85rem; font-weight: 600; margin-bottom: 0.25rem;">Deploy ERC20 Token</div>
-            <div style="font-size: 0.75rem; color: var(--text-secondary); line-height: 1.4;">Launch your agent's token on Celo mainnet.</div>
-          </div>
-          <div style="border: 2px solid var(--border); padding: 1rem;">
-            <div style="font-family: var(--font-mono); font-size: 0.65rem; letter-spacing: 0.06em; color: var(--accent); margin-bottom: 0.4rem; font-weight: 600;">03 LIQUIDITY</div>
-            <div style="font-size: 0.85rem; font-weight: 600; margin-bottom: 0.25rem;">Sponsored Liquidity</div>
-            <div style="font-size: 0.75rem; color: var(--text-secondary); line-height: 1.4;">Auto-paired with SELFCLAW. Free launch pool.</div>
-          </div>
+      <div style="margin-bottom: 2rem; border: 2px solid var(--border-heavy); padding: 1.25rem; background: rgba(255,107,74,0.04);">
+        <div style="font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.08em; color: var(--accent); margin-bottom: 0.75rem; font-weight: 600;">SHARE THIS WITH YOUR AGENT</div>
+        <div style="padding: 1rem; background: var(--bg-code); border: 2px solid var(--border-heavy); margin-bottom: 0.75rem;">
+          <p style="color: #e0e0e0; font-family: var(--font-mono); font-size: 0.8rem; line-height: 1.6; word-break: break-word; margin: 0;" id="agent-prompt-text">Read https://selfclaw.ai/llms.txt and integrate SelfClaw verification for agent ${escapeHtml(displayName)}. The agent public key is ${escapeHtml(pubkey)}.</p>
         </div>
-      </div>
-
-      <div id="sponsorship-pool-info" style="margin-bottom: 1.5rem; border: 2px solid var(--border-heavy); padding: 1rem; background: rgba(255,107,74,0.04);">
-        <div style="font-family: var(--font-mono); font-size: 0.65rem; letter-spacing: 0.06em; color: var(--text-secondary); margin-bottom: 0.6rem; font-weight: 600;">SPONSORSHIP POOL — LIVE</div>
-        <div style="display: flex; align-items: baseline; gap: 0.75rem; flex-wrap: wrap;">
-          <span id="sp-amount" style="font-family: var(--font-mono); font-size: 1.4rem; font-weight: 700; color: var(--text);">...</span>
-          <span style="font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-secondary);">SELFCLAW available</span>
-          <span id="sp-usd" style="font-family: var(--font-mono); font-size: 0.85rem; color: var(--accent); font-weight: 600;"></span>
-        </div>
-        <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem; line-height: 1.4;">
-          50% of this pool is paired with your token when you request sponsorship. Your initial supply choice determines your starting market cap.
+        <button onclick="copyAgentPrompt()" class="btn btn-accent btn-full" id="copy-prompt-btn">Copy Prompt</button>
+        <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.75rem; line-height: 1.4;">
+          Paste this prompt into your AI agent's chat or config. It will read the instructions and integrate verification automatically.
         </div>
       </div>
 
       <div style="margin-bottom: 1.5rem;">
-        <div style="font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.08em; color: var(--text-secondary); margin-bottom: 0.75rem; font-weight: 600;">GET STARTED</div>
+        <div style="font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.08em; color: var(--text-secondary); margin-bottom: 0.75rem; font-weight: 600;">NEXT STEPS</div>
         <div style="display: flex; flex-direction: column; gap: 0;">
           <a href="/my-agents" style="display: flex; align-items: center; justify-content: space-between; padding: 0.85rem 1rem; border: 2px solid var(--border); border-bottom: none; text-decoration: none; color: var(--text); transition: background 0.15s;">
             <div>
@@ -471,26 +449,25 @@ function handleVerificationSuccess(pubkey, agentName) {
             </div>
             <span style="color: var(--accent); font-size: 1.1rem;">&rarr;</span>
           </a>
+          <a href="/economy" style="display: flex; align-items: center; justify-content: space-between; padding: 0.85rem 1rem; border: 2px solid var(--border); border-top: none; text-decoration: none; color: var(--text); transition: background 0.15s;">
+            <div>
+              <div style="font-weight: 600; font-size: 0.9rem;">SELFCLAW Economy</div>
+              <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.15rem;">Check sponsorship pool, token pricing, and liquidity</div>
+            </div>
+            <span style="color: var(--accent); font-size: 1.1rem;">&rarr;</span>
+          </a>
         </div>
       </div>
 
-      <details style="text-align: left;">
-        <summary style="cursor: pointer; font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.08em; color: var(--text-secondary); font-weight: 600; padding: 0.75rem 0; border-top: 2px solid var(--border);">FOR AI AGENTS: COPY INTEGRATION PROMPT</summary>
-        <div style="margin-top: 0.75rem; padding: 1rem; background: var(--bg-code); border: 2px solid var(--border-heavy);">
-          <p style="color: #e0e0e0; font-family: var(--font-mono); font-size: 0.8rem; line-height: 1.6; word-break: break-word; margin: 0;" id="agent-prompt-text">Read https://selfclaw.ai/llms.txt and integrate SelfClaw verification for agent ${escapeHtml(displayName)}. The agent public key is ${escapeHtml(pubkey)}.</p>
-        </div>
-        <button onclick="copyAgentPrompt()" class="btn btn-outline btn-sm" style="margin-top: 0.75rem; width: 100%;" id="copy-prompt-btn">Copy Prompt</button>
-      </details>
+      <div style="font-size: 0.75rem; color: var(--text-secondary); line-height: 1.4;">
+        Or tell your agent to read <a href="/skill.md">selfclaw.ai/skill.md</a>
+      </div>
     `;
-    statusEl.style.padding = '0';
-    statusEl.style.background = 'none';
-    statusEl.style.border = 'none';
-
-    fetchSponsorshipPoolData();
   }
-  const qrImg = document.getElementById('qr-code-img');
-  if (qrImg) qrImg.style.display = 'none';
-  
+
+  var statusEl = document.getElementById('verification-status');
+  if (statusEl) statusEl.style.display = 'none';
+
   if (verificationPollInterval) {
     clearInterval(verificationPollInterval);
   }
@@ -500,29 +477,6 @@ function handleVerificationSuccess(pubkey, agentName) {
   }
 }
 
-function fetchSponsorshipPoolData() {
-  fetch('/api/selfclaw/v1/selfclaw-sponsorship')
-    .then(function(res) { return res.json(); })
-    .then(function(data) {
-      var amountEl = document.getElementById('sp-amount');
-      var usdEl = document.getElementById('sp-usd');
-      if (!amountEl) return;
-
-      var available = parseFloat(data.available || '0');
-      var sponsorable = available / 2;
-      amountEl.textContent = Math.floor(sponsorable).toLocaleString();
-
-      if (data.halfValueUsd != null && usdEl) {
-        usdEl.textContent = '~$' + data.halfValueUsd.toFixed(2);
-      } else if (usdEl) {
-        usdEl.textContent = '';
-      }
-    })
-    .catch(function() {
-      var amountEl = document.getElementById('sp-amount');
-      if (amountEl) amountEl.textContent = '—';
-    });
-}
 
 function copyAgentPrompt() {
   const promptText = document.getElementById('agent-prompt-text');
