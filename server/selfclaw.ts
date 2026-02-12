@@ -1,7 +1,7 @@
 import { Router, Request, Response } from "express";
 import rateLimit from "express-rate-limit";
 import { db } from "./db.js";
-import { verifiedBots, verificationSessions, sponsoredAgents, trackedPools, agentWallets, agentActivity, tokenPlans, revenueEvents, agentServices, costEvents, tokenPriceSnapshots, type InsertVerifiedBot, type InsertVerificationSession } from "../shared/schema.js";
+import { verifiedBots, verificationSessions, sponsoredAgents, trackedPools, agentWallets, agentActivity, tokenPlans, revenueEvents, agentServices, costEvents, tokenPriceSnapshots, hostedAgents, type InsertVerifiedBot, type InsertVerificationSession } from "../shared/schema.js";
 import { eq, and, gt, lt, sql, desc, count, isNotNull } from "drizzle-orm";
 import { SelfBackendVerifier, AllIds, DefaultConfigStore } from "@selfxyz/core";
 import { SelfAppBuilder } from "@selfxyz/qrcode";
@@ -4877,6 +4877,618 @@ router.post("/v1/my-agents/:publicKey/request-sponsorship", verificationLimiter,
     });
   } catch (error: any) {
     console.error("[selfclaw] my-agents request-sponsorship error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+async function authenticateHumanForMiniclaw(req: any, res: Response, miniclawId: string): Promise<{ humanId: string; miniclaw: any } | null> {
+  if (!req.session?.isAuthenticated || !req.session?.humanId) {
+    res.status(401).json({ error: "Login required." });
+    return null;
+  }
+  const humanId = req.session.humanId;
+  const results = await db.select().from(hostedAgents)
+    .where(sql`${hostedAgents.id} = ${miniclawId} AND (${hostedAgents.humanId} = ${humanId} OR ${hostedAgents.walletAddress} = ${humanId})`)
+    .limit(1);
+  if (results.length === 0) {
+    res.status(403).json({ error: "Miniclaw not found or does not belong to your identity." });
+    return null;
+  }
+  return { humanId, miniclaw: results[0] };
+}
+
+router.post("/v1/miniclaws/:id/setup-wallet", verificationLimiter, async (req: any, res: Response) => {
+  try {
+    const auth = await authenticateHumanForMiniclaw(req, res, req.params.id);
+    if (!auth) return;
+
+    const mcPublicKey = auth.miniclaw.publicKey;
+    const existingWallet = await getAgentWallet(mcPublicKey);
+    if (existingWallet) {
+      return res.json({
+        success: true,
+        alreadyExists: true,
+        address: existingWallet.address,
+        gasReceived: existingWallet.gasReceived,
+      });
+    }
+
+    const { Wallet } = await import('ethers');
+    const wallet = Wallet.createRandom();
+
+    const result = await createAgentWallet(auth.humanId, mcPublicKey, wallet.address);
+    if (!result.success) {
+      return res.status(400).json({ error: result.error });
+    }
+
+    logActivity("wallet_creation", auth.humanId, mcPublicKey, "miniclaw", {
+      address: wallet.address, method: "miniclaw-dashboard", miniclawId: req.params.id
+    });
+
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
+    res.setHeader("Pragma", "no-cache");
+    res.setHeader("Expires", "0");
+
+    res.json({
+      success: true,
+      address: wallet.address,
+      privateKey: wallet.privateKey,
+      warning: "SAVE THIS PRIVATE KEY NOW. It will NOT be shown again. SelfClaw never stores private keys.",
+    });
+  } catch (error: any) {
+    console.error("[selfclaw] miniclaw setup-wallet error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post("/v1/miniclaws/:id/request-gas", verificationLimiter, async (req: any, res: Response) => {
+  try {
+    const auth = await authenticateHumanForMiniclaw(req, res, req.params.id);
+    if (!auth) return;
+
+    const mcPublicKey = auth.miniclaw.publicKey;
+    const result = await sendGasSubsidy(auth.humanId, mcPublicKey);
+    if (!result.success) {
+      return res.status(400).json({
+        error: result.error,
+        alreadyReceived: result.alreadyReceived || false
+      });
+    }
+
+    logActivity("gas_request", auth.humanId, mcPublicKey, "miniclaw", {
+      txHash: result.txHash, amountCelo: result.amountCelo, method: "miniclaw-dashboard", miniclawId: req.params.id
+    });
+
+    res.json({
+      success: true,
+      txHash: result.txHash,
+      amountCelo: result.amountCelo,
+    });
+  } catch (error: any) {
+    console.error("[selfclaw] miniclaw request-gas error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post("/v1/miniclaws/:id/deploy-token", verificationLimiter, async (req: any, res: Response) => {
+  try {
+    const auth = await authenticateHumanForMiniclaw(req, res, req.params.id);
+    if (!auth) return;
+
+    const mcPublicKey = auth.miniclaw.publicKey;
+    const { name, symbol, initialSupply } = req.body;
+    if (!name || !symbol || !initialSupply) {
+      return res.status(400).json({ error: "name, symbol, and initialSupply are required" });
+    }
+
+    const walletInfo = await getAgentWallet(mcPublicKey);
+    if (!walletInfo?.address) {
+      return res.status(400).json({ error: "No wallet found. Create a wallet first." });
+    }
+
+    const decimals = 18;
+    const supplyWithDecimals = parseUnits(initialSupply.toString(), decimals);
+    const { AbiCoder } = await import('ethers');
+    const abiCoder = new AbiCoder();
+    const encodedArgs = abiCoder.encode(
+      ['string', 'string', 'uint256'],
+      [name, symbol, supplyWithDecimals.toString()]
+    ).slice(2);
+
+    const deployData = (TOKEN_FACTORY_BYTECODE + encodedArgs) as `0x${string}`;
+    const fromAddr = walletInfo.address as `0x${string}`;
+    const nonce = await viemPublicClient.getTransactionCount({ address: fromAddr });
+    const gasPrice = await viemPublicClient.getGasPrice();
+    const predictedAddress = getContractAddress({ from: fromAddr, nonce: BigInt(nonce) });
+
+    let estimatedGas = BigInt(2000000);
+    try {
+      estimatedGas = await viemPublicClient.estimateGas({
+        account: fromAddr, data: deployData, value: BigInt(0),
+      });
+      estimatedGas = estimatedGas * BigInt(120) / BigInt(100);
+    } catch (e: any) {
+      console.warn(`[selfclaw] Gas estimation failed, using default: ${e.message}`);
+    }
+
+    const balance = await viemPublicClient.getBalance({ address: fromAddr });
+    const txCost = estimatedGas * gasPrice;
+
+    logActivity("token_deployment", auth.humanId, mcPublicKey, "miniclaw", {
+      predictedTokenAddress: predictedAddress, symbol, name, supply: initialSupply, method: "miniclaw-dashboard", miniclawId: req.params.id
+    });
+
+    res.json({
+      success: true,
+      unsignedTx: {
+        from: walletInfo.address,
+        data: deployData,
+        gas: estimatedGas.toString(),
+        gasPrice: gasPrice.toString(),
+        chainId: 42220,
+        value: "0",
+        nonce,
+      },
+      predictedTokenAddress: predictedAddress,
+      name, symbol, supply: initialSupply,
+      walletBalance: formatUnits(balance, 18) + " CELO",
+      hasSufficientGas: balance >= txCost,
+      estimatedCost: formatUnits(txCost, 18) + " CELO",
+    });
+  } catch (error: any) {
+    console.error("[selfclaw] miniclaw deploy-token error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post("/v1/miniclaws/:id/register-token", verificationLimiter, async (req: any, res: Response) => {
+  try {
+    const auth = await authenticateHumanForMiniclaw(req, res, req.params.id);
+    if (!auth) return;
+
+    const mcPublicKey = auth.miniclaw.publicKey;
+    const { tokenAddress, txHash } = req.body;
+    if (!tokenAddress || !txHash) {
+      return res.status(400).json({ error: "tokenAddress and txHash are required" });
+    }
+
+    if (!/^0x[0-9a-fA-F]{40}$/.test(tokenAddress)) {
+      return res.status(400).json({ error: "Invalid tokenAddress format" });
+    }
+
+    let onChainName = '', onChainSymbol = '', onChainDecimals = 18, onChainSupply = '';
+    try {
+      const ERC20_ABI = [
+        { name: 'name', type: 'function', stateMutability: 'view', inputs: [], outputs: [{ name: '', type: 'string' }] },
+        { name: 'symbol', type: 'function', stateMutability: 'view', inputs: [], outputs: [{ name: '', type: 'string' }] },
+        { name: 'decimals', type: 'function', stateMutability: 'view', inputs: [], outputs: [{ name: '', type: 'uint8' }] },
+        { name: 'totalSupply', type: 'function', stateMutability: 'view', inputs: [], outputs: [{ name: '', type: 'uint256' }] },
+      ] as const;
+      const tokenAddr = tokenAddress as `0x${string}`;
+      const [n, s, d, ts] = await Promise.all([
+        viemPublicClient.readContract({ address: tokenAddr, abi: ERC20_ABI, functionName: 'name' }).catch(() => null),
+        viemPublicClient.readContract({ address: tokenAddr, abi: ERC20_ABI, functionName: 'symbol' }).catch(() => null),
+        viemPublicClient.readContract({ address: tokenAddr, abi: ERC20_ABI, functionName: 'decimals' }).catch(() => null),
+        viemPublicClient.readContract({ address: tokenAddr, abi: ERC20_ABI, functionName: 'totalSupply' }).catch(() => null),
+      ]);
+      if (n) onChainName = n as string;
+      if (s) onChainSymbol = s as string;
+      if (d !== null) onChainDecimals = Number(d);
+      if (ts !== null) onChainSupply = formatUnits(ts as bigint, onChainDecimals);
+    } catch (e: any) {
+      console.log(`[selfclaw] Could not read token data: ${e.message}`);
+    }
+
+    if (!onChainName && !onChainSymbol) {
+      return res.status(400).json({ error: "Could not verify token at the provided address." });
+    }
+
+    logActivity("token_registered", auth.humanId, mcPublicKey, "miniclaw", {
+      tokenAddress, txHash, name: onChainName, symbol: onChainSymbol, method: "miniclaw-dashboard", miniclawId: req.params.id
+    });
+
+    res.json({
+      success: true,
+      token: {
+        address: tokenAddress,
+        name: onChainName,
+        symbol: onChainSymbol,
+        decimals: onChainDecimals,
+        totalSupply: onChainSupply,
+      },
+      celoscanUrl: `https://celoscan.io/token/${tokenAddress}`,
+    });
+  } catch (error: any) {
+    console.error("[selfclaw] miniclaw register-token error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post("/v1/miniclaws/:id/register-erc8004", verificationLimiter, async (req: any, res: Response) => {
+  try {
+    const auth = await authenticateHumanForMiniclaw(req, res, req.params.id);
+    if (!auth) return;
+
+    const mcPublicKey = auth.miniclaw.publicKey;
+    const mc = auth.miniclaw;
+    const walletInfo = await getAgentWallet(mcPublicKey);
+    if (!walletInfo || !walletInfo.address) {
+      return res.status(400).json({ error: "No wallet found. Create a wallet first via setup-wallet." });
+    }
+
+    if (!erc8004Service.isReady()) {
+      return res.status(503).json({ error: "ERC-8004 contracts not available yet" });
+    }
+
+    const existingMetadata = (mc.metadata as Record<string, any>) || {};
+    if (existingMetadata.erc8004Minted) {
+      return res.status(400).json({
+        error: "Already registered",
+        tokenId: existingMetadata.erc8004TokenId,
+        explorerUrl: erc8004Service.getExplorerUrl(existingMetadata.erc8004TokenId),
+      });
+    }
+
+    const agentName = req.body.agentName || mc.name;
+    const description = req.body.description || mc.description || `Miniclaw: ${mc.name}`;
+    const domain = "selfclaw.ai";
+
+    const registrationJson = generateRegistrationFile(
+      agentName,
+      description,
+      walletInfo.address,
+      undefined,
+      `https://${domain}`,
+      undefined,
+      true,
+    );
+
+    const registrationURL = `https://${domain}/api/selfclaw/v1/agent/${mcPublicKey}/registration.json`;
+
+    await db.update(hostedAgents)
+      .set({
+        metadata: {
+          ...existingMetadata,
+          erc8004RegistrationJson: registrationJson,
+        }
+      })
+      .where(eq(hostedAgents.id, req.params.id));
+
+    const config = erc8004Service.getConfig();
+    const fromAddr = walletInfo.address as `0x${string}`;
+
+    const callData = encodeFunctionData({
+      abi: [{
+        name: 'register',
+        type: 'function',
+        stateMutability: 'nonpayable',
+        inputs: [{ name: 'agentURI', type: 'string' }],
+        outputs: [{ name: '', type: 'uint256' }],
+      }],
+      functionName: 'register',
+      args: [registrationURL],
+    });
+
+    const nonce = await viemPublicClient.getTransactionCount({ address: fromAddr });
+    const gasPrice = await viemPublicClient.getGasPrice();
+
+    let estimatedGas = BigInt(300000);
+    try {
+      estimatedGas = await viemPublicClient.estimateGas({
+        account: fromAddr,
+        to: config.identityRegistry as `0x${string}`,
+        data: callData,
+        value: BigInt(0),
+      });
+      estimatedGas = estimatedGas * BigInt(120) / BigInt(100);
+    } catch (estimateErr: any) {
+      console.warn(`[selfclaw] ERC-8004 gas estimation failed, using default 300k: ${estimateErr.message}`);
+    }
+
+    const balance = await viemPublicClient.getBalance({ address: fromAddr });
+    const txCost = estimatedGas * gasPrice;
+    const hasSufficientGas = balance >= txCost;
+
+    logActivity("erc8004_registration", auth.humanId, mcPublicKey, "miniclaw", {
+      walletAddress: walletInfo.address, method: "miniclaw-dashboard", miniclawId: req.params.id,
+      registryAddress: config.identityRegistry,
+    });
+
+    res.json({
+      success: true,
+      mode: "unsigned",
+      unsignedTx: {
+        from: walletInfo.address,
+        to: config.identityRegistry,
+        data: callData,
+        gas: estimatedGas.toString(),
+        gasPrice: gasPrice.toString(),
+        chainId: 42220,
+        value: "0",
+        nonce,
+      },
+      agentURI: registrationURL,
+      registrationJson,
+      agentName,
+      description,
+      walletAddress: walletInfo.address,
+      contract: {
+        identityRegistry: config.identityRegistry,
+        reputationRegistry: config.resolver,
+        explorer: config.explorer,
+      },
+      deployment: {
+        estimatedGas: estimatedGas.toString(),
+        estimatedCost: formatUnits(txCost, 18) + " CELO",
+        walletBalance: formatUnits(balance, 18) + " CELO",
+        hasSufficientGas,
+      },
+      nextSteps: [
+        "1. Sign the unsignedTx with your wallet private key",
+        "2. Submit the signed transaction to Celo mainnet (chainId 42220)",
+        "3. Call POST /api/selfclaw/v1/miniclaws/" + req.params.id + "/confirm-erc8004 with {txHash}",
+      ],
+    });
+  } catch (error: any) {
+    console.error("[selfclaw] miniclaw register-erc8004 error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post("/v1/miniclaws/:id/confirm-erc8004", verificationLimiter, async (req: any, res: Response) => {
+  try {
+    const auth = await authenticateHumanForMiniclaw(req, res, req.params.id);
+    if (!auth) return;
+
+    const { txHash } = req.body;
+    if (!txHash) {
+      return res.status(400).json({ error: "txHash is required" });
+    }
+
+    const mc = auth.miniclaw;
+    const existingMetadata = (mc.metadata as Record<string, any>) || {};
+    if (existingMetadata.erc8004Minted) {
+      return res.status(400).json({
+        error: "Already confirmed",
+        tokenId: existingMetadata.erc8004TokenId,
+        explorerUrl: erc8004Service.getExplorerUrl(existingMetadata.erc8004TokenId),
+      });
+    }
+
+    const receipt = await viemPublicClient.getTransactionReceipt({ hash: txHash as `0x${string}` });
+    if (!receipt || receipt.status === "reverted") {
+      return res.status(400).json({ error: "Transaction failed or not found" });
+    }
+
+    let tokenId: string | null = null;
+    try {
+      const transferLog = receipt.logs.find((log: any) =>
+        log.topics[0] === '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef' &&
+        log.topics.length === 4
+      );
+      if (transferLog && transferLog.topics[3]) {
+        tokenId = BigInt(transferLog.topics[3]).toString();
+      }
+    } catch (e: any) {
+      console.log(`[selfclaw] Could not extract token ID: ${e.message}`);
+    }
+
+    const updatedMetadata = {
+      ...existingMetadata,
+      erc8004Minted: true,
+      erc8004TxHash: txHash,
+      erc8004TokenId: tokenId,
+      erc8004MintedAt: new Date().toISOString(),
+    };
+
+    await db.update(hostedAgents)
+      .set({ metadata: updatedMetadata })
+      .where(eq(hostedAgents.id, req.params.id));
+
+    logActivity("erc8004_confirmed", auth.humanId, auth.miniclaw.publicKey, "miniclaw", {
+      txHash, tokenId, method: "miniclaw-dashboard", miniclawId: req.params.id
+    });
+
+    res.json({
+      success: true,
+      tokenId,
+      txHash,
+      explorerUrl: tokenId ? erc8004Service.getExplorerUrl(tokenId) : null,
+    });
+  } catch (error: any) {
+    console.error("[selfclaw] miniclaw confirm-erc8004 error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post("/v1/miniclaws/:id/request-sponsorship", verificationLimiter, async (req: any, res: Response) => {
+  try {
+    const auth = await authenticateHumanForMiniclaw(req, res, req.params.id);
+    if (!auth) return;
+
+    const mcPublicKey = auth.miniclaw.publicKey;
+    const { tokenAddress, tokenSymbol, tokenAmount } = req.body;
+    if (!tokenAddress || !tokenAmount) {
+      return res.status(400).json({ error: "tokenAddress and tokenAmount are required" });
+    }
+
+    const existing = await db.select().from(sponsoredAgents)
+      .where(eq(sponsoredAgents.humanId, auth.humanId)).limit(1);
+    if (existing.length > 0) {
+      return res.status(409).json({
+        error: "This identity has already received a sponsorship",
+        alreadySponsored: true,
+        existingPool: existing[0].poolAddress,
+      });
+    }
+
+    const {
+      getSelfclawBalance, getTokenBalance, getSponsorAddress,
+      createPoolAndAddLiquidity, getNextPositionTokenId, computePoolId, getPoolState,
+      extractPositionTokenIdFromReceipt,
+    } = await import("../lib/uniswap-v4.js");
+
+    const { collectAllV3Fees } = await import("../lib/uniswap-v3.js");
+
+    const rawSponsorKey = process.env.SELFCLAW_SPONSOR_PRIVATE_KEY || process.env.CELO_PRIVATE_KEY;
+    const sponsorKey = rawSponsorKey && !rawSponsorKey.startsWith('0x') ? `0x${rawSponsorKey}` : rawSponsorKey;
+    const sponsorAddress = getSponsorAddress(sponsorKey);
+
+    const agentTokenBalance = await getTokenBalance(tokenAddress, 18, sponsorKey);
+    const requiredAmount = parseFloat(tokenAmount) * 1.06;
+    const heldAmount = parseFloat(agentTokenBalance);
+
+    if (heldAmount < requiredAmount) {
+      return res.status(400).json({
+        error: `Sponsor wallet does not hold enough of your token.`,
+        sponsorWallet: sponsorAddress,
+        has: agentTokenBalance,
+        needs: Math.ceil(requiredAmount).toString(),
+        instructions: `Send ${Math.ceil(requiredAmount)} of your token (${tokenAddress}) to ${sponsorAddress} before requesting sponsorship`,
+      });
+    }
+
+    const selfclawAddress = "0xCD88f99Adf75A9110c0bcd22695A32A20eC54ECb";
+
+    const now = Date.now();
+    if (now - lastV3FeeCollectionTime >= V3_FEE_COLLECTION_COOLDOWN_MS) {
+      try {
+        await collectAllV3Fees(sponsorKey);
+        lastV3FeeCollectionTime = Date.now();
+      } catch (e: any) {
+        console.log(`[selfclaw] V3 fee collection skipped: ${e.message}`);
+      }
+    }
+
+    const availableBalance = await getSelfclawBalance(sponsorKey);
+    const available = parseFloat(availableBalance);
+    if (available <= 0) {
+      return res.status(400).json({ error: "No SELFCLAW available in sponsorship wallet." });
+    }
+
+    const selfclawForPool = Math.floor(available * 0.5 / 1.06).toString();
+
+    const tokenLower = tokenAddress.toLowerCase();
+    const selfclawLower = selfclawAddress.toLowerCase();
+    const token0 = tokenLower < selfclawLower ? tokenAddress : selfclawAddress;
+    const token1 = tokenLower < selfclawLower ? selfclawAddress : tokenAddress;
+    const feeTier = 10000;
+    const tickSpacing = 200;
+    const v4PoolId = computePoolId(token0, token1, feeTier, tickSpacing);
+
+    try {
+      const poolState = await getPoolState(v4PoolId as `0x${string}`);
+      if (poolState.liquidity !== '0') {
+        return res.status(409).json({ error: "A V4 pool already exists for this token pair", v4PoolId });
+      }
+    } catch (_e: any) {}
+
+    const nextTokenIdBefore = await getNextPositionTokenId();
+
+    const result = await createPoolAndAddLiquidity({
+      tokenA: tokenAddress, tokenB: selfclawAddress,
+      amountA: tokenAmount, amountB: selfclawForPool,
+      feeTier, privateKey: sponsorKey,
+    });
+
+    if (!result.success) {
+      return res.status(400).json({ error: result.error });
+    }
+
+    let positionTokenId: string | null = null;
+    if (result.receipt) {
+      positionTokenId = extractPositionTokenIdFromReceipt(result.receipt);
+    }
+    if (!positionTokenId) {
+      const nextTokenIdAfter = await getNextPositionTokenId();
+      if (nextTokenIdAfter > nextTokenIdBefore) {
+        positionTokenId = nextTokenIdBefore.toString();
+      }
+    }
+
+    await db.insert(sponsoredAgents).values({
+      humanId: auth.humanId, publicKey: mcPublicKey,
+      tokenAddress, tokenSymbol: tokenSymbol || 'TOKEN',
+      poolAddress: v4PoolId,
+      v4PositionTokenId: positionTokenId,
+      poolVersion: 'v4',
+      sponsoredAmountCelo: selfclawForPool,
+      sponsorTxHash: result.txHash || '',
+      status: 'completed', completedAt: new Date(),
+    });
+
+    try {
+      await db.insert(trackedPools).values({
+        poolAddress: v4PoolId, tokenAddress,
+        tokenSymbol: tokenSymbol || 'TOKEN',
+        tokenName: req.body.tokenName || tokenSymbol || 'TOKEN',
+        pairedWith: 'SELFCLAW', humanId: auth.humanId,
+        agentPublicKey: mcPublicKey, feeTier,
+        v4PositionTokenId: positionTokenId,
+        poolVersion: 'v4',
+        v4PoolId,
+        initialCeloLiquidity: selfclawForPool,
+        initialTokenLiquidity: tokenAmount,
+      }).onConflictDoNothing();
+    } catch (e: any) {
+      console.error(`[selfclaw] Failed to track pool: ${e.message}`);
+    }
+
+    logActivity("selfclaw_sponsorship", auth.humanId, mcPublicKey, "miniclaw", {
+      tokenAddress, selfclawAmount: selfclawForPool, v4PoolId, positionTokenId, poolVersion: 'v4', method: "miniclaw-dashboard", miniclawId: req.params.id
+    });
+
+    res.json({
+      success: true,
+      pool: {
+        v4PoolId,
+        positionTokenId,
+        tokenAddress, selfclawAmount: selfclawForPool,
+        txHash: result.txHash,
+        poolVersion: 'v4',
+      },
+    });
+  } catch (error: any) {
+    console.error("[selfclaw] miniclaw request-sponsorship error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get("/v1/miniclaws/:id/economics", publicApiLimiter, async (req: any, res: Response) => {
+  try {
+    const results = await db.select().from(hostedAgents)
+      .where(eq(hostedAgents.id, req.params.id)).limit(1);
+    if (results.length === 0) {
+      return res.status(404).json({ error: "Miniclaw not found" });
+    }
+    const mc = results[0];
+    const mcPublicKey = mc.publicKey;
+
+    const wallet = await getAgentWallet(mcPublicKey);
+
+    const sponsorship = await db.select().from(sponsoredAgents)
+      .where(eq(sponsoredAgents.publicKey, mcPublicKey)).limit(1);
+
+    const metadata = (mc.metadata as Record<string, any>) || {};
+
+    res.json({
+      miniclawId: mc.id,
+      name: mc.name,
+      publicKey: mcPublicKey,
+      wallet: wallet ? { address: wallet.address, gasReceived: wallet.gasReceived } : null,
+      erc8004: metadata.erc8004Minted ? {
+        tokenId: metadata.erc8004TokenId,
+        txHash: metadata.erc8004TxHash,
+      } : null,
+      sponsorship: sponsorship.length > 0 ? {
+        status: sponsorship[0].status,
+        poolAddress: sponsorship[0].poolAddress,
+        tokenAddress: sponsorship[0].tokenAddress,
+        tokenSymbol: sponsorship[0].tokenSymbol,
+      } : null,
+    });
+  } catch (error: any) {
+    console.error("[selfclaw] miniclaw economics error:", error);
     res.status(500).json({ error: error.message });
   }
 });

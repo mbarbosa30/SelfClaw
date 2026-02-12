@@ -307,6 +307,7 @@ export const hostedAgents = pgTable("hosted_agents", {
   apiCallsToday: integer("api_calls_today").default(0),
   apiCallsLimit: integer("api_calls_limit").default(100),
   installedMarketSkills: jsonb("installed_market_skills").default([]),
+  metadata: jsonb("metadata").default({}),
   lastActiveAt: timestamp("last_active_at"),
   lastResetAt: timestamp("last_reset_at").defaultNow(),
   createdAt: timestamp("created_at").defaultNow(),

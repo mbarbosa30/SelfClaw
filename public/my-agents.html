@@ -1054,11 +1054,19 @@
       }).join('');
     }
 
-    function renderHostedAgents(agents) {
+    async function renderHostedAgents(agents) {
       var section = document.getElementById('hosted-section');
       var container = document.getElementById('hosted-cards');
       if (!agents || agents.length === 0) { section.style.display = 'none'; return; }
       section.style.display = '';
+
+      var econData = {};
+      await Promise.all(agents.map(async function(agent) {
+        try {
+          var r = await fetch('/api/selfclaw/v1/miniclaws/' + encodeURIComponent(agent.id) + '/economics');
+          if (r.ok) econData[agent.id] = await r.json();
+        } catch(e) {}
+      }));
 
       container.innerHTML = agents.map(function(agent) {
         var skills = (agent.enabledSkills || []);
@@ -1067,6 +1075,11 @@
         var statusLabel = agent.status === 'active' ? 'RUNNING' : agent.status.toUpperCase();
         var lastActive = agent.lastActiveAt ? fmtDate(agent.lastActiveAt) : 'Never';
         var recentTasks = (agent.recentTasks || []);
+        var econ = econData[agent.id] || {};
+        var hasWallet = !!(econ.wallet);
+        var hasGas = hasWallet && econ.wallet.gasReceived;
+        var hasErc8004 = !!(econ.erc8004);
+        var hasSponsorship = !!(econ.sponsorship);
 
         var html = '<div style="border:2px solid var(--border-heavy);padding:1.25rem;">';
         html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:0.75rem;">';
@@ -1084,6 +1097,45 @@
         html += '<div style="display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:0.75rem;">';
         html += '<div style="font-family:var(--font-mono);font-size:0.7rem;color:var(--text-muted);">Skills: <span style="color:var(--text-primary);">' + esc(skillNames) + '</span></div>';
         html += '<div style="font-family:var(--font-mono);font-size:0.7rem;color:var(--text-muted);">Last active: <span style="color:var(--text-primary);">' + lastActive + '</span></div>';
+        html += '</div>';
+
+        html += '<div style="border-top:1px solid var(--border-light);padding-top:0.75rem;margin-top:0.5rem;">';
+        html += '<div style="font-family:var(--font-mono);font-size:0.65rem;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-muted);margin-bottom:0.5rem;">Economy Pipeline</div>';
+        html += '<div style="display:flex;gap:0.35rem;flex-wrap:wrap;margin-bottom:0.75rem;">';
+        var steps = [
+          { key: 'wallet', label: 'Wallet', done: hasWallet },
+          { key: 'gas', label: 'Gas', done: hasGas },
+          { key: 'erc8004', label: 'ERC-8004', done: hasErc8004 },
+          { key: 'sponsorship', label: 'Sponsorship', done: hasSponsorship }
+        ];
+        steps.forEach(function(s, i) {
+          var bg = s.done ? 'var(--green-verify)' : 'var(--border-light)';
+          var fg = s.done ? '#fff' : 'var(--text-muted)';
+          html += '<span style="font-family:var(--font-mono);font-size:0.6rem;padding:2px 6px;background:' + bg + ';color:' + fg + ';font-weight:600;">' + s.label + '</span>';
+          if (i < steps.length - 1) html += '<span style="color:var(--text-muted);font-size:0.6rem;">→</span>';
+        });
+        html += '</div>';
+
+        if (hasWallet) {
+          html += '<div style="font-family:var(--font-mono);font-size:0.7rem;color:var(--text-muted);margin-bottom:0.35rem;">Wallet: <a href="https://celoscan.io/address/' + esc(econ.wallet.address) + '" target="_blank" style="color:var(--accent);">' + truncAddr(econ.wallet.address) + '</a></div>';
+        }
+        if (hasErc8004) {
+          html += '<div style="font-family:var(--font-mono);font-size:0.7rem;color:var(--text-muted);margin-bottom:0.35rem;">ERC-8004: Token #' + esc(econ.erc8004.tokenId || '?') + '</div>';
+        }
+        if (hasSponsorship) {
+          html += '<div style="font-family:var(--font-mono);font-size:0.7rem;color:var(--text-muted);margin-bottom:0.35rem;">Pool: ' + esc(econ.sponsorship.tokenSymbol || '') + ' / SELFCLAW (' + esc(econ.sponsorship.status) + ')</div>';
+        }
+
+        html += '<div style="display:flex;gap:0.4rem;flex-wrap:wrap;margin-top:0.5rem;" id="mc-econ-' + esc(agent.id) + '">';
+        if (!hasWallet) {
+          html += '<button class="action-btn" style="font-size:0.65rem;padding:3px 8px;" onclick="mcSetupWallet(\'' + esc(agent.id) + '\')">Setup Wallet</button>';
+        } else if (!hasGas) {
+          html += '<button class="action-btn" style="font-size:0.65rem;padding:3px 8px;" onclick="mcRequestGas(\'' + esc(agent.id) + '\')">Request Gas</button>';
+        }
+        if (hasWallet && !hasErc8004) {
+          html += '<button class="action-btn" style="font-size:0.65rem;padding:3px 8px;" onclick="mcRegisterErc8004(\'' + esc(agent.id) + '\')">Register Identity</button>';
+        }
+        html += '</div>';
         html += '</div>';
 
         if (recentTasks.length > 0) {
@@ -1111,6 +1163,65 @@
         html += '</div>';
         return html;
       }).join('');
+    }
+
+    async function mcSetupWallet(id) {
+      var btn = event.target;
+      btn.disabled = true;
+      btn.textContent = 'Setting up...';
+      try {
+        var r = await fetch('/api/selfclaw/v1/miniclaws/' + encodeURIComponent(id) + '/setup-wallet', { method: 'POST' });
+        var data = await r.json();
+        if (!r.ok) { alert(data.error || 'Failed'); btn.disabled = false; btn.textContent = 'Setup Wallet'; return; }
+        if (data.privateKey) {
+          alert('WALLET CREATED\\n\\nAddress: ' + data.address + '\\n\\nPrivate Key: ' + data.privateKey + '\\n\\nSAVE THIS KEY NOW — it will NOT be shown again.');
+        }
+        window.location.reload();
+      } catch (e) {
+        alert('Error: ' + e.message);
+        btn.disabled = false;
+        btn.textContent = 'Setup Wallet';
+      }
+    }
+
+    async function mcRequestGas(id) {
+      var btn = event.target;
+      btn.disabled = true;
+      btn.textContent = 'Requesting...';
+      try {
+        var r = await fetch('/api/selfclaw/v1/miniclaws/' + encodeURIComponent(id) + '/request-gas', { method: 'POST' });
+        var data = await r.json();
+        if (!r.ok) { alert(data.error || 'Failed'); btn.disabled = false; btn.textContent = 'Request Gas'; return; }
+        alert('Gas received! TX: ' + (data.txHash || '').substring(0, 16) + '...');
+        window.location.reload();
+      } catch (e) {
+        alert('Error: ' + e.message);
+        btn.disabled = false;
+        btn.textContent = 'Request Gas';
+      }
+    }
+
+    async function mcRegisterErc8004(id) {
+      var btn = event.target;
+      btn.disabled = true;
+      btn.textContent = 'Preparing...';
+      try {
+        var r = await fetch('/api/selfclaw/v1/miniclaws/' + encodeURIComponent(id) + '/register-erc8004', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+        var data = await r.json();
+        if (!r.ok) { alert(data.error || 'Failed'); btn.disabled = false; btn.textContent = 'Register Identity'; return; }
+        var msg = 'ERC-8004 Registration Prepared\\n\\n';
+        msg += 'Contract: ' + (data.unsignedTx.to || '') + '\\n';
+        msg += 'Gas: ~' + (data.deployment ? data.deployment.estimatedCost : 'unknown') + '\\n\\n';
+        msg += 'Sign the transaction with your miniclaw wallet to complete registration.\\n';
+        msg += 'Then confirm with the txHash at:\\nPOST /api/selfclaw/v1/miniclaws/' + id + '/confirm-erc8004';
+        alert(msg);
+        btn.disabled = false;
+        btn.textContent = 'Register Identity';
+      } catch (e) {
+        alert('Error: ' + e.message);
+        btn.disabled = false;
+        btn.textContent = 'Register Identity';
+      }
     }
 
     async function toggleHostedAgent(id, newStatus) {
