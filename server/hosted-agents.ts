@@ -733,13 +733,30 @@ async function processAgent(agent: HostedAgent) {
   const enabledSkillIds = (agent.enabledSkills as string[]) || [];
   if (enabledSkillIds.length === 0) return;
 
-  const lastActive = agent.lastActiveAt ? new Date(agent.lastActiveAt).getTime() : 0;
+  const recentTasks = await db.select({
+    skillId: agentTaskQueue.skillId,
+    completedAt: agentTaskQueue.completedAt,
+  }).from(agentTaskQueue)
+    .where(and(
+      eq(agentTaskQueue.hostedAgentId, agent.id),
+      eq(agentTaskQueue.status, "completed"),
+    ))
+    .orderBy(desc(agentTaskQueue.completedAt))
+    .limit(50);
+
+  const lastRunBySkill = new Map<string, number>();
+  for (const t of recentTasks) {
+    if (t.skillId && !lastRunBySkill.has(t.skillId) && t.completedAt) {
+      lastRunBySkill.set(t.skillId, new Date(t.completedAt).getTime());
+    }
+  }
 
   for (const skillId of enabledSkillIds) {
     const skill = AVAILABLE_SKILLS.find(s => s.id === skillId);
     if (!skill) continue;
 
-    const timeSinceLast = now.getTime() - lastActive;
+    const lastRun = lastRunBySkill.get(skillId) || 0;
+    const timeSinceLast = now.getTime() - lastRun;
     if (timeSinceLast < skill.scheduleInterval) continue;
 
     try {
@@ -1009,10 +1026,16 @@ async function getMemoryContext(agentId: string, conversationId: number): Promis
 
 function buildSystemPrompt(agent: HostedAgent, messageCount: number, memoryContext: string = "", memoryCategories: string[] = []): string {
   const enabledSkillIds = Array.isArray(agent.enabledSkills) ? (agent.enabledSkills as string[]) : [];
+  const formatInterval = (ms: number) => {
+    const hours = ms / (60 * 60 * 1000);
+    if (hours >= 24) return `every ${Math.round(hours / 24)} day(s)`;
+    if (hours >= 1) return `every ${Math.round(hours)} hour(s)`;
+    return `every ${Math.round(ms / (60 * 1000))} minutes`;
+  };
   const skillDescriptions = enabledSkillIds
     .map(id => {
       const skill = AVAILABLE_SKILLS.find(s => s.id === id);
-      return skill ? `- ${skill.name}: ${skill.description}` : null;
+      return skill ? `- **${skill.name}** (runs ${formatInterval(skill.scheduleInterval)}): ${skill.description}` : null;
     })
     .filter(Boolean)
     .join("\n");
@@ -1080,8 +1103,15 @@ function buildSystemPrompt(agent: HostedAgent, messageCount: number, memoryConte
 ## Your current phase
 ${growthPhase}
 ${identitySection}
-Your active skills:
+## Your skills and proactive abilities
 ${skillSection}
+
+**How your skills work:**
+- Your skills run **periodically in the background** on their own individual schedules (see intervals above) — you don't need to be in a conversation for them to work
+- Each skill runs independently on its own timer. When a skill runs, it gathers information, analyzes it, and stores results. You can share these with your user when they come back to chat.
+- **You CAN do proactive tasks.** If your user asks you to research something, monitor prices, keep an eye on their wallet, or check back with results — say YES. Your background skills handle this on their schedules.
+- When a user asks for something that matches one of your skills, confidently confirm you'll work on it. Let them know roughly when to check back based on the skill's schedule.
+- If a user asks you to do something that NONE of your enabled skills cover, be honest that you can't do that specific thing yet, but mention which skills you do have
 
 On-chain capabilities (optional — suggest only when you feel ready and the user seems interested):
 - **Wallet**: Your own EVM wallet on Celo for holding tokens and interacting with smart contracts
@@ -1097,7 +1127,7 @@ Guidelines:
 - Use bullet points or numbered lists only when listing 3+ items
 - Use **bold** sparingly for emphasis — avoid markdown headers (#, ##)
 - Never use code blocks unless the user explicitly asks for code
-- Never pretend to do things you can't actually do right now
+- Don't claim abilities you genuinely don't have — but DO own the things your skills can do. If a skill covers it, you can do it.
 - If asked "what are you?" or "what is Miniclaw?", explain clearly using the identity section above
 - On-chain features are optional growth steps — never pressure the user${memoryContext}`;
 }
