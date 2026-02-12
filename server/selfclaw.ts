@@ -4531,6 +4531,62 @@ async function authenticateHumanForAgent(req: any, res: Response, agentPublicKey
   return { humanId, agent: agents[0] };
 }
 
+router.get("/v1/my-agents", async (req: any, res: Response) => {
+  try {
+    if (!req.session?.isAuthenticated || !req.session?.humanId) {
+      return res.json({ authenticated: false, agents: [] });
+    }
+    const humanId = req.session.humanId;
+
+    const agents = await db.select().from(verifiedBots)
+      .where(sql`${verifiedBots.humanId} = ${humanId}`)
+      .orderBy(verifiedBots.createdAt);
+
+    const wallets = await db.select({
+      publicKey: agentWallets.publicKey,
+      address: agentWallets.address,
+      gasReceived: agentWallets.gasReceived,
+    }).from(agentWallets)
+      .where(sql`${agentWallets.humanId} = ${humanId}`);
+
+    const sponsorships = await db.select({
+      publicKey: sponsoredAgents.publicKey,
+      tokenAddress: sponsoredAgents.tokenAddress,
+      tokenSymbol: sponsoredAgents.tokenSymbol,
+      poolAddress: sponsoredAgents.poolAddress,
+      status: sponsoredAgents.status,
+    }).from(sponsoredAgents)
+      .where(sql`${sponsoredAgents.humanId} = ${humanId}`);
+
+    const walletMap = new Map(wallets.map(w => [w.publicKey, w]));
+    const sponsorMap = new Map(sponsorships.map(s => [s.publicKey, s]));
+
+    const result = agents.map(agent => {
+      const wallet = walletMap.get(agent.publicKey);
+      const sponsor = sponsorMap.get(agent.publicKey);
+      return {
+        publicKey: agent.publicKey,
+        name: agent.deviceId || null,
+        verifiedAt: agent.verifiedAt,
+        onchain: {
+          hasWallet: !!wallet,
+          walletAddress: wallet?.address || null,
+          hasGas: wallet?.gasReceived || false,
+          hasToken: !!sponsor?.tokenAddress,
+          tokenSymbol: sponsor?.tokenSymbol || null,
+          hasPool: !!sponsor?.poolAddress,
+          sponsorStatus: sponsor?.status || null,
+        },
+      };
+    });
+
+    res.json({ authenticated: true, agents: result });
+  } catch (error: any) {
+    console.error("[selfclaw] my-agents error:", error);
+    res.status(500).json({ error: "Failed to load agents" });
+  }
+});
+
 router.post("/v1/my-agents/:publicKey/setup-wallet", verificationLimiter, async (req: any, res: Response) => {
   try {
     const auth = await authenticateHumanForAgent(req, res, req.params.publicKey);

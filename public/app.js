@@ -157,10 +157,101 @@ async function loadVerifiedCount() {
   }
 }
 
+async function loadMyAgents() {
+  const section = document.getElementById('my-agents-section');
+  const list = document.getElementById('my-agents-list');
+  if (!section || !list) return;
+
+  try {
+    const res = await fetch('/api/selfclaw/v1/my-agents');
+    const data = await res.json();
+    if (!data.authenticated || !data.agents || data.agents.length === 0) {
+      section.style.display = 'none';
+      return;
+    }
+
+    list.innerHTML = data.agents.map(agent => {
+      const name = agent.name || agent.publicKey.substring(0, 20) + '...';
+      const shortKey = agent.publicKey.substring(0, 24) + '...';
+      const date = agent.verifiedAt ? new Date(agent.verifiedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : '';
+      const o = agent.onchain;
+
+      const promptText = 'Read https://selfclaw.ai/llms.txt and integrate SelfClaw verification for agent ' + escapeHtml(name) + '. The agent public key is ' + escapeHtml(agent.publicKey) + '.';
+
+      let badges = '';
+      if (o.hasWallet) {
+        badges += '<span style="display:inline-block;font-family:var(--font-mono);font-size:0.65rem;padding:2px 6px;border:1px solid #22c55e;color:#22c55e;margin-right:4px;">WALLET</span>';
+      }
+      if (o.hasGas) {
+        badges += '<span style="display:inline-block;font-family:var(--font-mono);font-size:0.65rem;padding:2px 6px;border:1px solid #22c55e;color:#22c55e;margin-right:4px;">GAS</span>';
+      }
+      if (o.hasToken) {
+        badges += '<span style="display:inline-block;font-family:var(--font-mono);font-size:0.65rem;padding:2px 6px;border:1px solid #22c55e;color:#22c55e;margin-right:4px;">' + escapeHtml(o.tokenSymbol || 'TOKEN') + '</span>';
+      }
+      if (o.hasPool) {
+        badges += '<span style="display:inline-block;font-family:var(--font-mono);font-size:0.65rem;padding:2px 6px;border:1px solid #22c55e;color:#22c55e;margin-right:4px;">POOL</span>';
+      }
+
+      const hasAnyOnchain = o.hasWallet || o.hasGas || o.hasToken || o.hasPool;
+
+      let nextSteps = '';
+      if (!hasAnyOnchain) {
+        nextSteps = '<div style="font-size:0.75rem;color:var(--text-secondary);margin-top:0.5rem;font-family:var(--font-mono);">Optional next steps: wallet &rarr; gas &rarr; token &rarr; pool</div>';
+      } else if (!o.hasPool) {
+        const remaining = [];
+        if (!o.hasWallet) remaining.push('wallet');
+        if (!o.hasGas) remaining.push('gas');
+        if (!o.hasToken) remaining.push('token');
+        if (!o.hasPool) remaining.push('pool');
+        if (remaining.length > 0) {
+          nextSteps = '<div style="font-size:0.75rem;color:var(--text-secondary);margin-top:0.5rem;font-family:var(--font-mono);">Next: ' + remaining.join(' &rarr; ') + '</div>';
+        }
+      }
+
+      const copyId = 'copy-btn-' + agent.publicKey.substring(0, 8);
+
+      return '<div style="border:2px solid var(--border-heavy);padding:1rem;margin-bottom:1rem;">' +
+        '<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:0.5rem;">' +
+          '<div>' +
+            '<div style="font-family:var(--font-mono);font-weight:600;font-size:0.95rem;">' + escapeHtml(name) + '</div>' +
+            '<div style="font-family:var(--font-mono);font-size:0.7rem;color:var(--text-secondary);margin-top:2px;">' + escapeHtml(shortKey) + '</div>' +
+          '</div>' +
+          '<div style="font-family:var(--font-mono);font-size:0.7rem;color:var(--text-secondary);">' + date + '</div>' +
+        '</div>' +
+        (badges ? '<div style="margin-top:0.5rem;">' + badges + '</div>' : '') +
+        nextSteps +
+        '<div style="margin-top:0.75rem;padding:0.75rem;background:var(--bg-code,#1a1a1a);border:2px solid var(--border-heavy);">' +
+          '<p style="color:#e0e0e0;font-family:var(--font-mono);font-size:0.75rem;line-height:1.5;word-break:break-word;margin:0;" id="prompt-' + agent.publicKey.substring(0, 8) + '">' + promptText + '</p>' +
+        '</div>' +
+        '<button onclick="copyMyAgentPrompt(\'' + agent.publicKey.substring(0, 8) + '\')" class="btn btn-accent btn-full" id="' + copyId + '" style="margin-top:0.5rem;font-size:0.8rem;padding:0.5rem;">Copy Prompt</button>' +
+      '</div>';
+    }).join('');
+
+    section.style.display = '';
+  } catch (e) {
+    console.log('Could not load my agents:', e);
+  }
+}
+
+function copyMyAgentPrompt(shortId) {
+  const el = document.getElementById('prompt-' + shortId);
+  const btn = document.getElementById('copy-btn-' + shortId);
+  if (el && btn) {
+    navigator.clipboard.writeText(el.textContent).then(() => {
+      const orig = btn.textContent;
+      btn.textContent = 'Copied!';
+      btn.style.background = '#FF6B4A';
+      btn.style.color = '#000';
+      setTimeout(() => { btn.textContent = orig; btn.style.background = ''; btn.style.color = ''; }, 2000);
+    });
+  }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   loadVerifiedCount();
   initLookupWidget();
   initIntegrationTabs();
+  loadMyAgents();
 
   const startBtn = document.getElementById('start-verification');
   if (startBtn) {
