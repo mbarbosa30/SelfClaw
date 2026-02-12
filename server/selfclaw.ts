@@ -4889,6 +4889,26 @@ router.post("/v1/my-agents/:publicKey/request-sponsorship", verificationLimiter,
       return res.status(400).json({ error: "tokenAddress and tokenAmount are required" });
     }
 
+    const wallet = await db.select().from(agentWallets)
+      .where(sql`${agentWallets.publicKey} = ${req.params.publicKey} AND ${agentWallets.humanId} = ${auth.humanId}`)
+      .limit(1);
+    if (wallet.length === 0) {
+      return res.status(403).json({
+        error: "Agent must have a wallet created through SelfClaw before requesting sponsorship.",
+        step: "Create a wallet first via POST /api/selfclaw/v1/my-agents/:publicKey/create-wallet",
+      });
+    }
+
+    const deployedToken = await db.select().from(tokenPlans)
+      .where(sql`${tokenPlans.agentPublicKey} = ${req.params.publicKey} AND ${tokenPlans.humanId} = ${auth.humanId} AND LOWER(${tokenPlans.tokenAddress}) = LOWER(${tokenAddress})`)
+      .limit(1);
+    if (deployedToken.length === 0) {
+      return res.status(403).json({
+        error: "Token must be deployed through SelfClaw before requesting sponsorship. External tokens are not eligible.",
+        step: "Deploy your agent token first via the SelfClaw token economy flow.",
+      });
+    }
+
     const existing = await db.select().from(sponsoredAgents)
       .where(eq(sponsoredAgents.humanId, auth.humanId)).limit(1);
     if (existing.length > 0) {
@@ -5563,6 +5583,31 @@ router.post("/v1/miniclaws/:id/request-sponsorship", verificationLimiter, async 
     const { tokenAddress, tokenSymbol, tokenAmount } = req.body;
     if (!tokenAddress || !tokenAmount) {
       return res.status(400).json({ error: "tokenAddress and tokenAmount are required" });
+    }
+
+    const wallet = await db.select().from(agentWallets)
+      .where(sql`${agentWallets.publicKey} = ${mcPublicKey} AND ${agentWallets.humanId} = ${auth.humanId}`)
+      .limit(1);
+    if (wallet.length === 0) {
+      return res.status(403).json({
+        error: "Miniclaw must have a wallet created through SelfClaw before requesting sponsorship.",
+        step: "Set up a wallet first via the miniclaw economy pipeline.",
+      });
+    }
+
+    const deployedToken = await db.select().from(tokenPlans)
+      .where(sql`${tokenPlans.agentPublicKey} = ${mcPublicKey} AND ${tokenPlans.humanId} = ${auth.humanId} AND LOWER(${tokenPlans.tokenAddress}) = LOWER(${tokenAddress})`)
+      .limit(1);
+    if (deployedToken.length === 0) {
+      const tokenActivity = await db.select().from(agentActivity)
+        .where(sql`${agentActivity.eventType} IN ('token_registered', 'token_deployment') AND ${agentActivity.agentPublicKey} = ${mcPublicKey} AND ${agentActivity.humanId} = ${auth.humanId} AND (LOWER(${agentActivity.metadata}->>'tokenAddress') = LOWER(${tokenAddress}) OR LOWER(${agentActivity.metadata}->>'predictedTokenAddress') = LOWER(${tokenAddress}))`)
+        .limit(1);
+      if (tokenActivity.length === 0) {
+        return res.status(403).json({
+          error: "Token must be deployed through SelfClaw before requesting sponsorship. External tokens are not eligible.",
+          step: "Deploy your miniclaw token first via the SelfClaw economy pipeline.",
+        });
+      }
     }
 
     const existing = await db.select().from(sponsoredAgents)
