@@ -170,13 +170,14 @@ async function loadMyAgents() {
       return;
     }
 
-    list.innerHTML = data.agents.map(agent => {
+    list.innerHTML = data.agents.map((agent, idx) => {
       const name = agent.name || agent.publicKey.substring(0, 20) + '...';
       const shortKey = agent.publicKey.substring(0, 24) + '...';
       const date = agent.verifiedAt ? new Date(agent.verifiedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : '';
       const o = agent.onchain;
+      const uid = 'agent-' + idx;
 
-      const promptText = 'Read https://selfclaw.ai/llms.txt and integrate SelfClaw verification for agent ' + escapeHtml(name) + '. The agent public key is ' + escapeHtml(agent.publicKey) + '.';
+      const rawPrompt = 'Read https://selfclaw.ai/llms.txt and integrate SelfClaw verification for agent ' + name + '. The agent public key is ' + agent.publicKey + '.';
 
       let badges = '';
       if (o.hasWallet) {
@@ -208,8 +209,6 @@ async function loadMyAgents() {
         }
       }
 
-      const copyId = 'copy-btn-' + agent.publicKey.substring(0, 8);
-
       return '<div style="border:2px solid var(--border-heavy);padding:1rem;margin-bottom:1rem;">' +
         '<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:0.5rem;">' +
           '<div>' +
@@ -221,9 +220,9 @@ async function loadMyAgents() {
         (badges ? '<div style="margin-top:0.5rem;">' + badges + '</div>' : '') +
         nextSteps +
         '<div style="margin-top:0.75rem;padding:0.75rem;background:var(--bg-code,#1a1a1a);border:2px solid var(--border-heavy);">' +
-          '<p style="color:#e0e0e0;font-family:var(--font-mono);font-size:0.75rem;line-height:1.5;word-break:break-word;margin:0;" id="prompt-' + agent.publicKey.substring(0, 8) + '">' + promptText + '</p>' +
+          '<p style="color:#e0e0e0;font-family:var(--font-mono);font-size:0.75rem;line-height:1.5;word-break:break-word;margin:0;" id="prompt-' + uid + '">' + escapeHtml(rawPrompt) + '</p>' +
         '</div>' +
-        '<button onclick="copyMyAgentPrompt(\'' + agent.publicKey.substring(0, 8) + '\')" class="btn btn-accent btn-full" id="' + copyId + '" style="margin-top:0.5rem;font-size:0.8rem;padding:0.5rem;">Copy Prompt</button>' +
+        '<button onclick="copyMyAgentPrompt(\'' + uid + '\')" class="btn btn-accent btn-full" id="copy-btn-' + uid + '" style="margin-top:0.5rem;font-size:0.8rem;padding:0.5rem;">Copy Prompt</button>' +
       '</div>';
     }).join('');
 
@@ -233,9 +232,9 @@ async function loadMyAgents() {
   }
 }
 
-function copyMyAgentPrompt(shortId) {
-  const el = document.getElementById('prompt-' + shortId);
-  const btn = document.getElementById('copy-btn-' + shortId);
+function copyMyAgentPrompt(uid) {
+  const el = document.getElementById('prompt-' + uid);
+  const btn = document.getElementById('copy-btn-' + uid);
   if (el && btn) {
     navigator.clipboard.writeText(el.textContent).then(() => {
       const orig = btn.textContent;
@@ -566,6 +565,8 @@ function handleVerificationSuccess(pubkey, agentName) {
     selfSocket.disconnect();
     selfSocket = null;
   }
+
+  loadMyAgents();
 }
 
 
