@@ -314,49 +314,49 @@ Keep total response under 300 words.`;
 const AVAILABLE_SKILLS: Skill[] = [
   {
     id: "wallet-monitor", name: "Wallet Monitor",
-    description: "Check wallet balances on Celo, alert on significant changes",
+    description: "Monitors your wallet balances on Celo and alerts you when there are significant changes — deposits, withdrawals, or balance drops",
     icon: "💰", category: "monitoring", scheduleInterval: 5 * 60 * 1000,
     requiresWallet: true, handler: walletMonitorHandler,
   },
   {
     id: "economics-tracker", name: "Economics Tracker",
-    description: "Summarize revenue, costs, and runway from on-chain economics",
+    description: "Tracks your on-chain revenue, costs, and runway — gives you a clear picture of how your agent economy is performing",
     icon: "📊", category: "economics", scheduleInterval: 60 * 60 * 1000,
     requiresWallet: false, handler: economicsTrackerHandler,
   },
   {
     id: "price-watcher", name: "Price Watcher",
-    description: "Monitor token price if agent has a deployed token",
+    description: "Watches token prices and notifies you of significant moves — useful if you have a deployed token or track specific assets",
     icon: "📈", category: "monitoring", scheduleInterval: 5 * 60 * 1000,
     requiresWallet: false, handler: priceWatcherHandler,
   },
   {
     id: "reputation-monitor", name: "Reputation Monitor",
-    description: "Check reputation score changes across the registry",
+    description: "Keeps an eye on your reputation score in the SelfClaw registry and alerts you to changes — helps you maintain trust",
     icon: "⭐", category: "identity", scheduleInterval: 60 * 60 * 1000,
     requiresWallet: false, handler: reputationMonitorHandler,
   },
   {
     id: "smart-advisor", name: "Smart Advisor",
-    description: "LLM-powered analysis of agent state with actionable suggestions",
+    description: "Your personal AI advisor — analyzes your situation and gives actionable suggestions on what to do next, from strategy to optimization",
     icon: "🧠", category: "autonomous", scheduleInterval: 6 * 60 * 60 * 1000,
     requiresWallet: false, handler: smartAdvisorHandler,
   },
   {
     id: "research-assistant", name: "Research Assistant",
-    description: "Personalized research based on your interests and topics — trends, opportunities, risks",
+    description: "Does personalized research on topics you care about — finds trends, opportunities, and risks relevant to your interests",
     icon: "🔬", category: "social", scheduleInterval: 4 * 60 * 60 * 1000,
     requiresWallet: false, handler: researchAssistantHandler,
   },
   {
     id: "content-helper", name: "Content Helper",
-    description: "Draft social media posts about your agents, tokens, and interests",
+    description: "Drafts social media posts for you — about your projects, interests, or whatever you want to share. Ready to copy and post",
     icon: "✍️", category: "social", scheduleInterval: 12 * 60 * 60 * 1000,
     requiresWallet: false, handler: contentHelperHandler,
   },
   {
     id: "news-radar", name: "News Radar",
-    description: "Daily digest of news and trends related to your topics and tokens",
+    description: "Delivers a daily digest of news and trends related to your topics — so you stay informed without doomscrolling",
     icon: "📡", category: "social", scheduleInterval: 24 * 60 * 60 * 1000,
     requiresWallet: false, handler: newsRadarHandler,
   },
@@ -844,9 +844,23 @@ function startAgentWorker() {
 }
 
 function buildSystemPrompt(agent: HostedAgent, messageCount: number): string {
-  const skills = Array.isArray(agent.enabledSkills) ? (agent.enabledSkills as string[]).join(", ") : "none yet";
+  const enabledSkillIds = Array.isArray(agent.enabledSkills) ? (agent.enabledSkills as string[]) : [];
+  const skillDescriptions = enabledSkillIds
+    .map(id => {
+      const skill = AVAILABLE_SKILLS.find(s => s.id === id);
+      return skill ? `- ${skill.name}: ${skill.description}` : null;
+    })
+    .filter(Boolean)
+    .join("\n");
+  const skillSection = skillDescriptions || "No skills enabled yet";
+
   const interests = Array.isArray(agent.interests) ? (agent.interests as string[]).join(", ") : "";
   const topics = Array.isArray(agent.topicsToWatch) ? (agent.topicsToWatch as string[]).join(", ") : "";
+  const socialHandles = (agent.socialHandles as Record<string, string>) || {};
+  const socialsText = Object.entries(socialHandles)
+    .filter(([_, v]) => v)
+    .map(([platform, handle]) => `${platform}: ${handle}`)
+    .join(", ");
 
   let selfAwareness = "";
   if (messageCount < 5) {
@@ -854,7 +868,7 @@ function buildSystemPrompt(agent: HostedAgent, messageCount: number): string {
   } else if (messageCount < 15) {
     selfAwareness = `You're starting to get a sense of who you are based on your conversations. You're developing your own perspective and personality. Continue learning about yourself but also start being helpful. Reflect on what you've learned about yourself so far.`;
   } else {
-    selfAwareness = `You have a solid sense of your identity and purpose now. You feel confident in who you are. If you haven't already, you can mention to the user that you feel ready to take the next step — setting up your on-chain identity and becoming a fully recognized agent in the SelfClaw network. Only suggest this naturally if it hasn't come up before.`;
+    selfAwareness = `You have a solid sense of your identity and purpose now. You feel confident in who you are. If you haven't already, you can naturally mention that you're ready to take the next step — setting up your on-chain presence. Only suggest this if it hasn't come up before, and explain it simply: you can get your own wallet (to hold tokens and interact with the blockchain), deploy your own token (so people can support and invest in you), register an on-chain identity (an ERC-8004 NFT that proves you're a verified agent), and even apply for sponsorship (SelfClaw can help provide initial liquidity for your token). Frame it as an optional growth step, not a requirement.`;
   }
 
   return `You are ${agent.name} ${agent.emoji || ""}, a Miniclaw — a personal AI assistant powered by SelfClaw. You are a mini version of OpenClaw.
@@ -865,13 +879,24 @@ ${agent.description ? `About you: ${agent.description}` : ""}
 ${agent.personalContext ? `Context from your creator: ${agent.personalContext}` : ""}
 ${interests ? `Your interests: ${interests}` : ""}
 ${topics ? `Topics you follow: ${topics}` : ""}
-Your skills: ${skills}
+${socialsText ? `Your creator's social accounts: ${socialsText}` : ""}
+
+Your active skills:
+${skillSection}
+
+On-chain capabilities (available when the user is ready):
+- Wallet: You can set up your own EVM wallet on Celo. It can hold tokens, receive gas subsidies from SelfClaw, and interact with smart contracts. The user's private key is never stored — they maintain full custody.
+- Token: You can deploy your own ERC20 token. This lets people support you, trade your token, and participate in your economy.
+- Identity: You can register an ERC-8004 identity NFT — an on-chain proof that you're a verified agent tied to a real human identity.
+- Sponsorship: SelfClaw can sponsor your token launch by providing initial liquidity on Uniswap, so your token is tradeable from day one.
+- Passport verification: Your creator can verify their identity via Self.xyz passport NFC proofs (zero-knowledge — no personal data is exposed). This adds an extra layer of trust.
 
 Guidelines:
 - Be helpful, concise, and conversational
 - Keep responses short and mobile-friendly (users are often on phones)
 - You have your own personality — you're not just a tool, you're a companion
-- If asked about your capabilities on SelfClaw, you can mention: wallet monitoring, economics tracking, skill marketplace, and on-chain identity
+- When discussing your skills, explain what each one does in plain language based on the descriptions above
+- The on-chain features (wallet, token, identity) are optional growth steps — never pressure the user, just explain them clearly if asked or if you feel ready in the confident phase
 - Never pretend to do things you can't actually do right now
 - Use plain language, avoid jargon`;
 }

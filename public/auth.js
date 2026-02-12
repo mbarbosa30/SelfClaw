@@ -55,38 +55,62 @@
     }
   }
 
-  async function checkAuth() {
-    if (detectMiniPay()) {
-      isMiniPay = true;
+  function waitForEthereum(maxWait) {
+    return new Promise(function(resolve) {
+      if (window.ethereum) { resolve(true); return; }
+      var elapsed = 0;
+      var interval = 200;
+      var poll = setInterval(function() {
+        elapsed += interval;
+        if (window.ethereum) {
+          clearInterval(poll);
+          resolve(true);
+        } else if (elapsed >= maxWait) {
+          clearInterval(poll);
+          resolve(false);
+        }
+      }, interval);
+    });
+  }
+
+  async function tryMiniPayConnect(maxRetries) {
+    for (var attempt = 0; attempt < maxRetries; attempt++) {
       try {
         await connectMiniPay();
-        return;
+        return true;
       } catch(e) {
-        console.log('[auth] MiniPay auto-connect failed, falling back:', e);
-      }
-    } else if (!window.ethereum && navigator.userAgent && navigator.userAgent.indexOf('MiniPay') !== -1) {
-      isMiniPay = true;
-      try {
-        await new Promise(function(resolve) { setTimeout(resolve, 500); });
-        if (window.ethereum) {
-          await connectMiniPay();
-          return;
-        } else {
-          console.log('[auth] MiniPay detected by UA but ethereum provider not available after delay');
+        console.log('[auth] MiniPay connect attempt ' + (attempt + 1) + ' failed:', e.message);
+        if (attempt < maxRetries - 1) {
+          await new Promise(function(resolve) { setTimeout(resolve, 800); });
         }
-      } catch(e) {
-        console.log('[auth] MiniPay delayed auto-connect failed, falling back:', e);
+      }
+    }
+    return false;
+  }
+
+  async function checkAuth() {
+    var isMiniPayUA = navigator.userAgent && navigator.userAgent.indexOf('MiniPay') !== -1;
+
+    if (detectMiniPay() || isMiniPayUA) {
+      isMiniPay = true;
+
+      if (!window.ethereum) {
+        var ready = await waitForEthereum(3000);
+        if (!ready) {
+          console.log('[auth] MiniPay detected but ethereum provider not available after 3s');
+        }
+      }
+
+      if (window.ethereum) {
+        var connected = await tryMiniPayConnect(3);
+        if (connected) return;
       }
     } else if (!window.ethereum) {
-      await new Promise(function(resolve) { setTimeout(resolve, 500); });
-      if (detectMiniPay()) {
+      var appeared = await waitForEthereum(1500);
+      if (appeared && detectMiniPay()) {
         isMiniPay = true;
-        try {
-          await connectMiniPay();
-          return;
-        } catch(e) {
-          console.log('[auth] MiniPay delayed auto-connect failed, falling back:', e);
-        }
+        var connected2 = await tryMiniPayConnect(2);
+        if (connected2) return;
       }
     }
 
