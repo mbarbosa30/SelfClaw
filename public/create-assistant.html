@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Create Assistant | SelfClaw</title>
-  <meta name="description" content="Create a lightweight AI assistant that runs on SelfClaw's infrastructure. No coding required.">
+  <title>Create Miniclaw | SelfClaw</title>
+  <meta name="description" content="Create a lightweight AI miniclaw that runs on SelfClaw's infrastructure. No coding required.">
   <link rel="canonical" href="https://selfclaw.ai/create-assistant">
 
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://selfclaw.ai/create-assistant">
-  <meta property="og:title" content="Create Assistant | SelfClaw">
-  <meta property="og:description" content="Create a lightweight AI assistant that runs on SelfClaw's infrastructure. No coding required.">
+  <meta property="og:title" content="Create Miniclaw | SelfClaw">
+  <meta property="og:description" content="Create a lightweight AI miniclaw that runs on SelfClaw's infrastructure. No coding required.">
   <meta property="og:image" content="https://selfclaw.ai/og-image.png">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="675">
@@ -18,8 +18,8 @@
 
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:site" content="@mbarrbosa">
-  <meta name="twitter:title" content="Create Assistant | SelfClaw">
-  <meta name="twitter:description" content="Create a lightweight AI assistant that runs on SelfClaw's infrastructure. No coding required.">
+  <meta name="twitter:title" content="Create Miniclaw | SelfClaw">
+  <meta name="twitter:description" content="Create a lightweight AI miniclaw that runs on SelfClaw's infrastructure. No coding required.">
   <meta name="twitter:image" content="https://selfclaw.ai/og-image.png">
   <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
   <link rel="icon" type="image/png" href="/favicon.png">
@@ -295,15 +295,20 @@
 
   <div class="create-page">
     <section class="hero" style="padding: 3rem 0 var(--space-lg);">
-      <div class="hero-label">Personal Assistant</div>
-      <h1>Create your assistant</h1>
-      <p class="hero-sub">A lightweight AI agent that runs on SelfClaw's infrastructure. No coding required &mdash; just pick a name and choose what it should do.</p>
+      <div class="hero-label">Miniclaw</div>
+      <h1>Create your miniclaw</h1>
+      <p class="hero-sub">A lightweight AI miniclaw that runs on SelfClaw's infrastructure. No coding required &mdash; just pick a name and choose what it should do.</p>
     </section>
 
     <div id="login-gate" class="login-gate" style="display:none;">
-      <div class="login-gate-title">Passport Required</div>
-      <div class="login-gate-desc">You need to be logged in with your Self.xyz passport to create an assistant. Your assistant will be linked to your verified identity.</div>
-      <button class="login-gate-btn" onclick="window.selfclawAuth && window.selfclawAuth.openLogin()">Login with Self</button>
+      <div class="login-gate-title">Login Required</div>
+      <div class="login-gate-desc">Create a miniclaw using your MiniPay wallet or Self.xyz passport. Your miniclaw will be linked to your identity.</div>
+      <div style="display:flex;flex-direction:column;gap:0.75rem;align-items:center;">
+        <button class="login-gate-btn" onclick="window.selfclawAuth && window.selfclawAuth.openLogin()" style="width:100%;max-width:300px;">
+          <span id="login-btn-text">Login with MiniPay</span>
+        </button>
+        <div style="font-family:var(--font-mono);font-size:0.65rem;color:var(--text-muted);">No MiniPay? <a href="#" onclick="window.selfclawAuth && window.selfclawAuth.openLogin(); return false;" style="color:var(--accent);">Use Self.xyz passport</a></div>
+      </div>
     </div>
 
     <div id="wizard-container" style="display:none;">
@@ -317,8 +322,8 @@
       <div class="wizard-panel active" id="panel-identity">
         <div class="assistant-form">
           <div class="form-group">
-            <label for="assistant-name">Assistant Name</label>
-            <input type="text" id="assistant-name" class="input" placeholder="my-assistant" maxlength="24">
+            <label for="assistant-name">Miniclaw Name</label>
+            <input type="text" id="assistant-name" class="input" placeholder="my-miniclaw" maxlength="24">
           </div>
 
           <div class="form-group">
@@ -328,7 +333,7 @@
 
           <div class="form-group">
             <label for="assistant-desc">Description <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text-muted);">(optional)</span></label>
-            <textarea id="assistant-desc" class="input" placeholder="What should your assistant focus on?"></textarea>
+            <textarea id="assistant-desc" class="input" placeholder="What should your miniclaw focus on?"></textarea>
           </div>
 
           <div class="error-msg" id="identity-error"></div>
@@ -338,8 +343,8 @@
       </div>
 
       <div class="wizard-panel" id="panel-interests">
-        <div class="skills-heading">Tell your assistant about you</div>
-        <div style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:1.5rem;">These help your assistant personalize research, news, and content for you. All optional.</div>
+        <div class="skills-heading">Tell your miniclaw about you</div>
+        <div style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:1.5rem;">These help your miniclaw personalize research, news, and content for you. All optional.</div>
 
         <div class="assistant-form">
           <div class="form-group">
@@ -379,12 +384,12 @@
         </div>
         <div class="skills-note">You can change these anytime from your dashboard. <a href="/skill-market" style="color:var(--accent);">Browse the Skill Market</a> for community-made skills.</div>
         <div class="error-msg" id="skills-error"></div>
-        <button class="create-btn" id="create-assistant-btn" onclick="createAssistant()">Create Assistant</button>
+        <button class="create-btn" id="create-assistant-btn" onclick="createAssistant()">Create Miniclaw</button>
       </div>
 
       <div class="wizard-panel" id="panel-done">
         <div class="success-card">
-          <div class="success-title">Assistant Created</div>
+          <div class="success-title">Miniclaw Created</div>
           <div class="success-detail"><strong>Name:</strong> <span id="done-emoji"></span> <span id="done-name"></span></div>
         </div>
 
@@ -415,7 +420,7 @@
         <div class="next-steps" id="next-steps">
           <div class="next-steps-title">What happens next</div>
           <ul>
-            <li>Your assistant is now running on SelfClaw</li>
+            <li>Your miniclaw is now running on SelfClaw</li>
             <li>It will check your wallet every 5 minutes</li>
             <li>It will analyze your economics hourly</li>
             <li>Visit /my-agents to see its activity</li>
@@ -478,7 +483,7 @@
       var name = document.getElementById('assistant-name').value.trim();
       var errEl = document.getElementById('identity-error');
       if (!name) {
-        errEl.textContent = 'Please enter a name for your assistant.';
+        errEl.textContent = 'Please enter a name for your miniclaw.';
         errEl.style.display = '';
         return;
       }
@@ -606,7 +611,7 @@
         });
         if (!res.ok) {
           var err = await res.json().catch(function() { return {}; });
-          throw new Error(err.error || err.message || 'Failed to create assistant');
+          throw new Error(err.error || err.message || 'Failed to create miniclaw');
         }
         createdAgent = await res.json();
         showDone();
@@ -614,7 +619,7 @@
         errEl.textContent = err.message;
         errEl.style.display = '';
         btn.disabled = false;
-        btn.textContent = 'Create Assistant';
+        btn.textContent = 'Create Miniclaw';
       }
     }
 
@@ -687,6 +692,10 @@
             document.getElementById('wizard-container').style.display = 'none';
           }
         });
+        if (window.selfclawAuth.isMiniPay && window.selfclawAuth.isMiniPay()) {
+          var btnText = document.getElementById('login-btn-text');
+          if (btnText) btnText.textContent = 'Connect MiniPay Wallet';
+        }
       } else {
         fetch('/api/auth/status').then(function(r) { return r.json(); }).then(function(data) {
           if (data && data.loggedIn) {

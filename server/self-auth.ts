@@ -7,6 +7,7 @@ import connectPg from "connect-pg-simple";
 import { SelfBackendVerifier, AllIds, DefaultConfigStore } from "@selfxyz/core";
 import { SelfAppBuilder } from "@selfxyz/qrcode";
 import crypto from "crypto";
+import { verifyMessage } from "viem";
 import { db } from "./db.js";
 import { users, type UpsertUser } from "../shared/schema.js";
 import { eq, sql } from "drizzle-orm";
@@ -83,6 +84,24 @@ setInterval(() => {
   for (const [id, session] of pendingAuthSessions.entries()) {
     if (session.expiresAt < now) {
       pendingAuthSessions.delete(id);
+    }
+  }
+}, 60 * 1000);
+
+// Store pending wallet challenges for MiniPay auth
+interface WalletChallenge {
+  challenge: string;
+  createdAt: Date;
+  expiresAt: Date;
+}
+
+const pendingWalletChallenges = new Map<string, WalletChallenge>();
+
+setInterval(() => {
+  const now = new Date();
+  for (const [nonce, challenge] of pendingWalletChallenges.entries()) {
+    if (challenge.expiresAt < now) {
+      pendingWalletChallenges.delete(nonce);
     }
   }
 }, 60 * 1000);
@@ -307,6 +326,106 @@ router.get("/callback", (req: Request, res: Response) => {
   res.json({ status: "ok", message: "Self auth callback. Use POST with proof." });
 });
 
+// === MiniPay Wallet Authentication ===
+
+// Generate a nonce challenge for wallet signature
+router.post("/wallet/challenge", (req: any, res: Response) => {
+  try {
+    const nonce = crypto.randomUUID();
+    const timestamp = new Date().toISOString();
+    const challenge = `Sign in to SelfClaw\nNonce: ${nonce}\nTimestamp: ${timestamp}`;
+
+    pendingWalletChallenges.set(nonce, {
+      challenge,
+      createdAt: new Date(),
+      expiresAt: new Date(Date.now() + 5 * 60 * 1000),
+    });
+
+    res.json({ challenge, nonce });
+  } catch (error: any) {
+    console.error("[self-auth] Wallet challenge error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Verify signed message and create session
+router.post("/wallet/verify", async (req: any, res: Response) => {
+  try {
+    const { address, signature, nonce } = req.body;
+
+    if (!address || !signature || !nonce) {
+      return res.status(400).json({ error: "Missing address, signature, or nonce" });
+    }
+
+    const walletChallenge = pendingWalletChallenges.get(nonce);
+    if (!walletChallenge) {
+      return res.status(400).json({ error: "Invalid or expired nonce" });
+    }
+
+    if (walletChallenge.expiresAt < new Date()) {
+      pendingWalletChallenges.delete(nonce);
+      return res.status(400).json({ error: "Challenge expired" });
+    }
+
+    const valid = await verifyMessage({
+      address: address as `0x${string}`,
+      message: walletChallenge.challenge,
+      signature: signature as `0x${string}`,
+    });
+
+    if (!valid) {
+      return res.status(401).json({ error: "Invalid signature" });
+    }
+
+    pendingWalletChallenges.delete(nonce);
+
+    const normalizedAddress = address.toLowerCase();
+
+    let [user] = await db.select().from(users).where(eq(users.walletAddress, normalizedAddress)).limit(1);
+
+    if (!user) {
+      const newUser: UpsertUser = {
+        walletAddress: normalizedAddress,
+        humanId: normalizedAddress,
+        authMethod: "minipay",
+        profileComplete: false,
+      };
+      [user] = await db.insert(users).values(newUser).returning();
+      console.log("[self-auth] Created new wallet user:", user.id, "address:", normalizedAddress);
+    } else {
+      console.log("[self-auth] Found existing wallet user:", user.id, "address:", normalizedAddress);
+    }
+
+    req.session.regenerate((err: any) => {
+      if (err) {
+        console.error("[self-auth] Session regeneration failed:", err);
+        return res.status(500).json({ error: "Session error" });
+      }
+
+      req.session.userId = user.id;
+      req.session.humanId = normalizedAddress;
+      req.session.isAuthenticated = true;
+      req.session.walletAddress = normalizedAddress;
+
+      res.json({
+        success: true,
+        user: {
+          id: user.id,
+          humanId: user.humanId,
+          walletAddress: user.walletAddress,
+          authMethod: user.authMethod,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          profileComplete: user.profileComplete,
+        },
+      });
+    });
+  } catch (error: any) {
+    console.error("[self-auth] Wallet verify error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Logout
 router.post("/logout", (req: any, res: Response) => {
   req.session.destroy((err: any) => {
@@ -332,6 +451,8 @@ router.get("/me", async (req: any, res: Response) => {
     res.json({
       id: user.id,
       humanId: user.humanId,
+      walletAddress: user.walletAddress,
+      authMethod: user.authMethod,
       email: user.email,
       firstName: user.firstName,
       lastName: user.lastName,
@@ -388,6 +509,8 @@ export function registerAuthRoutes(app: Express) {
           return res.json({
             id: user.id,
             humanId: user.humanId,
+            walletAddress: user.walletAddress,
+            authMethod: user.authMethod,
             email: user.email,
             firstName: user.firstName,
             lastName: user.lastName,
@@ -408,6 +531,8 @@ export function registerAuthRoutes(app: Express) {
           return res.json({
             id: user.id,
             humanId: user.humanId,
+            walletAddress: user.walletAddress,
+            authMethod: user.authMethod,
             email: user.email,
             firstName: user.firstName,
             lastName: user.lastName,

@@ -25,7 +25,7 @@ SelfClaw is a privacy-first agent verification registry built on EVM chains (sta
 - **Runtime**: Node.js 22+ with TypeScript (tsx)
 - **Backend**: Express.js (server/index.ts) running on port 5000
 - **Database**: PostgreSQL with Drizzle ORM
-- **Authentication**: Self.xyz passport-only (QR code verification)
+- **Authentication**: Self.xyz passport + MiniPay wallet (dual auth paths)
 - **Frontend**: Vanilla HTML/CSS/JS (public/)
 - **Blockchain**: Celo & Base (EVM-compatible chains), ERC-8004 for agent identity NFTs
 
@@ -106,16 +106,26 @@ public/                 # Frontend assets
 - `POST /api/selfclaw/v1/my-agents/{publicKey}/register-token` — Dashboard: register deployed token (session auth).
 - `POST /api/selfclaw/v1/my-agents/{publicKey}/request-sponsorship` — Dashboard: request sponsorship + auto pool (session auth).
 
-### Hosted Agents & Skill Market (Feb 2026)
-- **Hosted agents (mini agents)**: Lightweight AI assistants running on SelfClaw infrastructure. Max 3 per human. Ed25519 keypair generated on creation.
+### Miniclaws & Skill Market (Feb 2026)
+- **Miniclaws** (formerly "hosted agents" / "mini agents"): Lightweight AI assistants running on SelfClaw infrastructure. Max 3 per user. Ed25519 keypair generated on creation.
+- **Dual auth**: Miniclaws can be created by users with either a MiniPay wallet address (auto-connect in MiniPay app) or a Self.xyz passport. Wallet-only users can upgrade to passport later for full economy access.
 - **Profile fields**: `interests` (array), `topicsToWatch` (array), `socialHandles` (object), `personalContext` (text) — used by personalized skills.
 - **Built-in skills** (8 total): wallet-monitor, economics-tracker, price-watcher, reputation-monitor, smart-advisor, research-assistant, content-helper, news-radar.
 - **Personalized skills**: research-assistant, content-helper, news-radar use the agent's interests/topics/context for LLM-powered personalized outputs.
 - **Skill Market**: Community marketplace where users can publish, browse, install, and rate skills. Skills have a `handlerPrompt` (LLM prompt template) and can be free or priced in SELFCLAW tokens.
-- **Database tables**: `hosted_agents`, `agent_task_queue`, `marketplace_skills`, `skill_installs`.
+- **Database tables**: `hosted_agents` (with optional `wallet_address`), `agent_task_queue`, `marketplace_skills`, `skill_installs`.
 - **Agent worker**: 60s interval background worker with jitter, quota tracking (5000 LLM tokens/day, 100 API calls/day).
 - **Skill Market API**: `/v1/skill-market` (browse), `/v1/skill-market/:slug` (detail), POST to publish, install, rate skills.
-- **Frontend pages**: `/create-assistant` (4-step wizard), `/skill-market` (marketplace catalog), hosted agents section in `/my-agents`.
+- **Frontend pages**: `/create-assistant` (4-step wizard), `/skill-market` (marketplace catalog), miniclaws section in `/my-agents`.
+
+### MiniPay Integration (Feb 2026)
+- **Detection**: Frontend checks `window.ethereum.isMiniPay` flag on page load
+- **Auto-connect**: In MiniPay app, wallet connects automatically (no connect button per MiniPay design rules)
+- **Auth flow**: Wallet challenge → personal_sign → verify signature → create session
+- **Backend endpoints**: `POST /api/auth/self/wallet/challenge`, `POST /api/auth/self/wallet/verify`
+- **Identity mapping**: Wallet address stored in `users.wallet_address`, used as `humanId` equivalent for session compatibility
+- **Schema fields**: `users.wallet_address` (unique), `users.auth_method` ("passport" | "minipay"), `hosted_agents.wallet_address`
+- **Gating**: Miniclaw creation works with wallet-only auth. Full economy features (token deploy, sponsorship) still require passport verification.
 
 ### Wallet Architecture (Feb 2026)
 - **Per-agent wallets**: Each agent has its own wallet row in `agent_wallets`, keyed by `publicKey` (unique). A human with multiple agents can have multiple wallets.

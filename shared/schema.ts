@@ -24,6 +24,8 @@ export const sessions = pgTable(
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   humanId: varchar("human_id").unique(),
+  walletAddress: varchar("wallet_address").unique(),
+  authMethod: varchar("auth_method").default("passport"),
   email: varchar("email").unique(),
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
@@ -286,7 +288,8 @@ export type InsertTokenPriceSnapshot = typeof tokenPriceSnapshots.$inferInsert;
 
 export const hostedAgents = pgTable("hosted_agents", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  humanId: varchar("human_id").notNull(),
+  humanId: varchar("human_id"),
+  walletAddress: varchar("wallet_address"),
   publicKey: text("public_key").notNull().unique(),
   name: varchar("name").notNull(),
   emoji: varchar("emoji").default("🤖"),

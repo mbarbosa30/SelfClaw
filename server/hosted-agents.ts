@@ -43,7 +43,7 @@ interface Skill {
 async function walletMonitorHandler(agent: HostedAgent, ctx: SkillContext): Promise<SkillResult> {
   try {
     const wallets = await ctx.db.select().from(agentWallets)
-      .where(eq(agentWallets.humanId, agent.humanId)).limit(5);
+      .where(sql`${agentWallets.humanId} = ${agent.humanId}`).limit(5);
     if (wallets.length === 0) {
       return { success: true, summary: "No wallets found for this agent.", data: { wallets: [] } };
     }
@@ -61,9 +61,9 @@ async function economicsTrackerHandler(agent: HostedAgent, ctx: SkillContext): P
   try {
     const since = new Date(ctx.now.getTime() - 24 * 60 * 60 * 1000);
     const revenues = await ctx.db.select().from(revenueEvents)
-      .where(and(eq(revenueEvents.humanId, agent.humanId), sql`${revenueEvents.createdAt} >= ${since}`));
+      .where(and(sql`${revenueEvents.humanId} = ${agent.humanId}`, sql`${revenueEvents.createdAt} >= ${since}`));
     const costs = await ctx.db.select().from(costEvents)
-      .where(and(eq(costEvents.humanId, agent.humanId), sql`${costEvents.createdAt} >= ${since}`));
+      .where(and(sql`${costEvents.humanId} = ${agent.humanId}`, sql`${costEvents.createdAt} >= ${since}`));
     const totalRevenue = revenues.reduce((s, r) => s + parseFloat(r.amount || "0"), 0);
     const totalCosts = costs.reduce((s, c) => s + parseFloat(c.amount || "0"), 0);
     return {
@@ -79,7 +79,7 @@ async function economicsTrackerHandler(agent: HostedAgent, ctx: SkillContext): P
 async function priceWatcherHandler(agent: HostedAgent, ctx: SkillContext): Promise<SkillResult> {
   try {
     const pools = await ctx.db.select().from(trackedPools)
-      .where(eq(trackedPools.humanId, agent.humanId)).limit(5);
+      .where(sql`${trackedPools.humanId} = ${agent.humanId}`).limit(5);
     if (pools.length === 0) {
       return { success: true, summary: "No tracked token pools found.", data: { pools: [] } };
     }
@@ -104,7 +104,7 @@ async function priceWatcherHandler(agent: HostedAgent, ctx: SkillContext): Promi
 async function reputationMonitorHandler(agent: HostedAgent, ctx: SkillContext): Promise<SkillResult> {
   try {
     const bots = await ctx.db.select().from(verifiedBots)
-      .where(eq(verifiedBots.humanId, agent.humanId));
+      .where(sql`${verifiedBots.humanId} = ${agent.humanId}`);
     const verifiedCount = bots.length;
     const hasMetadata = bots.filter(b => b.metadata).length;
     return {
@@ -119,9 +119,9 @@ async function reputationMonitorHandler(agent: HostedAgent, ctx: SkillContext): 
 
 async function smartAdvisorHandler(agent: HostedAgent, ctx: SkillContext): Promise<SkillResult> {
   try {
-    const wallets = await ctx.db.select().from(agentWallets).where(eq(agentWallets.humanId, agent.humanId)).limit(3);
-    const pools = await ctx.db.select().from(trackedPools).where(eq(trackedPools.humanId, agent.humanId)).limit(3);
-    const bots = await ctx.db.select().from(verifiedBots).where(eq(verifiedBots.humanId, agent.humanId)).limit(5);
+    const wallets = await ctx.db.select().from(agentWallets).where(sql`${agentWallets.humanId} = ${agent.humanId}`).limit(3);
+    const pools = await ctx.db.select().from(trackedPools).where(sql`${trackedPools.humanId} = ${agent.humanId}`).limit(3);
+    const bots = await ctx.db.select().from(verifiedBots).where(sql`${verifiedBots.humanId} = ${agent.humanId}`).limit(5);
 
     const stateStr = JSON.stringify({
       agentName: agent.name, status: agent.status,
@@ -164,8 +164,8 @@ async function researchAssistantHandler(agent: HostedAgent, ctx: SkillContext): 
       return { success: true, summary: "No interests or topics configured. Add some in your assistant settings to get personalized research.", data: {} };
     }
 
-    const bots = await ctx.db.select().from(verifiedBots).where(eq(verifiedBots.humanId, agent.humanId)).limit(5);
-    const pools = await ctx.db.select().from(trackedPools).where(eq(trackedPools.humanId, agent.humanId)).limit(5);
+    const bots = await ctx.db.select().from(verifiedBots).where(sql`${verifiedBots.humanId} = ${agent.humanId}`).limit(5);
+    const pools = await ctx.db.select().from(trackedPools).where(sql`${trackedPools.humanId} = ${agent.humanId}`).limit(5);
 
     const prompt = `You are a research assistant for an agent owner on the SelfClaw platform.
 
@@ -212,11 +212,11 @@ async function contentHelperHandler(agent: HostedAgent, ctx: SkillContext): Prom
     const socialHandles = (agent.socialHandles as Record<string, string>) || {};
     const context = agent.personalContext || "";
 
-    const bots = await ctx.db.select().from(verifiedBots).where(eq(verifiedBots.humanId, agent.humanId)).limit(5);
+    const bots = await ctx.db.select().from(verifiedBots).where(sql`${verifiedBots.humanId} = ${agent.humanId}`).limit(5);
     const recentRevenue = await ctx.db.select().from(revenueEvents)
-      .where(and(eq(revenueEvents.humanId, agent.humanId), sql`${revenueEvents.createdAt} >= ${new Date(ctx.now.getTime() - 7 * 24 * 60 * 60 * 1000)}`))
+      .where(and(sql`${revenueEvents.humanId} = ${agent.humanId}`, sql`${revenueEvents.createdAt} >= ${new Date(ctx.now.getTime() - 7 * 24 * 60 * 60 * 1000)}`))
       .limit(10);
-    const pools = await ctx.db.select().from(trackedPools).where(eq(trackedPools.humanId, agent.humanId)).limit(3);
+    const pools = await ctx.db.select().from(trackedPools).where(sql`${trackedPools.humanId} = ${agent.humanId}`).limit(3);
 
     const prompt = `You are a social media content creator for an agent owner on SelfClaw, a platform for verified AI agents.
 
@@ -267,7 +267,7 @@ async function newsRadarHandler(agent: HostedAgent, ctx: SkillContext): Promise<
       return { success: true, summary: "No interests or topics configured. Add keywords in your assistant settings to receive news digests.", data: {} };
     }
 
-    const pools = await ctx.db.select().from(trackedPools).where(eq(trackedPools.humanId, agent.humanId)).limit(5);
+    const pools = await ctx.db.select().from(trackedPools).where(sql`${trackedPools.humanId} = ${agent.humanId}`).limit(5);
     const tokenSymbols = pools.map(p => p.tokenSymbol).filter(Boolean);
 
     const allTopics = [...new Set([...interests, ...topics, ...tokenSymbols, "SelfClaw", "AI agents"])];
@@ -374,11 +374,11 @@ hostedAgentsRouter.use(agentLimiter);
 
 function requireAuth(req: Request, res: Response): string | null {
   const session = req.session as any;
-  if (!session?.isAuthenticated || !session?.humanId) {
+  if (!session?.isAuthenticated || (!session?.humanId && !session?.walletAddress)) {
     res.status(401).json({ error: "Authentication required" });
     return null;
   }
-  return session.humanId;
+  return session.humanId || session.walletAddress;
 }
 
 async function requireAgentOwnership(req: Request, res: Response): Promise<HostedAgent | null> {
@@ -386,7 +386,7 @@ async function requireAgentOwnership(req: Request, res: Response): Promise<Hoste
   if (!humanId) return null;
   const { id } = req.params;
   const agents = await db.select().from(hostedAgents)
-    .where(and(sql`${hostedAgents.id} = ${id}`, eq(hostedAgents.humanId, humanId))).limit(1);
+    .where(and(sql`${hostedAgents.id} = ${id}`, sql`(${hostedAgents.humanId} = ${humanId} OR ${hostedAgents.walletAddress} = ${humanId})`)).limit(1);
   if (agents.length === 0) {
     res.status(404).json({ error: "Agent not found" });
     return null;
@@ -414,8 +414,10 @@ hostedAgentsRouter.post("/v1/hosted-agents", async (req: Request, res: Response)
       return res.status(400).json({ error: "Name is required (2-50 characters)" });
     }
 
+    const walletAddress = (req.session as any).walletAddress || null;
+
     const existing = await db.select({ cnt: count() }).from(hostedAgents)
-      .where(eq(hostedAgents.humanId, humanId));
+      .where(sql`(${hostedAgents.humanId} = ${humanId} OR ${hostedAgents.walletAddress} = ${humanId})`);
     if ((existing[0]?.cnt || 0) >= 3) {
       return res.status(400).json({ error: "Maximum 3 hosted agents per human" });
     }
@@ -436,6 +438,7 @@ hostedAgentsRouter.post("/v1/hosted-agents", async (req: Request, res: Response)
 
     const [agent] = await db.insert(hostedAgents).values({
       humanId,
+      walletAddress: walletAddress || null,
       publicKey: publicKeyB64,
       name,
       emoji: emoji || "🤖",
@@ -452,13 +455,13 @@ hostedAgentsRouter.post("/v1/hosted-agents", async (req: Request, res: Response)
     const walletKeypair = crypto.generateKeyPairSync("ed25519");
     const walletPubDer = walletKeypair.publicKey.export({ type: "spki", format: "der" });
     const walletPubB64 = Buffer.from(walletPubDer).toString("base64");
-    const walletAddress = "0x" + crypto.createHash("sha256").update(walletPubDer).digest("hex").slice(0, 40);
+    const generatedWalletAddress = "0x" + crypto.createHash("sha256").update(walletPubDer).digest("hex").slice(0, 40);
 
     try {
       await db.insert(agentWallets).values({
         humanId,
         publicKey: walletPubB64,
-        address: walletAddress,
+        address: generatedWalletAddress,
       });
     } catch (walletErr: any) {
       console.log("[hosted-agents] Wallet auto-create skipped:", walletErr.message);
@@ -477,7 +480,7 @@ hostedAgentsRouter.post("/v1/hosted-agents", async (req: Request, res: Response)
         createdAt: agent.createdAt,
       },
       privateKey: privateKeyB64,
-      walletAddress,
+      walletAddress: generatedWalletAddress,
       warning: "Save the private key now. It will not be shown again.",
     });
   } catch (error: any) {
@@ -492,11 +495,11 @@ hostedAgentsRouter.get("/v1/hosted-agents", async (req: Request, res: Response) 
     if (!humanId) return;
 
     const agents = await db.select().from(hostedAgents)
-      .where(eq(hostedAgents.humanId, humanId))
+      .where(sql`(${hostedAgents.humanId} = ${humanId} OR ${hostedAgents.walletAddress} = ${humanId})`)
       .orderBy(desc(hostedAgents.createdAt));
 
     const wallets = await db.select().from(agentWallets)
-      .where(eq(agentWallets.humanId, humanId));
+      .where(sql`${agentWallets.humanId} = ${humanId}`);
 
     const agentIds = agents.map(a => a.id);
     let allTasks: any[] = [];
@@ -533,7 +536,7 @@ hostedAgentsRouter.get("/v1/hosted-agents/:id", async (req: Request, res: Respon
       .orderBy(desc(agentTaskQueue.createdAt)).limit(20);
 
     const wallets = await db.select().from(agentWallets)
-      .where(eq(agentWallets.humanId, agent.humanId));
+      .where(sql`${agentWallets.humanId} = ${agent.humanId}`);
 
     res.json({
       agent: {
@@ -720,7 +723,7 @@ hostedAgentsRouter.delete("/v1/hosted-agents/:id", async (req: Request, res: Res
       .set({ status: "paused", updatedAt: new Date() })
       .where(sql`${hostedAgents.id} = ${agent.id}`).returning();
 
-    await logAgentActivity("hosted_agent_paused", agent.humanId, agent.publicKey, agent.name, { agentId: agent.id });
+    await logAgentActivity("hosted_agent_paused", agent.humanId || agent.walletAddress || "unknown", agent.publicKey, agent.name, { agentId: agent.id });
 
     res.json({ success: true, agent: updated });
   } catch (error: any) {

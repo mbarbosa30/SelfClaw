@@ -1,5 +1,6 @@
 (function() {
   var authState = { user: null, checking: true };
+  var isMiniPay = false;
   var loginModal = null;
   var loginPollInterval = null;
   var loginSocket = null;
@@ -14,7 +15,41 @@
     return d.innerHTML;
   }
 
+  async function connectMiniPay() {
+    var accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+    var address = accounts[0];
+    if (!address) throw new Error('No account');
+
+    var chalRes = await fetch('/api/auth/self/wallet/challenge', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+    var chalData = await chalRes.json();
+    if (!chalData.challenge) throw new Error('No challenge');
+
+    var signature = await window.ethereum.request({ method: 'personal_sign', params: [chalData.challenge, address] });
+
+    var verRes = await fetch('/api/auth/self/wallet/verify', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ address: address, signature: signature, nonce: chalData.nonce }) });
+    var verData = await verRes.json();
+
+    if (verData.success) {
+      authState.user = verData.user;
+      authState.checking = false;
+      renderAuthUI();
+      if (window.onAuthLogin) window.onAuthLogin(authState.user);
+    } else {
+      throw new Error(verData.error || 'Verification failed');
+    }
+  }
+
   async function checkAuth() {
+    if (window.ethereum && window.ethereum.isMiniPay) {
+      isMiniPay = true;
+      try {
+        await connectMiniPay();
+        return;
+      } catch(e) {
+        console.log('[auth] MiniPay auto-connect failed, falling back:', e);
+      }
+    }
+
     try {
       var res = await fetch('/api/auth/self/me');
       if (res.ok) {
@@ -47,7 +82,15 @@
       el.innerHTML = '<span class="nav-link" style="opacity:0.5;cursor:default;">...</span>';
     } else if (authState.user) {
       var hid = authState.user.humanId || '';
-      var display = hid ? hid.substring(0, 8) + '...' : 'User';
+      var walletAddr = authState.user.walletAddress || '';
+      var display;
+      if (walletAddr && (!hid || hid.startsWith('0x'))) {
+        display = walletAddr.substring(0, 6) + '...' + walletAddr.substring(walletAddr.length - 4);
+      } else if (hid) {
+        display = hid.substring(0, 8) + '...';
+      } else {
+        display = 'User';
+      }
       el.innerHTML = '<a href="/my-agents" class="nav-link" style="border:2px solid var(--green-verify);padding:0.2rem 0.6rem;font-size:0.7rem;">' + escHtml(display) + '</a>';
 
       var logoutBtn = document.createElement('a');
@@ -113,6 +156,16 @@
   }
 
   async function openLoginModal() {
+    if (isMiniPay) {
+      try {
+        await connectMiniPay();
+      } catch(e) {
+        console.error('[auth] MiniPay login failed:', e);
+        alert('Failed to connect with MiniPay: ' + e.message);
+      }
+      return;
+    }
+
     var modal = createLoginModal();
     modal.style.display = 'flex';
 
@@ -259,6 +312,7 @@
   window.selfclawAuth = {
     getUser: function() { return authState.user; },
     isLoggedIn: function() { return !!authState.user; },
+    isMiniPay: function() { return isMiniPay; },
     openLogin: openLoginModal,
     logout: logout,
     onReady: function(cb) {
