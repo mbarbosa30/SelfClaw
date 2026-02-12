@@ -1302,6 +1302,12 @@ hostedAgentsRouter.post("/v1/hosted-agents/:id/chat", async (req: Request, res: 
     res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Cache-Control", "no-cache");
     res.setHeader("Connection", "keep-alive");
+    res.setHeader("X-Accel-Buffering", "no");
+
+    res.flushHeaders();
+
+    let clientDisconnected = false;
+    req.on("close", () => { clientDisconnected = true; });
 
     const stream = await openai.chat.completions.create({
       model: "gpt-5.2",
@@ -1315,6 +1321,10 @@ hostedAgentsRouter.post("/v1/hosted-agents/:id/chat", async (req: Request, res: 
     let totalTokensUsed = 0;
 
     for await (const chunk of stream) {
+      if (clientDisconnected) {
+        console.log(`[miniclaw-chat] Client disconnected mid-stream for agent ${agent.name || agent.id}`);
+        break;
+      }
       const content = chunk.choices[0]?.delta?.content || "";
       if (content) {
         fullResponse += content;
@@ -1325,11 +1335,13 @@ hostedAgentsRouter.post("/v1/hosted-agents/:id/chat", async (req: Request, res: 
       }
     }
 
-    await db.insert(messages).values({
-      conversationId: convoId!,
-      role: "assistant",
-      content: fullResponse,
-    });
+    if (fullResponse.length > 0) {
+      await db.insert(messages).values({
+        conversationId: convoId!,
+        role: "assistant",
+        content: fullResponse,
+      });
+    }
 
     const actualTokens = totalTokensUsed || Math.ceil((message.length + fullResponse.length) / 4);
     await db.update(hostedAgents)
@@ -1341,8 +1353,10 @@ hostedAgentsRouter.post("/v1/hosted-agents/:id/chat", async (req: Request, res: 
       })
       .where(eq(hostedAgents.id, agent.id));
 
-    res.write(`data: ${JSON.stringify({ done: true, conversationId: convoId })}\n\n`);
-    res.end();
+    if (!clientDisconnected) {
+      res.write(`data: ${JSON.stringify({ done: true, conversationId: convoId })}\n\n`);
+      res.end();
+    }
 
     const bgAgentId = agent.id;
     const bgConvoId = convoId!;

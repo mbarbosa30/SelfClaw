@@ -334,6 +334,19 @@
       setTimeout(function() { el.style.display = 'none'; }, 4000);
     }
 
+    function showAuthLost() {
+      var typingEl = document.getElementById('typing-indicator');
+      typingEl.style.display = 'none';
+      isSending = false;
+      sendBtn.disabled = true;
+      inputEl.disabled = true;
+      inputEl.placeholder = 'Session expired...';
+      var el = document.getElementById('error-toast');
+      el.innerHTML = 'Session expired. <a href="/miniapp" style="color:#fff;text-decoration:underline;font-weight:600">Reconnect</a>';
+      el.style.display = '';
+      el.style.background = 'var(--accent)';
+    }
+
     function esc(s) {
       if (!s) return '';
       var d = document.createElement('div');
@@ -494,6 +507,10 @@
         });
 
         if (!res.ok) {
+          if (res.status === 401) {
+            showAuthLost();
+            return;
+          }
           var err = await res.json().catch(function() { return { error: 'Chat failed' }; });
           throw new Error(err.error || 'Chat failed');
         }
@@ -565,6 +582,10 @@
     async function loadMessages() {
       try {
         var res = await fetch('/api/selfclaw/v1/hosted-agents/' + agentId + '/messages', { credentials: 'include' });
+        if (res.status === 401) {
+          window.location.href = '/miniapp';
+          return;
+        }
         if (!res.ok) return;
         var data = await res.json();
 

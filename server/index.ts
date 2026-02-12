@@ -32,8 +32,10 @@ app.use(helmet({
 }));
 
 app.use((req, res, next) => {
-  req.setTimeout(30000);
-  res.setTimeout(30000);
+  const isStreaming = req.path.includes('/chat') || req.path.includes('/messages');
+  const timeout = isStreaming ? 120000 : 30000;
+  req.setTimeout(timeout);
+  res.setTimeout(timeout);
   next();
 });
 
