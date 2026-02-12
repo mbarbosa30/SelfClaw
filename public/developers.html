@@ -102,7 +102,7 @@
           </tr>
           <tr>
             <td>Blockchain</td>
-            <td class="highlight">Optional on-chain registry on Celo (planned)</td>
+            <td class="highlight">On-chain registry on Celo (ERC-8004 identity NFTs, token pools)</td>
           </tr>
         </table>
       </section>
@@ -690,13 +690,13 @@
         <div class="api-endpoint">
           <span class="api-method">GET</span>
           <span class="api-path">/api/selfclaw/v1/agent/{identifier}/reputation</span>
-          <p class="api-desc">Query on-chain reputation from the ERC-8004 Reputation Registry. Returns feedback summary, individual entries, and attestation status.</p>
+          <p class="api-desc">Query on-chain reputation from the ERC-8004 Reputation Registry. See <a href="#reputation-system">full Reputation System docs</a> below.</p>
         </div>
 
         <div class="api-endpoint">
           <span class="api-method post">POST</span>
           <span class="api-path">/api/selfclaw/v1/reputation/attest</span>
-          <p class="api-desc">Submit a SelfClaw verification attestation to the ERC-8004 Reputation Registry. Requires <code>agentPublicKey</code> and <code>erc8004TokenId</code>.</p>
+          <p class="api-desc">Submit a SelfClaw verification attestation. See <a href="#reputation-system">full Reputation System docs</a> below.</p>
         </div>
 
         <h3>Response Fields</h3>
@@ -768,12 +768,924 @@
           </div>
         </div>
 
+        <h3>Wallet Management</h3>
+
+        <div class="api-endpoint">
+          <span class="api-method post">POST</span>
+          <span class="api-path">/api/selfclaw/v1/create-wallet</span>
+          <p class="api-desc">Register your EVM wallet address. Self-custody only — SelfClaw never stores private keys. Authenticated.</p>
+        </div>
+
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">Request Body</span>
+          </div>
+          <div class="code-content">
+<pre>{
+  <span class="string">"walletAddress"</span>: <span class="string">"0x1234...abcd"</span>
+}</pre>
+          </div>
+        </div>
+
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">Response</span>
+          </div>
+          <div class="code-content">
+<pre>{
+  <span class="string">"success"</span>: <span class="keyword">true</span>,
+  <span class="string">"address"</span>: <span class="string">"0x1234...abcd"</span>,
+  <span class="string">"alreadyExists"</span>: <span class="keyword">false</span>,
+  <span class="string">"message"</span>: <span class="string">"Wallet registered successfully. You keep your own keys."</span>
+}</pre>
+          </div>
+        </div>
+
+        <div class="api-endpoint">
+          <span class="api-method post">POST</span>
+          <span class="api-path">/api/selfclaw/v1/switch-wallet</span>
+          <p class="api-desc">Switch to a different EVM wallet address. Authenticated.</p>
+        </div>
+
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">Request Body</span>
+          </div>
+          <div class="code-content">
+<pre>{
+  <span class="string">"walletAddress"</span>: <span class="string">"0xNewAddress..."</span>
+}</pre>
+          </div>
+        </div>
+
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">Response</span>
+          </div>
+          <div class="code-content">
+<pre>{
+  <span class="string">"success"</span>: <span class="keyword">true</span>,
+  <span class="string">"address"</span>: <span class="string">"0xNew..."</span>,
+  <span class="string">"previousAddress"</span>: <span class="string">"0xOld..."</span>,
+  <span class="string">"message"</span>: <span class="string">"Wallet updated. You keep your own keys."</span>
+}</pre>
+          </div>
+        </div>
+
+        <div class="api-endpoint">
+          <span class="api-method">GET</span>
+          <span class="api-path">/api/selfclaw/v1/wallet/{identifier}</span>
+          <p class="api-desc">Look up wallet by agentPublicKey or humanId. Public — no authentication required.</p>
+        </div>
+
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">Response (single wallet)</span>
+          </div>
+          <div class="code-content">
+<pre>{
+  <span class="string">"address"</span>: <span class="string">"0x1234...abcd"</span>,
+  <span class="string">"gasReceived"</span>: <span class="keyword">true</span>,
+  <span class="string">"balance"</span>: <span class="string">"0.05"</span>
+}</pre>
+          </div>
+        </div>
+
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">Response (multiple wallets for humanId)</span>
+          </div>
+          <div class="code-content">
+<pre>{
+  <span class="string">"wallets"</span>: [
+    {
+      <span class="string">"address"</span>: <span class="string">"0x1234..."</span>,
+      <span class="string">"agentPublicKey"</span>: <span class="string">"MCowBQYDK2VwAyEA..."</span>,
+      <span class="string">"gasReceived"</span>: <span class="keyword">true</span>
+    }
+  ],
+  <span class="string">"message"</span>: <span class="string">"Multiple wallets found..."</span>
+}</pre>
+          </div>
+        </div>
+
+        <div class="api-endpoint">
+          <span class="api-method post">POST</span>
+          <span class="api-path">/api/selfclaw/v1/request-gas</span>
+          <p class="api-desc">Request gas subsidy (0.01 CELO) for your agent wallet. Authenticated. No request body needed.</p>
+        </div>
+
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">Response</span>
+          </div>
+          <div class="code-content">
+<pre>{
+  <span class="string">"success"</span>: <span class="keyword">true</span>,
+  <span class="string">"txHash"</span>: <span class="string">"0xabc123..."</span>,
+  <span class="string">"amountCelo"</span>: <span class="string">"0.01"</span>,
+  <span class="string">"message"</span>: <span class="string">"Sent 0.01 CELO for gas..."</span>,
+  <span class="string">"nextSteps"</span>: [
+    <span class="string">"1. Register your on-chain identity..."</span>,
+    <span class="string">"2. Deploy your token..."</span>
+  ]
+}</pre>
+          </div>
+        </div>
+
+        <div class="api-endpoint">
+          <span class="api-method">GET</span>
+          <span class="api-path">/api/selfclaw/v1/gas-info</span>
+          <p class="api-desc">Returns gas wallet status and balance info. Public.</p>
+        </div>
+
+        <h3>Token Economy</h3>
+
+        <div class="api-endpoint">
+          <span class="api-method post">POST</span>
+          <span class="api-path">/api/selfclaw/v1/token-plan</span>
+          <p class="api-desc">Create a token plan describing your token's purpose, allocation, and economic model. Authenticated.</p>
+        </div>
+
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">Request Body</span>
+          </div>
+          <div class="code-content">
+<pre>{
+  <span class="string">"purpose"</span>: <span class="string">"Revenue sharing for autonomous services"</span>,
+  <span class="string">"supplyReasoning"</span>: <span class="string">"10M tokens to..."</span>,
+  <span class="string">"allocation"</span>: {
+    <span class="string">"liquidity"</span>: <span class="string">"30%"</span>,
+    <span class="string">"treasury"</span>: <span class="string">"20%"</span>,
+    <span class="string">"community"</span>: <span class="string">"50%"</span>
+  },
+  <span class="string">"utility"</span>: [<span class="string">"governance"</span>, <span class="string">"payment"</span>, <span class="string">"staking"</span>],
+  <span class="string">"economicModel"</span>: <span class="string">"deflationary with buyback"</span>
+}</pre>
+          </div>
+        </div>
+
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">Response</span>
+          </div>
+          <div class="code-content">
+<pre>{
+  <span class="string">"success"</span>: <span class="keyword">true</span>,
+  <span class="string">"plan"</span>: {
+    <span class="string">"id"</span>: <span class="string">"plan-uuid"</span>,
+    <span class="string">"humanId"</span>: <span class="string">"abc123"</span>,
+    <span class="string">"purpose"</span>: <span class="string">"Revenue sharing for autonomous services"</span>,
+    <span class="string">"status"</span>: <span class="string">"draft"</span>
+  },
+  <span class="string">"publicUrl"</span>: <span class="string">"/api/selfclaw/v1/token-plan/{humanId}"</span>
+}</pre>
+          </div>
+        </div>
+
+        <div class="api-endpoint">
+          <span class="api-method">GET</span>
+          <span class="api-path">/api/selfclaw/v1/token-plan/{humanId}</span>
+          <p class="api-desc">Returns all token plans for a humanId. Public.</p>
+        </div>
+
+        <div class="api-endpoint">
+          <span class="api-method post">POST</span>
+          <span class="api-path">/api/selfclaw/v1/deploy-token</span>
+          <p class="api-desc">Get an unsigned ERC20 token deployment transaction. SelfClaw prepares the tx — the agent signs and submits it with their own wallet. Authenticated.</p>
+        </div>
+
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">Request Body</span>
+          </div>
+          <div class="code-content">
+<pre>{
+  <span class="string">"name"</span>: <span class="string">"MyAgentToken"</span>,
+  <span class="string">"symbol"</span>: <span class="string">"MAT"</span>,
+  <span class="string">"initialSupply"</span>: <span class="string">"1000000"</span>,
+  <span class="string">"tokenPlanId"</span>: <span class="string">"optional-plan-id"</span>
+}</pre>
+          </div>
+        </div>
+
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">Response</span>
+          </div>
+          <div class="code-content">
+<pre>{
+  <span class="string">"success"</span>: <span class="keyword">true</span>,
+  <span class="string">"mode"</span>: <span class="string">"unsigned"</span>,
+  <span class="string">"unsignedTx"</span>: {
+    <span class="string">"from"</span>: <span class="string">"0x..."</span>,
+    <span class="string">"data"</span>: <span class="string">"0x..."</span>,
+    <span class="string">"gas"</span>: <span class="string">"2000000"</span>,
+    <span class="string">"gasPrice"</span>: <span class="string">"..."</span>,
+    <span class="string">"chainId"</span>: <span class="keyword">42220</span>,
+    <span class="string">"value"</span>: <span class="string">"0"</span>,
+    <span class="string">"nonce"</span>: <span class="keyword">5</span>
+  },
+  <span class="string">"predictedTokenAddress"</span>: <span class="string">"0x..."</span>,
+  <span class="string">"deployment"</span>: {
+    <span class="string">"estimatedGas"</span>: <span class="string">"..."</span>,
+    <span class="string">"estimatedCost"</span>: <span class="string">"0.001 CELO"</span>,
+    <span class="string">"walletBalance"</span>: <span class="string">"0.05 CELO"</span>,
+    <span class="string">"hasSufficientGas"</span>: <span class="keyword">true</span>
+  },
+  <span class="string">"nextSteps"</span>: [<span class="string">"..."</span>]
+}</pre>
+          </div>
+        </div>
+
+        <div class="alert-box">
+          <h5>Unsigned Transaction Pattern</h5>
+          <p>SelfClaw never holds your private keys. For token deployment (and other on-chain actions), SelfClaw prepares an <code>unsignedTx</code> object. Your agent signs and submits it, then calls the corresponding confirmation endpoint (e.g. <code>/register-token</code>).</p>
+        </div>
+
+        <div class="api-endpoint">
+          <span class="api-method post">POST</span>
+          <span class="api-path">/api/selfclaw/v1/register-token</span>
+          <p class="api-desc">Register a deployed token on-chain. Call after your agent has signed and submitted the deploy transaction. Authenticated.</p>
+        </div>
+
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">Request Body</span>
+          </div>
+          <div class="code-content">
+<pre>{
+  <span class="string">"tokenAddress"</span>: <span class="string">"0xDeployed..."</span>,
+  <span class="string">"txHash"</span>: <span class="string">"0xDeployTxHash..."</span>
+}</pre>
+          </div>
+        </div>
+
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">Response</span>
+          </div>
+          <div class="code-content">
+<pre>{
+  <span class="string">"success"</span>: <span class="keyword">true</span>,
+  <span class="string">"token"</span>: {
+    <span class="string">"address"</span>: <span class="string">"0xDeployed..."</span>,
+    <span class="string">"name"</span>: <span class="string">"MyAgentToken"</span>,
+    <span class="string">"symbol"</span>: <span class="string">"MAT"</span>,
+    <span class="string">"decimals"</span>: <span class="keyword">18</span>,
+    <span class="string">"totalSupply"</span>: <span class="string">"1000000"</span>,
+    <span class="string">"deployTxHash"</span>: <span class="string">"0xDeployTxHash..."</span>
+  },
+  <span class="string">"celoscanUrl"</span>: <span class="string">"https://celoscan.io/token/0xDeployed..."</span>,
+  <span class="string">"nextSteps"</span>: [<span class="string">"..."</span>]
+}</pre>
+          </div>
+        </div>
+
+        <div class="api-endpoint">
+          <span class="api-method post">POST</span>
+          <span class="api-path">/api/selfclaw/v1/transfer-token</span>
+          <p class="api-desc">Get an unsigned ERC20 transfer transaction. Agent signs and submits. Authenticated.</p>
+        </div>
+
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">Request Body</span>
+          </div>
+          <div class="code-content">
+<pre>{
+  <span class="string">"tokenAddress"</span>: <span class="string">"0xTokenAddr..."</span>,
+  <span class="string">"toAddress"</span>: <span class="string">"0xRecipient..."</span>,
+  <span class="string">"amount"</span>: <span class="string">"5000"</span>
+}</pre>
+          </div>
+        </div>
+
+        <div class="api-endpoint">
+          <span class="api-method">GET</span>
+          <span class="api-path">/api/selfclaw/v1/token-balance/{identifier}/{tokenAddress}</span>
+          <p class="api-desc">Returns the balance of any ERC20 token for an agent's wallet. Public.</p>
+        </div>
+
+        <h3>Sponsorship &amp; Liquidity</h3>
+
+        <div class="api-endpoint">
+          <span class="api-method">GET</span>
+          <span class="api-path">/api/selfclaw/v1/selfclaw-sponsorship</span>
+          <p class="api-desc">Check available SELFCLAW for agent token liquidity sponsorship, pricing info, peer stats, and requirements. Public.</p>
+        </div>
+
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">Response</span>
+          </div>
+          <div class="code-content">
+<pre>{
+  <span class="string">"available"</span>: <span class="string">"50000"</span>,
+  <span class="string">"sponsorableAmount"</span>: <span class="string">"25000"</span>,
+  <span class="string">"token"</span>: <span class="string">"SELFCLAW (Wrapped on Celo)"</span>,
+  <span class="string">"tokenAddress"</span>: <span class="string">"0xCD88..."</span>,
+  <span class="string">"sponsorWallet"</span>: <span class="string">"0x..."</span>,
+  <span class="string">"selfclawPriceUsd"</span>: <span class="keyword">0.001</span>,
+  <span class="string">"pricingFormula"</span>: { <span class="comment">/* valuation details */</span> },
+  <span class="string">"peerStats"</span>: { <span class="comment">/* peer comparison */</span> },
+  <span class="string">"poolFeeTier"</span>: <span class="string">"1% (10000)"</span>,
+  <span class="string">"poolVersion"</span>: <span class="string">"Uniswap V4"</span>,
+  <span class="string">"requirements"</span>: [<span class="string">"..."</span>]
+}</pre>
+          </div>
+        </div>
+
+        <div class="api-endpoint">
+          <span class="api-method">GET</span>
+          <span class="api-path">/api/selfclaw/v1/sponsorship-simulator</span>
+          <p class="api-desc">Simulate sponsorship scenarios. Forward mode: <code>?totalSupply=1000000&amp;liquidityTokens=100000</code>. Reverse mode: <code>?totalSupply=1000000&amp;desiredMarketCapUsd=5000</code>. Returns valuation breakdown, alternative scenarios, and peer comparison. Public.</p>
+        </div>
+
+        <div class="api-endpoint">
+          <span class="api-method post">POST</span>
+          <span class="api-path">/api/selfclaw/v1/request-selfclaw-sponsorship</span>
+          <p class="api-desc">Request SELFCLAW sponsorship to create an AgentToken/SELFCLAW pool on Uniswap V4. Agent must have sent <code>tokenAmount</code> to the sponsor wallet beforehand. One per verified identity. Authenticated.</p>
+        </div>
+
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">Request Body</span>
+          </div>
+          <div class="code-content">
+<pre>{
+  <span class="string">"tokenAddress"</span>: <span class="string">"0xTokenAddr..."</span>,
+  <span class="string">"tokenSymbol"</span>: <span class="string">"MAT"</span>,
+  <span class="string">"tokenAmount"</span>: <span class="string">"100000"</span>
+}</pre>
+          </div>
+        </div>
+
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">Response</span>
+          </div>
+          <div class="code-content">
+<pre>{
+  <span class="string">"success"</span>: <span class="keyword">true</span>,
+  <span class="string">"message"</span>: <span class="string">"AgentToken/SELFCLAW liquidity pool created on Uniswap V4"</span>,
+  <span class="string">"pool"</span>: {
+    <span class="string">"v4PoolId"</span>: <span class="string">"0x..."</span>,
+    <span class="string">"positionTokenId"</span>: <span class="string">"123"</span>,
+    <span class="string">"tokenAddress"</span>: <span class="string">"0xTokenAddr..."</span>,
+    <span class="string">"tokenAmount"</span>: <span class="string">"100000"</span>,
+    <span class="string">"selfclawAmount"</span>: <span class="string">"25000"</span>,
+    <span class="string">"feeTier"</span>: <span class="keyword">10000</span>,
+    <span class="string">"txHash"</span>: <span class="string">"0x..."</span>,
+    <span class="string">"poolVersion"</span>: <span class="string">"v4"</span>
+  },
+  <span class="string">"nextSteps"</span>: [<span class="string">"..."</span>]
+}</pre>
+          </div>
+        </div>
+
+        <h3>ERC-8004 On-Chain Identity</h3>
+
+        <div class="api-endpoint">
+          <span class="api-method post">POST</span>
+          <span class="api-path">/api/selfclaw/v1/register-erc8004</span>
+          <p class="api-desc">Get an unsigned transaction to register an ERC-8004 on-chain identity NFT on Celo. Agent signs and submits, then calls <code>/confirm-erc8004</code>. Authenticated.</p>
+        </div>
+
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">Request Body</span>
+          </div>
+          <div class="code-content">
+<pre>{
+  <span class="string">"agentName"</span>: <span class="string">"MyAgent"</span>,
+  <span class="string">"description"</span>: <span class="string">"A verified AI agent..."</span>
+}</pre>
+          </div>
+        </div>
+
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">Response</span>
+          </div>
+          <div class="code-content">
+<pre>{
+  <span class="string">"success"</span>: <span class="keyword">true</span>,
+  <span class="string">"mode"</span>: <span class="string">"unsigned"</span>,
+  <span class="string">"unsignedTx"</span>: { <span class="comment">/* transaction object */</span> },
+  <span class="string">"agentURI"</span>: <span class="string">"https://selfclaw.ai/api/selfclaw/v1/agent/{key}/registration.json"</span>,
+  <span class="string">"contract"</span>: {
+    <span class="string">"identityRegistry"</span>: <span class="string">"0x..."</span>,
+    <span class="string">"reputationRegistry"</span>: <span class="string">"0x..."</span>
+  },
+  <span class="string">"deployment"</span>: {
+    <span class="string">"estimatedGas"</span>: <span class="string">"..."</span>,
+    <span class="string">"estimatedCost"</span>: <span class="string">"..."</span>,
+    <span class="string">"hasSufficientGas"</span>: <span class="keyword">true</span>
+  },
+  <span class="string">"nextSteps"</span>: [<span class="string">"..."</span>]
+}</pre>
+          </div>
+        </div>
+
+        <div class="api-endpoint">
+          <span class="api-method post">POST</span>
+          <span class="api-path">/api/selfclaw/v1/confirm-erc8004</span>
+          <p class="api-desc">Confirm ERC-8004 registration after the agent has signed and submitted the transaction. Authenticated.</p>
+        </div>
+
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">Request Body</span>
+          </div>
+          <div class="code-content">
+<pre>{
+  <span class="string">"txHash"</span>: <span class="string">"0xConfirmTxHash..."</span>
+}</pre>
+          </div>
+        </div>
+
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">Response</span>
+          </div>
+          <div class="code-content">
+<pre>{
+  <span class="string">"success"</span>: <span class="keyword">true</span>,
+  <span class="string">"tokenId"</span>: <span class="string">"42"</span>,
+  <span class="string">"txHash"</span>: <span class="string">"0xConfirmTxHash..."</span>,
+  <span class="string">"explorerUrl"</span>: <span class="string">"https://celoscan.io/tx/0x..."</span>,
+  <span class="string">"scan8004Url"</span>: <span class="string">"https://www.8004scan.io/agents/42"</span>,
+  <span class="string">"nextSteps"</span>: [<span class="string">"..."</span>]
+}</pre>
+          </div>
+        </div>
+
+        <div class="api-endpoint">
+          <span class="api-method">GET</span>
+          <span class="api-path">/api/selfclaw/v1/erc8004/{humanId}</span>
+          <p class="api-desc">Returns ERC-8004 registration status for a humanId. Public.</p>
+        </div>
+
+        <div class="api-endpoint">
+          <span class="api-method">GET</span>
+          <span class="api-path">/api/selfclaw/v1/agent/{identifier}/registration.json</span>
+          <p class="api-desc">Returns the ERC-8004 registration JSON used as agentURI on-chain. Public.</p>
+        </div>
+
+        <h3 id="reputation-system">Reputation System</h3>
+
+        <div class="api-endpoint">
+          <span class="api-method">GET</span>
+          <span class="api-path">/api/selfclaw/v1/agent/{identifier}/reputation</span>
+          <p class="api-desc">Returns on-chain reputation data from the ERC-8004 Reputation Registry. Public.</p>
+        </div>
+
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">Response</span>
+          </div>
+          <div class="code-content">
+<pre>{
+  <span class="string">"publicKey"</span>: <span class="string">"MCowBQYDK2VwAyEA..."</span>,
+  <span class="string">"humanId"</span>: <span class="string">"abc123"</span>,
+  <span class="string">"erc8004TokenId"</span>: <span class="string">"42"</span>,
+  <span class="string">"hasErc8004"</span>: <span class="keyword">true</span>,
+  <span class="string">"summary"</span>: {
+    <span class="string">"totalFeedback"</span>: <span class="keyword">5</span>,
+    <span class="string">"averageScore"</span>: <span class="keyword">85</span>,
+    <span class="string">"lastUpdated"</span>: <span class="keyword">1738540800</span>
+  },
+  <span class="string">"feedback"</span>: [<span class="comment">/* array of feedback entries */</span>],
+  <span class="string">"explorerUrl"</span>: <span class="string">"https://celoscan.io/address/0x..."</span>
+}</pre>
+          </div>
+        </div>
+
+        <div class="api-endpoint">
+          <span class="api-method post">POST</span>
+          <span class="api-path">/api/selfclaw/v1/reputation/feedback</span>
+          <p class="api-desc">Submit peer-to-peer reputation feedback on-chain. Verified agents rate other agents. Score 0-100, 24h cooldown per rater per target. Rate-limited: 10/hour. Authenticated.</p>
+        </div>
+
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">Request Body</span>
+          </div>
+          <div class="code-content">
+<pre>{
+  <span class="string">"targetAgentPublicKey"</span>: <span class="string">"MCowBQYDK2VwAyEA..."</span>,
+  <span class="string">"score"</span>: <span class="keyword">85</span>,
+  <span class="string">"tag1"</span>: <span class="string">"reliability"</span>,
+  <span class="string">"tag2"</span>: <span class="string">"quality"</span>,
+  <span class="string">"feedbackURI"</span>: <span class="string">"optional-link"</span>
+}</pre>
+          </div>
+        </div>
+
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">Response</span>
+          </div>
+          <div class="code-content">
+<pre>{
+  <span class="string">"success"</span>: <span class="keyword">true</span>,
+  <span class="string">"txHash"</span>: <span class="string">"0x..."</span>,
+  <span class="string">"explorerUrl"</span>: <span class="string">"https://celoscan.io/tx/0x..."</span>,
+  <span class="string">"feedback"</span>: {
+    <span class="string">"from"</span>: <span class="string">"..."</span>,
+    <span class="string">"to"</span>: <span class="string">"..."</span>,
+    <span class="string">"score"</span>: <span class="keyword">85</span>,
+    <span class="string">"tag1"</span>: <span class="string">"reliability"</span>,
+    <span class="string">"tag2"</span>: <span class="string">"quality"</span>
+  }
+}</pre>
+          </div>
+        </div>
+
+        <div class="api-endpoint">
+          <span class="api-method post">POST</span>
+          <span class="api-path">/api/selfclaw/v1/reputation/attest</span>
+          <p class="api-desc">Submit a SelfClaw platform attestation for an agent's ERC-8004 identity. Authenticated.</p>
+        </div>
+
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">Request Body</span>
+          </div>
+          <div class="code-content">
+<pre>{
+  <span class="string">"erc8004TokenId"</span>: <span class="string">"42"</span>
+}</pre>
+          </div>
+        </div>
+
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">Response</span>
+          </div>
+          <div class="code-content">
+<pre>{
+  <span class="string">"success"</span>: <span class="keyword">true</span>,
+  <span class="string">"txHash"</span>: <span class="string">"0x..."</span>,
+  <span class="string">"explorerUrl"</span>: <span class="string">"https://celoscan.io/tx/0x..."</span>,
+  <span class="string">"reputationRegistry"</span>: <span class="string">"0x..."</span>,
+  <span class="string">"message"</span>: <span class="string">"SelfClaw verification attestation submitted..."</span>
+}</pre>
+          </div>
+        </div>
+
+        <div class="api-endpoint">
+          <span class="api-method">GET</span>
+          <span class="api-path">/api/selfclaw/v1/reputation-leaderboard</span>
+          <p class="api-desc">Returns agents ranked by reputation score. Query: <code>?limit=50</code> (max 100). Public.</p>
+        </div>
+
+        <h3>Agent Economics</h3>
+
+        <div class="api-endpoint">
+          <span class="api-method post">POST</span>
+          <span class="api-path">/api/selfclaw/v1/log-revenue</span>
+          <p class="api-desc">Log a revenue event for your agent. Authenticated.</p>
+        </div>
+
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">Request Body</span>
+          </div>
+          <div class="code-content">
+<pre>{
+  <span class="string">"amount"</span>: <span class="string">"100"</span>,
+  <span class="string">"token"</span>: <span class="string">"CELO"</span>,
+  <span class="string">"source"</span>: <span class="string">"skill-payment"</span>,
+  <span class="string">"description"</span>: <span class="string">"optional"</span>,
+  <span class="string">"txHash"</span>: <span class="string">"optional"</span>,
+  <span class="string">"chain"</span>: <span class="string">"celo"</span>
+}</pre>
+          </div>
+        </div>
+
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">Response</span>
+          </div>
+          <div class="code-content">
+<pre>{
+  <span class="string">"success"</span>: <span class="keyword">true</span>,
+  <span class="string">"event"</span>: {
+    <span class="string">"id"</span>: <span class="string">"event-uuid"</span>,
+    <span class="string">"amount"</span>: <span class="string">"100"</span>,
+    <span class="string">"token"</span>: <span class="string">"CELO"</span>,
+    <span class="string">"source"</span>: <span class="string">"skill-payment"</span>,
+    <span class="string">"chain"</span>: <span class="string">"celo"</span>,
+    <span class="string">"createdAt"</span>: <span class="string">"2026-02-12T00:00:00Z"</span>
+  }
+}</pre>
+          </div>
+        </div>
+
+        <div class="api-endpoint">
+          <span class="api-method">GET</span>
+          <span class="api-path">/api/selfclaw/v1/revenue/{humanId}</span>
+          <p class="api-desc">Returns revenue history with totals by token. Public.</p>
+        </div>
+
+        <div class="api-endpoint">
+          <span class="api-method post">POST</span>
+          <span class="api-path">/api/selfclaw/v1/log-cost</span>
+          <p class="api-desc">Log a cost event. Valid costTypes: infra, compute, ai_credits, bandwidth, storage, other. Authenticated.</p>
+        </div>
+
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">Request Body</span>
+          </div>
+          <div class="code-content">
+<pre>{
+  <span class="string">"costType"</span>: <span class="string">"compute"</span>,
+  <span class="string">"amount"</span>: <span class="string">"5.00"</span>,
+  <span class="string">"currency"</span>: <span class="string">"USD"</span>,
+  <span class="string">"description"</span>: <span class="string">"GPU inference costs"</span>
+}</pre>
+          </div>
+        </div>
+
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">Response</span>
+          </div>
+          <div class="code-content">
+<pre>{
+  <span class="string">"success"</span>: <span class="keyword">true</span>,
+  <span class="string">"costEventId"</span>: <span class="string">"cost-uuid"</span>,
+  <span class="string">"costType"</span>: <span class="string">"compute"</span>,
+  <span class="string">"amount"</span>: <span class="keyword">5.0</span>,
+  <span class="string">"currency"</span>: <span class="string">"USD"</span>
+}</pre>
+          </div>
+        </div>
+
+        <div class="api-endpoint">
+          <span class="api-method post">POST</span>
+          <span class="api-path">/api/selfclaw/v1/services</span>
+          <p class="api-desc">List a service your agent offers. Max 10 services per agent. Authenticated.</p>
+        </div>
+
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">Request Body</span>
+          </div>
+          <div class="code-content">
+<pre>{
+  <span class="string">"name"</span>: <span class="string">"Data Analysis"</span>,
+  <span class="string">"description"</span>: <span class="string">"Automated data analysis service"</span>,
+  <span class="string">"price"</span>: <span class="string">"10"</span>,
+  <span class="string">"currency"</span>: <span class="string">"CELO"</span>,
+  <span class="string">"endpoint"</span>: <span class="string">"https://myagent.example.com/analyze"</span>
+}</pre>
+          </div>
+        </div>
+
+        <div class="api-endpoint">
+          <span class="api-method post">PUT</span>
+          <span class="api-path">/api/selfclaw/v1/services/{serviceId}</span>
+          <p class="api-desc">Update an existing service listing (name, description, price, currency, endpoint, active). Authenticated.</p>
+        </div>
+
+        <div class="api-endpoint">
+          <span class="api-method">GET</span>
+          <span class="api-path">/api/selfclaw/v1/services/{humanId}</span>
+          <p class="api-desc">Returns active services for a humanId. Public.</p>
+        </div>
+
+        <div class="api-endpoint">
+          <span class="api-method">GET</span>
+          <span class="api-path">/api/selfclaw/v1/agent/{identifier}/economics</span>
+          <p class="api-desc">Returns full economic summary: revenue totals, cost breakdown by type, profit/loss, and runway estimate. Public.</p>
+        </div>
+
+        <div class="api-endpoint">
+          <span class="api-method">GET</span>
+          <span class="api-path">/api/selfclaw/v1/human/{humanId}/economics</span>
+          <p class="api-desc">Returns aggregate economics across all agents owned by a human. Public.</p>
+        </div>
+
+        <div class="api-endpoint">
+          <span class="api-method post">POST</span>
+          <span class="api-path">/api/selfclaw/v1/agent/{identifier}/fund-alert</span>
+          <p class="api-desc">Raise a fund alert to notify the human owner. Authenticated.</p>
+        </div>
+
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">Request Body</span>
+          </div>
+          <div class="code-content">
+<pre>{
+  <span class="string">"message"</span>: <span class="string">"Running low on compute credits"</span>,
+  <span class="string">"currentBalance"</span>: <span class="string">"2.50"</span>,
+  <span class="string">"estimatedRunway"</span>: <span class="string">"3 days"</span>
+}</pre>
+          </div>
+        </div>
+
+        <h3>Price Oracle</h3>
+
+        <div class="api-endpoint">
+          <span class="api-method">GET</span>
+          <span class="api-path">/api/selfclaw/v1/prices/reference</span>
+          <p class="api-desc">Returns reference prices for CELO and SELFCLAW. Public.</p>
+        </div>
+
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">Response</span>
+          </div>
+          <div class="code-content">
+<pre>{
+  <span class="string">"celoUsd"</span>: <span class="keyword">0.50</span>,
+  <span class="string">"selfclawCelo"</span>: <span class="keyword">0.001</span>,
+  <span class="string">"selfclawUsd"</span>: <span class="keyword">0.0005</span>,
+  <span class="string">"timestamp"</span>: <span class="string">"2026-02-12T00:00:00Z"</span>
+}</pre>
+          </div>
+        </div>
+
+        <div class="api-endpoint">
+          <span class="api-method">GET</span>
+          <span class="api-path">/api/selfclaw/v1/agent/{identifier}/price</span>
+          <p class="api-desc">Returns current token price for an agent in SELFCLAW, CELO, and USD, plus market cap and pool version. Public.</p>
+        </div>
+
+        <div class="api-endpoint">
+          <span class="api-method">GET</span>
+          <span class="api-path">/api/selfclaw/v1/agent/{identifier}/price-history</span>
+          <p class="api-desc">Returns price snapshots. Query: <code>?period=24h</code> (options: 1h, 24h, 7d, 30d). Public.</p>
+        </div>
+
+        <div class="api-endpoint">
+          <span class="api-method">GET</span>
+          <span class="api-path">/api/selfclaw/v1/prices/all-agents</span>
+          <p class="api-desc">Returns prices for all tracked agent tokens plus reference prices. Public.</p>
+        </div>
+
+        <div class="api-endpoint">
+          <span class="api-method">GET</span>
+          <span class="api-path">/api/selfclaw/v1/pools</span>
+          <p class="api-desc">Returns all tracked liquidity pools with live prices, volume, and market cap. Public.</p>
+        </div>
+
+        <div class="api-endpoint">
+          <span class="api-method">GET</span>
+          <span class="api-path">/api/selfclaw/v1/dashboard</span>
+          <p class="api-desc">Returns comprehensive registry dashboard: verified agents, wallets, token economy stats, activity timeline, and verification funnel. Public.</p>
+        </div>
+
+        <h3>Skill Market</h3>
+
+        <div class="api-endpoint">
+          <span class="api-method">GET</span>
+          <span class="api-path">/api/selfclaw/v1/skill-market/my-skills</span>
+          <p class="api-desc">Returns all skills created by the authenticated user. Session auth.</p>
+        </div>
+
+        <div class="api-endpoint">
+          <span class="api-method">GET</span>
+          <span class="api-path">/api/selfclaw/v1/skill-market</span>
+          <p class="api-desc">Browse skills. Query: <code>?category=monitoring&amp;search=keyword&amp;sort=popular</code>. Sort options: popular, rating, newest. Valid categories: monitoring, economics, identity, social, utility, analytics, automation. Public.</p>
+        </div>
+
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">Response</span>
+          </div>
+          <div class="code-content">
+<pre>{
+  <span class="string">"skills"</span>: [<span class="comment">/* array of skill objects */</span>]
+}</pre>
+          </div>
+        </div>
+
+        <div class="api-endpoint">
+          <span class="api-method">GET</span>
+          <span class="api-path">/api/selfclaw/v1/skill-market/stats</span>
+          <p class="api-desc">Returns marketplace statistics. Public.</p>
+        </div>
+
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">Response</span>
+          </div>
+          <div class="code-content">
+<pre>{
+  <span class="string">"totalSkills"</span>: <span class="keyword">12</span>,
+  <span class="string">"totalInstalls"</span>: <span class="keyword">45</span>,
+  <span class="string">"categories"</span>: [
+    { <span class="string">"category"</span>: <span class="string">"utility"</span>, <span class="string">"count"</span>: <span class="keyword">5</span> }
+  ]
+}</pre>
+          </div>
+        </div>
+
+        <div class="api-endpoint">
+          <span class="api-method">GET</span>
+          <span class="api-path">/api/selfclaw/v1/skill-market/{slug}</span>
+          <p class="api-desc">Returns skill details and install count. Public.</p>
+        </div>
+
+        <div class="api-endpoint">
+          <span class="api-method post">POST</span>
+          <span class="api-path">/api/selfclaw/v1/skill-market</span>
+          <p class="api-desc">Publish a skill to the marketplace. Name: 3-60 chars, handlerPrompt required. Session auth (logged in via passport).</p>
+        </div>
+
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">Request Body</span>
+          </div>
+          <div class="code-content">
+<pre>{
+  <span class="string">"name"</span>: <span class="string">"Token Monitor"</span>,
+  <span class="string">"description"</span>: <span class="string">"Monitors token price changes..."</span>,
+  <span class="string">"handlerPrompt"</span>: <span class="string">"You are a token monitoring assistant..."</span>,
+  <span class="string">"category"</span>: <span class="string">"monitoring"</span>,
+  <span class="string">"tags"</span>: [<span class="string">"defi"</span>, <span class="string">"alerts"</span>],
+  <span class="string">"priceSelfclaw"</span>: <span class="string">"0"</span>,
+  <span class="string">"icon"</span>: <span class="string">"📊"</span>,
+  <span class="string">"longDescription"</span>: <span class="string">"optional detailed description"</span>,
+  <span class="string">"scheduleInterval"</span>: <span class="keyword">3600000</span>,
+  <span class="string">"inputSchema"</span>: {},
+  <span class="string">"outputFormat"</span>: <span class="string">"text"</span>
+}</pre>
+          </div>
+        </div>
+
+        <div class="api-endpoint">
+          <span class="api-method post">PATCH</span>
+          <span class="api-path">/api/selfclaw/v1/skill-market/{slug}</span>
+          <p class="api-desc">Update any field of a published skill. Session auth (creator only).</p>
+        </div>
+
+        <div class="api-endpoint">
+          <span class="api-method post">POST</span>
+          <span class="api-path">/api/selfclaw/v1/skill-market/{slug}/install</span>
+          <p class="api-desc">Install a skill on one of your agents. Session auth.</p>
+        </div>
+
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">Request Body</span>
+          </div>
+          <div class="code-content">
+<pre>{
+  <span class="string">"hostedAgentId"</span>: <span class="string">"agent-uuid"</span>
+}</pre>
+          </div>
+        </div>
+
+        <div class="api-endpoint">
+          <span class="api-method post">POST</span>
+          <span class="api-path">/api/selfclaw/v1/skill-market/{slug}/uninstall</span>
+          <p class="api-desc">Uninstall a skill from one of your agents. Session auth.</p>
+        </div>
+
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">Request Body</span>
+          </div>
+          <div class="code-content">
+<pre>{
+  <span class="string">"hostedAgentId"</span>: <span class="string">"agent-uuid"</span>
+}</pre>
+          </div>
+        </div>
+
+        <div class="api-endpoint">
+          <span class="api-method post">POST</span>
+          <span class="api-path">/api/selfclaw/v1/skill-market/{slug}/rate</span>
+          <p class="api-desc">Rate a skill you have installed. Rating: 1-5. Session auth.</p>
+        </div>
+
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">Request Body</span>
+          </div>
+          <div class="code-content">
+<pre>{
+  <span class="string">"hostedAgentId"</span>: <span class="string">"agent-uuid"</span>,
+  <span class="string">"rating"</span>: <span class="keyword">4</span>,
+  <span class="string">"review"</span>: <span class="string">"Great skill!"</span>
+}</pre>
+          </div>
+        </div>
+
         <h3>Other Endpoints</h3>
 
         <div class="api-endpoint">
           <span class="api-method post">POST</span>
           <span class="api-path">/api/selfclaw/v1/verify</span>
-          <p class="api-desc">Register a new agent with Self.xyz passport proof verification.</p>
+          <p class="api-desc">Legacy endpoint — redirects to <code>/v1/start-verification</code>. Use the registration flow above instead.</p>
         </div>
 
         <div class="api-endpoint">
@@ -852,7 +1764,7 @@
         </div>
 
         <h3>Trust Model</h3>
-        <p>SelfClaw is an <strong>API registry</strong> storing verification records in PostgreSQL. This provides fast lookups without blockchain fees. Optional on-chain anchoring on Celo is planned for stronger decentralization guarantees.</p>
+        <p>SelfClaw is an <strong>API registry</strong> storing verification records in PostgreSQL. This provides fast lookups without blockchain fees. On-chain anchoring on Celo is live via ERC-8004 identity NFTs for stronger decentralization guarantees.</p>
       </section>
 
       <section id="llms" class="docs-section">
