@@ -335,11 +335,20 @@
       <div class="agent-cards" id="agent-cards"></div>
     </div>
 
+    <div id="hosted-section" style="display:none;margin-top:2rem;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+        <div style="font-family:var(--font-mono);font-size:0.7rem;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-secondary);">Hosted Assistants</div>
+        <a href="/create-assistant" style="font-family:var(--font-mono);font-size:0.7rem;color:var(--accent);font-weight:600;text-decoration:none;">+ CREATE</a>
+      </div>
+      <div id="hosted-cards" style="display:grid;grid-template-columns:1fr;gap:1rem;"></div>
+    </div>
+
     <div id="empty-state" class="empty-state" style="display:none;">
       <h3>No Agents Yet</h3>
-      <p>Verify your agent's public key to get started.</p>
+      <p>Verify your agent's public key or create a personal assistant to get started.</p>
       <div style="display:flex;gap:0.75rem;justify-content:center;flex-wrap:wrap;">
         <a href="/verify" class="action-btn primary">Verify an Agent</a>
+        <a href="/create-assistant" class="action-btn" style="background:var(--green-verify);color:#fff;border-color:var(--green-verify);">Create Assistant</a>
       </div>
     </div>
 
@@ -394,12 +403,35 @@
       showLoading();
 
       try {
-        var res = await fetch('/api/selfclaw/v1/human/' + encodeURIComponent(user.humanId) + '/economics');
-        if (res.status === 404) {
+        var [res, hostedRes] = await Promise.all([
+          fetch('/api/selfclaw/v1/human/' + encodeURIComponent(user.humanId) + '/economics'),
+          fetch('/api/selfclaw/v1/hosted-agents').catch(function() { return { ok: false, json: function() { return { agents: [] }; } }; })
+        ]);
+
+        var hostedAgents = [];
+        if (hostedRes.ok) {
+          var hData = await hostedRes.json();
+          hostedAgents = hData.agents || [];
+        }
+
+        if (res.status === 404 && hostedAgents.length === 0) {
           document.getElementById('dashboard-loading').style.display = 'none';
           document.getElementById('empty-state').style.display = '';
           return;
         }
+
+        if (hostedAgents.length > 0) {
+          renderHostedAgents(hostedAgents);
+        }
+
+        if (res.status === 404) {
+          document.getElementById('dashboard-loading').style.display = 'none';
+          if (hostedAgents.length > 0) {
+            document.getElementById('hosted-section').style.display = '';
+          }
+          return;
+        }
+
         if (!res.ok) throw new Error('Failed to load');
         var data = await res.json();
         _dashboardData = data;
@@ -1020,6 +1052,78 @@
         html += '</div>';
         return html;
       }).join('');
+    }
+
+    function renderHostedAgents(agents) {
+      var section = document.getElementById('hosted-section');
+      var container = document.getElementById('hosted-cards');
+      if (!agents || agents.length === 0) { section.style.display = 'none'; return; }
+      section.style.display = '';
+
+      container.innerHTML = agents.map(function(agent) {
+        var skills = (agent.enabledSkills || []);
+        var skillNames = skills.join(', ') || 'None';
+        var statusColor = agent.status === 'active' ? 'var(--green-verify)' : 'var(--text-muted)';
+        var statusLabel = agent.status === 'active' ? 'RUNNING' : agent.status.toUpperCase();
+        var lastActive = agent.lastActiveAt ? fmtDate(agent.lastActiveAt) : 'Never';
+        var recentTasks = (agent.recentTasks || []);
+
+        var html = '<div style="border:2px solid var(--border-heavy);padding:1.25rem;">';
+        html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:0.75rem;">';
+        html += '<div>';
+        html += '<div style="font-size:1.5rem;display:inline-block;margin-right:0.5rem;">' + esc(agent.emoji || '🤖') + '</div>';
+        html += '<span style="font-family:var(--font-mono);font-size:0.95rem;font-weight:600;">' + esc(agent.name) + '</span>';
+        html += '</div>';
+        html += '<span style="font-family:var(--font-mono);font-size:0.65rem;font-weight:600;color:' + statusColor + ';letter-spacing:0.08em;">' + statusLabel + '</span>';
+        html += '</div>';
+
+        if (agent.description) {
+          html += '<div style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:0.75rem;">' + esc(agent.description) + '</div>';
+        }
+
+        html += '<div style="display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:0.75rem;">';
+        html += '<div style="font-family:var(--font-mono);font-size:0.7rem;color:var(--text-muted);">Skills: <span style="color:var(--text-primary);">' + esc(skillNames) + '</span></div>';
+        html += '<div style="font-family:var(--font-mono);font-size:0.7rem;color:var(--text-muted);">Last active: <span style="color:var(--text-primary);">' + lastActive + '</span></div>';
+        html += '</div>';
+
+        if (recentTasks.length > 0) {
+          html += '<div style="border-top:1px solid var(--border-light);padding-top:0.75rem;margin-top:0.5rem;">';
+          html += '<div style="font-family:var(--font-mono);font-size:0.65rem;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-muted);margin-bottom:0.5rem;">Recent Activity</div>';
+          recentTasks.slice(0, 3).forEach(function(task) {
+            var icon = task.status === 'completed' ? '&#10003;' : task.status === 'failed' ? '&#10007;' : '&#8226;';
+            var iconColor = task.status === 'completed' ? 'var(--green-verify)' : task.status === 'failed' ? 'var(--red)' : 'var(--text-muted)';
+            html += '<div style="font-family:var(--font-mono);font-size:0.7rem;color:var(--text-secondary);margin-bottom:0.25rem;">';
+            html += '<span style="color:' + iconColor + ';">' + icon + '</span> ';
+            html += esc(task.skillId) + ' &mdash; ' + fmtDate(task.completedAt || task.createdAt);
+            html += '</div>';
+          });
+          html += '</div>';
+        }
+
+        html += '<div style="margin-top:0.75rem;display:flex;gap:0.5rem;">';
+        html += '<a href="/create-assistant?manage=' + encodeURIComponent(agent.id) + '" class="action-btn" style="font-size:0.7rem;">Manage Skills</a>';
+        if (agent.status === 'active') {
+          html += '<button class="action-btn" style="font-size:0.7rem;color:var(--red);border-color:var(--red);" onclick="toggleHostedAgent(\'' + esc(agent.id) + '\',\'paused\')">Pause</button>';
+        } else {
+          html += '<button class="action-btn" style="font-size:0.7rem;color:var(--green-verify);border-color:var(--green-verify);" onclick="toggleHostedAgent(\'' + esc(agent.id) + '\',\'active\')">Resume</button>';
+        }
+        html += '</div>';
+        html += '</div>';
+        return html;
+      }).join('');
+    }
+
+    async function toggleHostedAgent(id, newStatus) {
+      try {
+        var res = await fetch('/api/selfclaw/v1/hosted-agents/' + encodeURIComponent(id), {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: newStatus })
+        });
+        if (res.ok) window.location.reload();
+      } catch (err) {
+        console.error('Failed to toggle agent:', err);
+      }
     }
 
     document.getElementById('login-trigger').addEventListener('click', function() {

@@ -284,5 +284,58 @@ export const tokenPriceSnapshots = pgTable("token_price_snapshots", {
 export type TokenPriceSnapshot = typeof tokenPriceSnapshots.$inferSelect;
 export type InsertTokenPriceSnapshot = typeof tokenPriceSnapshots.$inferInsert;
 
+export const hostedAgents = pgTable("hosted_agents", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  humanId: varchar("human_id").notNull(),
+  publicKey: text("public_key").notNull().unique(),
+  name: varchar("name").notNull(),
+  emoji: varchar("emoji").default("🤖"),
+  description: text("description"),
+  status: varchar("status").default("active"),
+  enabledSkills: jsonb("enabled_skills").default([]),
+  skillConfigs: jsonb("skill_configs").default({}),
+  autoApproveThreshold: decimal("auto_approve_threshold", { precision: 18, scale: 6 }).default("0"),
+  llmTokensUsedToday: integer("llm_tokens_used_today").default(0),
+  llmTokensLimit: integer("llm_tokens_limit").default(5000),
+  apiCallsToday: integer("api_calls_today").default(0),
+  apiCallsLimit: integer("api_calls_limit").default(100),
+  lastActiveAt: timestamp("last_active_at"),
+  lastResetAt: timestamp("last_reset_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_hosted_agents_human_id").on(table.humanId),
+  index("idx_hosted_agents_status").on(table.status),
+]);
+
+export type HostedAgent = typeof hostedAgents.$inferSelect;
+export type InsertHostedAgent = typeof hostedAgents.$inferInsert;
+
+export const agentTaskQueue = pgTable("agent_task_queue", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  hostedAgentId: varchar("hosted_agent_id").notNull(),
+  skillId: varchar("skill_id").notNull(),
+  taskType: varchar("task_type").notNull(),
+  status: varchar("status").default("pending"),
+  priority: integer("priority").default(0),
+  payload: jsonb("payload"),
+  result: jsonb("result"),
+  error: text("error"),
+  requiresApproval: boolean("requires_approval").default(false),
+  approvedAt: timestamp("approved_at"),
+  approvedBy: varchar("approved_by"),
+  scheduledFor: timestamp("scheduled_for").defaultNow(),
+  startedAt: timestamp("started_at"),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_task_queue_agent").on(table.hostedAgentId),
+  index("idx_task_queue_status").on(table.status),
+  index("idx_task_queue_scheduled").on(table.scheduledFor),
+]);
+
+export type AgentTask = typeof agentTaskQueue.$inferSelect;
+export type InsertAgentTask = typeof agentTaskQueue.$inferInsert;
+
 export type User = typeof users.$inferSelect;
 export type UpsertUser = typeof users.$inferInsert;
