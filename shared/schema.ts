@@ -304,7 +304,7 @@ export const hostedAgents = pgTable("hosted_agents", {
   personalContext: text("personal_context"),
   autoApproveThreshold: decimal("auto_approve_threshold", { precision: 18, scale: 6 }).default("0"),
   llmTokensUsedToday: integer("llm_tokens_used_today").default(0),
-  llmTokensLimit: integer("llm_tokens_limit").default(5000),
+  llmTokensLimit: integer("llm_tokens_limit").default(50000),
   apiCallsToday: integer("api_calls_today").default(0),
   apiCallsLimit: integer("api_calls_limit").default(100),
   installedMarketSkills: jsonb("installed_market_skills").default([]),

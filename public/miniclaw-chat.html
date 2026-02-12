@@ -167,6 +167,75 @@
       flex: 1; display: flex; align-items: center; justify-content: center;
       font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-muted);
     }
+
+    .awareness-bar {
+      display: none; flex-shrink: 0;
+      padding: 0.45rem 0.75rem;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg-card);
+    }
+    .awareness-top {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 0.3rem;
+    }
+    .awareness-phase {
+      font-family: var(--font-mono); font-size: 0.6rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.08em;
+    }
+    .awareness-phase.curious { color: var(--text-muted); }
+    .awareness-phase.developing { color: var(--accent); }
+    .awareness-phase.confident { color: var(--green); }
+    .awareness-label {
+      font-family: var(--font-mono); font-size: 0.55rem;
+      color: var(--text-muted); letter-spacing: 0.04em;
+    }
+    .awareness-track {
+      height: 4px; background: var(--border); width: 100%;
+      overflow: hidden;
+    }
+    .awareness-fill {
+      height: 100%; width: 0%;
+      transition: width 0.6s ease, background 0.4s ease;
+    }
+    .awareness-fill.curious { background: var(--text-muted); }
+    .awareness-fill.developing { background: var(--accent); }
+    .awareness-fill.confident { background: var(--green); }
+
+    .onchain-cta {
+      display: none; margin-top: 0.4rem;
+      padding: 0.5rem 0.65rem;
+      border: 1.5px solid var(--green);
+      background: rgba(34,197,94,0.04);
+    }
+    .onchain-cta-text {
+      font-size: 0.75rem; color: var(--text-secondary);
+      line-height: 1.4; margin-bottom: 0.35rem;
+    }
+    .onchain-cta-text strong { color: var(--text); }
+    .onchain-cta-actions {
+      display: flex; gap: 0.4rem; flex-wrap: wrap;
+    }
+    .onchain-cta-btn {
+      display: inline-flex; align-items: center; gap: 0.25rem;
+      padding: 0.3rem 0.6rem;
+      font-family: var(--font-mono); font-size: 0.6rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.06em;
+      text-decoration: none; color: var(--text);
+      border: 1.5px solid var(--border); background: var(--bg-card);
+      cursor: pointer; transition: border-color 0.2s;
+    }
+    .onchain-cta-btn:hover { border-color: var(--green); }
+    .onchain-cta-btn.done {
+      border-color: var(--green); color: var(--green);
+      opacity: 0.6; pointer-events: none;
+    }
+    .onchain-dismiss {
+      background: none; border: none;
+      font-family: var(--font-mono); font-size: 0.55rem;
+      color: var(--text-muted); cursor: pointer;
+      padding: 0.2rem 0; margin-top: 0.2rem;
+    }
+    .onchain-dismiss:hover { color: var(--text); }
   </style>
 </head>
 <body>
@@ -177,6 +246,21 @@
       <div class="chat-agent-info">
         <div class="chat-agent-name" id="agent-name">Loading...</div>
         <div class="chat-agent-status" id="agent-status">online</div>
+      </div>
+    </div>
+
+    <div class="awareness-bar" id="awareness-bar">
+      <div class="awareness-top">
+        <div class="awareness-phase" id="awareness-phase"></div>
+        <div class="awareness-label" id="awareness-label"></div>
+      </div>
+      <div class="awareness-track">
+        <div class="awareness-fill" id="awareness-fill"></div>
+      </div>
+      <div class="onchain-cta" id="onchain-cta">
+        <div class="onchain-cta-text"><strong>Your miniclaw feels ready.</strong> Set up its on-chain presence — wallet, token, and identity.</div>
+        <div class="onchain-cta-actions" id="onchain-actions"></div>
+        <button class="onchain-dismiss" onclick="dismissCta()">maybe later</button>
       </div>
     </div>
 
@@ -343,6 +427,7 @@
 
       isSending = false;
       sendBtn.disabled = !inputEl.value.trim();
+      loadAwareness();
     }
 
     async function loadAgent() {
@@ -395,11 +480,70 @@
       }
     }
 
+    var ctaDismissed = localStorage.getItem('miniclaw-cta-dismissed-' + agentId) === 'true';
+
+    async function loadAwareness() {
+      try {
+        var res = await fetch('/api/selfclaw/v1/hosted-agents/' + agentId + '/awareness');
+        if (!res.ok) return;
+        var data = await res.json();
+
+        var bar = document.getElementById('awareness-bar');
+        var phaseEl = document.getElementById('awareness-phase');
+        var labelEl = document.getElementById('awareness-label');
+        var fillEl = document.getElementById('awareness-fill');
+
+        var phaseLabels = { curious: 'Curious', developing: 'Developing', confident: 'Self-aware' };
+        phaseEl.textContent = phaseLabels[data.phase] || data.phase;
+        phaseEl.className = 'awareness-phase ' + data.phase;
+        labelEl.textContent = data.label;
+
+        fillEl.className = 'awareness-fill ' + data.phase;
+        setTimeout(function() {
+          fillEl.style.width = data.progress + '%';
+        }, 100);
+
+        bar.style.display = 'block';
+
+        if (data.phase === 'confident' && !ctaDismissed && !data.onChain.allComplete) {
+          var ctaEl = document.getElementById('onchain-cta');
+          var actionsEl = document.getElementById('onchain-actions');
+          var btns = '';
+
+          if (!data.onChain.wallet) {
+            btns += '<a href="/my-agents" class="onchain-cta-btn">Setup Wallet</a>';
+          } else {
+            btns += '<span class="onchain-cta-btn done">Wallet &#x2713;</span>';
+          }
+          if (!data.onChain.token) {
+            btns += '<a href="/my-agents" class="onchain-cta-btn">Deploy Token</a>';
+          } else {
+            btns += '<span class="onchain-cta-btn done">Token &#x2713;</span>';
+          }
+          if (!data.onChain.identity) {
+            btns += '<a href="/my-agents" class="onchain-cta-btn">Register Identity</a>';
+          } else {
+            btns += '<span class="onchain-cta-btn done">Identity &#x2713;</span>';
+          }
+
+          actionsEl.innerHTML = btns;
+          ctaEl.style.display = 'block';
+        }
+      } catch (e) {}
+    }
+
+    function dismissCta() {
+      ctaDismissed = true;
+      localStorage.setItem('miniclaw-cta-dismissed-' + agentId, 'true');
+      document.getElementById('onchain-cta').style.display = 'none';
+    }
+
     function startChat() {
       if (hasLoaded) return;
       hasLoaded = true;
       loadAgent();
       loadMessages();
+      loadAwareness();
     }
 
     function initChat() {

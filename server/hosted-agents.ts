@@ -909,6 +909,66 @@ Guidelines:
 - Never use code blocks unless the user explicitly asks for code`;
 }
 
+hostedAgentsRouter.get("/v1/hosted-agents/:id/awareness", async (req: Request, res: Response) => {
+  try {
+    const agent = await requireAgentOwnership(req, res);
+    if (!agent) return;
+
+    const userMsgResult = await db.select({ cnt: count() }).from(messages)
+      .innerJoin(conversations, eq(messages.conversationId, conversations.id))
+      .where(and(eq(conversations.agentId, agent.id), eq(messages.role, "user")));
+    const messageCount = Number(userMsgResult[0]?.cnt || 0);
+
+    let phase: string;
+    let label: string;
+    let progress: number;
+
+    if (messageCount < 5) {
+      phase = "curious";
+      label = "Still learning who I am";
+      progress = (messageCount / 5) * 33;
+    } else if (messageCount < 15) {
+      phase = "developing";
+      label = "Finding my identity";
+      progress = 33 + ((messageCount - 5) / 10) * 67;
+    } else {
+      phase = "confident";
+      label = "Self-aware";
+      progress = 100;
+    }
+
+    const walletResult = await db.select({ cnt: count() }).from(agentWallets)
+      .where(sql`${agentWallets.humanId} = ${agent.humanId}`);
+    const hasWallet = Number(walletResult[0]?.cnt || 0) > 0;
+
+    const sponsorResult = await db.select().from(sponsoredAgents)
+      .where(sql`${sponsoredAgents.humanId} = ${agent.humanId}`)
+      .limit(1);
+    const hasToken = sponsorResult.length > 0 && !!sponsorResult[0].tokenAddress;
+
+    const identityBots = await db.select().from(verifiedBots)
+      .where(sql`${verifiedBots.humanId} = ${agent.humanId} AND ${verifiedBots.verificationLevel} != 'hosted'`)
+      .limit(1);
+    const hasIdentity = identityBots.length > 0;
+
+    res.json({
+      messageCount,
+      phase,
+      label,
+      progress: Math.round(progress),
+      onChain: {
+        wallet: hasWallet,
+        token: hasToken,
+        identity: hasIdentity,
+        allComplete: hasWallet && hasToken && hasIdentity,
+      },
+    });
+  } catch (error: any) {
+    console.error("[miniclaw-awareness] error:", error.message);
+    res.status(500).json({ error: "Failed to load awareness data" });
+  }
+});
+
 hostedAgentsRouter.get("/v1/hosted-agents/:id/conversations", async (req: Request, res: Response) => {
   try {
     const agent = await requireAgentOwnership(req, res);
@@ -973,8 +1033,8 @@ hostedAgentsRouter.post("/v1/hosted-agents/:id/chat", async (req: Request, res: 
 
     const totalMsgResult = await db.select({ cnt: count() }).from(messages)
       .innerJoin(conversations, eq(messages.conversationId, conversations.id))
-      .where(eq(conversations.agentId, agent.id));
-    const lifetimeMessageCount = totalMsgResult[0]?.cnt || 0;
+      .where(and(eq(conversations.agentId, agent.id), eq(messages.role, "user")));
+    const lifetimeMessageCount = Number(totalMsgResult[0]?.cnt || 0);
     const systemPrompt = buildSystemPrompt(agent, lifetimeMessageCount);
 
     const chatMessages: Array<{role: "system" | "user" | "assistant", content: string}> = [
