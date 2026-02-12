@@ -40,7 +40,7 @@
     .chat-container {
       display: flex; flex-direction: column;
       height: 100vh; height: 100dvh;
-      max-width: 100vw; overflow-x: hidden;
+      width: 100%; max-width: 100vw; overflow: hidden;
     }
 
     .chat-header {
@@ -131,19 +131,21 @@
       padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
       border-top: 2px solid var(--border);
       background: var(--bg); flex-shrink: 0;
-      width: 100%; max-width: 100%;
+      width: 100%; max-width: 100%; overflow: hidden;
     }
     .chat-input {
-      flex: 1; min-width: 0; resize: none; border: 2px solid var(--border);
+      flex: 1 1 0%; min-width: 0; resize: none; border: 2px solid var(--border);
       padding: 0.55rem 0.7rem; font-family: var(--font-sans);
-      font-size: 0.88rem; background: var(--bg-card); color: var(--text);
+      font-size: 16px; background: var(--bg-card); color: var(--text);
       line-height: 1.4; max-height: 120px; min-height: 38px;
-      outline: none; width: 100%; overflow-wrap: break-word; word-break: break-word;
+      outline: none; max-width: calc(100% - 46px);
+      overflow-wrap: break-word; word-break: break-word;
+      -webkit-appearance: none; border-radius: 0;
     }
     .chat-input:focus { border-color: var(--border-heavy); }
     .chat-input::placeholder { color: var(--text-muted); }
     .chat-send {
-      width: 38px; height: 38px; flex-shrink: 0;
+      width: 38px; min-width: 38px; height: 38px; flex-shrink: 0;
       border: 2px solid var(--border-heavy);
       background: var(--accent); color: #fff;
       font-size: 1rem; cursor: pointer;
@@ -206,6 +208,7 @@
     var conversationId = null;
     var agentData = null;
     var isSending = false;
+    var hasLoaded = false;
 
     function showError(msg) {
       var el = document.getElementById('error-toast');
@@ -371,12 +374,17 @@
 
         if (data.conversationId) conversationId = data.conversationId;
 
+        var messagesEl = document.getElementById('chat-messages');
+        messagesEl.innerHTML = '';
+
         if (!data.messages || data.messages.length === 0) {
+          messagesEl.style.display = 'none';
           document.getElementById('welcome-screen').style.display = '';
           return;
         }
 
-        document.getElementById('chat-messages').style.display = '';
+        document.getElementById('welcome-screen').style.display = 'none';
+        messagesEl.style.display = '';
         for (var i = 0; i < data.messages.length; i++) {
           var m = data.messages[i];
           addMessageToUI(m.role, m.content, m.createdAt || m.created_at);
@@ -387,12 +395,18 @@
       }
     }
 
+    function startChat() {
+      if (hasLoaded) return;
+      hasLoaded = true;
+      loadAgent();
+      loadMessages();
+    }
+
     function initChat() {
       if (window.selfclawAuth) {
         window.selfclawAuth.onReady(function(user) {
           if (user) {
-            loadAgent();
-            loadMessages();
+            startChat();
           } else {
             window.location.href = '/miniapp';
           }
@@ -400,8 +414,7 @@
       } else {
         fetch('/api/auth/status').then(function(r) { return r.json(); }).then(function(data) {
           if (data && data.loggedIn) {
-            loadAgent();
-            loadMessages();
+            startChat();
           } else {
             window.location.href = '/miniapp';
           }
@@ -411,7 +424,7 @@
       }
     }
 
-    window.onAuthLogin = function() { loadAgent(); loadMessages(); };
+    window.onAuthLogin = function() { startChat(); };
     window.onAuthLogout = function() { window.location.href = '/miniapp'; };
 
     initChat();
