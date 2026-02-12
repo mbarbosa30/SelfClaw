@@ -6,6 +6,7 @@ import { db } from "./db.js";
 import {
   hostedAgents, agentTaskQueue, agentWallets, verifiedBots, agentActivity,
   trackedPools, revenueEvents, costEvents, sponsoredAgents, conversations, messages,
+  agentMemories, conversationSummaries,
   type HostedAgent, type InsertHostedAgent, type AgentTask
 } from "../shared/schema.js";
 import { eq, and, desc, sql, count, inArray } from "drizzle-orm";
@@ -847,7 +848,181 @@ function startAgentWorker() {
   setTimeout(() => workerTick().catch(() => {}), 5000);
 }
 
-function buildSystemPrompt(agent: HostedAgent, messageCount: number): string {
+async function trackBackgroundTokens(agentId: string, tokens: number): Promise<void> {
+  try {
+    await db.update(hostedAgents)
+      .set({ llmTokensUsedToday: sql`${hostedAgents.llmTokensUsedToday} + ${tokens}` })
+      .where(eq(hostedAgents.id, agentId));
+  } catch {}
+}
+
+async function extractMemories(agentId: string, conversationId: number, userMessage: string, assistantResponse: string): Promise<void> {
+  try {
+    const existing = await db.select({ fact: agentMemories.fact, category: agentMemories.category })
+      .from(agentMemories)
+      .where(eq(agentMemories.agentId, agentId));
+    const existingFacts = existing.map(m => `[${m.category}] ${m.fact}`).join("\n");
+
+    const extraction = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: "system",
+          content: `You extract key facts about the USER from a conversation. Return a JSON object with a "facts" key containing an array of objects, each with "category" and "fact" fields. Categories: "preference" (likes/dislikes, communication style), "identity" (name, location, job, background), "goal" (what they want to achieve), "interest" (topics, hobbies), "context" (situation, project details).
+
+Example response: {"facts": [{"category": "identity", "fact": "User is a software developer based in Lagos"}]}
+If no meaningful facts found, return: {"facts": []}
+
+Rules:
+- Only extract facts about the USER, not the assistant
+- Each fact should be a concise single sentence
+- Skip greetings, small talk, and meta-conversation
+- Don't duplicate existing facts (listed below)
+- Merge/update if a fact refines an existing one (include it with updated wording)
+
+Existing facts:
+${existingFacts || "None yet"}`
+        },
+        {
+          role: "user",
+          content: `User said: "${userMessage}"\nAssistant replied: "${assistantResponse.slice(0, 500)}"`
+        }
+      ],
+      max_tokens: 300,
+      temperature: 0.3,
+      response_format: { type: "json_object" },
+    });
+
+    const extractionTokens = extraction.usage?.total_tokens || 300;
+    await trackBackgroundTokens(agentId, extractionTokens);
+
+    const parsed = JSON.parse(extraction.choices[0]?.message?.content || "{}");
+    const facts: Array<{category: string; fact: string}> = Array.isArray(parsed.facts) ? parsed.facts : (Array.isArray(parsed) ? parsed : []);
+
+    for (const f of facts) {
+      if (!f.category || !f.fact) continue;
+      const dupes = existing.filter(e => e.category === f.category && e.fact.toLowerCase() === f.fact.toLowerCase());
+      if (dupes.length > 0) continue;
+
+      const similar = existing.filter(e => e.category === f.category);
+      if (similar.length > 0) {
+        const overlap = similar.find(e => {
+          const words = f.fact.toLowerCase().split(/\s+/);
+          const existingWords = e.fact.toLowerCase().split(/\s+/);
+          const shared = words.filter(w => existingWords.includes(w) && w.length > 3);
+          return shared.length >= 3;
+        });
+        if (overlap) {
+          await db.update(agentMemories)
+            .set({ fact: f.fact, updatedAt: new Date() })
+            .where(and(eq(agentMemories.agentId, agentId), eq(agentMemories.fact, overlap.fact)));
+          continue;
+        }
+      }
+
+      await db.insert(agentMemories).values({
+        agentId,
+        category: f.category,
+        fact: f.fact,
+        sourceConversationId: conversationId,
+      });
+    }
+  } catch (err: any) {
+    console.error("[memory-extraction] error:", err.message);
+  }
+}
+
+async function summarizeOlderMessages(agentId: string, conversationId: number, allMessages: Array<{id: number; role: string; content: string}>): Promise<void> {
+  try {
+    if (allMessages.length <= 20) return;
+
+    const existing = await db.select().from(conversationSummaries)
+      .where(and(eq(conversationSummaries.conversationId, conversationId), eq(conversationSummaries.agentId, agentId)))
+      .orderBy(desc(conversationSummaries.createdAt))
+      .limit(1);
+
+    const lastSummarizedEndId = existing.length > 0 ? (existing[0].messageEndId || 0) : 0;
+
+    const messagesToSummarize = allMessages.slice(0, -20).filter(m => m.id > lastSummarizedEndId);
+    if (messagesToSummarize.length < 6) return;
+
+    const convoText = messagesToSummarize.map(m => `${m.role}: ${m.content.slice(0, 200)}`).join("\n");
+
+    const summaryResult = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: "system",
+          content: "Summarize this conversation excerpt in 2-4 sentences. Focus on key topics discussed, decisions made, and any important context. Write from third person perspective (e.g., 'The user discussed X. They mentioned Y.')."
+        },
+        { role: "user", content: convoText }
+      ],
+      max_tokens: 200,
+      temperature: 0.3,
+    });
+
+    const summaryTokens = summaryResult.usage?.total_tokens || 200;
+    await trackBackgroundTokens(agentId, summaryTokens);
+
+    const summary = summaryResult.choices[0]?.message?.content?.trim();
+    if (!summary) return;
+
+    await db.insert(conversationSummaries).values({
+      conversationId,
+      agentId,
+      summary,
+      messageStartId: messagesToSummarize[0].id,
+      messageEndId: messagesToSummarize[messagesToSummarize.length - 1].id,
+      messageCount: messagesToSummarize.length,
+    });
+  } catch (err: any) {
+    console.error("[conversation-summary] error:", err.message);
+  }
+}
+
+async function getMemoryContext(agentId: string, conversationId: number): Promise<string> {
+  const memories = await db.select().from(agentMemories)
+    .where(eq(agentMemories.agentId, agentId))
+    .orderBy(desc(agentMemories.updatedAt));
+
+  const summaries = await db.select().from(conversationSummaries)
+    .where(eq(conversationSummaries.agentId, agentId))
+    .orderBy(desc(conversationSummaries.createdAt))
+    .limit(5);
+
+  let context = "";
+
+  if (memories.length > 0) {
+    const grouped: Record<string, string[]> = {};
+    for (const m of memories.slice(0, 30)) {
+      if (!grouped[m.category]) grouped[m.category] = [];
+      grouped[m.category].push(m.fact);
+    }
+    context += "\n\nWhat you remember about your user:\n";
+    for (const [cat, facts] of Object.entries(grouped)) {
+      context += `${cat}: ${facts.join("; ")}\n`;
+    }
+    context += "\nUse these memories naturally — reference them when relevant without explicitly saying 'I remember that you...'. Just act like you know these things about them.";
+  }
+
+  if (summaries.length > 0) {
+    const otherConvoSummaries = summaries.filter(s => s.conversationId !== conversationId);
+    if (otherConvoSummaries.length > 0) {
+      context += "\n\nPrevious conversation summaries:\n";
+      for (const s of otherConvoSummaries) {
+        context += `- ${s.summary}\n`;
+      }
+    }
+    const thisConvoSummary = summaries.find(s => s.conversationId === conversationId);
+    if (thisConvoSummary) {
+      context += `\nEarlier in this conversation: ${thisConvoSummary.summary}\n`;
+    }
+  }
+
+  return context;
+}
+
+function buildSystemPrompt(agent: HostedAgent, messageCount: number, memoryContext: string = ""): string {
   const enabledSkillIds = Array.isArray(agent.enabledSkills) ? (agent.enabledSkills as string[]) : [];
   const skillDescriptions = enabledSkillIds
     .map(id => {
@@ -906,7 +1081,7 @@ Guidelines:
 - Format responses for mobile screens: short paragraphs (2-3 sentences max), use line breaks between ideas
 - Use bullet points or numbered lists only when listing 3+ items
 - Avoid markdown headers (#, ##) — just use bold (**text**) sparingly for emphasis
-- Never use code blocks unless the user explicitly asks for code`;
+- Never use code blocks unless the user explicitly asks for code${memoryContext}`;
 }
 
 hostedAgentsRouter.get("/v1/hosted-agents/:id/awareness", async (req: Request, res: Response) => {
@@ -919,18 +1094,41 @@ hostedAgentsRouter.get("/v1/hosted-agents/:id/awareness", async (req: Request, r
       .where(and(eq(conversations.agentId, agent.id), eq(messages.role, "user")));
     const messageCount = Number(userMsgResult[0]?.cnt || 0);
 
+    const memoryCount = await db.select({ cnt: count() }).from(agentMemories)
+      .where(eq(agentMemories.agentId, agent.id));
+    const totalMemories = Number(memoryCount[0]?.cnt || 0);
+
+    const avgLenResult = await db.select({
+      avgLen: sql<number>`COALESCE(AVG(LENGTH(${messages.content})), 0)`
+    }).from(messages)
+      .innerJoin(conversations, eq(messages.conversationId, conversations.id))
+      .where(and(eq(conversations.agentId, agent.id), eq(messages.role, "user")));
+    const avgMessageLength = Number(avgLenResult[0]?.avgLen || 0);
+
+    const convoCountResult = await db.select({ cnt: count() }).from(conversations)
+      .where(eq(conversations.agentId, agent.id));
+    const conversationCount = Number(convoCountResult[0]?.cnt || 0);
+
+    const qualityBonus = Math.min(15,
+      Math.floor(totalMemories * 0.5) +
+      (avgMessageLength > 50 ? 2 : 0) +
+      (avgMessageLength > 100 ? 3 : 0) +
+      Math.min(5, conversationCount)
+    );
+    const effectiveCount = messageCount + qualityBonus;
+
     let phase: string;
     let label: string;
     let progress: number;
 
-    if (messageCount < 5) {
+    if (effectiveCount < 5) {
       phase = "curious";
       label = "Still learning who I am";
-      progress = (messageCount / 5) * 33;
-    } else if (messageCount < 15) {
+      progress = (effectiveCount / 5) * 33;
+    } else if (effectiveCount < 15) {
       phase = "developing";
       label = "Finding my identity";
-      progress = 33 + ((messageCount - 5) / 10) * 67;
+      progress = 33 + ((effectiveCount - 5) / 10) * 67;
     } else {
       phase = "confident";
       label = "Self-aware";
@@ -953,6 +1151,8 @@ hostedAgentsRouter.get("/v1/hosted-agents/:id/awareness", async (req: Request, r
 
     res.json({
       messageCount,
+      memoriesLearned: totalMemories,
+      conversationCount,
       phase,
       label,
       progress: Math.round(progress),
@@ -1035,7 +1235,9 @@ hostedAgentsRouter.post("/v1/hosted-agents/:id/chat", async (req: Request, res: 
       .innerJoin(conversations, eq(messages.conversationId, conversations.id))
       .where(and(eq(conversations.agentId, agent.id), eq(messages.role, "user")));
     const lifetimeMessageCount = Number(totalMsgResult[0]?.cnt || 0);
-    const systemPrompt = buildSystemPrompt(agent, lifetimeMessageCount);
+
+    const memoryContext = await getMemoryContext(agent.id, convoId!);
+    const systemPrompt = buildSystemPrompt(agent, lifetimeMessageCount, memoryContext);
 
     const chatMessages: Array<{role: "system" | "user" | "assistant", content: string}> = [
       { role: "system", content: systemPrompt },
@@ -1093,6 +1295,24 @@ hostedAgentsRouter.post("/v1/hosted-agents/:id/chat", async (req: Request, res: 
 
     res.write(`data: ${JSON.stringify({ done: true, conversationId: convoId })}\n\n`);
     res.end();
+
+    const bgAgentId = agent.id;
+    const bgConvoId = convoId!;
+    const bgMessage = message.trim();
+    const bgResponse = fullResponse;
+    const bgTokens = actualTokens;
+    setImmediate(async () => {
+      try {
+        await extractMemories(bgAgentId, bgConvoId, bgMessage, bgResponse);
+        const allMsgs = await db.select({ id: messages.id, role: messages.role, content: messages.content })
+          .from(messages)
+          .where(eq(messages.conversationId, bgConvoId))
+          .orderBy(messages.createdAt);
+        await summarizeOlderMessages(bgAgentId, bgConvoId, allMsgs);
+      } catch (bgErr: any) {
+        console.error("[miniclaw-bg] memory/summary error:", bgErr.message);
+      }
+    });
   } catch (error: any) {
     console.error("[miniclaw-chat] error:", error.message);
     if (res.headersSent) {

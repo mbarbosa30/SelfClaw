@@ -428,6 +428,7 @@
       isSending = false;
       sendBtn.disabled = !inputEl.value.trim();
       loadAwareness();
+      setTimeout(loadAwareness, 3000);
     }
 
     async function loadAgent() {
@@ -496,7 +497,8 @@
         var phaseLabels = { curious: 'Curious', developing: 'Developing', confident: 'Self-aware' };
         phaseEl.textContent = phaseLabels[data.phase] || data.phase;
         phaseEl.className = 'awareness-phase ' + data.phase;
-        labelEl.textContent = data.label;
+        var memLabel = data.memoriesLearned > 0 ? data.label + ' · ' + data.memoriesLearned + ' memories' : data.label;
+        labelEl.textContent = memLabel;
 
         fillEl.className = 'awareness-fill ' + data.phase;
         setTimeout(function() {

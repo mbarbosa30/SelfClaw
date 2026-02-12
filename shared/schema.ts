@@ -424,5 +424,39 @@ export const messages = pgTable("messages", {
 export type Message = typeof messages.$inferSelect;
 export type InsertMessage = typeof messages.$inferInsert;
 
+export const agentMemories = pgTable("agent_memories", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  agentId: varchar("agent_id").notNull(),
+  category: varchar("category").notNull(),
+  fact: text("fact").notNull(),
+  confidence: decimal("confidence", { precision: 3, scale: 2 }).default("0.8"),
+  sourceConversationId: integer("source_conversation_id"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_agent_memories_agent_id").on(table.agentId),
+  index("idx_agent_memories_category").on(table.category),
+]);
+
+export type AgentMemory = typeof agentMemories.$inferSelect;
+export type InsertAgentMemory = typeof agentMemories.$inferInsert;
+
+export const conversationSummaries = pgTable("conversation_summaries", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  conversationId: integer("conversation_id").notNull(),
+  agentId: varchar("agent_id").notNull(),
+  summary: text("summary").notNull(),
+  messageStartId: integer("message_start_id"),
+  messageEndId: integer("message_end_id"),
+  messageCount: integer("message_count").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_conv_summaries_agent_id").on(table.agentId),
+  index("idx_conv_summaries_conv_id").on(table.conversationId),
+]);
+
+export type ConversationSummary = typeof conversationSummaries.$inferSelect;
+export type InsertConversationSummary = typeof conversationSummaries.$inferInsert;
+
 export type User = typeof users.$inferSelect;
 export type UpsertUser = typeof users.$inferInsert;
