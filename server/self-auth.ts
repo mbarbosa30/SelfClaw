@@ -106,18 +106,10 @@ setInterval(() => {
   }
 }, 60 * 1000);
 
-// Generate humanId from nullifier (publicSignals[0]) — stable per passport + scope
-function generateHumanId(publicSignals: any[]): string {
-  const nullifier = publicSignals[0];
-  if (!nullifier) {
-    console.error("[self-auth] WARNING: No nullifier in publicSignals, falling back to full hash");
-    return crypto.createHash("sha256")
-      .update(JSON.stringify(publicSignals))
-      .digest("hex")
-      .substring(0, 16);
-  }
+// Generate humanId from nullifier — stable per passport + scope
+function generateHumanId(nullifier: string): string {
   return crypto.createHash("sha256")
-    .update(String(nullifier))
+    .update(nullifier)
     .digest("hex")
     .substring(0, 16);
 }
@@ -310,8 +302,14 @@ async function handleAuthCallback(req: Request, res: Response) {
       return res.status(200).json({ status: "error", result: false, reason: "Session expired" });
     }
 
-    // Generate humanId from proof
-    const humanId = generateHumanId(publicSignals);
+    // Generate humanId from nullifier (stable per passport + scope)
+    const nullifier = result.discloseOutput?.nullifier;
+    if (!nullifier) {
+      console.error("[self-auth] No nullifier in discloseOutput");
+      return res.status(200).json({ status: "error", result: false, reason: "Missing nullifier" });
+    }
+    console.log("[self-auth] Nullifier:", nullifier.substring(0, 16) + "...");
+    const humanId = generateHumanId(nullifier);
 
     // Update auth session
     authSession.verified = true;

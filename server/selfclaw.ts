@@ -674,20 +674,20 @@ async function handleCallback(req: Request, res: Response) {
       verificationHumanIds.delete(sessionId);
       console.log("[selfclaw] Using logged-in user's humanId for agent:", humanId.substring(0, 8) + "...");
     } else {
-      const nullifier = publicSignals[0];
+      const nullifier = result.discloseOutput?.nullifier;
       if (nullifier) {
         humanId = crypto.createHash("sha256")
-          .update(String(nullifier))
+          .update(nullifier)
           .digest("hex")
           .substring(0, 16);
+        console.log("[selfclaw] Generated humanId from nullifier:", humanId.substring(0, 8) + "...");
       } else {
-        console.error("[selfclaw] WARNING: No nullifier in publicSignals, falling back to full hash");
+        console.error("[selfclaw] WARNING: No nullifier in verify result, falling back to full publicSignals hash");
         humanId = crypto.createHash("sha256")
           .update(JSON.stringify(publicSignals))
           .digest("hex")
           .substring(0, 16);
       }
-      console.log("[selfclaw] Generated humanId from nullifier:", humanId.substring(0, 8) + "...");
     }
     
     // Sanitize nationality - remove null characters that can break JSONB
