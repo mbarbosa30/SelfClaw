@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>SelfClaw</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+  <link rel="icon" type="image/png" href="/favicon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #f2f0ec;
+      --bg-card: #ffffff;
+      --text: #1a1a1a;
+      --text-secondary: #5a5a5a;
+      --text-muted: #8a8a8a;
+      --border: #d4d0ca;
+      --border-heavy: #1a1a1a;
+      --accent: #FF6B4A;
+      --accent-hover: #e85d3d;
+      --green: #22c55e;
+      --red: #ef4444;
+      --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-mono: 'IBM Plex Mono', 'Courier New', monospace;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: var(--font-sans); background: var(--bg); color: var(--text);
+      line-height: 1.5; font-size: 15px; -webkit-font-smoothing: antialiased;
+      min-height: 100vh; min-height: 100dvh;
+    }
+
+    .app-bar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0.65rem 1rem;
+      border-bottom: 2px solid var(--border-heavy);
+      position: sticky; top: 0; background: var(--bg); z-index: 10;
+    }
+    .app-bar-logo {
+      display: flex; align-items: center; gap: 0.4rem;
+      font-family: var(--font-mono); font-size: 0.75rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.1em;
+      text-decoration: none; color: var(--text);
+    }
+    .app-bar-logo img { width: 18px; height: 18px; }
+    .app-bar-status {
+      font-family: var(--font-mono); font-size: 0.6rem;
+      color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em;
+    }
+    .app-bar-status.connected { color: var(--green); }
+
+    .app-content { padding: 1rem; max-width: 480px; margin: 0 auto; }
+
+    .connect-screen {
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; padding: 3rem 1rem;
+      min-height: calc(100vh - 50px); min-height: calc(100dvh - 50px);
+    }
+    .connect-icon { font-size: 3rem; margin-bottom: 1rem; }
+    .connect-title {
+      font-family: var(--font-mono); font-size: 1rem; font-weight: 600;
+      margin-bottom: 0.4rem;
+    }
+    .connect-desc {
+      font-size: 0.85rem; color: var(--text-secondary);
+      text-align: center; margin-bottom: 1.5rem; max-width: 280px;
+    }
+    .connect-btn {
+      width: 100%; max-width: 280px; padding: 0.75rem;
+      border: 2px solid var(--border-heavy); background: var(--text); color: var(--bg);
+      font-family: var(--font-mono); font-size: 0.85rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.08em;
+      cursor: pointer; transition: all 0.2s;
+    }
+    .connect-btn:hover { background: var(--accent); border-color: var(--accent); }
+    .connect-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .greeting {
+      font-family: var(--font-mono); font-size: 0.7rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.1em;
+      color: var(--text-muted); margin-bottom: 0.75rem;
+    }
+
+    .claws-list { display: flex; flex-direction: column; gap: 0.6rem; margin-bottom: 1rem; }
+
+    .claw-card {
+      display: flex; align-items: center; gap: 0.75rem;
+      padding: 0.85rem; border: 2px solid var(--border);
+      background: var(--bg-card); cursor: pointer;
+      transition: border-color 0.2s; text-decoration: none; color: inherit;
+    }
+    .claw-card:hover { border-color: var(--border-heavy); }
+    .claw-emoji { font-size: 1.5rem; flex-shrink: 0; }
+    .claw-info { flex: 1; min-width: 0; }
+    .claw-name {
+      font-family: var(--font-mono); font-size: 0.8rem; font-weight: 600;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .claw-desc {
+      font-size: 0.75rem; color: var(--text-secondary);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .claw-status {
+      font-family: var(--font-mono); font-size: 0.55rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.08em;
+      padding: 0.15rem 0.4rem; flex-shrink: 0;
+    }
+    .claw-status.active { color: var(--green); border: 1px solid var(--green); }
+    .claw-status.paused { color: var(--text-muted); border: 1px solid var(--border); }
+
+    .empty-state {
+      text-align: center; padding: 2rem 1rem;
+      border: 2px dashed var(--border);
+    }
+    .empty-icon { font-size: 2rem; margin-bottom: 0.5rem; }
+    .empty-title {
+      font-family: var(--font-mono); font-size: 0.8rem; font-weight: 600;
+      margin-bottom: 0.3rem;
+    }
+    .empty-desc {
+      font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 1rem;
+    }
+
+    .create-btn {
+      display: block; width: 100%; padding: 0.75rem;
+      border: 2px solid var(--border-heavy); background: var(--accent); color: #fff;
+      font-family: var(--font-mono); font-size: 0.8rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.08em;
+      cursor: pointer; text-align: center; text-decoration: none;
+      transition: background 0.2s;
+    }
+    .create-btn:hover { background: var(--accent-hover); }
+
+    .loading {
+      text-align: center; padding: 2rem;
+      font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-muted);
+    }
+
+    .error-toast {
+      position: fixed; bottom: 1rem; left: 1rem; right: 1rem;
+      padding: 0.65rem 0.85rem; background: var(--red); color: #fff;
+      font-family: var(--font-mono); font-size: 0.75rem;
+      text-align: center; z-index: 100; display: none;
+      max-width: 480px; margin: 0 auto;
+    }
+
+    .section-label {
+      font-family: var(--font-mono); font-size: 0.6rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.1em;
+      color: var(--text-muted); margin-bottom: 0.5rem; margin-top: 1.25rem;
+    }
+
+    .quick-links {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;
+    }
+    .quick-link {
+      display: flex; align-items: center; gap: 0.4rem;
+      padding: 0.6rem 0.75rem; border: 1px solid var(--border);
+      background: var(--bg-card); text-decoration: none; color: var(--text);
+      font-family: var(--font-mono); font-size: 0.65rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.06em;
+      transition: border-color 0.2s;
+    }
+    .quick-link:hover { border-color: var(--border-heavy); }
+    .quick-link-icon { font-size: 0.85rem; }
+  </style>
+</head>
+<body>
+  <div class="app-bar">
+    <a href="/miniapp" class="app-bar-logo">
+      <img src="/claw-icon.svg" alt="">SELFCLAW
+    </a>
+    <div class="app-bar-status" id="status-label">offline</div>
+  </div>
+
+  <div id="connect-screen" class="connect-screen" style="display:none;">
+    <div class="connect-icon">\\\</div>
+    <div class="connect-title">SelfClaw</div>
+    <div class="connect-desc">Your AI agent, running on-chain. Connect your wallet to get started.</div>
+    <button class="connect-btn" id="connect-btn" onclick="connectWallet()">Connect Wallet</button>
+  </div>
+
+  <div id="main-screen" class="app-content" style="display:none;">
+    <div class="greeting" id="greeting"></div>
+
+    <div id="claws-loading" class="loading">Loading your miniclaws...</div>
+    <div id="claws-list" class="claws-list" style="display:none;"></div>
+    <div id="claws-empty" class="empty-state" style="display:none;">
+      <div class="empty-icon">\\\</div>
+      <div class="empty-title">No miniclaws yet</div>
+      <div class="empty-desc">Create your first AI agent in under a minute.</div>
+    </div>
+
+    <a href="/create-assistant" class="create-btn" id="create-claw-btn" style="margin-top:0.75rem;">+ New Miniclaw</a>
+
+    <div class="section-label">Quick Links</div>
+    <div class="quick-links">
+      <a href="/skill-market" class="quick-link"><span class="quick-link-icon">\u{1F6D2}</span> Skill Market</a>
+      <a href="/economy" class="quick-link"><span class="quick-link-icon">\u{1F4CA}</span> Economy</a>
+    </div>
+  </div>
+
+  <div class="error-toast" id="error-toast"></div>
+
+  <script src="/auth.js"></script>
+  <script>
+    var currentUser = null;
+
+    function showError(msg) {
+      var el = document.getElementById('error-toast');
+      el.textContent = msg;
+      el.style.display = '';
+      setTimeout(function() { el.style.display = 'none'; }, 4000);
+    }
+
+    function truncAddr(addr) {
+      if (!addr || addr.length < 10) return addr || '';
+      return addr.slice(0, 6) + '...' + addr.slice(-4);
+    }
+
+    function esc(s) {
+      if (!s) return '';
+      var d = document.createElement('div');
+      d.textContent = s;
+      return d.innerHTML;
+    }
+
+    async function connectWallet() {
+      var btn = document.getElementById('connect-btn');
+      btn.disabled = true;
+      btn.textContent = 'Connecting...';
+      try {
+        if (window.selfclawAuth && window.selfclawAuth.connectMiniPay) {
+          await window.selfclawAuth.connectMiniPay();
+        } else if (window.selfclawAuth && window.selfclawAuth.openLogin) {
+          window.selfclawAuth.openLogin();
+          btn.disabled = false;
+          btn.textContent = 'Connect Wallet';
+          return;
+        } else {
+          throw new Error('Auth not ready');
+        }
+      } catch (err) {
+        showError(err.message || 'Connection failed');
+        btn.disabled = false;
+        btn.textContent = 'Connect Wallet';
+      }
+    }
+
+    async function loadClaws() {
+      var listEl = document.getElementById('claws-list');
+      var emptyEl = document.getElementById('claws-empty');
+      var loadingEl = document.getElementById('claws-loading');
+
+      try {
+        var res = await fetch('/api/selfclaw/v1/hosted-agents');
+        if (!res.ok) throw new Error('Failed to load');
+        var data = await res.json();
+        var agents = data.agents || data;
+        if (!Array.isArray(agents)) agents = [];
+
+        loadingEl.style.display = 'none';
+
+        if (agents.length === 0) {
+          emptyEl.style.display = '';
+          listEl.style.display = 'none';
+          return;
+        }
+
+        emptyEl.style.display = 'none';
+        var html = '';
+        for (var i = 0; i < agents.length; i++) {
+          var a = agents[i];
+          var statusClass = (a.status === 'active') ? 'active' : 'paused';
+          var statusText = a.status || 'active';
+          html += '<a href="/my-agents#agent-' + esc(a.id) + '" class="claw-card">';
+          html += '<div class="claw-emoji">' + esc(a.emoji || '\u{1F916}') + '</div>';
+          html += '<div class="claw-info">';
+          html += '<div class="claw-name">' + esc(a.name || 'Untitled') + '</div>';
+          html += '<div class="claw-desc">' + esc(a.description || 'No description') + '</div>';
+          html += '</div>';
+          html += '<div class="claw-status ' + statusClass + '">' + esc(statusText) + '</div>';
+          html += '</a>';
+        }
+        listEl.innerHTML = html;
+        listEl.style.display = '';
+      } catch (err) {
+        loadingEl.textContent = 'Could not load miniclaws.';
+      }
+    }
+
+    function showMainScreen(user) {
+      currentUser = user;
+      document.getElementById('connect-screen').style.display = 'none';
+      document.getElementById('main-screen').style.display = '';
+
+      var statusEl = document.getElementById('status-label');
+      statusEl.textContent = truncAddr(user.walletAddress || user.humanId || '');
+      statusEl.classList.add('connected');
+
+      var greetEl = document.getElementById('greeting');
+      greetEl.textContent = 'Your Miniclaws';
+
+      loadClaws();
+    }
+
+    function showConnectScreen() {
+      document.getElementById('connect-screen').style.display = '';
+      document.getElementById('main-screen').style.display = 'none';
+      var statusEl = document.getElementById('status-label');
+      statusEl.textContent = 'offline';
+      statusEl.classList.remove('connected');
+    }
+
+    window.onAuthLogin = function(user) { showMainScreen(user); };
+    window.onAuthLogout = function() { showConnectScreen(); };
+
+    function initMiniApp() {
+      if (window.selfclawAuth) {
+        window.selfclawAuth.onReady(function(user) {
+          if (user) {
+            showMainScreen(user);
+          } else {
+            showConnectScreen();
+          }
+        });
+      } else {
+        fetch('/api/auth/status').then(function(r) { return r.json(); }).then(function(data) {
+          if (data && data.loggedIn && data.user) {
+            showMainScreen(data.user);
+          } else {
+            showConnectScreen();
+          }
+        }).catch(function() {
+          showConnectScreen();
+        });
+      }
+    }
+
+    initMiniApp();
+  </script>
+</body>
+</html>

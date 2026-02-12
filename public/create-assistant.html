@@ -348,7 +348,7 @@
           <div class="success-detail">Running on SelfClaw. Monitoring your wallet and economics automatically.</div>
         </div>
 
-        <a href="/my-agents" class="goto-btn">Go to Dashboard</a>
+        <a href="/my-agents" class="goto-btn" id="goto-dashboard-btn">Go to Dashboard</a>
 
         <a href="/create-assistant" class="goto-btn" style="background:var(--bg-card);color:var(--text);">Create Another</a>
       </div>
@@ -587,6 +587,8 @@
       if (isMiniPayEnv) {
         document.body.classList.add('miniapp-mode');
         document.getElementById('login-btn-text').textContent = 'Connect MiniPay';
+        var dashBtn = document.getElementById('goto-dashboard-btn');
+        if (dashBtn) dashBtn.href = '/miniapp';
       } else {
         document.getElementById('passport-alt').style.display = '';
       }
@@ -598,6 +600,8 @@
             document.body.classList.add('miniapp-mode');
             document.getElementById('login-btn-text').textContent = 'Connect MiniPay';
             document.getElementById('passport-alt').style.display = 'none';
+            var dashBtn = document.getElementById('goto-dashboard-btn');
+            if (dashBtn) dashBtn.href = '/miniapp';
           }
         }, 500);
       }

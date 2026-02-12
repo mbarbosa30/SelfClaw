@@ -81,6 +81,7 @@ app.get("/create-agent", (_req: Request, res: Response) => sendHtml(res, "create
 app.get("/my-agents", (_req: Request, res: Response) => sendHtml(res, "my-agents.html"));
 app.get("/create-assistant", (_req: Request, res: Response) => sendHtml(res, "create-assistant.html"));
 app.get("/skill-market", (_req: Request, res: Response) => sendHtml(res, "skill-market.html"));
+app.get("/miniapp", (_req: Request, res: Response) => sendHtml(res, "miniapp.html"));
 app.get("/guide", (_req: Request, res: Response) => sendHtml(res, "guide.html"));
 
 app.get("/how-it-works", (_req: Request, res: Response) => res.redirect(301, "/"));

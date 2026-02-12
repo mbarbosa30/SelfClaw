@@ -33,6 +33,18 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+  <script>
+    (function() {
+      if (window.location.pathname !== '/' && window.location.pathname !== '/index.html') return;
+      function isMiniPay() {
+        if (window.ethereum && (window.ethereum.isMiniPay || window.ethereum.isMinipay)) return true;
+        if (navigator.userAgent && navigator.userAgent.indexOf('MiniPay') !== -1) return true;
+        return false;
+      }
+      if (isMiniPay()) { window.location.replace('/miniapp'); return; }
+      setTimeout(function() { if (isMiniPay()) window.location.replace('/miniapp'); }, 400);
+    })();
+  </script>
   <div class="site-container">
     <header class="site-header">
       <a href="/" class="site-logo"><img src="/claw-icon.svg" alt="" class="site-logo-icon">SELFCLAW</a>
