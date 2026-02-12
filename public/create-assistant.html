@@ -28,7 +28,7 @@
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
   <style>
-    .create-page { max-width: 800px; margin: 0 auto; padding: 0 var(--space-md); }
+    .create-page { max-width: 800px; margin: 0 auto; padding: 0 var(--space-md); width: 100%; overflow-x: hidden; }
 
     .miniapp-bar {
       display: none;
@@ -72,13 +72,14 @@
       margin-bottom: 0.3rem; color: var(--text);
     }
     .assistant-form .input {
-      width: 100%; padding: 0.55rem 0.75rem;
+      width: 100%; max-width: 100%; padding: 0.55rem 0.75rem;
       border: 2px solid var(--border-heavy); background: var(--bg-card);
       font-family: var(--font-mono); font-size: 0.85rem; color: var(--text);
+      box-sizing: border-box;
     }
     .assistant-form .input:focus { outline: none; border-color: var(--green-verify); }
     .assistant-form .input::placeholder { color: var(--text-muted); }
-    .assistant-form textarea.input { min-height: 60px; resize: vertical; font-family: var(--font-sans); }
+    .assistant-form textarea.input { min-height: 60px; resize: vertical; font-family: var(--font-sans); overflow-wrap: break-word; word-break: break-word; }
 
     .emoji-grid {
       display: grid; grid-template-columns: repeat(6, 1fr); gap: 0.4rem;
@@ -223,6 +224,12 @@
       .emoji-grid { grid-template-columns: repeat(6, 1fr); }
       .create-page { padding: 0 0.75rem; }
       .hero h1 { font-size: 1.4rem; }
+      .wizard-steps { flex-wrap: nowrap; }
+      .wizard-step { font-size: 0.55rem; padding: 0.5rem 0.3rem; }
+    }
+    @media (max-width: 400px) {
+      .emoji-grid { grid-template-columns: repeat(6, 1fr); gap: 0.3rem; }
+      .emoji-option { padding: 0.35rem; font-size: 1.15rem; }
     }
   </style>
 </head>
@@ -310,7 +317,7 @@
 
             <div class="form-group">
               <label>Socials</label>
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;">
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;width:100%;">
                 <input type="text" id="social-twitter" class="input" placeholder="@X handle">
                 <input type="text" id="social-telegram" class="input" placeholder="@Telegram">
               </div>

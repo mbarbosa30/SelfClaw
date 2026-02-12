@@ -40,14 +40,15 @@
     .chat-container {
       display: flex; flex-direction: column;
       height: 100vh; height: 100dvh;
+      max-width: 100vw; overflow-x: hidden;
     }
 
     .chat-header {
-      display: flex; align-items: center; gap: 0.6rem;
+      display: flex; align-items: center; gap: 0.5rem;
       padding: 0.5rem 0.75rem;
       border-bottom: 2px solid var(--border-heavy);
       background: var(--bg); flex-shrink: 0;
-      min-height: 48px;
+      min-height: 46px;
     }
     .chat-back {
       display: flex; align-items: center; justify-content: center;
@@ -68,8 +69,8 @@
 
     .chat-messages {
       flex: 1; overflow-y: auto; overflow-x: hidden;
-      padding: 0.75rem; display: flex; flex-direction: column;
-      gap: 0.5rem;
+      padding: 0.75rem 0.75rem 0.5rem; display: flex; flex-direction: column;
+      gap: 0.4rem;
       -webkit-overflow-scrolling: touch;
     }
 
@@ -77,6 +78,7 @@
       max-width: 85%; padding: 0.6rem 0.8rem;
       font-size: 0.88rem; line-height: 1.5;
       word-wrap: break-word; overflow-wrap: break-word;
+      word-break: break-word;
     }
     .msg-user {
       align-self: flex-end;
@@ -129,13 +131,14 @@
       padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
       border-top: 2px solid var(--border);
       background: var(--bg); flex-shrink: 0;
+      width: 100%; max-width: 100%;
     }
     .chat-input {
-      flex: 1; resize: none; border: 2px solid var(--border);
+      flex: 1; min-width: 0; resize: none; border: 2px solid var(--border);
       padding: 0.55rem 0.7rem; font-family: var(--font-sans);
       font-size: 0.88rem; background: var(--bg-card); color: var(--text);
       line-height: 1.4; max-height: 120px; min-height: 38px;
-      outline: none;
+      outline: none; width: 100%; overflow-wrap: break-word; word-break: break-word;
     }
     .chat-input:focus { border-color: var(--border-heavy); }
     .chat-input::placeholder { color: var(--text-muted); }

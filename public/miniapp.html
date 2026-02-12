@@ -51,46 +51,47 @@
     }
     .app-bar-status.connected { color: var(--green); }
 
-    .app-content { padding: 1.25rem 1rem 2rem; max-width: 480px; margin: 0 auto; }
+    .app-content { padding: 1rem 1rem 2rem; max-width: 480px; margin: 0 auto; width: 100%; }
 
     .connect-screen {
       display: flex; flex-direction: column; align-items: center;
-      justify-content: center; padding: 2rem 1.25rem;
-      min-height: calc(100vh - 50px); min-height: calc(100dvh - 50px);
+      justify-content: center; padding: 1.5rem 1.25rem;
+      min-height: calc(100vh - 46px); min-height: calc(100dvh - 46px);
     }
-    .connect-logo { margin-bottom: 1.5rem; opacity: 0.15; }
-    .connect-logo img { width: 48px; height: 48px; }
+    .connect-logo { margin-bottom: 1.25rem; opacity: 0.15; }
+    .connect-logo img { width: 44px; height: 44px; }
     .connect-title {
-      font-family: var(--font-mono); font-size: 1.1rem; font-weight: 600;
-      margin-bottom: 0.75rem; text-align: center;
+      font-family: var(--font-mono); font-size: 1.05rem; font-weight: 600;
+      margin-bottom: 0.6rem; text-align: center;
     }
     .connect-desc {
-      font-size: 0.9rem; color: var(--text-secondary);
-      text-align: center; margin-bottom: 0.5rem; max-width: 320px; line-height: 1.6;
+      font-size: 0.88rem; color: var(--text-secondary);
+      text-align: center; margin-bottom: 0.4rem; max-width: 320px; line-height: 1.55;
     }
     .connect-features {
-      list-style: none; padding: 0; margin: 1rem 0 1.75rem; max-width: 300px; width: 100%;
+      list-style: none; padding: 0; margin: 0.75rem 0 1.5rem; max-width: 300px; width: 100%;
+      text-align: left;
     }
     .connect-features li {
-      display: flex; align-items: flex-start; gap: 0.6rem;
-      padding: 0.45rem 0;
-      font-size: 0.85rem; color: var(--text-secondary); line-height: 1.45;
+      display: flex; align-items: center; gap: 0.6rem;
+      padding: 0.35rem 0;
+      font-size: 0.84rem; color: var(--text-secondary); line-height: 1.4;
     }
     .connect-features li span.feat-icon {
-      flex-shrink: 0; width: 20px; text-align: center; font-size: 0.9rem; margin-top: 1px;
+      flex-shrink: 0; width: 20px; text-align: center; font-size: 0.9rem;
     }
     .connect-btn {
-      width: 100%; max-width: 300px; padding: 0.85rem;
+      width: 100%; max-width: 300px; padding: 0.8rem;
       border: 2px solid var(--border-heavy); background: var(--text); color: var(--bg);
-      font-family: var(--font-mono); font-size: 0.85rem; font-weight: 600;
+      font-family: var(--font-mono); font-size: 0.82rem; font-weight: 600;
       text-transform: uppercase; letter-spacing: 0.08em;
       cursor: pointer; transition: all 0.2s;
     }
     .connect-btn:hover { background: var(--accent); border-color: var(--accent); }
     .connect-btn:disabled { opacity: 0.5; cursor: not-allowed; }
     .connect-note {
-      margin-top: 0.75rem; font-size: 0.7rem; color: var(--text-muted);
-      text-align: center; max-width: 260px; line-height: 1.5;
+      margin-top: 0.6rem; font-size: 0.68rem; color: var(--text-muted);
+      text-align: center; max-width: 260px; line-height: 1.45;
     }
 
     .section-label {
@@ -99,10 +100,10 @@
       color: var(--text-muted); margin-bottom: 0.6rem;
     }
 
-    .claws-list { display: flex; flex-direction: column; gap: 0.6rem; margin-bottom: 1rem; }
+    .claws-list { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 0.75rem; }
     .claw-card {
-      display: flex; align-items: center; gap: 0.75rem;
-      padding: 0.85rem; border: 2px solid var(--border);
+      display: flex; align-items: center; gap: 0.7rem;
+      padding: 0.75rem; border: 2px solid var(--border);
       background: var(--bg-card); cursor: pointer;
       transition: border-color 0.2s; text-decoration: none; color: inherit;
     }
@@ -126,17 +127,17 @@
     .claw-status.paused { color: var(--text-muted); border: 1px solid var(--border); }
 
     .welcome-card {
-      border: 2px solid var(--border); padding: 1.5rem 1.25rem; text-align: center;
-      margin-bottom: 1.25rem;
+      border: 2px solid var(--border); padding: 1.25rem 1rem; text-align: center;
+      margin-bottom: 1rem;
     }
-    .welcome-emoji { font-size: 2.5rem; margin-bottom: 0.75rem; }
+    .welcome-emoji { font-size: 2.25rem; margin-bottom: 0.6rem; }
     .welcome-heading {
-      font-family: var(--font-mono); font-size: 0.95rem; font-weight: 600;
-      margin-bottom: 0.5rem;
+      font-family: var(--font-mono); font-size: 0.92rem; font-weight: 600;
+      margin-bottom: 0.4rem;
     }
     .welcome-text {
-      font-size: 0.85rem; color: var(--text-secondary); line-height: 1.6;
-      margin-bottom: 1rem; max-width: 340px; margin-left: auto; margin-right: auto;
+      font-size: 0.84rem; color: var(--text-secondary); line-height: 1.55;
+      margin-bottom: 0.85rem; max-width: 340px; margin-left: auto; margin-right: auto;
     }
     .welcome-steps {
       list-style: none; padding: 0; margin: 0 0 0.5rem; text-align: left;
@@ -179,7 +180,7 @@
 
     .quick-links {
       display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;
-      margin-top: 1.25rem;
+      margin-top: 1rem;
     }
     .quick-link {
       display: flex; align-items: center; gap: 0.5rem;
