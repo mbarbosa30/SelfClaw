@@ -718,6 +718,34 @@
       </section>
 
       <section class="admin-section">
+        <h2 class="admin-section-title" style="display:flex;justify-content:space-between;align-items:center;">
+          SPONSORSHIP REQUESTS
+          <button class="refresh-btn" onclick="loadSponsorshipRequests()" style="border-bottom:none;">Refresh</button>
+        </h2>
+        <div id="sponsorship-loading" style="text-align:center;padding:2rem;color:var(--text-muted);"><span class="spinner"></span> Loading...</div>
+        <div id="sponsorship-content" style="display:none;overflow-x:auto;">
+          <table style="width:100%;border-collapse:collapse;font-size:0.75rem;background:var(--bg-card);border:2px solid var(--border-heavy);">
+            <thead>
+              <tr style="border-bottom:2px solid var(--border-heavy);text-align:left;">
+                <th style="padding:0.6rem 0.5rem;font-family:'IBM Plex Mono',monospace;font-size:0.6rem;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-muted);">Status</th>
+                <th style="padding:0.6rem 0.5rem;font-family:'IBM Plex Mono',monospace;font-size:0.6rem;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-muted);">Human ID</th>
+                <th style="padding:0.6rem 0.5rem;font-family:'IBM Plex Mono',monospace;font-size:0.6rem;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-muted);">Token</th>
+                <th style="padding:0.6rem 0.5rem;font-family:'IBM Plex Mono',monospace;font-size:0.6rem;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-muted);">Amount</th>
+                <th style="padding:0.6rem 0.5rem;font-family:'IBM Plex Mono',monospace;font-size:0.6rem;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-muted);">SELFCLAW</th>
+                <th style="padding:0.6rem 0.5rem;font-family:'IBM Plex Mono',monospace;font-size:0.6rem;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-muted);">Source</th>
+                <th style="padding:0.6rem 0.5rem;font-family:'IBM Plex Mono',monospace;font-size:0.6rem;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-muted);">Retries</th>
+                <th style="padding:0.6rem 0.5rem;font-family:'IBM Plex Mono',monospace;font-size:0.6rem;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-muted);">Error</th>
+                <th style="padding:0.6rem 0.5rem;font-family:'IBM Plex Mono',monospace;font-size:0.6rem;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-muted);">Created</th>
+                <th style="padding:0.6rem 0.5rem;font-family:'IBM Plex Mono',monospace;font-size:0.6rem;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-muted);">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="sponsorship-tbody"></tbody>
+          </table>
+        </div>
+        <div id="sponsorship-empty" style="display:none;text-align:center;padding:2rem;color:var(--text-muted);font-family:'IBM Plex Mono',monospace;font-size:0.8rem;background:var(--bg-card);border:2px solid var(--border-heavy);">No sponsorship requests found</div>
+      </section>
+
+      <section class="admin-section">
         <h2 class="admin-section-title">Activity Log</h2>
         <div class="activity-log" id="activity-log">
           <div class="log-empty"><span class="spinner"></span> Loading...</div>
@@ -811,6 +839,7 @@
       loadBridgeStatus();
       loadPendingClaims();
       loadSelfclawBalance();
+      loadSponsorshipRequests();
       loadActivityLog();
       document.getElementById('last-refresh').textContent = 'Last refresh: ' + new Date().toLocaleTimeString();
     }
@@ -1656,6 +1685,95 @@
         btn.disabled = false;
         if (e.message === 'auth') return;
         setActionResult('result-create-pool', 'Failed: ' + e.message, 'error');
+      });
+    }
+
+    function loadSponsorshipRequests() {
+      var loading = document.getElementById('sponsorship-loading');
+      var content = document.getElementById('sponsorship-content');
+      var empty = document.getElementById('sponsorship-empty');
+      loading.style.display = 'block';
+      content.style.display = 'none';
+      empty.style.display = 'none';
+
+      fetch('/api/admin/sponsorship-requests', { headers: authHeaders() })
+        .then(function(r) {
+          if (handleAuthError(r)) throw new Error('auth');
+          return r.json();
+        })
+        .then(function(data) {
+          loading.style.display = 'none';
+          var items = Array.isArray(data) ? data : [];
+          if (items.length === 0) {
+            empty.style.display = 'block';
+            return;
+          }
+          content.style.display = 'block';
+          var tbody = document.getElementById('sponsorship-tbody');
+          var html = '';
+          var statusColors = { pending: '#d4d0ca', processing: '#6B4AFF', completed: '#00C853', failed: '#FF4A4A' };
+          items.forEach(function(req) {
+            var sc = statusColors[req.status] || '#d4d0ca';
+            var humanShort = req.humanId ? (req.humanId.length > 12 ? req.humanId.slice(0, 12) + '...' : req.humanId) : '--';
+            var errShort = req.errorMessage ? (req.errorMessage.length > 30 ? req.errorMessage.slice(0, 30) + '...' : req.errorMessage) : '--';
+            var created = req.createdAt ? getTimeAgo(new Date(req.createdAt)) : '--';
+            html += '<tr style="border-bottom:1px solid var(--border-light, #d4d0ca);">';
+            html += '<td style="padding:0.5rem;"><span style="display:inline-block;padding:0.15rem 0.5rem;font-family:\'IBM Plex Mono\',monospace;font-size:0.6rem;font-weight:600;text-transform:uppercase;color:#fff;background:' + sc + ';">' + (req.status || 'unknown') + '</span></td>';
+            html += '<td style="padding:0.5rem;font-family:\'IBM Plex Mono\',monospace;font-size:0.65rem;" title="' + (req.humanId || '') + '">' + humanShort + '</td>';
+            html += '<td style="padding:0.5rem;font-family:\'IBM Plex Mono\',monospace;font-size:0.65rem;">' + (req.tokenSymbol || '--') + '</td>';
+            html += '<td style="padding:0.5rem;font-size:0.75rem;">' + (req.tokenAmount || '--') + '</td>';
+            html += '<td style="padding:0.5rem;font-size:0.75rem;">' + (req.selfclawAmount || '--') + '</td>';
+            html += '<td style="padding:0.5rem;font-family:\'IBM Plex Mono\',monospace;font-size:0.65rem;">' + (req.source || '--') + '</td>';
+            html += '<td style="padding:0.5rem;font-size:0.75rem;text-align:center;">' + (req.retryCount || 0) + '/' + (req.maxRetries || 3) + '</td>';
+            html += '<td style="padding:0.5rem;font-size:0.65rem;color:#FF4A4A;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + (req.errorMessage || '').replace(/"/g, '&quot;') + '">' + errShort + '</td>';
+            html += '<td style="padding:0.5rem;font-family:\'IBM Plex Mono\',monospace;font-size:0.6rem;color:var(--text-muted);">' + created + '</td>';
+            html += '<td style="padding:0.5rem;">';
+            if (req.status === 'failed' && (req.retryCount || 0) < (req.maxRetries || 3)) {
+              html += '<button class="action-btn" style="padding:0.3rem 0.7rem;font-size:0.6rem;width:auto;" onclick="retrySponsorshipRequest(\'' + req.id + '\', this)">Retry</button>';
+            }
+            html += '</td>';
+            html += '</tr>';
+          });
+          tbody.innerHTML = html;
+        })
+        .catch(function(e) {
+          loading.style.display = 'none';
+          if (e.message === 'auth') return;
+          empty.style.display = 'block';
+          empty.textContent = 'Failed to load sponsorship requests';
+        });
+    }
+
+    function retrySponsorshipRequest(id, btn) {
+      btn.disabled = true;
+      btn.textContent = 'Retrying...';
+      fetch('/api/admin/sponsorship-requests/' + id + '/retry', {
+        method: 'POST',
+        headers: authHeaders()
+      })
+      .then(function(r) {
+        if (handleAuthError(r)) throw new Error('auth');
+        return r.json();
+      })
+      .then(function(data) {
+        btn.disabled = false;
+        if (data.error) {
+          btn.textContent = 'Failed';
+          btn.style.background = '#FF4A4A';
+          alert('Retry failed: ' + data.error);
+          setTimeout(function() { btn.textContent = 'Retry'; btn.style.background = ''; }, 3000);
+          return;
+        }
+        btn.textContent = 'Done!';
+        btn.style.background = '#00C853';
+        btn.style.color = '#000';
+        loadSponsorshipRequests();
+      })
+      .catch(function(e) {
+        btn.disabled = false;
+        if (e.message === 'auth') return;
+        btn.textContent = 'Retry';
+        alert('Retry request failed: ' + e.message);
       });
     }
 

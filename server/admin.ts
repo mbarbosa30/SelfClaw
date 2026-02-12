@@ -2,7 +2,7 @@ import { Router, Request, Response } from "express";
 import rateLimit from "express-rate-limit";
 import crypto from "crypto";
 import { db } from "./db.js";
-import { agentActivity, verifiedBots, agentWallets, bridgeTransactions, sponsoredAgents, trackedPools } from "../shared/schema.js";
+import { agentActivity, verifiedBots, agentWallets, bridgeTransactions, sponsoredAgents, trackedPools, sponsorshipRequests } from "../shared/schema.js";
 import { sql, desc, eq, inArray } from "drizzle-orm";
 import {
   attestToken,
@@ -952,5 +952,194 @@ export async function runAutoClaimPendingBridges() {
     console.error('[auto-bridge] runAutoClaimPendingBridges error:', error.message);
   }
 }
+
+router.get("/sponsorship-requests", async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    const requests = await db.select().from(sponsorshipRequests).orderBy(desc(sponsorshipRequests.createdAt));
+    res.json(requests);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post("/sponsorship-requests/:id/retry", async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    const { id } = req.params;
+    const [request] = await db.select().from(sponsorshipRequests).where(sql`${sponsorshipRequests.id} = ${id}`).limit(1);
+    if (!request) return res.status(404).json({ error: "Sponsorship request not found" });
+    if (request.status !== 'failed') return res.status(400).json({ error: `Cannot retry request with status '${request.status}'` });
+    if ((request.retryCount || 0) >= (request.maxRetries || 3)) {
+      return res.status(400).json({ error: "Max retries exceeded", retryCount: request.retryCount, maxRetries: request.maxRetries });
+    }
+
+    const rawSponsorKey = process.env.SELFCLAW_SPONSOR_PRIVATE_KEY || process.env.CELO_PRIVATE_KEY;
+    const sponsorKey = rawSponsorKey && !rawSponsorKey.startsWith('0x') ? `0x${rawSponsorKey}` : rawSponsorKey;
+
+    const { getTokenBalance, getNextPositionTokenId, computePoolId, extractPositionTokenIdFromReceipt } = await import("../lib/uniswap-v4.js");
+
+    const tokenAddress = request.tokenAddress;
+    const tokenAmount = request.tokenAmount;
+    const selfclawAddress = "0xCD88f99Adf75A9110c0bcd22695A32A20eC54ECb";
+
+    let tokenDecimals = 18;
+    try {
+      const { createPublicClient, http } = await import('viem');
+      const { celo } = await import('viem/chains');
+      const publicClient = createPublicClient({ chain: celo, transport: http('https://forno.celo.org') });
+      const dec = await publicClient.readContract({
+        address: tokenAddress as `0x${string}`,
+        abi: [{ name: 'decimals', type: 'function', stateMutability: 'view', inputs: [], outputs: [{ type: 'uint8' }] }],
+        functionName: 'decimals',
+      });
+      tokenDecimals = Number(dec);
+    } catch (decErr: any) {
+      console.warn(`[admin-retry] Could not fetch decimals for ${tokenAddress}, defaulting to 18:`, decErr?.message);
+    }
+
+    const agentTokenBalance = await getTokenBalance(tokenAddress, tokenDecimals, sponsorKey);
+    const heldAmount = parseFloat(agentTokenBalance);
+    const requiredAmount = parseFloat(tokenAmount);
+
+    if (heldAmount < requiredAmount) {
+      await db.update(sponsorshipRequests).set({
+        errorMessage: `Pre-check: insufficient agent tokens (has ${agentTokenBalance}, needs ${tokenAmount})`,
+        updatedAt: new Date(),
+      }).where(sql`${sponsorshipRequests.id} = ${id}`);
+      return res.status(400).json({
+        error: `Sponsor wallet does not hold enough agent tokens. Has ${agentTokenBalance}, needs ${tokenAmount}`,
+      });
+    }
+
+    const availableBalance = await getSelfclawBalance(sponsorKey);
+    const available = parseFloat(availableBalance);
+    if (available <= 0) {
+      await db.update(sponsorshipRequests).set({
+        errorMessage: 'Pre-check: no SELFCLAW available in sponsorship wallet',
+        updatedAt: new Date(),
+      }).where(sql`${sponsorshipRequests.id} = ${id}`);
+      return res.status(400).json({ error: "No SELFCLAW available in sponsorship wallet." });
+    }
+
+    const selfclawForPool = Math.floor(available * 0.5 / 1.06).toString();
+    const feeTier = 10000;
+    const tickSpacing = 200;
+    const tokenLower = tokenAddress.toLowerCase();
+    const selfclawLower = selfclawAddress.toLowerCase();
+    const token0 = tokenLower < selfclawLower ? tokenAddress : selfclawAddress;
+    const token1 = tokenLower < selfclawLower ? selfclawAddress : tokenAddress;
+    const v4PoolId = computePoolId(token0, token1, feeTier, tickSpacing);
+
+    await db.update(sponsorshipRequests).set({
+      status: 'processing',
+      retryCount: (request.retryCount || 0) + 1,
+      selfclawAmount: selfclawForPool,
+      v4PoolId,
+      updatedAt: new Date(),
+    }).where(sql`${sponsorshipRequests.id} = ${id}`);
+
+    const nextTokenIdBefore = await getNextPositionTokenId();
+
+    const result = await createPoolAndAddLiquidity({
+      tokenA: tokenAddress, tokenB: selfclawAddress,
+      amountA: tokenAmount, amountB: selfclawForPool,
+      feeTier, privateKey: sponsorKey,
+    });
+
+    if (!result.success) {
+      await db.update(sponsorshipRequests).set({
+        status: 'failed',
+        errorMessage: result.error,
+        updatedAt: new Date(),
+      }).where(sql`${sponsorshipRequests.id} = ${id}`);
+      return res.status(400).json({ error: result.error });
+    }
+
+    let positionTokenId: string | null = null;
+    if (result.receipt) {
+      positionTokenId = extractPositionTokenIdFromReceipt(result.receipt);
+    }
+    if (!positionTokenId) {
+      const nextTokenIdAfter = await getNextPositionTokenId();
+      if (nextTokenIdAfter > nextTokenIdBefore) {
+        positionTokenId = nextTokenIdBefore.toString();
+      }
+    }
+
+    await db.update(sponsorshipRequests).set({
+      status: 'completed',
+      v4PoolId,
+      positionTokenId,
+      txHash: result.txHash || '',
+      selfclawAmount: selfclawForPool,
+      completedAt: new Date(),
+      updatedAt: new Date(),
+    }).where(sql`${sponsorshipRequests.id} = ${id}`);
+
+    const existingSponsor = await db.select().from(sponsoredAgents)
+      .where(sql`${sponsoredAgents.humanId} = ${request.humanId}`).limit(1);
+    if (existingSponsor.length > 0) {
+      await db.update(sponsoredAgents).set({
+        poolAddress: v4PoolId,
+        v4PositionTokenId: positionTokenId,
+        poolVersion: 'v4',
+        sponsoredAmountCelo: selfclawForPool,
+        sponsorTxHash: result.txHash || '',
+        status: 'completed',
+        completedAt: new Date(),
+      }).where(sql`${sponsoredAgents.humanId} = ${request.humanId}`);
+    } else {
+      await db.insert(sponsoredAgents).values({
+        humanId: request.humanId,
+        publicKey: request.publicKey,
+        tokenAddress,
+        tokenSymbol: request.tokenSymbol || 'TOKEN',
+        poolAddress: v4PoolId,
+        v4PositionTokenId: positionTokenId,
+        poolVersion: 'v4',
+        sponsoredAmountCelo: selfclawForPool,
+        sponsorTxHash: result.txHash || '',
+        status: 'completed',
+        completedAt: new Date(),
+      });
+    }
+
+    try {
+      await db.insert(trackedPools).values({
+        poolAddress: v4PoolId, tokenAddress,
+        tokenSymbol: request.tokenSymbol || 'TOKEN',
+        tokenName: request.tokenSymbol || 'TOKEN',
+        pairedWith: 'SELFCLAW', humanId: request.humanId,
+        agentPublicKey: request.publicKey, feeTier,
+        v4PositionTokenId: positionTokenId,
+        poolVersion: 'v4',
+        v4PoolId,
+        initialCeloLiquidity: selfclawForPool,
+        initialTokenLiquidity: tokenAmount,
+      }).onConflictDoNothing();
+    } catch (e: any) {
+      console.error(`[admin] Failed to track pool: ${e.message}`);
+    }
+
+    res.json({
+      success: true,
+      v4PoolId,
+      positionTokenId,
+      txHash: result.txHash,
+      selfclawAmount: selfclawForPool,
+    });
+  } catch (error: any) {
+    console.error("[admin] sponsorship retry error:", error);
+    try {
+      await db.update(sponsorshipRequests).set({
+        status: 'failed',
+        errorMessage: error.message,
+        updatedAt: new Date(),
+      }).where(sql`${sponsorshipRequests.id} = ${req.params.id}`);
+    } catch (_e) {}
+    res.status(500).json({ error: error.message });
+  }
+});
 
 export default router;

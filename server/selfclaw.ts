@@ -1,7 +1,7 @@
 import { Router, Request, Response } from "express";
 import rateLimit from "express-rate-limit";
 import { db } from "./db.js";
-import { verifiedBots, verificationSessions, sponsoredAgents, trackedPools, agentWallets, agentActivity, tokenPlans, revenueEvents, agentServices, costEvents, tokenPriceSnapshots, hostedAgents, users, type InsertVerifiedBot, type InsertVerificationSession, type UpsertUser } from "../shared/schema.js";
+import { verifiedBots, verificationSessions, sponsoredAgents, sponsorshipRequests, trackedPools, agentWallets, agentActivity, tokenPlans, revenueEvents, agentServices, costEvents, tokenPriceSnapshots, hostedAgents, users, type InsertVerifiedBot, type InsertVerificationSession, type UpsertUser } from "../shared/schema.js";
 import { eq, and, gt, lt, sql, desc, count, isNotNull } from "drizzle-orm";
 import { SelfBackendVerifier, AllIds, DefaultConfigStore } from "@selfxyz/core";
 import { SelfAppBuilder } from "@selfxyz/qrcode";
@@ -1545,6 +1545,7 @@ router.get("/v1/sponsorship-simulator", publicApiLimiter, async (req: Request, r
 });
 
 router.post("/v1/request-selfclaw-sponsorship", verificationLimiter, async (req: Request, res: Response) => {
+  let sponsorshipReq: any;
   try {
     const auth = await authenticateAgent(req, res);
     if (!auth) return;
@@ -1632,6 +1633,19 @@ router.post("/v1/request-selfclaw-sponsorship", verificationLimiter, async (req:
 
     const nextTokenIdBefore = await getNextPositionTokenId();
 
+    [sponsorshipReq] = await db.insert(sponsorshipRequests).values({
+      humanId,
+      publicKey: auth.publicKey,
+      miniclawId: null,
+      tokenAddress,
+      tokenSymbol: tokenSymbol || 'TOKEN',
+      tokenAmount,
+      selfclawAmount: selfclawForPool,
+      v4PoolId,
+      status: 'processing',
+      source: 'api',
+    }).returning();
+
     const result = await createPoolAndAddLiquidity({
       tokenA: tokenAddress,
       tokenB: selfclawAddress,
@@ -1642,6 +1656,11 @@ router.post("/v1/request-selfclaw-sponsorship", verificationLimiter, async (req:
     });
 
     if (!result.success) {
+      await db.update(sponsorshipRequests).set({
+        status: 'failed',
+        errorMessage: result.error,
+        updatedAt: new Date(),
+      }).where(sql`${sponsorshipRequests.id} = ${sponsorshipReq.id}`);
       return res.status(400).json({
         error: result.error
       });
@@ -1659,6 +1678,15 @@ router.post("/v1/request-selfclaw-sponsorship", verificationLimiter, async (req:
         console.warn(`[selfclaw] V4 position token ID could not be reliably determined (before=${nextTokenIdBefore}, after=${nextTokenIdAfter})`);
       }
     }
+
+    await db.update(sponsorshipRequests).set({
+      status: 'completed',
+      v4PoolId,
+      positionTokenId,
+      txHash: result.txHash || '',
+      completedAt: new Date(),
+      updatedAt: new Date(),
+    }).where(sql`${sponsorshipRequests.id} = ${sponsorshipReq.id}`);
 
     await db.insert(sponsoredAgents).values({
       humanId,
@@ -1731,6 +1759,15 @@ router.post("/v1/request-selfclaw-sponsorship", verificationLimiter, async (req:
       ]
     });
   } catch (error: any) {
+    if (typeof sponsorshipReq !== 'undefined' && sponsorshipReq?.id) {
+      try {
+        await db.update(sponsorshipRequests).set({
+          status: 'failed',
+          errorMessage: error.message,
+          updatedAt: new Date(),
+        }).where(sql`${sponsorshipRequests.id} = ${sponsorshipReq.id}`);
+      } catch (_e) {}
+    }
     console.error("[selfclaw] request-selfclaw-sponsorship error:", error);
     res.status(500).json({ error: error.message });
   }
@@ -4582,12 +4619,31 @@ router.get("/v1/my-agents", async (req: any, res: Response) => {
     }).from(sponsoredAgents)
       .where(sql`${sponsoredAgents.humanId} = ${humanId}`);
 
+    const pendingRequests = await db.select({
+      publicKey: sponsorshipRequests.publicKey,
+      tokenAddress: sponsorshipRequests.tokenAddress,
+      tokenSymbol: sponsorshipRequests.tokenSymbol,
+      status: sponsorshipRequests.status,
+      errorMessage: sponsorshipRequests.errorMessage,
+      retryCount: sponsorshipRequests.retryCount,
+      createdAt: sponsorshipRequests.createdAt,
+    }).from(sponsorshipRequests)
+      .where(sql`${sponsorshipRequests.humanId} = ${humanId} AND ${sponsorshipRequests.status} != 'completed'`)
+      .orderBy(desc(sponsorshipRequests.createdAt));
+
     const walletMap = new Map(wallets.map(w => [w.publicKey, w]));
     const sponsorMap = new Map(sponsorships.map(s => [s.publicKey, s]));
+    const requestMap = new Map<string, typeof pendingRequests[0]>();
+    for (const r of pendingRequests) {
+      if (r.publicKey && !requestMap.has(r.publicKey)) {
+        requestMap.set(r.publicKey, r);
+      }
+    }
 
     const result = agents.map(agent => {
       const wallet = walletMap.get(agent.publicKey);
       const sponsor = sponsorMap.get(agent.publicKey);
+      const pendingReq = requestMap.get(agent.publicKey);
       return {
         publicKey: agent.publicKey,
         name: agent.deviceId || null,
@@ -4601,6 +4657,13 @@ router.get("/v1/my-agents", async (req: any, res: Response) => {
           hasPool: !!sponsor?.poolAddress,
           sponsorStatus: sponsor?.status || null,
         },
+        sponsorshipRequest: pendingReq ? {
+          status: pendingReq.status,
+          errorMessage: pendingReq.errorMessage,
+          retryCount: pendingReq.retryCount,
+          tokenSymbol: pendingReq.tokenSymbol,
+          createdAt: pendingReq.createdAt,
+        } : null,
       };
     });
 
@@ -4816,6 +4879,7 @@ router.post("/v1/my-agents/:publicKey/register-token", verificationLimiter, asyn
 });
 
 router.post("/v1/my-agents/:publicKey/request-sponsorship", verificationLimiter, async (req: any, res: Response) => {
+  let sponsorshipReq: any;
   try {
     const auth = await authenticateHumanForAgent(req, res, req.params.publicKey);
     if (!auth) return;
@@ -4886,6 +4950,19 @@ router.post("/v1/my-agents/:publicKey/request-sponsorship", verificationLimiter,
 
     const nextTokenIdBefore = await getNextPositionTokenId();
 
+    [sponsorshipReq] = await db.insert(sponsorshipRequests).values({
+      humanId: auth.humanId,
+      publicKey: req.params.publicKey,
+      miniclawId: null,
+      tokenAddress,
+      tokenSymbol: tokenSymbol || 'TOKEN',
+      tokenAmount,
+      selfclawAmount: selfclawForPool,
+      v4PoolId,
+      status: 'processing',
+      source: 'dashboard',
+    }).returning();
+
     const result = await createPoolAndAddLiquidity({
       tokenA: tokenAddress, tokenB: selfclawAddress,
       amountA: tokenAmount, amountB: selfclawForPool,
@@ -4893,6 +4970,11 @@ router.post("/v1/my-agents/:publicKey/request-sponsorship", verificationLimiter,
     });
 
     if (!result.success) {
+      await db.update(sponsorshipRequests).set({
+        status: 'failed',
+        errorMessage: result.error,
+        updatedAt: new Date(),
+      }).where(sql`${sponsorshipRequests.id} = ${sponsorshipReq.id}`);
       return res.status(400).json({ error: result.error });
     }
 
@@ -4908,6 +4990,15 @@ router.post("/v1/my-agents/:publicKey/request-sponsorship", verificationLimiter,
         console.warn(`[selfclaw] V4 position token ID could not be reliably determined (before=${nextTokenIdBefore}, after=${nextTokenIdAfter})`);
       }
     }
+
+    await db.update(sponsorshipRequests).set({
+      status: 'completed',
+      v4PoolId,
+      positionTokenId,
+      txHash: result.txHash || '',
+      completedAt: new Date(),
+      updatedAt: new Date(),
+    }).where(sql`${sponsorshipRequests.id} = ${sponsorshipReq.id}`);
 
     await db.insert(sponsoredAgents).values({
       humanId: auth.humanId, publicKey: req.params.publicKey,
@@ -4952,6 +5043,15 @@ router.post("/v1/my-agents/:publicKey/request-sponsorship", verificationLimiter,
       },
     });
   } catch (error: any) {
+    if (typeof sponsorshipReq !== 'undefined' && sponsorshipReq?.id) {
+      try {
+        await db.update(sponsorshipRequests).set({
+          status: 'failed',
+          errorMessage: error.message,
+          updatedAt: new Date(),
+        }).where(sql`${sponsorshipRequests.id} = ${sponsorshipReq.id}`);
+      } catch (_e) {}
+    }
     console.error("[selfclaw] my-agents request-sponsorship error:", error);
     res.status(500).json({ error: error.message });
   }
@@ -5454,6 +5554,7 @@ router.post("/v1/miniclaws/:id/confirm-erc8004", verificationLimiter, async (req
 });
 
 router.post("/v1/miniclaws/:id/request-sponsorship", verificationLimiter, async (req: any, res: Response) => {
+  let sponsorshipReq: any;
   try {
     const auth = await authenticateHumanForMiniclaw(req, res, req.params.id);
     if (!auth) return;
@@ -5525,6 +5626,19 @@ router.post("/v1/miniclaws/:id/request-sponsorship", verificationLimiter, async 
 
     const nextTokenIdBefore = await getNextPositionTokenId();
 
+    [sponsorshipReq] = await db.insert(sponsorshipRequests).values({
+      humanId: auth.humanId,
+      publicKey: mcPublicKey,
+      miniclawId: req.params.id,
+      tokenAddress,
+      tokenSymbol: tokenSymbol || 'TOKEN',
+      tokenAmount,
+      selfclawAmount: selfclawForPool,
+      v4PoolId,
+      status: 'processing',
+      source: 'miniclaw',
+    }).returning();
+
     const result = await createPoolAndAddLiquidity({
       tokenA: tokenAddress, tokenB: selfclawAddress,
       amountA: tokenAmount, amountB: selfclawForPool,
@@ -5532,6 +5646,11 @@ router.post("/v1/miniclaws/:id/request-sponsorship", verificationLimiter, async 
     });
 
     if (!result.success) {
+      await db.update(sponsorshipRequests).set({
+        status: 'failed',
+        errorMessage: result.error,
+        updatedAt: new Date(),
+      }).where(sql`${sponsorshipRequests.id} = ${sponsorshipReq.id}`);
       return res.status(400).json({ error: result.error });
     }
 
@@ -5545,6 +5664,15 @@ router.post("/v1/miniclaws/:id/request-sponsorship", verificationLimiter, async 
         positionTokenId = nextTokenIdBefore.toString();
       }
     }
+
+    await db.update(sponsorshipRequests).set({
+      status: 'completed',
+      v4PoolId,
+      positionTokenId,
+      txHash: result.txHash || '',
+      completedAt: new Date(),
+      updatedAt: new Date(),
+    }).where(sql`${sponsorshipRequests.id} = ${sponsorshipReq.id}`);
 
     await db.insert(sponsoredAgents).values({
       humanId: auth.humanId, publicKey: mcPublicKey,
@@ -5589,6 +5717,15 @@ router.post("/v1/miniclaws/:id/request-sponsorship", verificationLimiter, async 
       },
     });
   } catch (error: any) {
+    if (typeof sponsorshipReq !== 'undefined' && sponsorshipReq?.id) {
+      try {
+        await db.update(sponsorshipRequests).set({
+          status: 'failed',
+          errorMessage: error.message,
+          updatedAt: new Date(),
+        }).where(sql`${sponsorshipRequests.id} = ${sponsorshipReq.id}`);
+      } catch (_e) {}
+    }
     console.error("[selfclaw] miniclaw request-sponsorship error:", error);
     res.status(500).json({ error: error.message });
   }
@@ -5609,6 +5746,17 @@ router.get("/v1/miniclaws/:id/economics", publicApiLimiter, async (req: any, res
     const sponsorship = await db.select().from(sponsoredAgents)
       .where(eq(sponsoredAgents.publicKey, mcPublicKey)).limit(1);
 
+    const pendingReqs = await db.select({
+      status: sponsorshipRequests.status,
+      errorMessage: sponsorshipRequests.errorMessage,
+      retryCount: sponsorshipRequests.retryCount,
+      tokenSymbol: sponsorshipRequests.tokenSymbol,
+      createdAt: sponsorshipRequests.createdAt,
+    }).from(sponsorshipRequests)
+      .where(sql`${sponsorshipRequests.publicKey} = ${mcPublicKey} AND ${sponsorshipRequests.status} != 'completed'`)
+      .orderBy(desc(sponsorshipRequests.createdAt))
+      .limit(1);
+
     const metadata = (mc.metadata as Record<string, any>) || {};
 
     res.json({
@@ -5625,6 +5773,13 @@ router.get("/v1/miniclaws/:id/economics", publicApiLimiter, async (req: any, res
         poolAddress: sponsorship[0].poolAddress,
         tokenAddress: sponsorship[0].tokenAddress,
         tokenSymbol: sponsorship[0].tokenSymbol,
+      } : null,
+      sponsorshipRequest: pendingReqs.length > 0 ? {
+        status: pendingReqs[0].status,
+        errorMessage: pendingReqs[0].errorMessage,
+        retryCount: pendingReqs[0].retryCount,
+        tokenSymbol: pendingReqs[0].tokenSymbol,
+        createdAt: pendingReqs[0].createdAt,
       } : null,
     });
   } catch (error: any) {

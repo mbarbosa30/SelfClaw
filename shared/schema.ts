@@ -102,6 +102,34 @@ export const sponsoredAgents = pgTable("sponsored_agents", {
 export type SponsoredAgent = typeof sponsoredAgents.$inferSelect;
 export type InsertSponsoredAgent = typeof sponsoredAgents.$inferInsert;
 
+export const sponsorshipRequests = pgTable("sponsorship_requests", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  humanId: varchar("human_id").notNull(),
+  publicKey: varchar("public_key"),
+  miniclawId: varchar("miniclaw_id"),
+  tokenAddress: varchar("token_address").notNull(),
+  tokenSymbol: varchar("token_symbol").default("TOKEN"),
+  tokenAmount: varchar("token_amount").notNull(),
+  selfclawAmount: varchar("selfclaw_amount"),
+  v4PoolId: varchar("v4_pool_id"),
+  positionTokenId: varchar("position_token_id"),
+  txHash: varchar("tx_hash"),
+  status: varchar("status").default("pending").notNull(),
+  errorMessage: text("error_message"),
+  retryCount: integer("retry_count").default(0),
+  maxRetries: integer("max_retries").default(3),
+  source: varchar("source").default("api"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  completedAt: timestamp("completed_at"),
+}, (table) => [
+  index("IDX_sponsorship_requests_human_id").on(table.humanId),
+  index("IDX_sponsorship_requests_status").on(table.status),
+]);
+
+export type SponsorshipRequest = typeof sponsorshipRequests.$inferSelect;
+export type InsertSponsorshipRequest = typeof sponsorshipRequests.$inferInsert;
+
 export const trackedPools = pgTable("tracked_pools", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   poolAddress: varchar("pool_address").notNull().unique(),

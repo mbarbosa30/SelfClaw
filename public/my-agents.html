@@ -570,6 +570,17 @@
         } else if (step.key === 'sponsorship') {
           if (step.done) {
             html += '<div class="pipeline-step-info" style="color:var(--green-verify);">' + esc(agent.sponsorship.status || 'Active') + '</div>';
+          } else if (agent.sponsorshipRequest) {
+            var sr = agent.sponsorshipRequest;
+            if (sr.status === 'processing') {
+              html += '<div class="pipeline-step-info" style="color:#6B4AFF;">Processing...</div>';
+            } else if (sr.status === 'failed') {
+              html += '<div class="pipeline-step-info" style="color:#FF4A4A;">Failed' + (sr.retryCount > 0 ? ' (retry ' + sr.retryCount + ')' : '') + '</div>';
+              html += '<div class="pipeline-step-info" style="font-size:0.65rem;color:#999;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + esc(sr.errorMessage || '') + '">' + esc(sr.errorMessage || 'Unknown error') + '</div>';
+              html += '<div class="pipeline-step-info" style="font-size:0.65rem;color:#999;">Admin will retry</div>';
+            } else if (sr.status === 'pending') {
+              html += '<div class="pipeline-step-info" style="color:var(--accent);">Pending...</div>';
+            }
           } else if (step.status === 'active') {
             html += '<div class="pipeline-step-action"><button class="action-btn primary" onclick="actionRequestSponsorship(' + idx + ', this)">Request Sponsorship</button></div>';
           }
