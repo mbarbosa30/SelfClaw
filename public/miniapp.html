@@ -51,24 +51,36 @@
     }
     .app-bar-status.connected { color: var(--green); }
 
-    .app-content { padding: 1rem; max-width: 480px; margin: 0 auto; }
+    .app-content { padding: 1.25rem 1rem 2rem; max-width: 480px; margin: 0 auto; }
 
     .connect-screen {
       display: flex; flex-direction: column; align-items: center;
-      justify-content: center; padding: 3rem 1rem;
+      justify-content: center; padding: 2rem 1.25rem;
       min-height: calc(100vh - 50px); min-height: calc(100dvh - 50px);
     }
-    .connect-icon { font-size: 3rem; margin-bottom: 1rem; }
+    .connect-logo { margin-bottom: 1.5rem; opacity: 0.15; }
+    .connect-logo img { width: 48px; height: 48px; }
     .connect-title {
-      font-family: var(--font-mono); font-size: 1rem; font-weight: 600;
-      margin-bottom: 0.4rem;
+      font-family: var(--font-mono); font-size: 1.1rem; font-weight: 600;
+      margin-bottom: 0.75rem; text-align: center;
     }
     .connect-desc {
-      font-size: 0.85rem; color: var(--text-secondary);
-      text-align: center; margin-bottom: 1.5rem; max-width: 280px;
+      font-size: 0.9rem; color: var(--text-secondary);
+      text-align: center; margin-bottom: 0.5rem; max-width: 320px; line-height: 1.6;
+    }
+    .connect-features {
+      list-style: none; padding: 0; margin: 1rem 0 1.75rem; max-width: 300px; width: 100%;
+    }
+    .connect-features li {
+      display: flex; align-items: flex-start; gap: 0.6rem;
+      padding: 0.45rem 0;
+      font-size: 0.85rem; color: var(--text-secondary); line-height: 1.45;
+    }
+    .connect-features li span.feat-icon {
+      flex-shrink: 0; width: 20px; text-align: center; font-size: 0.9rem; margin-top: 1px;
     }
     .connect-btn {
-      width: 100%; max-width: 280px; padding: 0.75rem;
+      width: 100%; max-width: 300px; padding: 0.85rem;
       border: 2px solid var(--border-heavy); background: var(--text); color: var(--bg);
       font-family: var(--font-mono); font-size: 0.85rem; font-weight: 600;
       text-transform: uppercase; letter-spacing: 0.08em;
@@ -76,15 +88,18 @@
     }
     .connect-btn:hover { background: var(--accent); border-color: var(--accent); }
     .connect-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .connect-note {
+      margin-top: 0.75rem; font-size: 0.7rem; color: var(--text-muted);
+      text-align: center; max-width: 260px; line-height: 1.5;
+    }
 
-    .greeting {
-      font-family: var(--font-mono); font-size: 0.7rem; font-weight: 600;
+    .section-label {
+      font-family: var(--font-mono); font-size: 0.65rem; font-weight: 600;
       text-transform: uppercase; letter-spacing: 0.1em;
-      color: var(--text-muted); margin-bottom: 0.75rem;
+      color: var(--text-muted); margin-bottom: 0.6rem;
     }
 
     .claws-list { display: flex; flex-direction: column; gap: 0.6rem; margin-bottom: 1rem; }
-
     .claw-card {
       display: flex; align-items: center; gap: 0.75rem;
       padding: 0.85rem; border: 2px solid var(--border);
@@ -110,21 +125,37 @@
     .claw-status.active { color: var(--green); border: 1px solid var(--green); }
     .claw-status.paused { color: var(--text-muted); border: 1px solid var(--border); }
 
-    .empty-state {
-      text-align: center; padding: 2rem 1rem;
-      border: 2px dashed var(--border);
+    .welcome-card {
+      border: 2px solid var(--border); padding: 1.5rem 1.25rem; text-align: center;
+      margin-bottom: 1.25rem;
     }
-    .empty-icon { font-size: 2rem; margin-bottom: 0.5rem; }
-    .empty-title {
-      font-family: var(--font-mono); font-size: 0.8rem; font-weight: 600;
-      margin-bottom: 0.3rem;
+    .welcome-emoji { font-size: 2.5rem; margin-bottom: 0.75rem; }
+    .welcome-heading {
+      font-family: var(--font-mono); font-size: 0.95rem; font-weight: 600;
+      margin-bottom: 0.5rem;
     }
-    .empty-desc {
-      font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 1rem;
+    .welcome-text {
+      font-size: 0.85rem; color: var(--text-secondary); line-height: 1.6;
+      margin-bottom: 1rem; max-width: 340px; margin-left: auto; margin-right: auto;
+    }
+    .welcome-steps {
+      list-style: none; padding: 0; margin: 0 0 0.5rem; text-align: left;
+      max-width: 300px; margin-left: auto; margin-right: auto;
+    }
+    .welcome-steps li {
+      display: flex; align-items: flex-start; gap: 0.6rem;
+      padding: 0.4rem 0; font-size: 0.8rem; color: var(--text-secondary); line-height: 1.4;
+    }
+    .welcome-steps li .step-num {
+      flex-shrink: 0; width: 20px; height: 20px;
+      display: flex; align-items: center; justify-content: center;
+      border: 1.5px solid var(--accent); color: var(--accent);
+      font-family: var(--font-mono); font-size: 0.6rem; font-weight: 700;
+      margin-top: 1px;
     }
 
     .create-btn {
-      display: block; width: 100%; padding: 0.75rem;
+      display: block; width: 100%; padding: 0.85rem;
       border: 2px solid var(--border-heavy); background: var(--accent); color: #fff;
       font-family: var(--font-mono); font-size: 0.8rem; font-weight: 600;
       text-transform: uppercase; letter-spacing: 0.08em;
@@ -146,17 +177,12 @@
       max-width: 480px; margin: 0 auto;
     }
 
-    .section-label {
-      font-family: var(--font-mono); font-size: 0.6rem; font-weight: 600;
-      text-transform: uppercase; letter-spacing: 0.1em;
-      color: var(--text-muted); margin-bottom: 0.5rem; margin-top: 1.25rem;
-    }
-
     .quick-links {
       display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;
+      margin-top: 1.25rem;
     }
     .quick-link {
-      display: flex; align-items: center; gap: 0.4rem;
+      display: flex; align-items: center; gap: 0.5rem;
       padding: 0.6rem 0.75rem; border: 1px solid var(--border);
       background: var(--bg-card); text-decoration: none; color: var(--text);
       font-family: var(--font-mono); font-size: 0.65rem; font-weight: 600;
@@ -164,7 +190,7 @@
       transition: border-color 0.2s;
     }
     .quick-link:hover { border-color: var(--border-heavy); }
-    .quick-link-icon { font-size: 0.85rem; }
+    .quick-link-icon { font-size: 0.9rem; }
   </style>
 </head>
 <body>
@@ -176,29 +202,45 @@
   </div>
 
   <div id="connect-screen" class="connect-screen" style="display:none;">
-    <div class="connect-icon">\\\</div>
-    <div class="connect-title">SelfClaw</div>
-    <div class="connect-desc">Your AI agent, running on-chain. Connect your wallet to get started.</div>
+    <div class="connect-logo"><img src="/claw-icon.svg" alt=""></div>
+    <div class="connect-title">Meet your Miniclaw</div>
+    <div class="connect-desc">A tiny AI assistant that lives on the blockchain, just for you. It can watch your wallet, track your tokens, and learn new skills over time.</div>
+    <ul class="connect-features">
+      <li><span class="feat-icon">&#x1F4B0;</span> Monitors your wallet activity</li>
+      <li><span class="feat-icon">&#x1F4CA;</span> Tracks your token economics</li>
+      <li><span class="feat-icon">&#x1F9E9;</span> Learns new skills from the market</li>
+      <li><span class="feat-icon">&#x1F512;</span> Verified identity, no passwords needed</li>
+    </ul>
     <button class="connect-btn" id="connect-btn" onclick="connectWallet()">Connect Wallet</button>
+    <div class="connect-note">Your wallet address is your login. No email or password needed.</div>
   </div>
 
   <div id="main-screen" class="app-content" style="display:none;">
-    <div class="greeting" id="greeting"></div>
+    <div id="claws-loading" class="loading">Loading...</div>
 
-    <div id="claws-loading" class="loading">Loading your miniclaws...</div>
-    <div id="claws-list" class="claws-list" style="display:none;"></div>
-    <div id="claws-empty" class="empty-state" style="display:none;">
-      <div class="empty-icon">\\\</div>
-      <div class="empty-title">No miniclaws yet</div>
-      <div class="empty-desc">Create your first AI agent in under a minute.</div>
+    <div id="claws-populated" style="display:none;">
+      <div class="section-label" style="margin-bottom:0.6rem;">Your Miniclaws</div>
+      <div id="claws-list" class="claws-list"></div>
+      <a href="/create-assistant" class="create-btn" style="margin-top:0.75rem;">+ New Miniclaw</a>
+      <div id="quick-links-section" class="quick-links">
+        <a href="/skill-market" class="quick-link"><span class="quick-link-icon">&#x1F6D2;</span> Skill Market</a>
+        <a href="/economy" class="quick-link"><span class="quick-link-icon">&#x1F4CA;</span> Economy</a>
+      </div>
     </div>
 
-    <a href="/create-assistant" class="create-btn" id="create-claw-btn" style="margin-top:0.75rem;">+ New Miniclaw</a>
-
-    <div class="section-label">Quick Links</div>
-    <div class="quick-links">
-      <a href="/skill-market" class="quick-link"><span class="quick-link-icon">\u{1F6D2}</span> Skill Market</a>
-      <a href="/economy" class="quick-link"><span class="quick-link-icon">\u{1F4CA}</span> Economy</a>
+    <div id="claws-empty" style="display:none;">
+      <div class="welcome-card">
+        <div class="welcome-emoji">&#x1F44B;</div>
+        <div class="welcome-heading">Welcome to SelfClaw</div>
+        <div class="welcome-text">A Miniclaw is your personal AI assistant that runs on the blockchain. It works in the background to help you stay on top of your crypto world.</div>
+        <div class="section-label" style="text-align:left;margin-top:1rem;margin-bottom:0.5rem;">Here's how it works</div>
+        <ol class="welcome-steps">
+          <li><span class="step-num">1</span> Give it a name and pick an emoji</li>
+          <li><span class="step-num">2</span> Choose what skills it should have</li>
+          <li><span class="step-num">3</span> It starts working for you automatically</li>
+        </ol>
+      </div>
+      <a href="/create-assistant" class="create-btn">Create your first Miniclaw</a>
     </div>
   </div>
 
@@ -250,6 +292,7 @@
     }
 
     async function loadClaws() {
+      var populatedEl = document.getElementById('claws-populated');
       var listEl = document.getElementById('claws-list');
       var emptyEl = document.getElementById('claws-empty');
       var loadingEl = document.getElementById('claws-loading');
@@ -265,7 +308,7 @@
 
         if (agents.length === 0) {
           emptyEl.style.display = '';
-          listEl.style.display = 'none';
+          populatedEl.style.display = 'none';
           return;
         }
 
@@ -285,7 +328,7 @@
           html += '</a>';
         }
         listEl.innerHTML = html;
-        listEl.style.display = '';
+        populatedEl.style.display = '';
       } catch (err) {
         loadingEl.textContent = 'Could not load miniclaws.';
       }
@@ -299,9 +342,6 @@
       var statusEl = document.getElementById('status-label');
       statusEl.textContent = truncAddr(user.walletAddress || user.humanId || '');
       statusEl.classList.add('connected');
-
-      var greetEl = document.getElementById('greeting');
-      greetEl.textContent = 'Your Miniclaws';
 
       loadClaws();
     }
