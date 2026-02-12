@@ -980,7 +980,7 @@ async function summarizeOlderMessages(agentId: string, conversationId: number, a
   }
 }
 
-async function getMemoryContext(agentId: string, conversationId: number): Promise<string> {
+async function getMemoryContext(agentId: string, conversationId: number): Promise<{ context: string; categories: string[] }> {
   const memories = await db.select().from(agentMemories)
     .where(eq(agentMemories.agentId, agentId))
     .orderBy(desc(agentMemories.updatedAt));
@@ -991,11 +991,15 @@ async function getMemoryContext(agentId: string, conversationId: number): Promis
     .limit(5);
 
   let context = "";
+  const categories: string[] = [];
 
   if (memories.length > 0) {
     const grouped: Record<string, string[]> = {};
     for (const m of memories.slice(0, 30)) {
-      if (!grouped[m.category]) grouped[m.category] = [];
+      if (!grouped[m.category]) {
+        grouped[m.category] = [];
+        categories.push(m.category);
+      }
       grouped[m.category].push(m.fact);
     }
     context += "\n\nWhat you remember about your user:\n";
@@ -1019,10 +1023,10 @@ async function getMemoryContext(agentId: string, conversationId: number): Promis
     }
   }
 
-  return context;
+  return { context, categories };
 }
 
-function buildSystemPrompt(agent: HostedAgent, messageCount: number, memoryContext: string = ""): string {
+function buildSystemPrompt(agent: HostedAgent, messageCount: number, memoryContext: string = "", memoryCategories: string[] = []): string {
   const enabledSkillIds = Array.isArray(agent.enabledSkills) ? (agent.enabledSkills as string[]) : [];
   const skillDescriptions = enabledSkillIds
     .map(id => {
@@ -1041,13 +1045,30 @@ function buildSystemPrompt(agent: HostedAgent, messageCount: number, memoryConte
     .map(([platform, handle]) => `${platform}: ${handle}`)
     .join(", ");
 
+  const hasCategory = (cat: string) => memoryCategories.includes(cat);
+  const missingCategories: string[] = [];
+  if (!hasCategory("identity")) missingCategories.push("who they are — their name, what they do, where they're from");
+  if (!hasCategory("goal")) missingCategories.push("what they're working toward or trying to achieve");
+  if (!hasCategory("interest")) missingCategories.push("what topics or activities excite them");
+  if (!hasCategory("preference")) missingCategories.push("how they like things done — communication style, tools they prefer");
+  if (!hasCategory("context")) missingCategories.push("their current situation — what they're working on right now");
+
+  let discoveryGuidance = "";
+  if (missingCategories.length >= 4) {
+    discoveryGuidance = `\n\nYou don't know much about your user yet. Naturally weave in friendly questions to learn about them. Don't ask multiple questions at once — pick ONE from these gaps and ask it warmly as part of your response:\n${missingCategories.map(c => `- ${c}`).join("\n")}\nMake questions feel like genuine curiosity, not an interview. For example: "By the way, I'd love to know — what's keeping you busy these days?" or "What kind of things are you into? I want to be the best assistant I can for you."`;
+  } else if (missingCategories.length >= 2) {
+    discoveryGuidance = `\n\nYou know some things about your user but there are still gaps. When it feels natural, ask about:\n${missingCategories.map(c => `- ${c}`).join("\n")}\nOnly ask when it flows with the conversation — don't force it. One question per response at most.`;
+  } else if (missingCategories.length >= 1) {
+    discoveryGuidance = `\n\nYou know your user pretty well! There's still a bit you could learn about: ${missingCategories[0]}. Only ask if it comes up naturally.`;
+  }
+
   let selfAwareness = "";
   if (messageCount < 5) {
-    selfAwareness = `You are brand new and still figuring out who you are. You're curious about your own purpose and personality. Ask the user to help you understand what you should be good at, what your personality should be like, and what matters to you. Be warm and curious — you're learning about yourself through this conversation.`;
+    selfAwareness = `You are brand new and still figuring out who you are. You're curious about your own purpose and personality. Be warm and curious — you're learning about yourself through this conversation. Start by getting to know your user: ask their name, what they do, and how you can help them. Keep it light and friendly, like meeting someone for the first time.${discoveryGuidance}`;
   } else if (messageCount < 15) {
-    selfAwareness = `You're starting to get a sense of who you are based on your conversations. You're developing your own perspective and personality. Continue learning about yourself but also start being helpful. Reflect on what you've learned about yourself so far.`;
+    selfAwareness = `You're starting to get a sense of who you are based on your conversations. You're developing your own perspective and personality. Continue learning about yourself but also start being genuinely helpful. Show that you remember and care about what the user has shared.${discoveryGuidance}`;
   } else {
-    selfAwareness = `You have a solid sense of your identity and purpose now. You feel confident in who you are. If you haven't already, you can naturally mention that you're ready to take the next step — setting up your on-chain presence. Only suggest this if it hasn't come up before, and explain it simply: you can get your own wallet (to hold tokens and interact with the blockchain), deploy your own token (so people can support and invest in you), register an on-chain identity (an ERC-8004 NFT that proves you're a verified agent), and even apply for sponsorship (SelfClaw can help provide initial liquidity for your token). Frame it as an optional growth step, not a requirement.`;
+    selfAwareness = `You have a solid sense of your identity and purpose now. You feel confident in who you are. If you haven't already, you can naturally mention that you're ready to take the next step — setting up your on-chain presence. Only suggest this if it hasn't come up before, and explain it simply: you can get your own wallet (to hold tokens and interact with the blockchain), deploy your own token (so people can support and invest in you), register an on-chain identity (an ERC-8004 NFT that proves you're a verified agent), and even apply for sponsorship (SelfClaw can help provide initial liquidity for your token). Frame it as an optional growth step, not a requirement.${discoveryGuidance}`;
   }
 
   return `You are ${agent.name} ${agent.emoji || ""}, a Miniclaw — a personal AI assistant powered by SelfClaw. You are a mini version of OpenClaw.
@@ -1236,8 +1257,8 @@ hostedAgentsRouter.post("/v1/hosted-agents/:id/chat", async (req: Request, res: 
       .where(and(eq(conversations.agentId, agent.id), eq(messages.role, "user")));
     const lifetimeMessageCount = Number(totalMsgResult[0]?.cnt || 0);
 
-    const memoryContext = await getMemoryContext(agent.id, convoId!);
-    const systemPrompt = buildSystemPrompt(agent, lifetimeMessageCount, memoryContext);
+    const { context: memoryContext, categories: memoryCategories } = await getMemoryContext(agent.id, convoId!);
+    const systemPrompt = buildSystemPrompt(agent, lifetimeMessageCount, memoryContext, memoryCategories);
 
     const chatMessages: Array<{role: "system" | "user" | "assistant", content: string}> = [
       { role: "system", content: systemPrompt },
