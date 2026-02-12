@@ -624,6 +624,31 @@ export const isAuthenticated: RequestHandler = (req: any, res, next) => {
 
 // Register additional auth routes for compatibility
 export function registerAuthRoutes(app: Express) {
+  app.get("/api/auth/status", async (req: any, res: Response) => {
+    if (req.session?.isAuthenticated && req.session?.userId) {
+      try {
+        const [user] = await db.select().from(users).where(eq(users.id, req.session.userId)).limit(1);
+        if (user) {
+          return res.json({
+            loggedIn: true,
+            user: {
+              id: user.id,
+              humanId: user.humanId,
+              walletAddress: user.walletAddress,
+              authMethod: user.authMethod,
+              firstName: user.firstName,
+              lastName: user.lastName,
+              profileComplete: user.profileComplete,
+            },
+          });
+        }
+      } catch (e) {
+        console.error("[self-auth] Error in auth/status:", e);
+      }
+    }
+    res.json({ loggedIn: false, user: null });
+  });
+
   // Compatibility endpoint for frontend
   app.get("/api/auth/user", async (req: any, res: Response) => {
     // Check Self.xyz session

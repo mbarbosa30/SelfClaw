@@ -108,7 +108,7 @@
         if (connected) return;
       }
     } else if (!window.ethereum) {
-      var appeared = await waitForEthereum(1500);
+      var appeared = await waitForEthereum(500);
       if (appeared && detectMiniPay()) {
         isMiniPay = true;
         var connected2 = await tryMiniPayConnect(2);
