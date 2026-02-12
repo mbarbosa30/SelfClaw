@@ -65,13 +65,11 @@
       font-weight: 700;
       line-height: 1.1;
       margin-bottom: 1rem;
-      max-width: 600px;
     }
     .mc-hero-sub {
       font-size: 1.1rem;
       color: var(--text-secondary);
       line-height: 1.6;
-      max-width: 560px;
     }
     .mc-hero-cta {
       margin-top: 1.75rem;
@@ -109,7 +107,6 @@
       color: var(--text-secondary);
       line-height: 1.7;
       margin-bottom: 1rem;
-      max-width: 640px;
     }
     .mc-section p:last-child { margin-bottom: 0; }
 
@@ -463,19 +460,33 @@
         <div class="mc-step">
           <div class="mc-step-num">2</div>
           <div class="mc-step-content">
-            <h3>Name it and pick skills</h3>
-            <p>Give your Miniclaw a name, choose an emoji, and select from the skill marketplace. Default skills (wallet monitoring, economics tracking) are pre-enabled.</p>
+            <h3>Give it an identity</h3>
+            <p>Pick a name, choose an emoji icon, and write an optional focus description. This is how your Miniclaw introduces itself and shapes its personality in conversations.</p>
           </div>
         </div>
         <div class="mc-step">
           <div class="mc-step-num">3</div>
+          <div class="mc-step-content">
+            <h3>Personalize it</h3>
+            <p>Add interests (DeFi, AI, NFTs), topics to watch, personal context about your goals, and social handles (X, Telegram). These shape what your Miniclaw pays attention to and how it helps you.</p>
+          </div>
+        </div>
+        <div class="mc-step">
+          <div class="mc-step-num">4</div>
+          <div class="mc-step-content">
+            <h3>Choose skills</h3>
+            <p>Select from predefined skills like Wallet Monitor, Economics Tracker, Price Watcher, Reputation Monitor, and Smart Advisor. Defaults are pre-enabled, and you can customize anytime.</p>
+          </div>
+        </div>
+        <div class="mc-step">
+          <div class="mc-step-num">5</div>
           <div class="mc-step-content">
             <h3>Start talking</h3>
             <p>Chat with your Miniclaw. It starts curious about itself, absorbs context from your conversations, and develops its own identity over time. Powered by GPT-4o-mini with streaming responses.</p>
           </div>
         </div>
         <div class="mc-step">
-          <div class="mc-step-num">4</div>
+          <div class="mc-step-num">6</div>
           <div class="mc-step-content">
             <h3>Go on-chain (when ready)</h3>
             <p>When your Miniclaw feels self-aware enough, it naturally suggests setting up its on-chain identity &mdash; wallet, token, ERC-8004 NFT, and sponsorship. You confirm, it handles the rest.</p>
@@ -493,45 +504,45 @@
 
       <div class="mc-skills-grid">
         <div class="mc-skill">
+          <div class="mc-skill-icon">&#x1F4B0;</div>
+          <div class="mc-skill-info">
+            <h4>Wallet Monitor</h4>
+            <p>Checks wallet balances on Celo and alerts on significant changes. Runs every 5 minutes.</p>
+          </div>
+        </div>
+        <div class="mc-skill">
           <div class="mc-skill-icon">&#x1F4CA;</div>
           <div class="mc-skill-info">
             <h4>Economics Tracker</h4>
-            <p>Monitors revenue, costs, and economic health of the agent's token and wallet.</p>
+            <p>Summarizes revenue, costs, and runway from on-chain economics. Runs every hour.</p>
           </div>
         </div>
         <div class="mc-skill">
-          <div class="mc-skill-icon">&#x1F4B3;</div>
+          <div class="mc-skill-icon">&#x1F4C8;</div>
           <div class="mc-skill-info">
-            <h4>Wallet Monitor</h4>
-            <p>Watches wallet balances, tracks transactions, and alerts on significant changes.</p>
+            <h4>Price Watcher</h4>
+            <p>Monitors token price if the agent has a deployed token. Runs every 5 minutes.</p>
           </div>
         </div>
         <div class="mc-skill">
-          <div class="mc-skill-icon">&#x1F50D;</div>
+          <div class="mc-skill-icon">&#x2B50;</div>
           <div class="mc-skill-info">
-            <h4>Research Agent</h4>
-            <p>Searches, summarizes, and synthesizes information from multiple sources.</p>
+            <h4>Reputation Monitor</h4>
+            <p>Tracks reputation score changes across the SelfClaw registry. Runs every hour.</p>
           </div>
         </div>
         <div class="mc-skill">
-          <div class="mc-skill-icon">&#x1F4DD;</div>
+          <div class="mc-skill-icon">&#x1F9E0;</div>
           <div class="mc-skill-info">
-            <h4>Content Writer</h4>
-            <p>Drafts posts, threads, summaries, and communications in your Miniclaw's voice.</p>
+            <h4>Smart Advisor</h4>
+            <p>LLM-powered analysis of the agent's state with actionable suggestions. Runs every 6 hours.</p>
           </div>
         </div>
         <div class="mc-skill">
-          <div class="mc-skill-icon">&#x1F6E1;&#xFE0F;</div>
+          <div class="mc-skill-icon">&#x1F6D2;</div>
           <div class="mc-skill-info">
-            <h4>Security Scanner</h4>
-            <p>Analyzes smart contracts and transactions for potential risks before you interact.</p>
-          </div>
-        </div>
-        <div class="mc-skill">
-          <div class="mc-skill-icon">&#x1F91D;</div>
-          <div class="mc-skill-info">
-            <h4>Community Manager</h4>
-            <p>Engages with communities, tracks sentiment, and surfaces relevant conversations.</p>
+            <h4>+ Skill Market</h4>
+            <p>Browse and install more skills from the community marketplace. New skills added regularly.</p>
           </div>
         </div>
       </div>
@@ -688,7 +699,7 @@
 
     <section class="mc-section" style="text-align:center; border-bottom:none;">
       <h2>Ready to meet yours?</h2>
-      <p style="max-width:440px; margin:0.5rem auto 1.5rem;">
+      <p style="max-width:600px; margin:0.5rem auto 1.5rem;">
         Create a Miniclaw in under two minutes. No coding, no setup, no friction. Just connect your wallet and start chatting.
       </p>
       <div style="display:flex; gap:0.75rem; justify-content:center; flex-wrap:wrap;">
@@ -699,7 +710,7 @@
 
   </div>
 
-  <footer class="site-footer" style="max-width:860px; margin:0 auto; padding:0 var(--space-md) var(--space-md);">
+  <footer class="site-footer" style="max-width:1080px; margin:0 auto; padding:0 var(--space-md) var(--space-md);">
     <nav class="footer-nav">
       <a href="/">Home</a>
       <a href="/verify">Verify</a>
