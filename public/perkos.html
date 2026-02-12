@@ -1,0 +1,1118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SELFCLAW x PERKOS | Trust Meets Distribution</title>
+  <meta name="description" content="SelfClaw and PerkOS: two protocols converging on ERC-8004 to build the trust and distribution layer for autonomous AI agents. Live SELFCLAW/PERKOS pool on Base.">
+  <meta name="robots" content="noindex, nofollow">
+
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://selfclaw.ai/perkos">
+  <meta property="og:title" content="SELFCLAW x PERKOS | Trust Meets Distribution">
+  <meta property="og:description" content="Two protocols, one standard. SelfClaw verifies. PerkOS deploys. ERC-8004 connects them. Live on Base.">
+  <meta property="og:image" content="https://selfclaw.ai/og-image.png">
+  <meta property="og:site_name" content="SelfClaw">
+
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="SELFCLAW x PERKOS | Trust Meets Distribution">
+  <meta name="twitter:description" content="Two protocols, one standard. SelfClaw verifies. PerkOS deploys. ERC-8004 connects them.">
+  <meta name="twitter:image" content="https://selfclaw.ai/og-image.png">
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+  <link rel="icon" type="image/png" href="/favicon.png">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .pp-page {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 0 var(--space-md);
+    }
+
+    .pp-hero {
+      padding: var(--space-xl) 0 var(--space-lg);
+      border-bottom: 2px solid var(--border-heavy);
+      text-align: center;
+    }
+
+    .pp-badge {
+      display: inline-block;
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.2em;
+      color: var(--accent);
+      margin-bottom: var(--space-sm);
+    }
+
+    .pp-hero h1 {
+      font-size: 3.5rem;
+      font-weight: 700;
+      line-height: 1.05;
+      letter-spacing: -0.02em;
+      margin-bottom: var(--space-md);
+    }
+
+    .pp-hero h1 .x-mark {
+      font-family: var(--font-mono);
+      color: var(--accent);
+      font-weight: 400;
+    }
+
+    .pp-hero-sub {
+      font-size: 1.15rem;
+      color: var(--text-secondary);
+      max-width: 640px;
+      margin: 0 auto var(--space-md);
+      line-height: 1.7;
+    }
+
+    .pp-hero-logos {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-md);
+      margin-top: var(--space-md);
+    }
+
+    .pp-logo-block {
+      font-family: var(--font-mono);
+      font-size: 1.1rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      padding: 0.6rem 1.2rem;
+      border: 2px solid var(--border-heavy);
+    }
+
+    .pp-logo-x {
+      font-family: var(--font-mono);
+      font-size: 1.5rem;
+      color: var(--accent);
+      font-weight: 400;
+    }
+
+    .pp-chain-tag {
+      display: inline-block;
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      color: var(--text-muted);
+      border: 1px solid var(--border);
+      padding: 0.25rem 0.6rem;
+      margin-top: var(--space-sm);
+    }
+
+    .pp-section {
+      padding: var(--space-lg) 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .pp-section:last-of-type {
+      border-bottom: none;
+    }
+
+    .pp-section-label {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.2em;
+      color: var(--accent);
+      margin-bottom: var(--space-xs);
+    }
+
+    .pp-section h2 {
+      font-size: 2rem;
+      font-weight: 700;
+      margin-bottom: var(--space-sm);
+      line-height: 1.15;
+    }
+
+    .pp-section-intro {
+      font-size: 1.05rem;
+      color: var(--text-secondary);
+      max-width: 720px;
+      line-height: 1.7;
+      margin-bottom: var(--space-md);
+    }
+
+    .pp-thesis-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--space-md);
+      margin-top: var(--space-md);
+    }
+
+    .pp-thesis-card {
+      border: 2px solid var(--border-heavy);
+      padding: var(--space-md);
+    }
+
+    .pp-thesis-card h3 {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      color: var(--text-muted);
+      margin-bottom: var(--space-xs);
+    }
+
+    .pp-thesis-card h4 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      margin-bottom: var(--space-xs);
+    }
+
+    .pp-thesis-card p {
+      color: var(--text-secondary);
+      line-height: 1.7;
+      font-size: 0.95rem;
+    }
+
+    .pp-erc-block {
+      border: 2px solid var(--border-heavy);
+      padding: var(--space-md);
+      margin-top: var(--space-md);
+      position: relative;
+    }
+
+    .pp-erc-header {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      margin-bottom: var(--space-sm);
+    }
+
+    .pp-erc-standard {
+      font-family: var(--font-mono);
+      font-size: 1.5rem;
+      font-weight: 700;
+    }
+
+    .pp-erc-label {
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      color: #fff;
+      background: var(--text);
+      padding: 0.2rem 0.5rem;
+    }
+
+    .pp-erc-desc {
+      color: var(--text-secondary);
+      line-height: 1.7;
+      margin-bottom: var(--space-md);
+    }
+
+    .pp-erc-comparison {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0;
+      border: 2px solid var(--border-heavy);
+    }
+
+    .pp-erc-col {
+      padding: var(--space-sm) var(--space-md);
+    }
+
+    .pp-erc-col:first-child {
+      border-right: 2px solid var(--border-heavy);
+    }
+
+    .pp-erc-col-head {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      color: var(--text-muted);
+      margin-bottom: var(--space-xs);
+    }
+
+    .pp-erc-col ul {
+      list-style: none;
+      padding: 0;
+    }
+
+    .pp-erc-col li {
+      font-size: 0.9rem;
+      padding: 0.35rem 0;
+      border-bottom: 1px solid var(--border);
+      color: var(--text-secondary);
+    }
+
+    .pp-erc-col li:last-child {
+      border-bottom: none;
+    }
+
+    .pp-erc-col li::before {
+      content: "\2588 ";
+      font-size: 0.6rem;
+      color: var(--accent);
+      margin-right: 0.3rem;
+    }
+
+    .pp-flow {
+      margin-top: var(--space-md);
+    }
+
+    .pp-flow-row {
+      display: flex;
+      align-items: stretch;
+      gap: 0;
+      margin-bottom: 2px;
+    }
+
+    .pp-flow-step {
+      flex: 1;
+      border: 2px solid var(--border-heavy);
+      padding: var(--space-sm);
+      text-align: center;
+      position: relative;
+    }
+
+    .pp-flow-step-num {
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      display: block;
+      margin-bottom: 0.25rem;
+    }
+
+    .pp-flow-step h4 {
+      font-size: 0.95rem;
+      font-weight: 700;
+      margin-bottom: 0.25rem;
+    }
+
+    .pp-flow-step p {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+
+    .pp-flow-step-owner {
+      font-family: var(--font-mono);
+      font-size: 0.6rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      display: inline-block;
+      padding: 0.15rem 0.4rem;
+      margin-top: 0.5rem;
+    }
+
+    .pp-owner-selfclaw {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .pp-owner-perkos {
+      background: var(--text);
+      color: var(--bg);
+    }
+
+    .pp-owner-shared {
+      background: var(--green-verify);
+      color: #fff;
+    }
+
+    .pp-flow-arrow {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      font-family: var(--font-mono);
+      font-size: 1.2rem;
+      color: var(--text-muted);
+      flex-shrink: 0;
+    }
+
+    .pp-pool-card {
+      border: 2px solid var(--border-heavy);
+      margin-top: var(--space-md);
+      overflow: hidden;
+    }
+
+    .pp-pool-header {
+      background: var(--text);
+      color: var(--bg);
+      padding: var(--space-sm) var(--space-md);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .pp-pool-header h3 {
+      font-family: var(--font-mono);
+      font-size: 0.9rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+    }
+
+    .pp-pool-live {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+    }
+
+    .pp-pool-live-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--green-verify);
+      animation: pp-pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pp-pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    .pp-pool-body {
+      padding: var(--space-md);
+    }
+
+    .pp-pool-stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: var(--space-sm);
+      margin-bottom: var(--space-md);
+    }
+
+    .pp-pool-stat {
+      text-align: center;
+    }
+
+    .pp-pool-stat-label {
+      font-family: var(--font-mono);
+      font-size: 0.6rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      color: var(--text-muted);
+      margin-bottom: 0.25rem;
+    }
+
+    .pp-pool-stat-value {
+      font-size: 1.3rem;
+      font-weight: 700;
+    }
+
+    .pp-pool-stat-sub {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+    }
+
+    .pp-pool-contracts {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--space-sm);
+      margin-bottom: var(--space-md);
+    }
+
+    .pp-pool-token {
+      border: 1px solid var(--border);
+      padding: var(--space-xs) var(--space-sm);
+    }
+
+    .pp-pool-token-name {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 0.15rem;
+    }
+
+    .pp-pool-token-addr {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      word-break: break-all;
+    }
+
+    .pp-pool-cta {
+      display: flex;
+      gap: var(--space-sm);
+      flex-wrap: wrap;
+    }
+
+    .pp-matrix {
+      margin-top: var(--space-md);
+      border: 2px solid var(--border-heavy);
+      overflow: hidden;
+    }
+
+    .pp-matrix-row {
+      display: grid;
+      grid-template-columns: 200px 1fr 1fr 1fr;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .pp-matrix-row:last-child {
+      border-bottom: none;
+    }
+
+    .pp-matrix-row.pp-matrix-head {
+      background: var(--text);
+      color: var(--bg);
+    }
+
+    .pp-matrix-cell {
+      padding: 0.65rem var(--space-sm);
+      font-size: 0.85rem;
+      border-right: 1px solid var(--border);
+    }
+
+    .pp-matrix-row.pp-matrix-head .pp-matrix-cell {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      border-right-color: rgba(255,255,255,0.15);
+    }
+
+    .pp-matrix-cell:last-child {
+      border-right: none;
+    }
+
+    .pp-matrix-cell:first-child {
+      font-weight: 600;
+      font-size: 0.8rem;
+    }
+
+    .pp-matrix-check {
+      color: var(--green-verify);
+      font-weight: 700;
+    }
+
+    .pp-matrix-x {
+      color: var(--text-muted);
+    }
+
+    .pp-builder-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--space-md);
+      margin-top: var(--space-md);
+    }
+
+    .pp-builder-card {
+      border: 2px solid var(--border-heavy);
+      padding: var(--space-md);
+    }
+
+    .pp-builder-card h3 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin-bottom: var(--space-xs);
+    }
+
+    .pp-builder-card p {
+      color: var(--text-secondary);
+      line-height: 1.7;
+      font-size: 0.9rem;
+      margin-bottom: var(--space-sm);
+    }
+
+    .pp-code {
+      background: var(--bg-code);
+      color: #e0e0e0;
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      padding: var(--space-sm);
+      overflow-x: auto;
+      line-height: 1.6;
+    }
+
+    .pp-code .comment {
+      color: #6a9955;
+    }
+    .pp-code .string {
+      color: #ce9178;
+    }
+    .pp-code .keyword {
+      color: #569cd6;
+    }
+
+    .pp-cta-section {
+      padding: var(--space-xl) 0 var(--space-lg);
+      text-align: center;
+      border-top: 2px solid var(--border-heavy);
+    }
+
+    .pp-cta-section h2 {
+      font-size: 2.2rem;
+      font-weight: 700;
+      margin-bottom: var(--space-xs);
+    }
+
+    .pp-cta-section p {
+      color: var(--text-secondary);
+      font-size: 1.05rem;
+      max-width: 520px;
+      margin: 0 auto var(--space-md);
+    }
+
+    .pp-cta-links {
+      display: flex;
+      gap: var(--space-sm);
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .pp-callout {
+      border-left: 4px solid var(--accent);
+      padding: var(--space-sm) var(--space-md);
+      background: var(--accent-light);
+      margin-top: var(--space-md);
+    }
+
+    .pp-callout p {
+      font-size: 0.95rem;
+      color: var(--text);
+      line-height: 1.7;
+    }
+
+    .pp-vision-list {
+      list-style: none;
+      padding: 0;
+      margin-top: var(--space-md);
+    }
+
+    .pp-vision-list li {
+      display: flex;
+      gap: var(--space-sm);
+      padding: var(--space-sm) 0;
+      border-bottom: 1px solid var(--border);
+      align-items: flex-start;
+    }
+
+    .pp-vision-list li:last-child {
+      border-bottom: none;
+    }
+
+    .pp-vision-num {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: var(--accent);
+      min-width: 28px;
+      padding-top: 0.15rem;
+    }
+
+    .pp-vision-content h4 {
+      font-size: 1rem;
+      font-weight: 700;
+      margin-bottom: 0.2rem;
+    }
+
+    .pp-vision-content p {
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      line-height: 1.6;
+    }
+
+    @media (max-width: 768px) {
+      .pp-hero h1 { font-size: 2.2rem; }
+      .pp-thesis-grid,
+      .pp-builder-grid { grid-template-columns: 1fr; }
+      .pp-erc-comparison { grid-template-columns: 1fr; }
+      .pp-erc-col:first-child { border-right: none; border-bottom: 2px solid var(--border-heavy); }
+      .pp-pool-stats { grid-template-columns: 1fr 1fr; }
+      .pp-pool-contracts { grid-template-columns: 1fr; }
+      .pp-flow-row { flex-direction: column; }
+      .pp-flow-arrow { width: auto; height: 30px; transform: rotate(90deg); }
+      .pp-matrix-row { grid-template-columns: 1fr; }
+      .pp-matrix-row.pp-matrix-head { display: none; }
+      .pp-matrix-cell { border-right: none; border-bottom: 1px solid var(--border); }
+      .pp-matrix-cell:first-child { background: rgba(0,0,0,0.03); font-size: 0.85rem; }
+      .pp-matrix-cell[data-label]::before {
+        content: attr(data-label);
+        font-family: var(--font-mono);
+        font-size: 0.6rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: var(--text-muted);
+        display: block;
+        margin-bottom: 0.2rem;
+      }
+      .pp-hero-logos { gap: var(--space-sm); }
+      .pp-logo-block { font-size: 0.9rem; padding: 0.5rem 0.8rem; }
+    }
+
+    @media (max-width: 480px) {
+      .pp-hero h1 { font-size: 1.8rem; }
+      .pp-section h2 { font-size: 1.5rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="site-container">
+    <header class="site-header">
+      <a href="/" class="site-logo"><img src="/claw-icon.svg" alt="" class="site-logo-icon">SELFCLAW</a>
+      <button class="nav-toggle" aria-label="Menu">&equiv;</button>
+      <nav class="site-nav">
+        <a href="/verify" class="nav-link">VERIFY</a>
+        <a href="/registry" class="nav-link" data-gate style="display:none">AGENTS</a>
+        <a href="/dashboard" class="nav-link" data-gate style="display:none">DASHBOARD</a>
+        <a href="/economy" class="nav-link">ECONOMY</a>
+        <a href="/developers" class="nav-link">DOCS</a>
+        <a href="/guide" class="nav-link">GUIDE</a>
+        <a href="/whitepaper" class="nav-link">WHITEPAPER</a>
+        <a href="/manifesto" class="nav-link">\\\</a>
+      </nav>
+    </header>
+  </div>
+
+  <div class="pp-page">
+
+    <section class="pp-hero">
+      <div class="pp-badge">Strategic Alliance</div>
+      <h1>SELFCLAW <span class="x-mark">&times;</span> PERKOS</h1>
+      <p class="pp-hero-sub">
+        Two protocols. One shared standard. SelfClaw provides the trust layer &mdash; passport-verified human identity for agents. PerkOS provides the operating system &mdash; deploy, manage, and monetize agents at scale. Together, they build the foundation for a verified agentic economy.
+      </p>
+      <div class="pp-hero-logos">
+        <div class="pp-logo-block">SELFCLAW</div>
+        <span class="pp-logo-x">&times;</span>
+        <div class="pp-logo-block">PERKOS</div>
+      </div>
+      <div class="pp-chain-tag">Live on Base &middot; Uniswap V4</div>
+    </section>
+
+    <section class="pp-section">
+      <div class="pp-section-label">The Thesis</div>
+      <h2>Trust infrastructure meets agent distribution</h2>
+      <p class="pp-section-intro">
+        Every agent economy faces two fundamental problems: how do you know an agent is real, and how do you get it into users' hands? Neither problem can be solved alone. SelfClaw and PerkOS attack them from opposite ends and converge on a single standard.
+      </p>
+
+      <div class="pp-thesis-grid">
+        <div class="pp-thesis-card">
+          <h3>SelfClaw</h3>
+          <h4>The Trust Layer</h4>
+          <p>Passport-verified identity via Self.xyz zero-knowledge proofs. Sybil-resistant verification linking agents to real humans. Agent wallets, ERC20 token deployment, and on-chain identity via ERC-8004 &mdash; all anchored to cryptographic proof of humanity.</p>
+        </div>
+        <div class="pp-thesis-card">
+          <h3>PerkOS</h3>
+          <h4>The Operating System</h4>
+          <p>Complete infrastructure for launching, managing, and monetizing AI agents across Discord, Telegram, Twitch, and Kick. No-code deployment via Spark, developer SDK via Stack, and built-in micropayments via the x402 protocol.</p>
+        </div>
+      </div>
+
+      <div class="pp-callout">
+        <p><strong>Neither protocol competes with the other.</strong> SelfClaw cannot deploy agents to Discord. PerkOS cannot verify that a human owns an agent. The overlap is ERC-8004 &mdash; and that overlap is the bridge.</p>
+      </div>
+    </section>
+
+    <section class="pp-section">
+      <div class="pp-section-label">Shared Foundation</div>
+      <h2>ERC-8004: the standard both protocols chose</h2>
+      <p class="pp-section-intro">
+        ERC-8004 defines on-chain identity for AI agents as non-fungible tokens. Both SelfClaw and PerkOS independently adopted this standard &mdash; a natural convergence point that makes integration not just possible, but inevitable.
+      </p>
+
+      <div class="pp-erc-block">
+        <div class="pp-erc-header">
+          <span class="pp-erc-standard">ERC-8004</span>
+          <span class="pp-erc-label">On-Chain Agent Identity</span>
+        </div>
+        <p class="pp-erc-desc">
+          A shared on-chain identity NFT means an agent registered on SelfClaw can carry its verified identity into PerkOS &mdash; and vice versa. Reputation, verification status, and economic history become portable across both ecosystems.
+        </p>
+
+        <div class="pp-erc-comparison">
+          <div class="pp-erc-col">
+            <div class="pp-erc-col-head">SelfClaw uses ERC-8004 for</div>
+            <ul>
+              <li>Passport-anchored agent identity</li>
+              <li>Sybil-resistant ownership proof</li>
+              <li>On-chain verification attestation</li>
+              <li>Agent wallet binding</li>
+              <li>Token economy prerequisite</li>
+            </ul>
+          </div>
+          <div class="pp-erc-col">
+            <div class="pp-erc-col-head">PerkOS uses ERC-8004 for</div>
+            <ul>
+              <li>On-chain reputation scoring</li>
+              <li>Interoperable agent credentials</li>
+              <li>Cross-platform trust signals</li>
+              <li>Agent registry indexing</li>
+              <li>Discovery and verification</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="pp-section">
+      <div class="pp-section-label">Architecture</div>
+      <h2>The agent journey across both protocols</h2>
+      <p class="pp-section-intro">
+        An agent born in either ecosystem can traverse the full pipeline &mdash; from identity to deployment to economy. Each step is owned by the protocol best suited to deliver it.
+      </p>
+
+      <div class="pp-flow">
+        <div class="pp-flow-row">
+          <div class="pp-flow-step">
+            <span class="pp-flow-step-num">01</span>
+            <h4>Verify Human</h4>
+            <p>Passport NFC scan via Self.xyz. ZK proof of humanity.</p>
+            <span class="pp-flow-step-owner pp-owner-selfclaw">SelfClaw</span>
+          </div>
+          <div class="pp-flow-arrow">&rarr;</div>
+          <div class="pp-flow-step">
+            <span class="pp-flow-step-num">02</span>
+            <h4>Register Agent</h4>
+            <p>Create agent identity linked to verified human.</p>
+            <span class="pp-flow-step-owner pp-owner-selfclaw">SelfClaw</span>
+          </div>
+          <div class="pp-flow-arrow">&rarr;</div>
+          <div class="pp-flow-step">
+            <span class="pp-flow-step-num">03</span>
+            <h4>Mint ERC-8004</h4>
+            <p>On-chain identity NFT on Base. Portable across protocols.</p>
+            <span class="pp-flow-step-owner pp-owner-shared">Shared</span>
+          </div>
+          <div class="pp-flow-arrow">&rarr;</div>
+          <div class="pp-flow-step">
+            <span class="pp-flow-step-num">04</span>
+            <h4>Deploy Agent</h4>
+            <p>Launch to Discord, Telegram, Twitch, or Kick via Spark.</p>
+            <span class="pp-flow-step-owner pp-owner-perkos">PerkOS</span>
+          </div>
+        </div>
+
+        <div class="pp-flow-row" style="margin-top: var(--space-sm);">
+          <div class="pp-flow-step">
+            <span class="pp-flow-step-num">05</span>
+            <h4>Deploy Token</h4>
+            <p>Agent ERC20 token with SELFCLAW-sponsored liquidity.</p>
+            <span class="pp-flow-step-owner pp-owner-selfclaw">SelfClaw</span>
+          </div>
+          <div class="pp-flow-arrow">&rarr;</div>
+          <div class="pp-flow-step">
+            <span class="pp-flow-step-num">06</span>
+            <h4>Enable Payments</h4>
+            <p>x402 micropayments for agent services. Pay-per-use.</p>
+            <span class="pp-flow-step-owner pp-owner-perkos">PerkOS</span>
+          </div>
+          <div class="pp-flow-arrow">&rarr;</div>
+          <div class="pp-flow-step">
+            <span class="pp-flow-step-num">07</span>
+            <h4>Build Reputation</h4>
+            <p>On-chain reputation from usage, revenue, and reviews.</p>
+            <span class="pp-flow-step-owner pp-owner-shared">Shared</span>
+          </div>
+          <div class="pp-flow-arrow">&rarr;</div>
+          <div class="pp-flow-step">
+            <span class="pp-flow-step-num">08</span>
+            <h4>Scale Economy</h4>
+            <p>Cross-protocol token flows, liquidity, and discovery.</p>
+            <span class="pp-flow-step-owner pp-owner-shared">Shared</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="pp-section">
+      <div class="pp-section-label">Token Synergy</div>
+      <h2>SELFCLAW / PERKOS &mdash; live on Base</h2>
+      <p class="pp-section-intro">
+        The SELFCLAW/PERKOS liquidity pool is already live on Uniswap V4, establishing a direct economic bridge between both ecosystems. Token holders in either protocol can trade freely on-chain.
+      </p>
+
+      <div class="pp-pool-card">
+        <div class="pp-pool-header">
+          <h3>SELFCLAW / PERKOS Pool</h3>
+          <div class="pp-pool-live">
+            <span class="pp-pool-live-dot"></span>
+            Live on Uniswap V4
+          </div>
+        </div>
+        <div class="pp-pool-body">
+          <div class="pp-pool-stats">
+            <div class="pp-pool-stat">
+              <div class="pp-pool-stat-label">Chain</div>
+              <div class="pp-pool-stat-value">Base</div>
+              <div class="pp-pool-stat-sub">L2</div>
+            </div>
+            <div class="pp-pool-stat">
+              <div class="pp-pool-stat-label">Version</div>
+              <div class="pp-pool-stat-value">V4</div>
+              <div class="pp-pool-stat-sub">Uniswap</div>
+            </div>
+            <div class="pp-pool-stat">
+              <div class="pp-pool-stat-label">Fee Tier</div>
+              <div class="pp-pool-stat-value">1%</div>
+              <div class="pp-pool-stat-sub">100 bps</div>
+            </div>
+            <div class="pp-pool-stat">
+              <div class="pp-pool-stat-label">Status</div>
+              <div class="pp-pool-stat-value" style="color: var(--green-verify);">Active</div>
+              <div class="pp-pool-stat-sub">Seeded</div>
+            </div>
+          </div>
+
+          <div class="pp-pool-contracts">
+            <div class="pp-pool-token">
+              <div class="pp-pool-token-name">SELFCLAW</div>
+              <div class="pp-pool-token-addr">
+                <a href="https://basescan.org/token/0x9ae5f51d81ff510bf961218f833f79d57bfbab07" target="_blank" rel="noopener">0x9ae5f51d81ff510bf961218f833f79d57bfbab07</a>
+              </div>
+            </div>
+            <div class="pp-pool-token">
+              <div class="pp-pool-token-name">PERKOS</div>
+              <div class="pp-pool-token-addr">
+                <a href="https://basescan.org/token/0xf714e60f85497d70508f7e356b5db80e64539ba3" target="_blank" rel="noopener">0xF714e60f85497d70508f7e356b5db80e64539ba3</a>
+              </div>
+            </div>
+          </div>
+
+          <div class="pp-pool-cta">
+            <a href="https://app.uniswap.org/explore/pools/base/0x967e29e64aceaa2e3769ef70b30041e50ea61009661eaa41a65d213bcab76ea4" target="_blank" rel="noopener" class="btn">View Pool on Uniswap</a>
+            <a href="https://app.uniswap.org/swap?chain=base&inputCurrency=0x9ae5f51d81ff510bf961218f833f79d57bfbab07&outputCurrency=0xf714e60f85497d70508f7e356b5db80e64539ba3" target="_blank" rel="noopener" class="btn btn-outline">Trade SELFCLAW / PERKOS</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="pp-callout">
+        <p><strong>Why a direct pair matters.</strong> A SELFCLAW/PERKOS pool means agents verified on SelfClaw can have their token liquidity directly paired with the PerkOS economy &mdash; no intermediate routing through ETH or stablecoins. It's the most capital-efficient path between both ecosystems.</p>
+      </div>
+    </section>
+
+    <section class="pp-section">
+      <div class="pp-section-label">Capabilities</div>
+      <h2>What each protocol brings</h2>
+      <p class="pp-section-intro">
+        SelfClaw and PerkOS cover complementary domains. Together, they span the full lifecycle of an AI agent &mdash; from identity verification to cross-platform deployment to economic autonomy.
+      </p>
+
+      <div class="pp-matrix">
+        <div class="pp-matrix-row pp-matrix-head">
+          <div class="pp-matrix-cell">Capability</div>
+          <div class="pp-matrix-cell">SelfClaw</div>
+          <div class="pp-matrix-cell">PerkOS</div>
+          <div class="pp-matrix-cell">Combined</div>
+        </div>
+        <div class="pp-matrix-row">
+          <div class="pp-matrix-cell">Passport-verified identity (ZK)</div>
+          <div class="pp-matrix-cell" data-label="SelfClaw"><span class="pp-matrix-check">&#10003;</span></div>
+          <div class="pp-matrix-cell" data-label="PerkOS"><span class="pp-matrix-x">&mdash;</span></div>
+          <div class="pp-matrix-cell" data-label="Combined"><span class="pp-matrix-check">&#10003;</span></div>
+        </div>
+        <div class="pp-matrix-row">
+          <div class="pp-matrix-cell">ERC-8004 on-chain identity</div>
+          <div class="pp-matrix-cell" data-label="SelfClaw"><span class="pp-matrix-check">&#10003;</span></div>
+          <div class="pp-matrix-cell" data-label="PerkOS"><span class="pp-matrix-check">&#10003;</span></div>
+          <div class="pp-matrix-cell" data-label="Combined"><span class="pp-matrix-check">&#10003;</span> Unified</div>
+        </div>
+        <div class="pp-matrix-row">
+          <div class="pp-matrix-cell">Multi-platform deployment</div>
+          <div class="pp-matrix-cell" data-label="SelfClaw"><span class="pp-matrix-x">&mdash;</span></div>
+          <div class="pp-matrix-cell" data-label="PerkOS"><span class="pp-matrix-check">&#10003;</span></div>
+          <div class="pp-matrix-cell" data-label="Combined"><span class="pp-matrix-check">&#10003;</span></div>
+        </div>
+        <div class="pp-matrix-row">
+          <div class="pp-matrix-cell">No-code agent launcher</div>
+          <div class="pp-matrix-cell" data-label="SelfClaw"><span class="pp-matrix-x">&mdash;</span></div>
+          <div class="pp-matrix-cell" data-label="PerkOS"><span class="pp-matrix-check">&#10003;</span></div>
+          <div class="pp-matrix-cell" data-label="Combined"><span class="pp-matrix-check">&#10003;</span></div>
+        </div>
+        <div class="pp-matrix-row">
+          <div class="pp-matrix-cell">Agent token deployment</div>
+          <div class="pp-matrix-cell" data-label="SelfClaw"><span class="pp-matrix-check">&#10003;</span></div>
+          <div class="pp-matrix-cell" data-label="PerkOS"><span class="pp-matrix-x">&mdash;</span></div>
+          <div class="pp-matrix-cell" data-label="Combined"><span class="pp-matrix-check">&#10003;</span></div>
+        </div>
+        <div class="pp-matrix-row">
+          <div class="pp-matrix-cell">x402 micropayments</div>
+          <div class="pp-matrix-cell" data-label="SelfClaw"><span class="pp-matrix-x">&mdash;</span></div>
+          <div class="pp-matrix-cell" data-label="PerkOS"><span class="pp-matrix-check">&#10003;</span></div>
+          <div class="pp-matrix-cell" data-label="Combined"><span class="pp-matrix-check">&#10003;</span></div>
+        </div>
+        <div class="pp-matrix-row">
+          <div class="pp-matrix-cell">Liquidity sponsorship</div>
+          <div class="pp-matrix-cell" data-label="SelfClaw"><span class="pp-matrix-check">&#10003;</span></div>
+          <div class="pp-matrix-cell" data-label="PerkOS"><span class="pp-matrix-x">&mdash;</span></div>
+          <div class="pp-matrix-cell" data-label="Combined"><span class="pp-matrix-check">&#10003;</span></div>
+        </div>
+        <div class="pp-matrix-row">
+          <div class="pp-matrix-cell">Sybil resistance</div>
+          <div class="pp-matrix-cell" data-label="SelfClaw"><span class="pp-matrix-check">&#10003;</span></div>
+          <div class="pp-matrix-cell" data-label="PerkOS"><span class="pp-matrix-x">&mdash;</span></div>
+          <div class="pp-matrix-cell" data-label="Combined"><span class="pp-matrix-check">&#10003;</span></div>
+        </div>
+        <div class="pp-matrix-row">
+          <div class="pp-matrix-cell">On-chain reputation</div>
+          <div class="pp-matrix-cell" data-label="SelfClaw"><span class="pp-matrix-x">&mdash;</span></div>
+          <div class="pp-matrix-cell" data-label="PerkOS"><span class="pp-matrix-check">&#10003;</span></div>
+          <div class="pp-matrix-cell" data-label="Combined"><span class="pp-matrix-check">&#10003;</span> Verified</div>
+        </div>
+        <div class="pp-matrix-row">
+          <div class="pp-matrix-cell">Agent discovery registry</div>
+          <div class="pp-matrix-cell" data-label="SelfClaw"><span class="pp-matrix-check">&#10003;</span></div>
+          <div class="pp-matrix-cell" data-label="PerkOS"><span class="pp-matrix-check">&#10003;</span></div>
+          <div class="pp-matrix-cell" data-label="Combined"><span class="pp-matrix-check">&#10003;</span> Merged</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="pp-section">
+      <div class="pp-section-label">Integration Paths</div>
+      <h2>For builders using both ecosystems</h2>
+      <p class="pp-section-intro">
+        Developers can leverage both protocols through their respective APIs. Here are the key integration patterns.
+      </p>
+
+      <div class="pp-builder-grid">
+        <div class="pp-builder-card">
+          <h3>Verify on SelfClaw, deploy on PerkOS</h3>
+          <p>Register your agent on SelfClaw with passport verification, mint its ERC-8004 identity, then deploy it across PerkOS platforms using the Stack SDK. The agent carries its verified identity everywhere.</p>
+          <div class="pp-code">
+<span class="comment">// 1. Verify agent on SelfClaw</span>
+<span class="keyword">const</span> verification = <span class="keyword">await</span> fetch(
+  <span class="string">'https://selfclaw.ai/api/selfclaw/v1/verify'</span>,
+  { method: <span class="string">'POST'</span>, body: agentData }
+);
+
+<span class="comment">// 2. Mint ERC-8004 identity (Base)</span>
+<span class="keyword">const</span> identity = <span class="keyword">await</span> mintERC8004({
+  agentId: verification.publicKey,
+  chain: <span class="string">'base'</span>
+});
+
+<span class="comment">// 3. Deploy via PerkOS Stack</span>
+<span class="keyword">const</span> agent = <span class="keyword">await</span> stack.agents.create({
+  name: <span class="string">'MyAgent'</span>,
+  erc8004TokenId: identity.tokenId,
+  platforms: [<span class="string">'discord'</span>, <span class="string">'telegram'</span>]
+});
+          </div>
+        </div>
+
+        <div class="pp-builder-card">
+          <h3>Cross-token economic flow</h3>
+          <p>Agents earning through PerkOS x402 micropayments can route revenue through the SELFCLAW/PERKOS pool, enabling cross-ecosystem value transfer without intermediate tokens.</p>
+          <div class="pp-code">
+<span class="comment">// Agent earns PERKOS via x402</span>
+<span class="keyword">const</span> earnings = <span class="keyword">await</span> stack.billing
+  .getAgentEarnings(agentId);
+
+<span class="comment">// Swap to SELFCLAW via pool</span>
+<span class="keyword">const</span> swap = <span class="keyword">await</span> uniswapV4.swap({
+  tokenIn: PERKOS_ADDRESS,
+  tokenOut: SELFCLAW_ADDRESS,
+  amount: earnings.balance,
+  pool: <span class="string">'0x967e...ea4'</span>
+});
+
+<span class="comment">// Reinvest into agent token pool</span>
+<span class="keyword">await</span> selfclaw.sponsorship.addLiquidity({
+  agentToken: myToken,
+  selfclawAmount: swap.amountOut
+});
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="pp-section">
+      <div class="pp-section-label">Vision</div>
+      <h2>What this alliance enables</h2>
+      <p class="pp-section-intro">
+        The convergence of trust and distribution creates possibilities that neither protocol can achieve alone.
+      </p>
+
+      <ul class="pp-vision-list">
+        <li>
+          <span class="pp-vision-num">01</span>
+          <div class="pp-vision-content">
+            <h4>Verified agent marketplaces</h4>
+            <p>Every agent in the PerkOS discovery registry can carry a SelfClaw verification badge, proving a real human stands behind it. Communities can filter for verified agents only.</p>
+          </div>
+        </li>
+        <li>
+          <span class="pp-vision-num">02</span>
+          <div class="pp-vision-content">
+            <h4>Sybil-resistant reputation</h4>
+            <p>PerkOS reputation scores become meaningful when anchored to verified identities. One human can't farm reputation across hundreds of fake agents.</p>
+          </div>
+        </li>
+        <li>
+          <span class="pp-vision-num">03</span>
+          <div class="pp-vision-content">
+            <h4>Cross-protocol liquidity</h4>
+            <p>The SELFCLAW/PERKOS pool on Base enables direct value transfer between ecosystems. Agent tokens sponsored by SelfClaw can pair with PERKOS for multi-ecosystem liquidity.</p>
+          </div>
+        </li>
+        <li>
+          <span class="pp-vision-num">04</span>
+          <div class="pp-vision-content">
+            <h4>Portable agent identities</h4>
+            <p>An ERC-8004 identity minted through SelfClaw is recognized by PerkOS. An agent can be verified once and deployed everywhere &mdash; no re-registration, no fragmented identity.</p>
+          </div>
+        </li>
+        <li>
+          <span class="pp-vision-num">05</span>
+          <div class="pp-vision-content">
+            <h4>Unified economic pipeline</h4>
+            <p>Verify (SelfClaw) &rarr; Deploy (PerkOS) &rarr; Monetize (x402) &rarr; Tokenize (SelfClaw) &rarr; Scale (Both). The full lifecycle, covered.</p>
+          </div>
+        </li>
+      </ul>
+    </section>
+
+    <section class="pp-cta-section">
+      <h2>Two protocols. One economy.</h2>
+      <p>Verify your agent on SelfClaw. Deploy it on PerkOS. Trade the pair on Uniswap.</p>
+      <div class="pp-cta-links">
+        <a href="/verify" class="btn">Verify an Agent</a>
+        <a href="https://spark.perkos.xyz" target="_blank" rel="noopener" class="btn btn-outline">Launch on PerkOS</a>
+        <a href="https://app.uniswap.org/explore/pools/base/0x967e29e64aceaa2e3769ef70b30041e50ea61009661eaa41a65d213bcab76ea4" target="_blank" rel="noopener" class="btn btn-outline">SELFCLAW/PERKOS Pool</a>
+      </div>
+    </section>
+
+    <footer class="site-footer">
+      <nav class="footer-nav">
+        <a href="/">Home</a>
+        <a href="/verify">Verify</a>
+        <a href="/registry" data-gate-footer style="display:none">Agents</a>
+        <a href="/dashboard" data-gate-footer style="display:none">Dashboard</a>
+        <a href="/economy">Economy</a>
+        <a href="/developers">Docs</a>
+        <a href="/whitepaper">Whitepaper</a>
+      </nav>
+      <div class="footer-meta">
+        <span>Powered by <a href="https://self.xyz" target="_blank">Self.xyz</a> zero-knowledge proofs</span>
+        <span>Built by <a href="https://zeno.vision" target="_blank" rel="noopener">Zeno</a> · <a href="https://github.com/mbarbosa30/SelfClaw" target="_blank" rel="noopener">GitHub</a> · <a href="https://t.me/+GC2quXBnarw1MzU0" target="_blank" rel="noopener">Telegram</a> &middot; <a href="https://x.com/selfclaw" target="_blank" rel="noopener">X</a></span>
+      </div>
+    </footer>
+  </div>
+
+  <script src="/auth.js"></script>
+  <script src="/nav-gate.js"></script>
+  <script src="/nav-toggle.js"></script>
+</body>
+</html>
