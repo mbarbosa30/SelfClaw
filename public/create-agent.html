@@ -615,7 +615,7 @@
       var listEl = document.getElementById('vm-list');
       listEl.innerHTML = '<div class="vm-loading">Loading VPS instances...</div>';
       try {
-        var res = await fetch('/api/hostinger/vms');
+        var res = await fetch('/api/hostinger/vms', { credentials: 'include' });
         var data = await res.json();
         var content = data.result?.content;
         var vms = [];
@@ -688,6 +688,7 @@
         };
         var res = await fetch('/api/selfclaw/v1/create-agent', {
           method: 'POST',
+          credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(body),
         });
@@ -857,6 +858,7 @@
       try {
         var res = await fetch('/api/selfclaw/v1/create-agent/deploy-economy', {
           method: 'POST',
+          credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             publicKey: agentResult.keys.publicKey,
@@ -894,6 +896,7 @@
       try {
         var res = await fetch('/api/selfclaw/v1/create-agent/claim-wallet-key/' + deploySessionId, {
           method: 'POST',
+          credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
         });
         var data = await res.json();
@@ -911,7 +914,7 @@
     async function pollDeployStatus() {
       if (!deploySessionId) return;
       try {
-        var res = await fetch('/api/selfclaw/v1/create-agent/deploy-status/' + deploySessionId);
+        var res = await fetch('/api/selfclaw/v1/create-agent/deploy-status/' + deploySessionId, { credentials: 'include' });
         var data = await res.json();
 
         if (!res.ok) {

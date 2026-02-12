@@ -206,7 +206,7 @@
       document.getElementById('human-id-display').textContent = humanId;
       
       try {
-        const response = await fetch(`/api/selfclaw/v1/human/${encodeURIComponent(humanId)}`);
+        const response = await fetch(`/api/selfclaw/v1/human/${encodeURIComponent(humanId)}`, { credentials: 'include' });
         const data = await response.json();
         
         document.getElementById('agent-count').textContent = data.agentCount || 0;

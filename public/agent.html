@@ -148,7 +148,7 @@
       document.title = escapeHtml(agentName) + ' | SelfClaw Agent Profile';
 
       try {
-        var res = await fetch('/api/selfclaw/v1/agent-profile/' + encodeURIComponent(agentName));
+        var res = await fetch('/api/selfclaw/v1/agent-profile/' + encodeURIComponent(agentName), { credentials: 'include' });
 
         if (res.status === 404) {
           showError('Agent not found');
@@ -707,7 +707,7 @@
       period = period || currentPeriod || '1h';
 
       try {
-        var res = await fetch('/api/selfclaw/v1/agent/' + encodeURIComponent(identifier) + '/price-history?period=' + period);
+        var res = await fetch('/api/selfclaw/v1/agent/' + encodeURIComponent(identifier) + '/price-history?period=' + period, { credentials: 'include' });
         if (!res.ok) {
           container.innerHTML = '<div style="color:var(--text-muted);font-family:var(--font-mono);font-size:0.7rem;">No price history yet</div>';
           return;
@@ -769,7 +769,7 @@
       if (!container) return;
 
       try {
-        var res = await fetch('/api/selfclaw/v1/agent/' + encodeURIComponent(identifier) + '/economics');
+        var res = await fetch('/api/selfclaw/v1/agent/' + encodeURIComponent(identifier) + '/economics', { credentials: 'include' });
         if (!res.ok) {
           container.innerHTML = '<p class="empty-state-text">No economics data yet</p>';
           return;

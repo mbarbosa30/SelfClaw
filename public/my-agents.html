@@ -433,8 +433,8 @@
 
       try {
         var [res, hostedRes] = await Promise.all([
-          fetch('/api/selfclaw/v1/human/' + encodeURIComponent(user.humanId) + '/economics'),
-          fetch('/api/selfclaw/v1/hosted-agents').catch(function() { return { ok: false, json: function() { return { agents: [] }; } }; })
+          fetch('/api/selfclaw/v1/human/' + encodeURIComponent(user.humanId) + '/economics', { credentials: 'include' }),
+          fetch('/api/selfclaw/v1/hosted-agents', { credentials: 'include' }).catch(function() { return { ok: false, json: function() { return { agents: [] }; } }; })
         ]);
 
         var hostedAgents = [];
@@ -711,6 +711,7 @@
 
       fetch('/api/selfclaw/v1/my-agents/' + encodeURIComponent(pubKey) + '/setup-wallet', {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({})
       })
@@ -740,6 +741,7 @@
 
       fetch('/api/selfclaw/v1/my-agents/' + encodeURIComponent(pubKey) + '/request-gas', {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({})
       })
@@ -763,7 +765,7 @@
 
     function fetchSponsorshipForForm(callback) {
       if (_sponsorshipCache) { callback(_sponsorshipCache); return; }
-      fetch('/api/selfclaw/v1/selfclaw-sponsorship')
+      fetch('/api/selfclaw/v1/selfclaw-sponsorship', { credentials: 'include' })
         .then(function(r) { return r.json(); })
         .then(function(data) { _sponsorshipCache = data; callback(data); })
         .catch(function() { callback(null); });
@@ -923,6 +925,7 @@
 
       fetch('/api/selfclaw/v1/my-agents/' + encodeURIComponent(pubKey) + '/deploy-token', {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: tokenName, symbol: tokenSymbol, initialSupply: initialSupply })
       })
@@ -969,6 +972,7 @@
 
             return fetch('/api/selfclaw/v1/my-agents/' + encodeURIComponent(pubKey) + '/register-token', {
               method: 'POST',
+              credentials: 'include',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ tokenAddress: tokenAddress, txHash: txHash })
             }).then(function(regRes) { return regRes.json(); }).then(function(regData) {
@@ -1006,6 +1010,7 @@
 
       fetch('/api/selfclaw/v1/my-agents/' + encodeURIComponent(pubKey) + '/request-sponsorship', {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           tokenAddress: agent.token.address,
@@ -1125,7 +1130,7 @@
       var econData = {};
       await Promise.all(agents.map(async function(agent) {
         try {
-          var r = await fetch('/api/selfclaw/v1/miniclaws/' + encodeURIComponent(agent.id) + '/economics');
+          var r = await fetch('/api/selfclaw/v1/miniclaws/' + encodeURIComponent(agent.id) + '/economics', { credentials: 'include' });
           if (r.ok) econData[agent.id] = await r.json();
         } catch(e) {}
       }));
@@ -1232,7 +1237,7 @@
       btn.disabled = true;
       btn.textContent = 'Setting up...';
       try {
-        var r = await fetch('/api/selfclaw/v1/miniclaws/' + encodeURIComponent(id) + '/setup-wallet', { method: 'POST' });
+        var r = await fetch('/api/selfclaw/v1/miniclaws/' + encodeURIComponent(id) + '/setup-wallet', { method: 'POST', credentials: 'include' });
         var data = await r.json();
         if (!r.ok) { alert(data.error || 'Failed'); btn.disabled = false; btn.textContent = 'Setup Wallet'; return; }
         if (data.privateKey) {
@@ -1251,7 +1256,7 @@
       btn.disabled = true;
       btn.textContent = 'Requesting...';
       try {
-        var r = await fetch('/api/selfclaw/v1/miniclaws/' + encodeURIComponent(id) + '/request-gas', { method: 'POST' });
+        var r = await fetch('/api/selfclaw/v1/miniclaws/' + encodeURIComponent(id) + '/request-gas', { method: 'POST', credentials: 'include' });
         var data = await r.json();
         if (!r.ok) { alert(data.error || 'Failed'); btn.disabled = false; btn.textContent = 'Request Gas'; return; }
         alert('Gas received! TX: ' + (data.txHash || '').substring(0, 16) + '...');
@@ -1268,7 +1273,7 @@
       btn.disabled = true;
       btn.textContent = 'Preparing...';
       try {
-        var r = await fetch('/api/selfclaw/v1/miniclaws/' + encodeURIComponent(id) + '/register-erc8004', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+        var r = await fetch('/api/selfclaw/v1/miniclaws/' + encodeURIComponent(id) + '/register-erc8004', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: '{}' });
         var data = await r.json();
         if (!r.ok) { alert(data.error || 'Failed'); btn.disabled = false; btn.textContent = 'Register Identity'; return; }
         var msg = 'ERC-8004 Registration Prepared\\n\\n';
@@ -1290,6 +1295,7 @@
       try {
         var res = await fetch('/api/selfclaw/v1/hosted-agents/' + encodeURIComponent(id), {
           method: 'PATCH',
+          credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ status: newStatus })
         });

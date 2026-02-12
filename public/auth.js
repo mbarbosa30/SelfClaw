@@ -32,6 +32,7 @@
 
     var tokenRes = await fetch('/api/auth/self/wallet/minipay-token', {
       method: 'POST',
+      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: '{}'
     });
@@ -40,6 +41,7 @@
 
     var res = await fetch('/api/auth/self/wallet/minipay-connect', {
       method: 'POST',
+      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ address: address, token: tokenData.token })
     });
@@ -115,7 +117,7 @@
     }
 
     try {
-      var res = await fetch('/api/auth/self/me');
+      var res = await fetch('/api/auth/self/me', { credentials: 'include' });
       if (res.ok) {
         authState.user = await res.json();
       } else {
@@ -261,6 +263,7 @@
     try {
       var res = await fetch('/api/auth/self/start', {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({})
       });
@@ -317,7 +320,7 @@
       }
 
       try {
-        var res = await fetch('/api/auth/self/status/' + encodeURIComponent(sessionId));
+        var res = await fetch('/api/auth/self/status/' + encodeURIComponent(sessionId), { credentials: 'include' });
         var data = await res.json();
 
         if (data.status === 'verified' && data.humanId) {
@@ -331,6 +334,7 @@
 
           var completeRes = await fetch('/api/auth/self/complete', {
             method: 'POST',
+            credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ sessionId: sessionId })
           });
@@ -385,7 +389,7 @@
 
   async function logout() {
     try {
-      await fetch('/api/auth/self/logout', { method: 'POST' });
+      await fetch('/api/auth/self/logout', { method: 'POST', credentials: 'include' });
     } catch (e) {}
     authState.user = null;
     renderAuthUI();

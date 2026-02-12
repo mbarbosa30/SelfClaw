@@ -488,6 +488,7 @@
       try {
         var res = await fetch('/api/selfclaw/v1/hosted-agents/' + agentId + '/chat', {
           method: 'POST',
+          credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ message: text, conversationId: conversationId }),
         });
@@ -546,7 +547,7 @@
 
     async function loadAgent() {
       try {
-        var res = await fetch('/api/selfclaw/v1/hosted-agents/' + agentId);
+        var res = await fetch('/api/selfclaw/v1/hosted-agents/' + agentId, { credentials: 'include' });
         if (!res.ok) throw new Error('Agent not found');
         var data = await res.json();
         agentData = data.agent || data;
@@ -563,7 +564,7 @@
 
     async function loadMessages() {
       try {
-        var res = await fetch('/api/selfclaw/v1/hosted-agents/' + agentId + '/messages');
+        var res = await fetch('/api/selfclaw/v1/hosted-agents/' + agentId + '/messages', { credentials: 'include' });
         if (!res.ok) return;
         var data = await res.json();
 
@@ -601,7 +602,7 @@
 
     async function loadAwareness() {
       try {
-        var res = await fetch('/api/selfclaw/v1/hosted-agents/' + agentId + '/awareness');
+        var res = await fetch('/api/selfclaw/v1/hosted-agents/' + agentId + '/awareness', { credentials: 'include' });
         if (!res.ok) return;
         var data = await res.json();
 
@@ -674,7 +675,7 @@
           }
         });
       } else {
-        fetch('/api/auth/status').then(function(r) { return r.json(); }).then(function(data) {
+        fetch('/api/auth/status', { credentials: 'include' }).then(function(r) { return r.json(); }).then(function(data) {
           if (data && data.loggedIn) {
             startChat();
           } else {

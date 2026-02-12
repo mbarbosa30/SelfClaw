@@ -472,7 +472,7 @@
 
     async function loadStats() {
       try {
-        var res = await fetch('/api/selfclaw/v1/skill-market/stats');
+        var res = await fetch('/api/selfclaw/v1/skill-market/stats', { credentials: 'include' });
         var data = await res.json();
         document.getElementById('stat-total-skills').textContent = data.totalSkills || 0;
         document.getElementById('stat-total-installs').textContent = data.totalInstalls || 0;
@@ -497,7 +497,7 @@
       if (sort) params.set('sort', sort);
 
       try {
-        var res = await fetch('/api/selfclaw/v1/skill-market?' + params.toString());
+        var res = await fetch('/api/selfclaw/v1/skill-market?' + params.toString(), { credentials: 'include' });
         var data = await res.json();
         var skills = data.skills || [];
 
@@ -548,7 +548,7 @@
     async function fetchAgents() {
       if (cachedAgents) return cachedAgents;
       try {
-        var res = await fetch('/api/selfclaw/v1/hosted-agents');
+        var res = await fetch('/api/selfclaw/v1/hosted-agents', { credentials: 'include' });
         if (!res.ok) return [];
         var data = await res.json();
         cachedAgents = data.agents || data || [];
@@ -603,6 +603,7 @@
       try {
         var res = await fetch('/api/selfclaw/v1/skill-market/' + encodeURIComponent(slug) + '/install', {
           method: 'POST',
+          credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ hostedAgentId: agentId }),
         });
@@ -671,6 +672,7 @@
       try {
         var res = await fetch('/api/selfclaw/v1/skill-market', {
           method: 'POST',
+          credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             name: name,
@@ -711,7 +713,7 @@
     }
 
     function checkAuth() {
-      fetch('/api/auth/user').then(function(res) {
+      fetch('/api/auth/user', { credentials: 'include' }).then(function(res) {
         if (res.ok) return res.json();
         return null;
       }).then(function(data) {

@@ -286,7 +286,7 @@
     }
 
     function loadDashboard() {
-      fetch('/api/selfclaw/v1/dashboard')
+      fetch('/api/selfclaw/v1/dashboard', { credentials: 'include' })
         .then(function(r) { return r.json(); })
         .then(function(data) {
           setText('s-verified', data.registry ? data.registry.totalVerifiedAgents : '\u2014');

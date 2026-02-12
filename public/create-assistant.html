@@ -463,7 +463,7 @@
     async function loadSkills() {
       var container = document.getElementById('skills-container');
       try {
-        var res = await fetch('/api/selfclaw/v1/hosted-agents/skills');
+        var res = await fetch('/api/selfclaw/v1/hosted-agents/skills', { credentials: 'include' });
         if (!res.ok) throw new Error('Failed to load skills');
         var data = await res.json();
         skillsData = data.skills || data;
@@ -544,6 +544,7 @@
       try {
         var res = await fetch('/api/selfclaw/v1/hosted-agents', {
           method: 'POST',
+          credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             name: name,
@@ -624,7 +625,7 @@
           }
         });
       } else {
-        fetch('/api/auth/status').then(function(r) { return r.json(); }).then(function(data) {
+        fetch('/api/auth/status', { credentials: 'include' }).then(function(r) { return r.json(); }).then(function(data) {
           if (data && data.loggedIn) {
             document.getElementById('login-gate').style.display = 'none';
             document.getElementById('wizard-container').style.display = '';

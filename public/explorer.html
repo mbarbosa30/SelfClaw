@@ -229,7 +229,7 @@
 
     async function connect() {
       try {
-        const res = await fetch('/api/hostinger/status');
+        const res = await fetch('/api/hostinger/status', { credentials: 'include' });
         const data = await res.json();
         if (data.connected) {
           statusDot.className = 'status-dot connected';
@@ -247,7 +247,7 @@
 
     async function loadTools() {
       try {
-        const res = await fetch('/api/hostinger/tools');
+        const res = await fetch('/api/hostinger/tools', { credentials: 'include' });
         const data = await res.json();
         if (data.error) {
           toolGroups.textContent = '';
@@ -432,6 +432,7 @@
       try {
         const res = await fetch('/api/hostinger/call', {
           method: 'POST',
+          credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ tool: name, args: args }),
         });

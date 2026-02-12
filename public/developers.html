@@ -1845,7 +1845,7 @@
       btn.disabled = true;
 
       try {
-        const response = await fetch(`/api/selfclaw/v1/agent/${encodeURIComponent(input)}`);
+        const response = await fetch(`/api/selfclaw/v1/agent/${encodeURIComponent(input)}`, { credentials: 'include' });
 
         if (!response.ok) {
           resultDiv.innerHTML = `

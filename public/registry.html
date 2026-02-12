@@ -133,9 +133,9 @@
     async function loadRegistry() {
       try {
         const [statsRes, agentsRes, pricesRes] = await Promise.all([
-          fetch('/api/selfclaw/v1/stats'),
-          fetch('/api/selfclaw/v1/agents'),
-          fetch('/api/selfclaw/v1/prices/all-agents').catch(() => ({ ok: false })),
+          fetch('/api/selfclaw/v1/stats', { credentials: 'include' }),
+          fetch('/api/selfclaw/v1/agents', { credentials: 'include' }),
+          fetch('/api/selfclaw/v1/prices/all-agents', { credentials: 'include' }).catch(() => ({ ok: false })),
         ]);
 
         const stats = await statsRes.json();

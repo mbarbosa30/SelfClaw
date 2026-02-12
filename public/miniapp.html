@@ -299,7 +299,7 @@
       var loadingEl = document.getElementById('claws-loading');
 
       try {
-        var res = await fetch('/api/selfclaw/v1/hosted-agents');
+        var res = await fetch('/api/selfclaw/v1/hosted-agents', { credentials: 'include' });
         if (!res.ok) throw new Error('Failed to load');
         var data = await res.json();
         var agents = data.agents || data;
@@ -368,7 +368,7 @@
           }
         });
       } else {
-        fetch('/api/auth/status').then(function(r) { return r.json(); }).then(function(data) {
+        fetch('/api/auth/status', { credentials: 'include' }).then(function(r) { return r.json(); }).then(function(data) {
           if (data && data.loggedIn && data.user) {
             showMainScreen(data.user);
           } else {
