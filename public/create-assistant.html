@@ -30,13 +30,24 @@
   <style>
     .create-page { max-width: 800px; margin: 0 auto; padding: 0 var(--space-md); }
 
+    .miniapp-bar {
+      display: none;
+      align-items: center; gap: 0.5rem;
+      padding: 0.6rem 1rem;
+      border-bottom: 2px solid var(--border-heavy);
+      font-family: var(--font-mono); font-size: 0.75rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.08em;
+    }
+    .miniapp-bar img { width: 18px; height: 18px; }
+    .miniapp-bar a { color: var(--text); text-decoration: none; }
+
     .wizard-steps {
-      display: flex; gap: 0; margin-bottom: var(--space-lg);
+      display: flex; gap: 0; margin-bottom: var(--space-md);
       border: 2px solid var(--border-heavy);
     }
     .wizard-step {
-      flex: 1; padding: 0.75rem 0.5rem; text-align: center;
-      font-family: var(--font-mono); font-size: 0.65rem; font-weight: 600;
+      flex: 1; padding: 0.6rem 0.4rem; text-align: center;
+      font-family: var(--font-mono); font-size: 0.6rem; font-weight: 600;
       text-transform: uppercase; letter-spacing: 0.06em;
       color: var(--text-muted); background: var(--bg-card);
       border-right: 2px solid var(--border-heavy);
@@ -46,214 +57,141 @@
     .wizard-step.active { background: var(--text); color: var(--bg); }
     .wizard-step.done { background: var(--green-verify); color: #fff; }
     .wizard-step-num {
-      display: inline-block; width: 20px; height: 20px; line-height: 20px;
-      text-align: center; border: 2px solid currentColor; margin-right: 0.3rem;
-      font-size: 0.6rem;
+      display: inline-block; width: 18px; height: 18px; line-height: 18px;
+      text-align: center; border: 2px solid currentColor; margin-right: 0.2rem;
+      font-size: 0.55rem;
     }
 
     .wizard-panel { display: none; }
     .wizard-panel.active { display: block; }
 
-    .assistant-form .form-group { margin-bottom: 1.25rem; }
+    .assistant-form .form-group { margin-bottom: 1rem; }
     .assistant-form label {
-      display: block; font-family: var(--font-mono); font-size: 0.75rem;
+      display: block; font-family: var(--font-mono); font-size: 0.7rem;
       font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;
-      margin-bottom: 0.4rem; color: var(--text);
+      margin-bottom: 0.3rem; color: var(--text);
     }
     .assistant-form .input {
-      width: 100%; padding: 0.65rem 0.85rem;
+      width: 100%; padding: 0.55rem 0.75rem;
       border: 2px solid var(--border-heavy); background: var(--bg-card);
       font-family: var(--font-mono); font-size: 0.85rem; color: var(--text);
     }
     .assistant-form .input:focus { outline: none; border-color: var(--green-verify); }
     .assistant-form .input::placeholder { color: var(--text-muted); }
-    .assistant-form textarea.input { min-height: 80px; resize: vertical; font-family: var(--font-sans); }
+    .assistant-form textarea.input { min-height: 60px; resize: vertical; font-family: var(--font-sans); }
 
     .emoji-grid {
-      display: grid; grid-template-columns: repeat(6, 1fr); gap: 0.5rem;
+      display: grid; grid-template-columns: repeat(6, 1fr); gap: 0.4rem;
     }
     .emoji-option {
       display: flex; align-items: center; justify-content: center;
-      font-size: 1.5rem; padding: 0.6rem; border: 2px solid var(--border);
+      font-size: 1.3rem; padding: 0.45rem; border: 2px solid var(--border);
       background: var(--bg-card); cursor: pointer; transition: border-color 0.2s;
     }
     .emoji-option:hover { border-color: var(--border-heavy); }
     .emoji-option.selected { border-color: var(--green-verify); background: rgba(34,197,94,0.05); }
 
-    .next-btn {
-      width: 100%; padding: 0.85rem; border: none;
-      background: var(--accent); color: #fff;
-      font-family: var(--font-mono); font-size: 0.9rem; font-weight: 600;
-      text-transform: uppercase; letter-spacing: 0.08em;
-      cursor: pointer; transition: background 0.2s;
-    }
-    .next-btn:hover { background: var(--accent-hover); }
-    .next-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-
-    .create-btn {
-      width: 100%; padding: 0.85rem; border: none;
-      background: var(--green-verify); color: #fff;
-      font-family: var(--font-mono); font-size: 0.9rem; font-weight: 600;
-      text-transform: uppercase; letter-spacing: 0.08em;
-      cursor: pointer; transition: background 0.2s;
-    }
-    .create-btn:hover { background: #1aab4d; }
-    .create-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-
-    .skills-heading {
+    .next-btn, .create-btn {
+      width: 100%; padding: 0.75rem; border: none;
       font-family: var(--font-mono); font-size: 0.85rem; font-weight: 600;
       text-transform: uppercase; letter-spacing: 0.08em;
-      margin-bottom: 1rem; color: var(--text);
+      cursor: pointer; transition: background 0.2s;
+    }
+    .next-btn { background: var(--accent); color: #fff; }
+    .next-btn:hover { background: var(--accent-hover); }
+    .next-btn:disabled, .create-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .create-btn { background: var(--green-verify); color: #fff; }
+    .create-btn:hover { background: #1aab4d; }
+
+    .skills-heading {
+      font-family: var(--font-mono); font-size: 0.75rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.08em;
+      margin-bottom: 0.75rem; color: var(--text);
     }
     .skills-grid {
-      display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem;
-      margin-bottom: 1.25rem;
+      display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.6rem;
+      margin-bottom: 1rem;
     }
     .skill-card {
-      border: 2px solid var(--border); padding: 1rem;
-      background: var(--bg-card); transition: border-color 0.2s;
+      border: 2px solid var(--border); padding: 0.75rem;
+      background: var(--bg-card); transition: border-color 0.2s; cursor: pointer;
     }
     .skill-card.enabled { border-color: var(--green-verify); }
     .skill-card-header {
       display: flex; justify-content: space-between; align-items: center;
-      margin-bottom: 0.5rem;
+      margin-bottom: 0.35rem;
     }
     .skill-card-name {
-      font-family: var(--font-mono); font-size: 0.8rem; font-weight: 600;
-      display: flex; align-items: center; gap: 0.4rem;
+      font-family: var(--font-mono); font-size: 0.7rem; font-weight: 600;
+      display: flex; align-items: center; gap: 0.3rem;
     }
-    .skill-card-icon { font-size: 1rem; }
+    .skill-card-icon { font-size: 0.9rem; }
     .skill-card-desc {
-      font-size: 0.8rem; color: var(--text-secondary); line-height: 1.4;
+      font-size: 0.75rem; color: var(--text-secondary); line-height: 1.3;
     }
     .skill-toggle {
-      position: relative; width: 36px; height: 20px;
+      position: relative; width: 32px; height: 18px;
       background: var(--border); cursor: pointer;
       flex-shrink: 0;
     }
     .skill-toggle.on { background: var(--green-verify); }
     .skill-toggle-knob {
       position: absolute; top: 2px; left: 2px;
-      width: 16px; height: 16px; background: #fff;
+      width: 14px; height: 14px; background: #fff;
       transition: left 0.2s;
     }
-    .skill-toggle.on .skill-toggle-knob { left: 18px; }
+    .skill-toggle.on .skill-toggle-knob { left: 16px; }
     .skills-note {
-      font-family: var(--font-mono); font-size: 0.7rem; color: var(--text-muted);
-      margin-bottom: 1.25rem;
+      font-family: var(--font-mono); font-size: 0.65rem; color: var(--text-muted);
+      margin-bottom: 1rem;
     }
     .skills-loading {
-      text-align: center; padding: 2rem;
-      font-family: var(--font-mono); font-size: 0.8rem; color: var(--text-muted);
+      text-align: center; padding: 1.5rem;
+      font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-muted);
     }
-
-    .key-display {
-      border: 2px solid var(--border-heavy); padding: 1.25rem;
-      margin-bottom: 1.25rem;
-    }
-    .key-label {
-      font-family: var(--font-mono); font-size: 0.7rem; font-weight: 600;
-      text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-secondary);
-      margin-bottom: 0.4rem;
-    }
-    .key-value {
-      font-family: var(--font-mono); font-size: 0.75rem; word-break: break-all;
-      background: var(--bg-card); padding: 0.6rem 0.75rem; border: 1px solid var(--border);
-      line-height: 1.5; position: relative;
-    }
-    .key-copy {
-      position: absolute; top: 0.4rem; right: 0.4rem;
-      background: var(--border-heavy); color: #fff; border: none;
-      font-family: var(--font-mono); font-size: 0.65rem; padding: 0.2rem 0.5rem;
-      cursor: pointer;
-    }
-
-    .key-warning {
-      border: 2px solid var(--red); padding: 1rem; margin-bottom: 1.25rem;
-      font-family: var(--font-mono); font-size: 0.8rem; color: var(--red);
-      line-height: 1.5;
-    }
-
-    .key-download {
-      width: 100%; padding: 0.7rem; border: 2px solid var(--border-heavy);
-      background: var(--bg-card); color: var(--text);
-      font-family: var(--font-mono); font-size: 0.8rem; font-weight: 600;
-      cursor: pointer; text-align: center; margin-bottom: 1.25rem;
-      transition: border-color 0.2s;
-    }
-    .key-download:hover { border-color: var(--green-verify); }
-
-    .confirm-btn {
-      width: 100%; padding: 0.85rem; border: none;
-      background: var(--green-verify); color: #fff;
-      font-family: var(--font-mono); font-size: 0.9rem; font-weight: 600;
-      text-transform: uppercase; letter-spacing: 0.08em;
-      cursor: pointer; transition: background 0.2s;
-      margin-bottom: 1.25rem;
-    }
-    .confirm-btn:hover { background: #1aab4d; }
 
     .success-card {
-      border: 2px solid var(--green-verify); padding: 1.5rem;
-      margin-bottom: 1.25rem;
+      border: 2px solid var(--green-verify); padding: 1.25rem;
+      margin-bottom: 1rem; text-align: center;
     }
+    .success-emoji { font-size: 2.5rem; margin-bottom: 0.5rem; }
     .success-title {
-      font-family: var(--font-mono); font-size: 0.85rem; font-weight: 600;
+      font-family: var(--font-mono); font-size: 0.8rem; font-weight: 600;
       color: var(--green-verify); text-transform: uppercase; letter-spacing: 0.1em;
-      margin-bottom: 0.75rem;
+      margin-bottom: 0.5rem;
+    }
+    .success-name {
+      font-size: 1.1rem; font-weight: 600; color: var(--text);
     }
     .success-detail {
-      font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.4rem;
+      font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.5rem;
     }
-    .success-detail strong { color: var(--text); }
-
-    .next-steps {
-      border: 2px solid var(--border-heavy); padding: 1.25rem;
-      margin-bottom: 1.25rem; display: none;
-    }
-    .next-steps-title {
-      font-family: var(--font-mono); font-size: 0.75rem; font-weight: 600;
-      text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent);
-      margin-bottom: 0.75rem;
-    }
-    .next-steps ul {
-      list-style: none; padding: 0; margin: 0;
-      font-size: 0.85rem; color: var(--text-secondary);
-    }
-    .next-steps li {
-      padding: 0.4rem 0; border-bottom: 1px solid var(--border);
-      padding-left: 1.25rem; position: relative;
-    }
-    .next-steps li::before {
-      content: "\2014"; position: absolute; left: 0; color: var(--border);
-    }
-    .next-steps li:last-child { border-bottom: none; }
 
     .goto-btn {
-      display: block; width: 100%; padding: 0.85rem; border: 2px solid var(--border-heavy);
+      display: block; width: 100%; padding: 0.75rem; border: 2px solid var(--border-heavy);
       background: var(--text); color: var(--bg);
-      font-family: var(--font-mono); font-size: 0.9rem; font-weight: 600;
+      font-family: var(--font-mono); font-size: 0.85rem; font-weight: 600;
       text-transform: uppercase; letter-spacing: 0.08em;
       cursor: pointer; text-align: center; text-decoration: none;
-      transition: all 0.2s; display: none;
+      transition: all 0.2s; margin-bottom: 0.75rem;
     }
     .goto-btn:hover { background: var(--accent); border-color: var(--accent); color: #fff; }
 
     .login-gate {
-      text-align: center; padding: 3rem 1rem;
+      text-align: center; padding: 2rem 1rem;
       border: 2px solid var(--border-heavy);
     }
     .login-gate-title {
-      font-family: var(--font-mono); font-size: 0.85rem; font-weight: 600;
+      font-family: var(--font-mono); font-size: 0.8rem; font-weight: 600;
       text-transform: uppercase; letter-spacing: 0.1em;
-      margin-bottom: 1rem;
+      margin-bottom: 0.75rem;
     }
     .login-gate-desc {
-      font-size: 0.9rem; color: var(--text-secondary);
-      margin-bottom: 1.5rem; max-width: 400px; margin-left: auto; margin-right: auto;
+      font-size: 0.85rem; color: var(--text-secondary);
+      margin-bottom: 1.25rem; max-width: 400px; margin-left: auto; margin-right: auto;
     }
     .login-gate-btn {
-      padding: 0.7rem 2rem; border: 2px solid var(--border-heavy);
+      padding: 0.65rem 2rem; border: 2px solid var(--border-heavy);
       background: var(--bg-card); color: var(--text);
       font-family: var(--font-mono); font-size: 0.8rem; font-weight: 600;
       cursor: pointer; transition: border-color 0.2s;
@@ -261,21 +199,38 @@
     .login-gate-btn:hover { border-color: var(--green-verify); }
 
     .error-msg {
-      border: 2px solid var(--red); padding: 0.75rem 1rem;
-      font-family: var(--font-mono); font-size: 0.8rem; color: var(--red);
-      margin-bottom: 1rem; display: none;
+      border: 2px solid var(--red); padding: 0.6rem 0.75rem;
+      font-family: var(--font-mono); font-size: 0.75rem; color: var(--red);
+      margin-bottom: 0.75rem; display: none;
     }
 
+    .section-label {
+      font-family: var(--font-mono); font-size: 0.6rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted);
+      margin-bottom: 0.75rem;
+    }
+
+    body.miniapp-mode .site-container { display: none; }
+    body.miniapp-mode .site-footer { display: none; }
+    body.miniapp-mode .miniapp-bar { display: flex; }
+    body.miniapp-mode .create-page { max-width: 100%; padding: 0 0.75rem; }
+    body.miniapp-mode .hero { padding: 1rem 0 0.75rem !important; }
+    body.miniapp-mode .hero h1 { font-size: 1.3rem; margin-bottom: 0; }
+    body.miniapp-mode .hero-sub, body.miniapp-mode .hero-label { display: none; }
+
     @media (max-width: 768px) {
-      .wizard-steps { flex-direction: column; }
-      .wizard-step { border-right: none; border-bottom: 2px solid var(--border-heavy); }
-      .wizard-step:last-child { border-bottom: none; }
       .skills-grid { grid-template-columns: 1fr; }
-      .emoji-grid { grid-template-columns: repeat(4, 1fr); }
+      .emoji-grid { grid-template-columns: repeat(6, 1fr); }
+      .create-page { padding: 0 0.75rem; }
+      .hero h1 { font-size: 1.4rem; }
     }
   </style>
 </head>
 <body>
+  <div class="miniapp-bar">
+    <a href="/"><img src="/claw-icon.svg" alt="">SELFCLAW</a>
+  </div>
+
   <div class="site-container">
     <header class="site-header">
       <a href="/" class="site-logo"><img src="/claw-icon.svg" alt="" class="site-logo-icon">SELFCLAW</a>
@@ -294,46 +249,76 @@
   </div>
 
   <div class="create-page">
-    <section class="hero" style="padding: 3rem 0 var(--space-lg);">
+    <section class="hero" style="padding: 2rem 0 var(--space-md);">
       <div class="hero-label">Miniclaw</div>
       <h1>Create your miniclaw</h1>
-      <p class="hero-sub">A lightweight AI miniclaw that runs on SelfClaw's infrastructure. No coding required &mdash; just pick a name and choose what it should do.</p>
+      <p class="hero-sub">Pick a name, choose skills, done.</p>
     </section>
 
     <div id="login-gate" class="login-gate" style="display:none;">
-      <div class="login-gate-title">Login Required</div>
-      <div class="login-gate-desc">Create a miniclaw using your MiniPay wallet or Self.xyz passport. Your miniclaw will be linked to your identity.</div>
+      <div class="login-gate-title">Connect to continue</div>
+      <div class="login-gate-desc">Your miniclaw will be linked to your wallet.</div>
       <div style="display:flex;flex-direction:column;gap:0.75rem;align-items:center;">
         <button class="login-gate-btn" onclick="window.selfclawAuth && window.selfclawAuth.openLogin()" style="width:100%;max-width:300px;">
-          <span id="login-btn-text">Login with MiniPay</span>
+          <span id="login-btn-text">Connect Wallet</span>
         </button>
-        <div style="font-family:var(--font-mono);font-size:0.65rem;color:var(--text-muted);">No MiniPay? <a href="#" onclick="window.selfclawAuth && window.selfclawAuth.openLogin(); return false;" style="color:var(--accent);">Use Self.xyz passport</a></div>
+        <div id="passport-alt" style="font-family:var(--font-mono);font-size:0.6rem;color:var(--text-muted);display:none;">or <a href="#" onclick="window.selfclawAuth && window.selfclawAuth.openLogin(); return false;" style="color:var(--accent);">use Self.xyz passport</a></div>
       </div>
     </div>
 
     <div id="wizard-container" style="display:none;">
       <div class="wizard-steps">
-        <div class="wizard-step active" id="ws-1"><span class="wizard-step-num">1</span>Identity</div>
-        <div class="wizard-step" id="ws-2"><span class="wizard-step-num">2</span>Interests</div>
-        <div class="wizard-step" id="ws-3"><span class="wizard-step-num">3</span>Skills</div>
-        <div class="wizard-step" id="ws-4"><span class="wizard-step-num">4</span>Done</div>
+        <div class="wizard-step active" id="ws-1"><span class="wizard-step-num">1</span>Setup</div>
+        <div class="wizard-step" id="ws-2"><span class="wizard-step-num">2</span>Skills</div>
+        <div class="wizard-step" id="ws-3"><span class="wizard-step-num">3</span>Done</div>
       </div>
 
-      <div class="wizard-panel active" id="panel-identity">
+      <div class="wizard-panel active" id="panel-setup">
         <div class="assistant-form">
           <div class="form-group">
-            <label for="assistant-name">Miniclaw Name</label>
+            <label for="assistant-name">Name</label>
             <input type="text" id="assistant-name" class="input" placeholder="my-miniclaw" maxlength="24">
           </div>
 
           <div class="form-group">
-            <label>Emoji</label>
+            <label>Icon</label>
             <div class="emoji-grid" id="emoji-grid"></div>
           </div>
 
           <div class="form-group">
-            <label for="assistant-desc">Description <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text-muted);">(optional)</span></label>
-            <textarea id="assistant-desc" class="input" placeholder="What should your miniclaw focus on?"></textarea>
+            <label for="assistant-desc">Focus <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text-muted);">(optional)</span></label>
+            <textarea id="assistant-desc" class="input" placeholder="What should your miniclaw focus on?" style="min-height:50px;"></textarea>
+          </div>
+
+          <div id="interests-section" style="display:none;">
+            <div class="section-label">Personalization (optional)</div>
+
+            <div class="form-group">
+              <label for="interests-input">Interests</label>
+              <input type="text" id="interests-input" class="input" placeholder="DeFi, AI agents, Celo, NFTs...">
+            </div>
+
+            <div class="form-group">
+              <label for="topics-input">Topics to Watch</label>
+              <input type="text" id="topics-input" class="input" placeholder="Uniswap V4, Self.xyz...">
+            </div>
+
+            <div class="form-group">
+              <label for="context-input">Context <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text-muted);">(your goals)</span></label>
+              <textarea id="context-input" class="input" placeholder="I'm building an agent swarm for DeFi..." maxlength="500" style="min-height:50px;"></textarea>
+            </div>
+
+            <div class="form-group">
+              <label>Socials</label>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;">
+                <input type="text" id="social-twitter" class="input" placeholder="@X handle">
+                <input type="text" id="social-telegram" class="input" placeholder="@Telegram">
+              </div>
+            </div>
+          </div>
+
+          <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:1rem;">
+            <button type="button" id="toggle-interests-btn" onclick="toggleInterests()" style="background:none;border:none;font-family:var(--font-mono);font-size:0.65rem;color:var(--accent);cursor:pointer;padding:0;">+ Add interests &amp; socials</button>
           </div>
 
           <div class="error-msg" id="identity-error"></div>
@@ -342,92 +327,30 @@
         </div>
       </div>
 
-      <div class="wizard-panel" id="panel-interests">
-        <div class="skills-heading">Tell your miniclaw about you</div>
-        <div style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:1.5rem;">These help your miniclaw personalize research, news, and content for you. All optional.</div>
-
-        <div class="assistant-form">
-          <div class="form-group">
-            <label for="interests-input">Interests <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text-muted);">(comma-separated)</span></label>
-            <input type="text" id="interests-input" class="input" placeholder="DeFi, AI agents, Celo, NFTs, DAOs...">
-          </div>
-
-          <div class="form-group">
-            <label for="topics-input">Topics to Watch <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text-muted);">(keywords for news)</span></label>
-            <input type="text" id="topics-input" class="input" placeholder="Uniswap V4, Self.xyz, agent economy...">
-          </div>
-
-          <div class="form-group">
-            <label for="context-input">Personal Context <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text-muted);">(tell your assistant about your goals)</span></label>
-            <textarea id="context-input" class="input" placeholder="I'm building an agent swarm for DeFi trading..." maxlength="1000" style="min-height:80px;"></textarea>
-          </div>
-
-          <div class="form-group">
-            <label>Social Handles <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text-muted);">(for content drafts)</span></label>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;">
-              <input type="text" id="social-twitter" class="input" placeholder="@handle (X/Twitter)">
-              <input type="text" id="social-telegram" class="input" placeholder="@handle (Telegram)">
-            </div>
-          </div>
-
-          <div style="display:flex;gap:0.75rem;">
-            <button class="next-btn" style="background:var(--bg-card);color:var(--text);border:2px solid var(--border-heavy);flex:0;" onclick="setStep(1)">Back</button>
-            <button class="next-btn" id="interests-next-btn" onclick="goToSkillsFromInterests()">Next</button>
-          </div>
-        </div>
-      </div>
-
       <div class="wizard-panel" id="panel-skills">
-        <div class="skills-heading">Choose what your assistant can do</div>
+        <div class="skills-heading">Skills</div>
         <div id="skills-container">
           <div class="skills-loading">Loading skills...</div>
         </div>
-        <div class="skills-note">You can change these anytime from your dashboard. <a href="/skill-market" style="color:var(--accent);">Browse the Skill Market</a> for community-made skills.</div>
+        <div class="skills-note">Defaults are pre-selected. Customize anytime from your dashboard.</div>
         <div class="error-msg" id="skills-error"></div>
-        <button class="create-btn" id="create-assistant-btn" onclick="createAssistant()">Create Miniclaw</button>
+        <div style="display:flex;gap:0.5rem;">
+          <button class="next-btn" style="background:var(--bg-card);color:var(--text);border:2px solid var(--border-heavy);flex:0 0 auto;width:auto;padding:0.75rem 1.25rem;" onclick="setStep(1)">Back</button>
+          <button class="create-btn" id="create-assistant-btn" onclick="createAssistant()">Create Miniclaw</button>
+        </div>
       </div>
 
       <div class="wizard-panel" id="panel-done">
         <div class="success-card">
+          <div class="success-emoji" id="done-emoji"></div>
           <div class="success-title">Miniclaw Created</div>
-          <div class="success-detail"><strong>Name:</strong> <span id="done-emoji"></span> <span id="done-name"></span></div>
+          <div class="success-name" id="done-name"></div>
+          <div class="success-detail">Running on SelfClaw. Monitoring your wallet and economics automatically.</div>
         </div>
 
-        <div class="key-warning">
-          SAVE YOUR PRIVATE KEY NOW. It will never be shown again. SelfClaw does not store private keys.
-        </div>
+        <a href="/my-agents" class="goto-btn">Go to Dashboard</a>
 
-        <div class="key-display">
-          <div class="key-label">Public Key</div>
-          <div class="key-value" id="public-key-value">
-            <button class="key-copy" onclick="copyKey('public-key-value')">COPY</button>
-            <span id="public-key-text"></span>
-          </div>
-        </div>
-
-        <div class="key-display">
-          <div class="key-label">Private Key</div>
-          <div class="key-value" id="private-key-value" style="border-color: var(--red);">
-            <button class="key-copy" onclick="copyKey('private-key-value')">COPY</button>
-            <span id="private-key-text"></span>
-          </div>
-        </div>
-
-        <button class="key-download" onclick="downloadKeys()">Download Keys as JSON</button>
-
-        <button class="confirm-btn" id="confirm-keys-btn" onclick="confirmKeysSaved()">I've saved my keys</button>
-
-        <div class="next-steps" id="next-steps">
-          <div class="next-steps-title">What happens next</div>
-          <ul>
-            <li>Your miniclaw is now running on SelfClaw</li>
-            <li>It will check your wallet every 5 minutes</li>
-            <li>It will analyze your economics hourly</li>
-            <li>Visit /my-agents to see its activity</li>
-          </ul>
-        </div>
-
-        <a href="/my-agents" class="goto-btn" id="goto-btn">Go to My Agents</a>
+        <a href="/create-assistant" class="goto-btn" style="background:var(--bg-card);color:var(--text);">Create Another</a>
       </div>
     </div>
 
@@ -456,10 +379,17 @@
     var skillsData = [];
     var enabledSkills = {};
     var createdAgent = null;
+    var isMiniPayEnv = false;
 
     var EMOJIS = ['\u{1F916}', '\u{1F9E0}', '\u{1F4A1}', '\u{1F50D}', '\u{1F4CA}', '\u{1F6E1}\uFE0F', '\u{1F680}', '\u{1F3AF}', '\u{1F4B0}', '\u26A1', '\u{1F310}', '\u{1F91D}'];
 
     function esc(s) { if (!s) return ''; var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+    function detectMiniPay() {
+      if (window.ethereum && (window.ethereum.isMiniPay || window.ethereum.isMinipay)) return true;
+      if (navigator.userAgent && navigator.userAgent.indexOf('MiniPay') !== -1) return true;
+      return false;
+    }
 
     function initEmojis() {
       var grid = document.getElementById('emoji-grid');
@@ -479,11 +409,23 @@
       selectedEmoji = el.getAttribute('data-emoji');
     }
 
+    function toggleInterests() {
+      var section = document.getElementById('interests-section');
+      var btn = document.getElementById('toggle-interests-btn');
+      if (section.style.display === 'none') {
+        section.style.display = '';
+        btn.textContent = '- Hide interests & socials';
+      } else {
+        section.style.display = 'none';
+        btn.textContent = '+ Add interests & socials';
+      }
+    }
+
     function goToSkills() {
       var name = document.getElementById('assistant-name').value.trim();
       var errEl = document.getElementById('identity-error');
       if (!name) {
-        errEl.textContent = 'Please enter a name for your miniclaw.';
+        errEl.textContent = 'Please enter a name.';
         errEl.style.display = '';
         return;
       }
@@ -494,16 +436,12 @@
       }
       errEl.style.display = 'none';
       setStep(2);
-    }
-
-    function goToSkillsFromInterests() {
-      setStep(3);
       loadSkills();
     }
 
     function setStep(step) {
-      var panels = ['panel-identity', 'panel-interests', 'panel-skills', 'panel-done'];
-      var steps = ['ws-1', 'ws-2', 'ws-3', 'ws-4'];
+      var panels = ['panel-setup', 'panel-skills', 'panel-done'];
+      var steps = ['ws-1', 'ws-2', 'ws-3'];
       for (var i = 0; i < panels.length; i++) {
         document.getElementById(panels[i]).classList.remove('active');
         document.getElementById(steps[i]).classList.remove('active', 'done');
@@ -525,14 +463,14 @@
         if (!Array.isArray(skillsData)) skillsData = [];
         renderSkills();
       } catch (err) {
-        container.innerHTML = '<div class="skills-loading">Failed to load skills. Please try again.</div>';
+        container.innerHTML = '<div class="skills-loading">Could not load skills. You can add them later from your dashboard.</div>';
       }
     }
 
     function renderSkills() {
       var container = document.getElementById('skills-container');
       if (!skillsData || !skillsData.length) {
-        container.innerHTML = '<div class="skills-loading">No skills available.</div>';
+        container.innerHTML = '<div class="skills-loading">No skills found. You can add them later from your dashboard.</div>';
         return;
       }
       var html = '<div class="skills-grid">';
@@ -543,10 +481,10 @@
         if (isDefault) enabledSkills[id] = true;
         var enabledClass = (isDefault || enabledSkills[id]) ? ' enabled' : '';
         var toggleClass = (isDefault || enabledSkills[id]) ? ' on' : '';
-        html += '<div class="skill-card' + enabledClass + '" id="skill-card-' + esc(id) + '">';
+        html += '<div class="skill-card' + enabledClass + '" id="skill-card-' + esc(id) + '" onclick="toggleSkill(\'' + esc(id) + '\')">';
         html += '<div class="skill-card-header">';
         html += '<div class="skill-card-name"><span class="skill-card-icon">' + esc(skill.icon || '') + '</span> ' + esc(skill.name || id) + '</div>';
-        html += '<div class="skill-toggle' + toggleClass + '" id="toggle-' + esc(id) + '" onclick="toggleSkill(\'' + esc(id) + '\')">';
+        html += '<div class="skill-toggle' + toggleClass + '" id="toggle-' + esc(id) + '">';
         html += '<div class="skill-toggle-knob"></div>';
         html += '</div>';
         html += '</div>';
@@ -626,54 +564,10 @@
     }
 
     function showDone() {
-      setStep(4);
+      setStep(3);
       var agentData = createdAgent.agent || createdAgent;
       document.getElementById('done-name').textContent = agentData.name || '';
       document.getElementById('done-emoji').textContent = agentData.emoji || selectedEmoji || '';
-
-      document.getElementById('public-key-text').textContent = agentData.publicKey || '';
-      document.getElementById('private-key-text').textContent = createdAgent.privateKey || '';
-
-      document.getElementById('next-steps').style.display = '';
-      document.getElementById('goto-btn').style.display = '';
-    }
-
-    function copyKey(containerId) {
-      var el = document.getElementById(containerId);
-      var span = el.querySelector('span');
-      if (!span) return;
-      var text = span.textContent;
-      navigator.clipboard.writeText(text).then(function() {
-        var btn = el.querySelector('.key-copy');
-        btn.textContent = 'COPIED';
-        setTimeout(function() { btn.textContent = 'COPY'; }, 1500);
-      });
-    }
-
-    function downloadKeys() {
-      if (!createdAgent) return;
-      var agentData = createdAgent.agent || createdAgent;
-      var data = {
-        name: agentData.name || '',
-        emoji: agentData.emoji || selectedEmoji || '',
-        publicKey: agentData.publicKey || '',
-        privateKey: createdAgent.privateKey || '',
-        walletAddress: createdAgent.walletAddress || '',
-        createdAt: new Date().toISOString()
-      };
-      var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-      var url = URL.createObjectURL(blob);
-      var a = document.createElement('a');
-      a.href = url;
-      a.download = (agentData.name || 'miniclaw') + '-keys.json';
-      a.click();
-      URL.revokeObjectURL(url);
-    }
-
-    function confirmKeysSaved() {
-      document.getElementById('confirm-keys-btn').style.display = 'none';
-      document.getElementById('next-steps').style.display = '';
-      document.getElementById('goto-btn').style.display = '';
     }
 
     window.onAuthLogin = function(user) {
@@ -688,6 +582,26 @@
 
     function initPage() {
       initEmojis();
+
+      isMiniPayEnv = detectMiniPay();
+      if (isMiniPayEnv) {
+        document.body.classList.add('miniapp-mode');
+        document.getElementById('login-btn-text').textContent = 'Connect MiniPay';
+      } else {
+        document.getElementById('passport-alt').style.display = '';
+      }
+
+      if (!isMiniPayEnv) {
+        setTimeout(function() {
+          if (detectMiniPay()) {
+            isMiniPayEnv = true;
+            document.body.classList.add('miniapp-mode');
+            document.getElementById('login-btn-text').textContent = 'Connect MiniPay';
+            document.getElementById('passport-alt').style.display = 'none';
+          }
+        }, 500);
+      }
+
       if (window.selfclawAuth) {
         window.selfclawAuth.onReady(function(user) {
           if (user) {
@@ -698,10 +612,6 @@
             document.getElementById('wizard-container').style.display = 'none';
           }
         });
-        if (window.selfclawAuth.isMiniPay && window.selfclawAuth.isMiniPay()) {
-          var btnText = document.getElementById('login-btn-text');
-          if (btnText) btnText.textContent = 'Connect MiniPay Wallet';
-        }
       } else {
         fetch('/api/auth/status').then(function(r) { return r.json(); }).then(function(data) {
           if (data && data.loggedIn) {
