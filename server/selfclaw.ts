@@ -3878,7 +3878,7 @@ router.get("/v1/human/:humanId/economics", publicApiLimiter, async (req: Request
       .where(sql`${verifiedBots.humanId} = ${humanId}`);
 
     if (agents.length === 0) {
-      return res.status(404).json({ error: "No agents found for this human" });
+      return res.json({ agents: [], totalRevenue: 0, totalCosts: 0, netProfit: 0, revenueByToken: {}, services: [], alerts: [] });
     }
 
     const revenue = await db.select().from(revenueEvents)

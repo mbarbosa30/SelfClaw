@@ -443,7 +443,13 @@
           hostedAgents = hData.agents || [];
         }
 
-        if (res.status === 404 && hostedAgents.length === 0) {
+        if (!res.ok) throw new Error('Failed to load');
+        var data = await res.json();
+        _dashboardData = data;
+
+        var hasVerifiedAgents = data.agents && data.agents.length > 0;
+
+        if (!hasVerifiedAgents && hostedAgents.length === 0) {
           document.getElementById('dashboard-loading').style.display = 'none';
           var emptyEl = document.getElementById('empty-state');
           if (_isMiniPayContext) {
@@ -461,7 +467,7 @@
           renderHostedAgents(hostedAgents);
         }
 
-        if (res.status === 404) {
+        if (!hasVerifiedAgents) {
           document.getElementById('dashboard-loading').style.display = 'none';
           if (hostedAgents.length > 0) {
             document.getElementById('hosted-section').style.display = '';
@@ -472,9 +478,6 @@
           return;
         }
 
-        if (!res.ok) throw new Error('Failed to load');
-        var data = await res.json();
-        _dashboardData = data;
         renderDashboard(data);
 
         if (_isMiniPayContext && hostedAgents.length > 0) {
