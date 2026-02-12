@@ -615,6 +615,9 @@ function startVerificationPolling(sessionId, pubkey, agentName) {
       if (data.status === 'verified' && data.agent) {
         clearInterval(verificationPollInterval);
         handleVerificationSuccess(pubkey, agentName);
+        if (data.loggedIn) {
+          setTimeout(function() { window.location.reload(); }, 2500);
+        }
       } else if (data.status === 'expired') {
         clearInterval(verificationPollInterval);
         document.getElementById('verification-status').innerHTML = `

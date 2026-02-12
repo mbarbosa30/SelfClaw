@@ -1,7 +1,7 @@
 import { Router, Request, Response } from "express";
 import rateLimit from "express-rate-limit";
 import { db } from "./db.js";
-import { verifiedBots, verificationSessions, sponsoredAgents, trackedPools, agentWallets, agentActivity, tokenPlans, revenueEvents, agentServices, costEvents, tokenPriceSnapshots, hostedAgents, type InsertVerifiedBot, type InsertVerificationSession } from "../shared/schema.js";
+import { verifiedBots, verificationSessions, sponsoredAgents, trackedPools, agentWallets, agentActivity, tokenPlans, revenueEvents, agentServices, costEvents, tokenPriceSnapshots, hostedAgents, users, type InsertVerifiedBot, type InsertVerificationSession, type UpsertUser } from "../shared/schema.js";
 import { eq, and, gt, lt, sql, desc, count, isNotNull } from "drizzle-orm";
 import { SelfBackendVerifier, AllIds, DefaultConfigStore } from "@selfxyz/core";
 import { SelfAppBuilder } from "@selfxyz/qrcode";
@@ -90,6 +90,14 @@ interface DebugVerificationAttempt {
 let lastVerificationAttempt: DebugVerificationAttempt | null = null;
 let lastV3FeeCollectionTime = 0;
 const V3_FEE_COLLECTION_COOLDOWN_MS = 24 * 60 * 60 * 1000;
+
+const verificationHumanIds = new Map<string, string>();
+setInterval(() => {
+  const now = Date.now();
+  for (const [key] of verificationHumanIds) {
+    if (verificationHumanIds.size > 1000) verificationHumanIds.delete(key);
+  }
+}, 10 * 60 * 1000);
 
 const deployEconomySessions = new Map<string, {
   publicKey: string;
@@ -353,6 +361,11 @@ router.post("/v1/start-verification", verificationLimiter, async (req: Request, 
     };
     
     await db.insert(verificationSessions).values(newSession);
+
+    const reqAny = req as any;
+    if (reqAny.session?.isAuthenticated && reqAny.session?.humanId) {
+      verificationHumanIds.set(sessionId, reqAny.session.humanId);
+    }
     
     // Build properly formatted Self app config using the official SDK
     const userDefinedData = agentKeyHash.padEnd(128, '0');
@@ -654,10 +667,15 @@ async function handleCallback(req: Request, res: Response) {
       return res.status(200).json({ status: "error", result: false, reason: "Agent key binding mismatch" });
     }
     
-    const humanId = crypto.createHash("sha256")
+    const storedHumanId = verificationHumanIds.get(sessionId);
+    const humanId = storedHumanId || crypto.createHash("sha256")
       .update(JSON.stringify(publicSignals))
       .digest("hex")
       .substring(0, 16);
+    if (storedHumanId) {
+      verificationHumanIds.delete(sessionId);
+      console.log("[selfclaw] Using logged-in user's humanId for agent:", humanId.substring(0, 8) + "...");
+    }
     
     // Sanitize nationality - remove null characters that can break JSONB
     let nationality = result.discloseOutput?.nationality || null;
@@ -769,8 +787,27 @@ router.get("/v1/status/:sessionId", publicApiLimiter, async (req: Request, res: 
         .limit(1);
       
       if (agents.length > 0) {
+        const reqAny = req as any;
+        const agentHumanId = agents[0].humanId;
+        if (agentHumanId && reqAny.session && (!reqAny.session.isAuthenticated || reqAny.session.humanId !== agentHumanId)) {
+          try {
+            let [user] = await db.select().from(users).where(eq(users.humanId, agentHumanId)).limit(1);
+            if (!user) {
+              const newUser: UpsertUser = { humanId: agentHumanId, profileComplete: false };
+              [user] = await db.insert(users).values(newUser).returning();
+              console.log("[selfclaw] Auto-created user for verified agent owner:", user.id);
+            }
+            reqAny.session.userId = user.id;
+            reqAny.session.humanId = agentHumanId;
+            reqAny.session.isAuthenticated = true;
+            console.log("[selfclaw] Auto-logged in user after verification:", agentHumanId.substring(0, 8) + "...");
+          } catch (authErr: any) {
+            console.error("[selfclaw] Auto-login after verification failed:", authErr.message);
+          }
+        }
         return res.json({
           status: "verified",
+          loggedIn: true,
           agent: {
             publicKey: agents[0].publicKey,
             deviceId: agents[0].deviceId,
