@@ -431,7 +431,7 @@ router.post("/wallet/verify", async (req: any, res: Response) => {
 // is the standard auth method. We add a server-side challenge token to ensure the
 // request originates from our frontend (not a raw API call), plus strict rate limiting.
 const minipayRateLimit = new Map<string, { count: number; resetAt: number }>();
-const minipayTokens = new Map<string, { createdAt: number; ip: string }>();
+const minipayTokens = new Map<string, { createdAt: number }>();
 
 setInterval(() => {
   const now = Date.now();
@@ -447,10 +447,9 @@ setInterval(() => {
   }
 }, 60 * 1000);
 
-router.post("/wallet/minipay-token", (req: any, res: Response) => {
-  const clientIp = req.ip || req.connection?.remoteAddress || "unknown";
+router.post("/wallet/minipay-token", (_req: any, res: Response) => {
   const token = crypto.randomUUID();
-  minipayTokens.set(token, { createdAt: Date.now(), ip: clientIp });
+  minipayTokens.set(token, { createdAt: Date.now() });
   res.json({ token });
 });
 
@@ -475,11 +474,6 @@ router.post("/wallet/minipay-connect", async (req: any, res: Response) => {
       return res.status(400).json({ error: "Invalid or expired token" });
     }
     minipayTokens.delete(token);
-
-    const clientIp = req.ip || req.connection?.remoteAddress || "unknown";
-    if (tokenData.ip !== clientIp) {
-      return res.status(400).json({ error: "Token mismatch" });
-    }
 
     if (Date.now() - tokenData.createdAt > 60 * 1000) {
       return res.status(400).json({ error: "Token expired" });
