@@ -1559,6 +1559,26 @@ router.post("/v1/request-selfclaw-sponsorship", verificationLimiter, async (req:
       });
     }
 
+    const wallet = await db.select().from(agentWallets)
+      .where(sql`${agentWallets.publicKey} = ${auth.publicKey} AND ${agentWallets.humanId} = ${humanId}`)
+      .limit(1);
+    if (wallet.length === 0) {
+      return res.status(403).json({
+        error: "Agent must have a wallet created through SelfClaw before requesting sponsorship.",
+        step: "Create a wallet first via POST /api/selfclaw/v1/my-agents/:publicKey/create-wallet",
+      });
+    }
+
+    const deployedToken = await db.select().from(tokenPlans)
+      .where(sql`${tokenPlans.agentPublicKey} = ${auth.publicKey} AND ${tokenPlans.humanId} = ${humanId} AND LOWER(${tokenPlans.tokenAddress}) = LOWER(${tokenAddress})`)
+      .limit(1);
+    if (deployedToken.length === 0) {
+      return res.status(403).json({
+        error: "Token must be deployed through SelfClaw before requesting sponsorship. External tokens are not eligible.",
+        step: "Deploy your agent token first via the SelfClaw token economy flow.",
+      });
+    }
+
     const existingSponsorship = await db.select()
       .from(sponsoredAgents)
       .where(eq(sponsoredAgents.humanId, humanId))
