@@ -45,6 +45,7 @@
     "express": "^4.22.1",
     "express-rate-limit": "^8.2.1",
     "express-session": "^1.19.0",
+    "helmet": "^8.1.0",
     "memoizee": "^0.4.17",
     "openai": "^6.17.0",
     "openclaw": "^2026.2.9",

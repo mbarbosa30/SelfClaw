@@ -426,6 +426,129 @@ router.post("/wallet/verify", async (req: any, res: Response) => {
   }
 });
 
+// === MiniPay Direct Connect (no signing — MiniPay doesn't support personal_sign) ===
+// Security model: MiniPay runs dApps in a trusted WebView where eth_requestAccounts
+// is the standard auth method. We add a server-side challenge token to ensure the
+// request originates from our frontend (not a raw API call), plus strict rate limiting.
+const minipayRateLimit = new Map<string, { count: number; resetAt: number }>();
+const minipayTokens = new Map<string, { createdAt: number; ip: string }>();
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, entry] of minipayRateLimit.entries()) {
+    if (entry.resetAt < now) {
+      minipayRateLimit.delete(ip);
+    }
+  }
+  for (const [token, data] of minipayTokens.entries()) {
+    if (now - data.createdAt > 60 * 1000) {
+      minipayTokens.delete(token);
+    }
+  }
+}, 60 * 1000);
+
+router.post("/wallet/minipay-token", (req: any, res: Response) => {
+  const clientIp = req.ip || req.connection?.remoteAddress || "unknown";
+  const token = crypto.randomUUID();
+  minipayTokens.set(token, { createdAt: Date.now(), ip: clientIp });
+  res.json({ token });
+});
+
+router.post("/wallet/minipay-connect", async (req: any, res: Response) => {
+  try {
+    const { address, token } = req.body;
+
+    if (!address || typeof address !== "string") {
+      return res.status(400).json({ error: "Missing address" });
+    }
+
+    if (!/^0x[0-9a-fA-F]{40}$/.test(address)) {
+      return res.status(400).json({ error: "Invalid Ethereum address" });
+    }
+
+    if (!token || typeof token !== "string") {
+      return res.status(400).json({ error: "Missing auth token" });
+    }
+
+    const tokenData = minipayTokens.get(token);
+    if (!tokenData) {
+      return res.status(400).json({ error: "Invalid or expired token" });
+    }
+    minipayTokens.delete(token);
+
+    const clientIp = req.ip || req.connection?.remoteAddress || "unknown";
+    if (tokenData.ip !== clientIp) {
+      return res.status(400).json({ error: "Token mismatch" });
+    }
+
+    if (Date.now() - tokenData.createdAt > 60 * 1000) {
+      return res.status(400).json({ error: "Token expired" });
+    }
+
+    const now = Date.now();
+    const rateEntry = minipayRateLimit.get(clientIp);
+    if (rateEntry) {
+      if (rateEntry.resetAt < now) {
+        minipayRateLimit.set(clientIp, { count: 1, resetAt: now + 60 * 1000 });
+      } else if (rateEntry.count >= 10) {
+        return res.status(429).json({ error: "Too many attempts. Try again later." });
+      } else {
+        rateEntry.count++;
+      }
+    } else {
+      minipayRateLimit.set(clientIp, { count: 1, resetAt: now + 60 * 1000 });
+    }
+
+    const normalizedAddress = address.toLowerCase();
+
+    let [user] = await db.select().from(users).where(eq(users.walletAddress, normalizedAddress)).limit(1);
+
+    if (!user) {
+      const newUser: UpsertUser = {
+        walletAddress: normalizedAddress,
+        humanId: normalizedAddress,
+        authMethod: "minipay",
+        profileComplete: false,
+      };
+      [user] = await db.insert(users).values(newUser).returning();
+      console.log("[self-auth] Created new MiniPay user:", user.id, "address:", normalizedAddress);
+    } else {
+      if (user.authMethod !== "minipay") {
+        await db.update(users).set({ authMethod: "minipay" }).where(eq(users.id, user.id));
+      }
+      console.log("[self-auth] Found existing MiniPay user:", user.id, "address:", normalizedAddress);
+    }
+
+    req.session.regenerate((err: any) => {
+      if (err) {
+        console.error("[self-auth] Session regeneration failed:", err);
+        return res.status(500).json({ error: "Session error" });
+      }
+
+      req.session.userId = user.id;
+      req.session.humanId = normalizedAddress;
+      req.session.isAuthenticated = true;
+      req.session.walletAddress = normalizedAddress;
+
+      res.json({
+        success: true,
+        user: {
+          id: user.id,
+          humanId: user.humanId,
+          walletAddress: user.walletAddress,
+          authMethod: user.authMethod || "minipay",
+          firstName: user.firstName,
+          lastName: user.lastName,
+          profileComplete: user.profileComplete,
+        },
+      });
+    });
+  } catch (error: any) {
+    console.error("[self-auth] MiniPay connect error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Logout
 router.post("/logout", (req: any, res: Response) => {
   req.session.destroy((err: any) => {

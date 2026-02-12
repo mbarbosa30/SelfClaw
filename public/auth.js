@@ -15,38 +15,78 @@
     return d.innerHTML;
   }
 
+  function detectMiniPay() {
+    if (window.ethereum && (window.ethereum.isMiniPay || window.ethereum.isMinipay)) {
+      return true;
+    }
+    if (navigator.userAgent && navigator.userAgent.indexOf('MiniPay') !== -1) {
+      return true;
+    }
+    return false;
+  }
+
   async function connectMiniPay() {
     var accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
     var address = accounts[0];
     if (!address) throw new Error('No account');
 
-    var chalRes = await fetch('/api/auth/self/wallet/challenge', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
-    var chalData = await chalRes.json();
-    if (!chalData.challenge) throw new Error('No challenge');
+    var tokenRes = await fetch('/api/auth/self/wallet/minipay-token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: '{}'
+    });
+    var tokenData = await tokenRes.json();
+    if (!tokenData.token) throw new Error('Failed to get auth token');
 
-    var signature = await window.ethereum.request({ method: 'personal_sign', params: [chalData.challenge, address] });
+    var res = await fetch('/api/auth/self/wallet/minipay-connect', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ address: address, token: tokenData.token })
+    });
+    var data = await res.json();
 
-    var verRes = await fetch('/api/auth/self/wallet/verify', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ address: address, signature: signature, nonce: chalData.nonce }) });
-    var verData = await verRes.json();
-
-    if (verData.success) {
-      authState.user = verData.user;
+    if (data.success) {
+      authState.user = data.user;
       authState.checking = false;
       renderAuthUI();
       if (window.onAuthLogin) window.onAuthLogin(authState.user);
     } else {
-      throw new Error(verData.error || 'Verification failed');
+      throw new Error(data.error || 'MiniPay connection failed');
     }
   }
 
   async function checkAuth() {
-    if (window.ethereum && window.ethereum.isMiniPay) {
+    if (detectMiniPay()) {
       isMiniPay = true;
       try {
         await connectMiniPay();
         return;
       } catch(e) {
         console.log('[auth] MiniPay auto-connect failed, falling back:', e);
+      }
+    } else if (!window.ethereum && navigator.userAgent && navigator.userAgent.indexOf('MiniPay') !== -1) {
+      isMiniPay = true;
+      try {
+        await new Promise(function(resolve) { setTimeout(resolve, 500); });
+        if (window.ethereum) {
+          await connectMiniPay();
+          return;
+        } else {
+          console.log('[auth] MiniPay detected by UA but ethereum provider not available after delay');
+        }
+      } catch(e) {
+        console.log('[auth] MiniPay delayed auto-connect failed, falling back:', e);
+      }
+    } else if (!window.ethereum) {
+      await new Promise(function(resolve) { setTimeout(resolve, 500); });
+      if (detectMiniPay()) {
+        isMiniPay = true;
+        try {
+          await connectMiniPay();
+          return;
+        } catch(e) {
+          console.log('[auth] MiniPay delayed auto-connect failed, falling back:', e);
+        }
       }
     }
 
@@ -161,7 +201,26 @@
         await connectMiniPay();
       } catch(e) {
         console.error('[auth] MiniPay login failed:', e);
-        alert('Failed to connect with MiniPay: ' + e.message);
+        var modal = createLoginModal();
+        modal.style.display = 'flex';
+        var qrArea = document.getElementById('login-qr-area');
+        var statusEl = document.getElementById('login-status');
+        qrArea.innerHTML = '<div style="color:var(--red);font-size:0.85rem;margin-bottom:1rem;">MiniPay connection failed: ' + escHtml(e.message) + '</div>' +
+          '<button id="minipay-retry-btn" style="background:var(--accent);color:var(--bg);border:none;padding:0.5rem 1.5rem;font-family:var(--font-mono);font-size:0.8rem;cursor:pointer;text-transform:uppercase;letter-spacing:0.05em;">Retry Connection</button>';
+        statusEl.textContent = 'Tap retry to reconnect your MiniPay wallet';
+        document.getElementById('minipay-retry-btn').addEventListener('click', async function() {
+          qrArea.innerHTML = '<div style="color:var(--text-muted);font-size:0.8rem;">Connecting to MiniPay...</div>';
+          statusEl.textContent = '';
+          try {
+            await connectMiniPay();
+            closeLoginModal();
+          } catch(retryErr) {
+            qrArea.innerHTML = '<div style="color:var(--red);font-size:0.85rem;margin-bottom:1rem;">MiniPay connection failed: ' + escHtml(retryErr.message) + '</div>' +
+              '<button id="minipay-retry-btn2" style="background:var(--accent);color:var(--bg);border:none;padding:0.5rem 1.5rem;font-family:var(--font-mono);font-size:0.8rem;cursor:pointer;text-transform:uppercase;letter-spacing:0.05em;">Retry Connection</button>';
+            statusEl.textContent = 'Tap retry to reconnect your MiniPay wallet';
+            document.getElementById('minipay-retry-btn2').addEventListener('click', arguments.callee);
+          }
+        });
       }
       return;
     }
@@ -313,6 +372,7 @@
     getUser: function() { return authState.user; },
     isLoggedIn: function() { return !!authState.user; },
     isMiniPay: function() { return isMiniPay; },
+    isMiniPayUser: function() { return !!(authState.user && authState.user.authMethod === 'minipay'); },
     openLogin: openLoginModal,
     logout: logout,
     onReady: function(cb) {

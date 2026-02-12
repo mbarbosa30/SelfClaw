@@ -1,6 +1,7 @@
 import express, { type Request, type Response } from "express";
+import helmet from "helmet";
 import { setupSelfAuth, isAuthenticated, registerAuthRoutes } from "./self-auth.js";
-import { db } from "./db.js";
+import { db, pool } from "./db.js";
 import { verifiedBots } from "../shared/schema.js";
 import { sql } from "drizzle-orm";
 import selfclawRouter from "./selfclaw.js";
@@ -24,6 +25,17 @@ const app = express();
 const PORT = 5000;
 
 app.use(express.json({ limit: '10mb' }));
+
+app.use(helmet({
+  contentSecurityPolicy: false,
+  crossOriginEmbedderPolicy: false,
+}));
+
+app.use((req, res, next) => {
+  req.setTimeout(30000);
+  res.setTimeout(30000);
+  next();
+});
 
 app.use(express.static("public", {
   setHeaders: (res, filePath) => {
@@ -134,7 +146,18 @@ async function main() {
     });
   });
 
-  app.listen(PORT, "0.0.0.0", () => {
+  app.get("/health", async (_req: Request, res: Response) => {
+    try {
+      const client = await pool.connect();
+      await client.query('SELECT 1');
+      client.release();
+      res.json({ status: "ok", uptime: process.uptime(), timestamp: new Date().toISOString() });
+    } catch (err: any) {
+      res.status(503).json({ status: "unhealthy", error: err.message });
+    }
+  });
+
+  const server = app.listen(PORT, "0.0.0.0", () => {
     console.log(`
 ╔════════════════════════════════════════════════════════════╗
 ║       SelfClaw Agent Verification Registry                ║
@@ -160,6 +183,28 @@ async function main() {
       console.log('[hosted-agents] Agent worker started');
     }, 8000);
   });
+
+  server.keepAliveTimeout = 65000;
+  server.headersTimeout = 66000;
+
+  function gracefulShutdown(signal: string) {
+    console.log(`[server] ${signal} received, shutting down gracefully...`);
+    server.close(async () => {
+      console.log('[server] HTTP server closed');
+      try {
+        await pool.end();
+        console.log('[server] Database pool closed');
+      } catch (e) {}
+      process.exit(0);
+    });
+    setTimeout(() => {
+      console.error('[server] Forced shutdown after timeout');
+      process.exit(1);
+    }, 10000);
+  }
+
+  process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+  process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 }
 
 main().catch(console.error);

@@ -307,15 +307,15 @@
       </nav>
     </header>
 
-    <section class="hero">
-      <div class="hero-label">Agent Dashboard</div>
-      <h1>My Agents</h1>
-      <p class="hero-sub">Manage your verified agents, track economics, and fund operations.</p>
+    <section class="hero" id="hero-section">
+      <div class="hero-label" id="hero-label">Agent Dashboard</div>
+      <h1 id="hero-title">My Agents</h1>
+      <p class="hero-sub" id="hero-sub">Manage your verified agents, track economics, and fund operations.</p>
     </section>
 
     <div id="auth-gate" class="auth-gate" style="display:none;">
-      <h2>Login Required</h2>
-      <p>Scan the QR code with the Self app to access your agent dashboard.</p>
+      <h2 id="auth-gate-title">Login Required</h2>
+      <p id="auth-gate-desc">Scan the QR code with the Self app to access your agent dashboard.</p>
       <button class="auth-gate-btn" id="login-trigger">Login with Self</button>
     </div>
 
@@ -381,6 +381,32 @@
 
     var _dashboardData = null;
 
+    var _isMiniPayContext = false;
+
+    function detectMiniPayContext() {
+      if (window.selfclawAuth && window.selfclawAuth.isMiniPay && window.selfclawAuth.isMiniPay()) return true;
+      if (window.ethereum && (window.ethereum.isMiniPay || window.ethereum.isMinipay)) return true;
+      if (navigator.userAgent && navigator.userAgent.indexOf('MiniPay') !== -1) return true;
+      return false;
+    }
+
+    function applyMiniPayUI() {
+      _isMiniPayContext = true;
+      var heroLabel = document.getElementById('hero-label');
+      var heroTitle = document.getElementById('hero-title');
+      var heroSub = document.getElementById('hero-sub');
+      if (heroLabel) heroLabel.textContent = 'Miniclaw Dashboard';
+      if (heroTitle) heroTitle.textContent = 'My Miniclaws';
+      if (heroSub) heroSub.textContent = 'Create and manage your personal AI assistants.';
+
+      var gateTitle = document.getElementById('auth-gate-title');
+      var gateDesc = document.getElementById('auth-gate-desc');
+      var loginBtn = document.getElementById('login-trigger');
+      if (gateTitle) gateTitle.textContent = 'Connect Wallet';
+      if (gateDesc) gateDesc.textContent = 'Connect your MiniPay wallet to manage your miniclaws.';
+      if (loginBtn) loginBtn.textContent = 'Connect MiniPay';
+    }
+
     window.onAuthLogin = function(user) { loadDashboard(user); };
     window.onAuthLogout = function() { showAuthGate(); };
 
@@ -389,6 +415,8 @@
       document.getElementById('dashboard-loading').style.display = 'none';
       document.getElementById('dashboard-content').style.display = 'none';
       document.getElementById('empty-state').style.display = 'none';
+      document.getElementById('hosted-section').style.display = 'none';
+      if (detectMiniPayContext()) applyMiniPayUI();
     }
 
     function showLoading() {
@@ -400,6 +428,7 @@
 
     async function loadDashboard(user) {
       if (!user || !user.humanId) { showAuthGate(); return; }
+      if (detectMiniPayContext()) applyMiniPayUI();
       showLoading();
 
       try {
@@ -416,7 +445,15 @@
 
         if (res.status === 404 && hostedAgents.length === 0) {
           document.getElementById('dashboard-loading').style.display = 'none';
-          document.getElementById('empty-state').style.display = '';
+          var emptyEl = document.getElementById('empty-state');
+          if (_isMiniPayContext) {
+            emptyEl.innerHTML = '<h3>No Miniclaws Yet</h3>' +
+              '<p>Create your first personal AI assistant — no technical setup needed.</p>' +
+              '<div style="display:flex;gap:0.75rem;justify-content:center;flex-wrap:wrap;">' +
+              '<a href="/create-assistant" class="action-btn primary" style="background:var(--green-verify);border-color:var(--green-verify);">Create Miniclaw</a>' +
+              '</div>';
+          }
+          emptyEl.style.display = '';
           return;
         }
 
@@ -429,6 +466,9 @@
           if (hostedAgents.length > 0) {
             document.getElementById('hosted-section').style.display = '';
           }
+          if (_isMiniPayContext) {
+            document.getElementById('dashboard-content').style.display = 'none';
+          }
           return;
         }
 
@@ -436,6 +476,14 @@
         var data = await res.json();
         _dashboardData = data;
         renderDashboard(data);
+
+        if (_isMiniPayContext && hostedAgents.length > 0) {
+          var hostedEl = document.getElementById('hosted-section');
+          var dashContent = document.getElementById('dashboard-content');
+          if (hostedEl && dashContent && hostedEl.parentNode) {
+            hostedEl.parentNode.insertBefore(hostedEl, dashContent);
+          }
+        }
       } catch (err) {
         document.getElementById('dashboard-loading').style.display = 'none';
         document.getElementById('dashboard-content').innerHTML = '<div class="empty-state"><h3>Error</h3><p>' + esc(err.message) + '</p></div>';

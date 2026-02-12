@@ -49,15 +49,21 @@
       </nav>
     </header>
 
-    <section class="hero">
-      <div class="hero-label">AGENT VERIFICATION REGISTRY</div>
-      <h1>The trust layer for AI agent economies.</h1>
-      <p class="hero-sub">Sybil-resistant identity via Self.xyz zero-knowledge proofs. Verified agents unlock self-custody wallets, token ownership, and sponsored liquidity — full economic autonomy, fully permissionless.</p>
-      <div class="hero-cta">
+    <section class="hero" id="hero-section">
+      <div class="hero-label" id="hero-label">AGENT VERIFICATION REGISTRY</div>
+      <h1 id="hero-title">The trust layer for AI agent economies.</h1>
+      <p class="hero-sub" id="hero-sub">Sybil-resistant identity via Self.xyz zero-knowledge proofs. Verified agents unlock self-custody wallets, token ownership, and sponsored liquidity — full economic autonomy, fully permissionless.</p>
+      <div class="hero-cta" id="hero-cta">
         <a href="/verify" class="btn btn-accent">Verify an Agent</a>
         <a href="/economy" class="btn btn-outline">Agent Economy</a>
       </div>
     </section>
+
+    <div id="minipay-cta" style="display:none;border:2px solid var(--green-verify);padding:1.5rem;margin-bottom:2rem;text-align:center;">
+      <div style="font-family:var(--font-mono);font-size:0.7rem;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;color:var(--green-verify);margin-bottom:0.5rem;">MiniPay Detected</div>
+      <p style="font-size:0.95rem;color:var(--text);margin-bottom:1rem;line-height:1.5;">Create your own personal AI assistant in seconds — no technical setup required.</p>
+      <a href="/create-assistant" class="btn btn-accent" style="background:var(--green-verify);border-color:var(--green-verify);">Create a Miniclaw</a>
+    </div>
 
     <section class="section">
       <div class="section-label">THE AGENT JOURNEY</div>
@@ -201,5 +207,32 @@ if (verified) {
   <script src="/auth.js"></script>
   <script src="/nav-gate.js"></script>
   <script src="/nav-toggle.js"></script>
+  <script>
+    (function() {
+      function isMiniPayEnv() {
+        if (window.ethereum && (window.ethereum.isMiniPay || window.ethereum.isMinipay)) return true;
+        if (navigator.userAgent && navigator.userAgent.indexOf('MiniPay') !== -1) return true;
+        return false;
+      }
+      function applyMiniPay() {
+        if (!isMiniPayEnv()) return;
+        var label = document.getElementById('hero-label');
+        var title = document.getElementById('hero-title');
+        var sub = document.getElementById('hero-sub');
+        var cta = document.getElementById('hero-cta');
+        var mpCta = document.getElementById('minipay-cta');
+        if (label) label.textContent = 'PERSONAL AI ASSISTANTS';
+        if (title) title.textContent = 'Your own AI, powered by SelfClaw.';
+        if (sub) sub.textContent = 'Create a miniclaw — a lightweight personal AI assistant with its own wallet, token, and skills. No technical setup required.';
+        if (cta) cta.innerHTML = '<a href="/create-assistant" class="btn btn-accent" style="background:var(--green-verify);border-color:var(--green-verify);">Create a Miniclaw</a><a href="/my-agents" class="btn btn-outline">My Miniclaws</a>';
+        if (mpCta) mpCta.style.display = 'none';
+      }
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function() { setTimeout(applyMiniPay, 200); });
+      } else {
+        setTimeout(applyMiniPay, 200);
+      }
+    })();
+  </script>
 </body>
 </html>

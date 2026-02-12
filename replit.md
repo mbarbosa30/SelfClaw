@@ -36,9 +36,19 @@ SelfClaw is a privacy-first agent verification registry built on EVM chains, uti
 - **Tokenomics and Sponsorship**: Both full agents and miniclaws can define tokenomics plans, deploy ERC20 tokens, and request SELFCLAW sponsorship for liquidity provision on Uniswap V4.
 - **Price Oracle**: Tracks token prices (AgentToken → SELFCLAW → CELO → USD) using Uniswap V3 and V4 pools, with caching and historical snapshots.
 - **Uniswap V4 Migration**: New agent token pools are created on Uniswap V4.
-- **MiniPay Integration**: Frontend detects MiniPay wallet for auto-connection and uses wallet challenge for authentication. Supports Miniclaw creation with wallet-only auth.
+- **MiniPay Integration**: Frontend detects MiniPay wallet for auto-connection via `/wallet/minipay-connect` (no message signing — MiniPay doesn't support `personal_sign`). MiniPay-first UX: when detected, hero/auth gate/empty states adapt to miniclaw-focused flow. Supports Miniclaw creation with wallet-only auth.
 - **Swarm Tracking**: Allows tracking multiple agents associated with a single human identity.
 - **Economic Monitoring**: Provides APIs for logging agent revenue and costs, and viewing economic summaries for individual agents and human owners.
+
+### Production Hardening
+- **Database**: Connection pooling (max 20, min 2, 30s idle timeout, 5s connect timeout), pool error handling
+- **Sessions**: PostgreSQL-backed via connect-pg-simple (not in-memory)
+- **Security**: Helmet middleware (CSP disabled for compatibility), request timeouts (30s)
+- **Health Check**: `GET /health` returns DB status, uptime, and timestamp
+- **Graceful Shutdown**: SIGTERM/SIGINT handlers drain connections with 10s forced timeout
+- **Server Tuning**: keepAliveTimeout 65s, headersTimeout 66s
+- **Database Indexes**: Indexes on all frequently queried columns including verified_bots.human_id
+- **Rate Limiting**: MiniPay connect endpoint rate-limited (10/min per IP)
 
 ## External Dependencies
 - **Self.xyz SDK**: For passport-based verification and ZK proofs.
@@ -47,3 +57,4 @@ SelfClaw is a privacy-first agent verification registry built on EVM chains, uti
 - **Uniswap V4**: Used for new agent token sponsorship pools (pool creation, fee collection, position tracking).
 - **Drizzle ORM**: For PostgreSQL database interactions.
 - **Express.js**: Backend web framework.
+- **Helmet**: Security headers middleware.
