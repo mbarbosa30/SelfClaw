@@ -347,6 +347,31 @@
       el.style.background = 'var(--accent)';
     }
 
+    async function tryReconnect() {
+      if (!window.ethereum) return false;
+      try {
+        var accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+        var address = accounts[0];
+        if (!address) return false;
+        var tokenRes = await fetch('/api/auth/self/wallet/minipay-token', {
+          method: 'POST', credentials: 'include',
+          headers: { 'Content-Type': 'application/json' }, body: '{}'
+        });
+        var tokenData = await tokenRes.json();
+        if (!tokenData.token) return false;
+        var res = await fetch('/api/auth/self/wallet/minipay-connect', {
+          method: 'POST', credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ address: address, token: tokenData.token })
+        });
+        var data = await res.json();
+        return data.success === true;
+      } catch (e) {
+        console.log('[chat] reconnect failed:', e.message);
+        return false;
+      }
+    }
+
     function esc(s) {
       if (!s) return '';
       var d = document.createElement('div');
@@ -508,11 +533,23 @@
 
         if (!res.ok) {
           if (res.status === 401) {
-            showAuthLost();
-            return;
+            var reconnected = await tryReconnect();
+            if (reconnected) {
+              res = await fetch('/api/selfclaw/v1/hosted-agents/' + agentId + '/chat', {
+                method: 'POST', credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: text, conversationId: conversationId }),
+              });
+            }
+            if (!res.ok) {
+              if (res.status === 401) { showAuthLost(); return; }
+              var err2 = await res.json().catch(function() { return { error: 'Chat failed' }; });
+              throw new Error(err2.error || 'Chat failed');
+            }
+          } else {
+            var err = await res.json().catch(function() { return { error: 'Chat failed' }; });
+            throw new Error(err.error || 'Chat failed');
           }
-          var err = await res.json().catch(function() { return { error: 'Chat failed' }; });
-          throw new Error(err.error || 'Chat failed');
         }
 
         typingEl.style.display = 'none';
@@ -583,8 +620,17 @@
       try {
         var res = await fetch('/api/selfclaw/v1/hosted-agents/' + agentId + '/messages', { credentials: 'include' });
         if (res.status === 401) {
-          window.location.href = '/miniapp';
-          return;
+          var reconnected = await tryReconnect();
+          if (reconnected) {
+            res = await fetch('/api/selfclaw/v1/hosted-agents/' + agentId + '/messages', { credentials: 'include' });
+            if (res.status === 401) {
+              window.location.href = '/miniapp';
+              return;
+            }
+          } else {
+            window.location.href = '/miniapp';
+            return;
+          }
         }
         if (!res.ok) return;
         var data = await res.json();
