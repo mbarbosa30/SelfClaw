@@ -154,6 +154,163 @@ async function smartAdvisorHandler(agent: HostedAgent, ctx: SkillContext): Promi
   }
 }
 
+async function researchAssistantHandler(agent: HostedAgent, ctx: SkillContext): Promise<SkillResult> {
+  try {
+    const interests = (agent.interests as string[]) || [];
+    const topics = (agent.topicsToWatch as string[]) || [];
+    const context = agent.personalContext || "";
+
+    if (interests.length === 0 && topics.length === 0) {
+      return { success: true, summary: "No interests or topics configured. Add some in your assistant settings to get personalized research.", data: {} };
+    }
+
+    const bots = await ctx.db.select().from(verifiedBots).where(eq(verifiedBots.humanId, agent.humanId)).limit(5);
+    const pools = await ctx.db.select().from(trackedPools).where(eq(trackedPools.humanId, agent.humanId)).limit(5);
+
+    const prompt = `You are a research assistant for an agent owner on the SelfClaw platform.
+
+User interests: ${interests.join(", ")}
+Topics to watch: ${topics.join(", ")}
+${context ? `Additional context: ${context}` : ""}
+
+Current portfolio: ${bots.length} verified agent(s), ${pools.length} token pool(s).
+${pools.length > 0 ? `Token pools: ${pools.map(p => p.tokenSymbol).join(", ")}` : ""}
+
+Based on the user's interests and current portfolio, provide:
+1. 2-3 key developments or trends they should know about
+2. 1 actionable insight or opportunity
+3. Any risks to be aware of
+
+Keep response under 250 words. Be specific and actionable, not generic.`;
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: "You are a concise crypto/AI research analyst. Focus on actionable, specific insights." },
+        { role: "user", content: prompt },
+      ],
+      max_tokens: 400,
+    });
+
+    const research = completion.choices[0]?.message?.content || "No research generated.";
+    const tokensUsed = completion.usage?.total_tokens || 0;
+
+    return {
+      success: true,
+      summary: research,
+      data: { research, topics: [...interests, ...topics] },
+      tokensUsed,
+    };
+  } catch (e: any) {
+    return { success: false, summary: `Research assistant error: ${e.message}` };
+  }
+}
+
+async function contentHelperHandler(agent: HostedAgent, ctx: SkillContext): Promise<SkillResult> {
+  try {
+    const interests = (agent.interests as string[]) || [];
+    const socialHandles = (agent.socialHandles as Record<string, string>) || {};
+    const context = agent.personalContext || "";
+
+    const bots = await ctx.db.select().from(verifiedBots).where(eq(verifiedBots.humanId, agent.humanId)).limit(5);
+    const recentRevenue = await ctx.db.select().from(revenueEvents)
+      .where(and(eq(revenueEvents.humanId, agent.humanId), sql`${revenueEvents.createdAt} >= ${new Date(ctx.now.getTime() - 7 * 24 * 60 * 60 * 1000)}`))
+      .limit(10);
+    const pools = await ctx.db.select().from(trackedPools).where(eq(trackedPools.humanId, agent.humanId)).limit(3);
+
+    const prompt = `You are a social media content creator for an agent owner on SelfClaw, a platform for verified AI agents.
+
+User interests: ${interests.join(", ") || "AI agents, crypto"}
+Agent portfolio: ${bots.length} verified agent(s)
+${pools.length > 0 ? `Tokens: ${pools.map(p => `${p.tokenSymbol} (price: ${p.currentPriceCelo || 'N/A'} CELO)`).join(", ")}` : ""}
+Recent revenue events: ${recentRevenue.length}
+${context ? `User context: ${context}` : ""}
+${socialHandles.twitter ? `Twitter: @${socialHandles.twitter}` : ""}
+
+Generate 2-3 short social media post drafts the user could share. Include:
+- One about their agent activity/progress
+- One thought leadership post about AI agents or their interests
+- One engagement post (question/poll idea)
+
+Keep each draft under 280 characters (Twitter-length). Use a natural, not overly promotional tone.`;
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: "You create concise, engaging social media posts. No hashtag spam. Authentic voice." },
+        { role: "user", content: prompt },
+      ],
+      max_tokens: 400,
+    });
+
+    const content = completion.choices[0]?.message?.content || "No content generated.";
+    const tokensUsed = completion.usage?.total_tokens || 0;
+
+    return {
+      success: true,
+      summary: content,
+      data: { drafts: content, agentCount: bots.length },
+      tokensUsed,
+    };
+  } catch (e: any) {
+    return { success: false, summary: `Content helper error: ${e.message}` };
+  }
+}
+
+async function newsRadarHandler(agent: HostedAgent, ctx: SkillContext): Promise<SkillResult> {
+  try {
+    const interests = (agent.interests as string[]) || [];
+    const topics = (agent.topicsToWatch as string[]) || [];
+    const context = agent.personalContext || "";
+
+    if (interests.length === 0 && topics.length === 0) {
+      return { success: true, summary: "No interests or topics configured. Add keywords in your assistant settings to receive news digests.", data: {} };
+    }
+
+    const pools = await ctx.db.select().from(trackedPools).where(eq(trackedPools.humanId, agent.humanId)).limit(5);
+    const tokenSymbols = pools.map(p => p.tokenSymbol).filter(Boolean);
+
+    const allTopics = [...new Set([...interests, ...topics, ...tokenSymbols, "SelfClaw", "AI agents"])];
+
+    const prompt = `You are a news digest generator for an agent owner. Generate a brief daily news digest.
+
+Topics to cover: ${allTopics.join(", ")}
+${context ? `User context: ${context}` : ""}
+
+Create a concise news digest with:
+- 3-4 headline items related to the user's topics (crypto, AI, specific tokens, etc.)
+- Each item: one-line headline + one-line summary
+- Flag any items that might require action (price movements, regulatory changes, partnership announcements)
+- End with a "Watch This" section with 1 emerging trend
+
+Use today's date context: ${ctx.now.toISOString().split('T')[0]}. 
+Note: You don't have access to real-time news feeds, so generate plausible, educational summaries based on known trends in these spaces. Mark as "AI-generated digest" to be transparent.
+
+Keep total response under 300 words.`;
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: "You create concise, informative news digests. Be transparent that this is AI-generated analysis, not live news." },
+        { role: "user", content: prompt },
+      ],
+      max_tokens: 500,
+    });
+
+    const digest = completion.choices[0]?.message?.content || "No news digest generated.";
+    const tokensUsed = completion.usage?.total_tokens || 0;
+
+    return {
+      success: true,
+      summary: digest,
+      data: { digest, topics: allTopics },
+      tokensUsed,
+    };
+  } catch (e: any) {
+    return { success: false, summary: `News radar error: ${e.message}` };
+  }
+}
+
 const AVAILABLE_SKILLS: Skill[] = [
   {
     id: "wallet-monitor", name: "Wallet Monitor",
@@ -184,6 +341,24 @@ const AVAILABLE_SKILLS: Skill[] = [
     description: "LLM-powered analysis of agent state with actionable suggestions",
     icon: "🧠", category: "autonomous", scheduleInterval: 6 * 60 * 60 * 1000,
     requiresWallet: false, handler: smartAdvisorHandler,
+  },
+  {
+    id: "research-assistant", name: "Research Assistant",
+    description: "Personalized research based on your interests and topics — trends, opportunities, risks",
+    icon: "🔬", category: "social", scheduleInterval: 4 * 60 * 60 * 1000,
+    requiresWallet: false, handler: researchAssistantHandler,
+  },
+  {
+    id: "content-helper", name: "Content Helper",
+    description: "Draft social media posts about your agents, tokens, and interests",
+    icon: "✍️", category: "social", scheduleInterval: 12 * 60 * 60 * 1000,
+    requiresWallet: false, handler: contentHelperHandler,
+  },
+  {
+    id: "news-radar", name: "News Radar",
+    description: "Daily digest of news and trends related to your topics and tokens",
+    icon: "📡", category: "social", scheduleInterval: 24 * 60 * 60 * 1000,
+    requiresWallet: false, handler: newsRadarHandler,
   },
 ];
 
@@ -234,7 +409,7 @@ hostedAgentsRouter.post("/v1/hosted-agents", async (req: Request, res: Response)
     const humanId = requireAuth(req, res);
     if (!humanId) return;
 
-    const { name, emoji, description } = req.body;
+    const { name, emoji, description, interests, topicsToWatch, personalContext, socialHandles } = req.body;
     if (!name || typeof name !== "string" || name.length < 2 || name.length > 50) {
       return res.status(400).json({ error: "Name is required (2-50 characters)" });
     }
@@ -268,6 +443,10 @@ hostedAgentsRouter.post("/v1/hosted-agents", async (req: Request, res: Response)
       status: "active",
       enabledSkills: [],
       skillConfigs: {},
+      interests: Array.isArray(interests) ? interests.slice(0, 20) : [],
+      topicsToWatch: Array.isArray(topicsToWatch) ? topicsToWatch.slice(0, 20) : [],
+      personalContext: typeof personalContext === 'string' ? personalContext.slice(0, 1000) : null,
+      socialHandles: (socialHandles && typeof socialHandles === 'object') ? socialHandles : {},
     }).returning();
 
     const walletKeypair = crypto.generateKeyPairSync("ed25519");
@@ -379,7 +558,7 @@ hostedAgentsRouter.patch("/v1/hosted-agents/:id", async (req: Request, res: Resp
     const agent = await requireAgentOwnership(req, res);
     if (!agent) return;
 
-    const { name, emoji, description, enabledSkills, autoApproveThreshold, status } = req.body;
+    const { name, emoji, description, enabledSkills, autoApproveThreshold, status, interests, topicsToWatch, socialHandles, personalContext } = req.body;
     const updates: any = { updatedAt: new Date() };
 
     if (name !== undefined) updates.name = name;
@@ -391,6 +570,10 @@ hostedAgentsRouter.patch("/v1/hosted-agents/:id", async (req: Request, res: Resp
       updates.enabledSkills = validSkills;
     }
     if (autoApproveThreshold !== undefined) updates.autoApproveThreshold = String(autoApproveThreshold);
+    if (interests !== undefined && Array.isArray(interests)) updates.interests = interests.slice(0, 20);
+    if (topicsToWatch !== undefined && Array.isArray(topicsToWatch)) updates.topicsToWatch = topicsToWatch.slice(0, 20);
+    if (socialHandles !== undefined && typeof socialHandles === 'object') updates.socialHandles = socialHandles;
+    if (personalContext !== undefined) updates.personalContext = typeof personalContext === 'string' ? personalContext.slice(0, 1000) : null;
 
     const [updated] = await db.update(hostedAgents).set(updates)
       .where(sql`${hostedAgents.id} = ${agent.id}`).returning();

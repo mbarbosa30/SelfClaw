@@ -8,6 +8,7 @@ import adminRouter, { runAutoClaimPendingBridges } from "./admin.js";
 import hostingerRouter from "./hostinger-routes.js";
 import sandboxRouter, { initOpenClawGateway } from "./sandbox-agent.js";
 import { hostedAgentsRouter, startAgentWorker } from "./hosted-agents.js";
+import { skillMarketRouter } from "./skill-market.js";
 import { erc8004Service } from "../lib/erc8004.js";
 
 process.on('unhandledRejection', (reason: any) => {
@@ -67,6 +68,7 @@ app.get("/explorer", (_req: Request, res: Response) => sendHtml(res, "explorer.h
 app.get("/create-agent", (_req: Request, res: Response) => sendHtml(res, "create-agent.html"));
 app.get("/my-agents", (_req: Request, res: Response) => sendHtml(res, "my-agents.html"));
 app.get("/create-assistant", (_req: Request, res: Response) => sendHtml(res, "create-assistant.html"));
+app.get("/skill-market", (_req: Request, res: Response) => sendHtml(res, "skill-market.html"));
 app.get("/guide", (_req: Request, res: Response) => sendHtml(res, "guide.html"));
 
 app.get("/how-it-works", (_req: Request, res: Response) => res.redirect(301, "/"));
@@ -91,6 +93,7 @@ async function main() {
   app.use("/api/admin", adminRouter);
   app.use("/api/admin/sandbox", sandboxRouter);
   app.use("/api/selfclaw", hostedAgentsRouter);
+  app.use("/api/selfclaw", skillMarketRouter);
   app.use("/api/hostinger", hostingerRouter);
 
   app.get("/.well-known/agent-registration.json", async (req: Request, res: Response) => {

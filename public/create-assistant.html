@@ -309,8 +309,9 @@
     <div id="wizard-container" style="display:none;">
       <div class="wizard-steps">
         <div class="wizard-step active" id="ws-1"><span class="wizard-step-num">1</span>Identity</div>
-        <div class="wizard-step" id="ws-2"><span class="wizard-step-num">2</span>Skills</div>
-        <div class="wizard-step" id="ws-3"><span class="wizard-step-num">3</span>Done</div>
+        <div class="wizard-step" id="ws-2"><span class="wizard-step-num">2</span>Interests</div>
+        <div class="wizard-step" id="ws-3"><span class="wizard-step-num">3</span>Skills</div>
+        <div class="wizard-step" id="ws-4"><span class="wizard-step-num">4</span>Done</div>
       </div>
 
       <div class="wizard-panel active" id="panel-identity">
@@ -336,12 +337,47 @@
         </div>
       </div>
 
+      <div class="wizard-panel" id="panel-interests">
+        <div class="skills-heading">Tell your assistant about you</div>
+        <div style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:1.5rem;">These help your assistant personalize research, news, and content for you. All optional.</div>
+
+        <div class="assistant-form">
+          <div class="form-group">
+            <label for="interests-input">Interests <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text-muted);">(comma-separated)</span></label>
+            <input type="text" id="interests-input" class="input" placeholder="DeFi, AI agents, Celo, NFTs, DAOs...">
+          </div>
+
+          <div class="form-group">
+            <label for="topics-input">Topics to Watch <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text-muted);">(keywords for news)</span></label>
+            <input type="text" id="topics-input" class="input" placeholder="Uniswap V4, Self.xyz, agent economy...">
+          </div>
+
+          <div class="form-group">
+            <label for="context-input">Personal Context <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text-muted);">(tell your assistant about your goals)</span></label>
+            <textarea id="context-input" class="input" placeholder="I'm building an agent swarm for DeFi trading..." maxlength="1000" style="min-height:80px;"></textarea>
+          </div>
+
+          <div class="form-group">
+            <label>Social Handles <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text-muted);">(for content drafts)</span></label>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;">
+              <input type="text" id="social-twitter" class="input" placeholder="@handle (X/Twitter)">
+              <input type="text" id="social-telegram" class="input" placeholder="@handle (Telegram)">
+            </div>
+          </div>
+
+          <div style="display:flex;gap:0.75rem;">
+            <button class="next-btn" style="background:var(--bg-card);color:var(--text);border:2px solid var(--border-heavy);flex:0;" onclick="setStep(1)">Back</button>
+            <button class="next-btn" id="interests-next-btn" onclick="goToSkillsFromInterests()">Next</button>
+          </div>
+        </div>
+      </div>
+
       <div class="wizard-panel" id="panel-skills">
         <div class="skills-heading">Choose what your assistant can do</div>
         <div id="skills-container">
           <div class="skills-loading">Loading skills...</div>
         </div>
-        <div class="skills-note">You can change these anytime from your dashboard</div>
+        <div class="skills-note">You can change these anytime from your dashboard. <a href="/skill-market" style="color:var(--accent);">Browse the Skill Market</a> for community-made skills.</div>
         <div class="error-msg" id="skills-error"></div>
         <button class="create-btn" id="create-assistant-btn" onclick="createAssistant()">Create Assistant</button>
       </div>
@@ -453,12 +489,16 @@
       }
       errEl.style.display = 'none';
       setStep(2);
+    }
+
+    function goToSkillsFromInterests() {
+      setStep(3);
       loadSkills();
     }
 
     function setStep(step) {
-      var panels = ['panel-identity', 'panel-skills', 'panel-done'];
-      var steps = ['ws-1', 'ws-2', 'ws-3'];
+      var panels = ['panel-identity', 'panel-interests', 'panel-skills', 'panel-done'];
+      var steps = ['ws-1', 'ws-2', 'ws-3', 'ws-4'];
       for (var i = 0; i < panels.length; i++) {
         document.getElementById(panels[i]).classList.remove('active');
         document.getElementById(steps[i]).classList.remove('active', 'done');
@@ -537,6 +577,18 @@
         if (enabledSkills[key]) skills.push(key);
       }
 
+      var interestsRaw = document.getElementById('interests-input').value.trim();
+      var topicsRaw = document.getElementById('topics-input').value.trim();
+      var contextVal = document.getElementById('context-input').value.trim();
+      var twitterVal = document.getElementById('social-twitter').value.trim().replace(/^@/, '');
+      var telegramVal = document.getElementById('social-telegram').value.trim().replace(/^@/, '');
+
+      var interestsArr = interestsRaw ? interestsRaw.split(',').map(function(s) { return s.trim(); }).filter(Boolean) : [];
+      var topicsArr = topicsRaw ? topicsRaw.split(',').map(function(s) { return s.trim(); }).filter(Boolean) : [];
+      var socialObj = {};
+      if (twitterVal) socialObj.twitter = twitterVal;
+      if (telegramVal) socialObj.telegram = telegramVal;
+
       try {
         var res = await fetch('/api/selfclaw/v1/hosted-agents', {
           method: 'POST',
@@ -545,7 +597,11 @@
             name: name,
             emoji: selectedEmoji,
             description: desc,
-            enabledSkills: skills
+            enabledSkills: skills,
+            interests: interestsArr,
+            topicsToWatch: topicsArr,
+            personalContext: contextVal || null,
+            socialHandles: socialObj
           })
         });
         if (!res.ok) {
@@ -563,7 +619,7 @@
     }
 
     function showDone() {
-      setStep(3);
+      setStep(4);
       document.getElementById('done-name').textContent = createdAgent.name || '';
       document.getElementById('done-emoji').textContent = createdAgent.emoji || selectedEmoji || '';
 

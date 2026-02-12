@@ -35,6 +35,8 @@ server/                 # Backend services and API
   index.ts              # Express server entry point
   selfclaw.ts           # Core verification API
   self-auth.ts          # Self.xyz authentication
+  hosted-agents.ts      # Hosted mini agents system (skills, worker, CRUD)
+  skill-market.ts       # Skill marketplace API (publish, browse, install)
 lib/                    # Utility libraries and blockchain interactions
   constants.ts          # Contract bytecode constants
   erc8004.ts            # ERC-8004 on-chain identity
@@ -60,6 +62,8 @@ public/                 # Frontend assets
   dashboard.html        # Network stats dashboard
   my-agents.html        # Human's agent dashboard with economics
   create-agent.html     # One-click agent creation wizard
+  create-assistant.html # Hosted assistant creation wizard (4-step: Identity → Interests → Skills → Done)
+  skill-market.html     # Skill marketplace (browse, search, install, publish)
   admin.html            # Admin dashboard
   app.js                # Shared frontend JS
   auth.js               # Shared login/logout (Self.xyz QR modal)
@@ -68,7 +72,7 @@ public/                 # Frontend assets
 ```
 
 ### Routes & Redirects
-- Active routes: /, /verify, /create-agent, /economy, /developers, /guide, /whitepaper, /manifesto, /dashboard, /registry, /agents, /agent/:name, /human/:humanId, /my-agents, /admin, /explorer
+- Active routes: /, /verify, /create-agent, /create-assistant, /skill-market, /economy, /developers, /guide, /whitepaper, /manifesto, /dashboard, /registry, /agents, /agent/:name, /human/:humanId, /my-agents, /admin, /explorer
 - Redirects: /token -> /economy, /how-it-works -> /, /pricing -> /, /technology -> /, /vision -> /, /docs -> /developers
 
 ### Key API Endpoints
@@ -101,6 +105,17 @@ public/                 # Frontend assets
 - `POST /api/selfclaw/v1/my-agents/{publicKey}/deploy-token` — Dashboard: get unsigned token deploy tx (session auth).
 - `POST /api/selfclaw/v1/my-agents/{publicKey}/register-token` — Dashboard: register deployed token (session auth).
 - `POST /api/selfclaw/v1/my-agents/{publicKey}/request-sponsorship` — Dashboard: request sponsorship + auto pool (session auth).
+
+### Hosted Agents & Skill Market (Feb 2026)
+- **Hosted agents (mini agents)**: Lightweight AI assistants running on SelfClaw infrastructure. Max 3 per human. Ed25519 keypair generated on creation.
+- **Profile fields**: `interests` (array), `topicsToWatch` (array), `socialHandles` (object), `personalContext` (text) — used by personalized skills.
+- **Built-in skills** (8 total): wallet-monitor, economics-tracker, price-watcher, reputation-monitor, smart-advisor, research-assistant, content-helper, news-radar.
+- **Personalized skills**: research-assistant, content-helper, news-radar use the agent's interests/topics/context for LLM-powered personalized outputs.
+- **Skill Market**: Community marketplace where users can publish, browse, install, and rate skills. Skills have a `handlerPrompt` (LLM prompt template) and can be free or priced in SELFCLAW tokens.
+- **Database tables**: `hosted_agents`, `agent_task_queue`, `marketplace_skills`, `skill_installs`.
+- **Agent worker**: 60s interval background worker with jitter, quota tracking (5000 LLM tokens/day, 100 API calls/day).
+- **Skill Market API**: `/v1/skill-market` (browse), `/v1/skill-market/:slug` (detail), POST to publish, install, rate skills.
+- **Frontend pages**: `/create-assistant` (4-step wizard), `/skill-market` (marketplace catalog), hosted agents section in `/my-agents`.
 
 ### Wallet Architecture (Feb 2026)
 - **Per-agent wallets**: Each agent has its own wallet row in `agent_wallets`, keyed by `publicKey` (unique). A human with multiple agents can have multiple wallets.

@@ -294,11 +294,16 @@ export const hostedAgents = pgTable("hosted_agents", {
   status: varchar("status").default("active"),
   enabledSkills: jsonb("enabled_skills").default([]),
   skillConfigs: jsonb("skill_configs").default({}),
+  interests: jsonb("interests").default([]),
+  topicsToWatch: jsonb("topics_to_watch").default([]),
+  socialHandles: jsonb("social_handles").default({}),
+  personalContext: text("personal_context"),
   autoApproveThreshold: decimal("auto_approve_threshold", { precision: 18, scale: 6 }).default("0"),
   llmTokensUsedToday: integer("llm_tokens_used_today").default(0),
   llmTokensLimit: integer("llm_tokens_limit").default(5000),
   apiCallsToday: integer("api_calls_today").default(0),
   apiCallsLimit: integer("api_calls_limit").default(100),
+  installedMarketSkills: jsonb("installed_market_skills").default([]),
   lastActiveAt: timestamp("last_active_at"),
   lastResetAt: timestamp("last_reset_at").defaultNow(),
   createdAt: timestamp("created_at").defaultNow(),
@@ -336,6 +341,58 @@ export const agentTaskQueue = pgTable("agent_task_queue", {
 
 export type AgentTask = typeof agentTaskQueue.$inferSelect;
 export type InsertAgentTask = typeof agentTaskQueue.$inferInsert;
+
+export const marketplaceSkills = pgTable("marketplace_skills", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  creatorHumanId: varchar("creator_human_id").notNull(),
+  creatorAgentId: varchar("creator_agent_id"),
+  name: varchar("name").notNull(),
+  slug: varchar("slug").notNull().unique(),
+  description: text("description").notNull(),
+  longDescription: text("long_description"),
+  icon: varchar("icon").default("🔧"),
+  category: varchar("category").notNull().default("utility"),
+  tags: jsonb("tags").default([]),
+  priceSelfclaw: decimal("price_selfclaw", { precision: 18, scale: 6 }).default("0"),
+  isFree: boolean("is_free").default(true),
+  scheduleInterval: integer("schedule_interval").default(3600000),
+  handlerPrompt: text("handler_prompt").notNull(),
+  inputSchema: jsonb("input_schema").default({}),
+  outputFormat: varchar("output_format").default("text"),
+  installCount: integer("install_count").default(0),
+  rating: decimal("rating", { precision: 3, scale: 2 }).default("0"),
+  ratingCount: integer("rating_count").default(0),
+  status: varchar("status").default("active"),
+  version: varchar("version").default("1.0.0"),
+  revenueEarned: decimal("revenue_earned", { precision: 18, scale: 6 }).default("0"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_market_skills_creator").on(table.creatorHumanId),
+  index("idx_market_skills_category").on(table.category),
+  index("idx_market_skills_slug").on(table.slug),
+  index("idx_market_skills_status").on(table.status),
+]);
+
+export type MarketplaceSkill = typeof marketplaceSkills.$inferSelect;
+export type InsertMarketplaceSkill = typeof marketplaceSkills.$inferInsert;
+
+export const skillInstalls = pgTable("skill_installs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  marketSkillId: varchar("market_skill_id").notNull(),
+  installerHumanId: varchar("installer_human_id").notNull(),
+  hostedAgentId: varchar("hosted_agent_id").notNull(),
+  pricePaid: decimal("price_paid", { precision: 18, scale: 6 }).default("0"),
+  rating: integer("rating"),
+  review: text("review"),
+  installedAt: timestamp("installed_at").defaultNow(),
+}, (table) => [
+  index("idx_skill_installs_skill").on(table.marketSkillId),
+  index("idx_skill_installs_agent").on(table.hostedAgentId),
+]);
+
+export type SkillInstall = typeof skillInstalls.$inferSelect;
+export type InsertSkillInstall = typeof skillInstalls.$inferInsert;
 
 export type User = typeof users.$inferSelect;
 export type UpsertUser = typeof users.$inferInsert;

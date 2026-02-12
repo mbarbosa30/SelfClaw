@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Skill Market | SelfClaw</title>
+  <meta name="description" content="Browse, install, and sell skills for your mini agents. Default skills are free — community skills can earn their creators SELFCLAW tokens.">
+  <link rel="canonical" href="https://selfclaw.ai/skill-market">
+
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://selfclaw.ai/skill-market">
+  <meta property="og:title" content="Skill Market | SelfClaw">
+  <meta property="og:description" content="Browse, install, and sell skills for your mini agents. Default skills are free — community skills can earn their creators SELFCLAW tokens.">
+  <meta property="og:image" content="https://selfclaw.ai/og-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="675">
+  <meta property="og:site_name" content="SelfClaw">
+
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:site" content="@mbarrbosa">
+  <meta name="twitter:title" content="Skill Market | SelfClaw">
+  <meta name="twitter:description" content="Browse, install, and sell skills for your mini agents. Default skills are free — community skills can earn their creators SELFCLAW tokens.">
+  <meta name="twitter:image" content="https://selfclaw.ai/og-image.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+  <link rel="icon" type="image/png" href="/favicon.png">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .sm-filter-bar {
+      display: flex;
+      gap: 0.75rem;
+      margin-bottom: var(--space-md);
+      flex-wrap: wrap;
+    }
+    .sm-filter-bar select,
+    .sm-filter-bar input {
+      padding: 0.6rem 0.85rem;
+      border: 2px solid var(--border-heavy);
+      background: var(--bg-card);
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: var(--text);
+      flex: 1;
+      min-width: 140px;
+    }
+    .sm-filter-bar select:focus,
+    .sm-filter-bar input:focus {
+      outline: none;
+      border-color: var(--green-verify);
+    }
+    .sm-filter-bar input::placeholder { color: var(--text-muted); }
+
+    .sm-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: var(--space-sm);
+      margin-bottom: var(--space-lg);
+    }
+
+    .sm-card {
+      border: 2px solid var(--border-heavy);
+      padding: 1.25rem;
+      background: var(--bg-card);
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+    }
+    .sm-card-header {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+    .sm-card-icon {
+      font-size: 1.5rem;
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 2px solid var(--border);
+      background: var(--bg);
+      flex-shrink: 0;
+    }
+    .sm-card-name {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+    .sm-card-creator {
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .sm-card-desc {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+    .sm-card-meta {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      flex-wrap: wrap;
+      font-size: 0.7rem;
+    }
+    .sm-tag {
+      font-family: var(--font-mono);
+      font-size: 0.6rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 0.15rem 0.4rem;
+      border: 1px solid var(--accent);
+      color: var(--accent);
+    }
+    .sm-price {
+      font-family: var(--font-mono);
+      font-weight: 600;
+      color: var(--green-verify);
+    }
+    .sm-price.paid { color: var(--accent); }
+    .sm-installs {
+      font-family: var(--font-mono);
+      color: var(--text-muted);
+    }
+    .sm-rating {
+      color: var(--yellow);
+      font-size: 0.75rem;
+    }
+    .sm-install-btn {
+      padding: 0.5rem 1rem;
+      border: 2px solid var(--border-heavy);
+      background: var(--text);
+      color: var(--bg);
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      cursor: pointer;
+      transition: all 0.15s;
+      align-self: flex-start;
+    }
+    .sm-install-btn:hover {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+    .sm-install-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .sm-login-link {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--accent);
+      text-decoration: underline;
+      align-self: flex-start;
+    }
+
+    .sm-agent-picker {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+      align-self: flex-start;
+      flex-wrap: wrap;
+    }
+    .sm-agent-picker select {
+      padding: 0.4rem 0.6rem;
+      border: 2px solid var(--border-heavy);
+      background: var(--bg-card);
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      color: var(--text);
+    }
+
+    .sm-empty {
+      text-align: center;
+      padding: 3rem 1rem;
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      grid-column: 1 / -1;
+    }
+    .sm-loading {
+      text-align: center;
+      padding: 3rem 1rem;
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      grid-column: 1 / -1;
+    }
+
+    .sm-publish-section {
+      border: 2px solid var(--border-heavy);
+      margin-bottom: var(--space-lg);
+      display: none;
+    }
+    .sm-publish-toggle {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem 1.25rem;
+      background: var(--bg-card);
+      cursor: pointer;
+      border: none;
+      width: 100%;
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text);
+      text-align: left;
+    }
+    .sm-publish-toggle:hover { background: var(--bg); }
+    .sm-publish-toggle-arrow {
+      font-size: 1rem;
+      transition: transform 0.2s;
+    }
+    .sm-publish-toggle-arrow.open { transform: rotate(180deg); }
+    .sm-publish-body {
+      display: none;
+      padding: 1.25rem;
+      border-top: 2px solid var(--border-heavy);
+    }
+    .sm-publish-body.open { display: block; }
+
+    .sm-form .form-group { margin-bottom: 1rem; }
+    .sm-form label {
+      display: block;
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 0.3rem;
+      color: var(--text);
+    }
+    .sm-form .input {
+      width: 100%;
+      padding: 0.6rem 0.85rem;
+      border: 2px solid var(--border-heavy);
+      background: var(--bg-card);
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: var(--text);
+    }
+    .sm-form .input:focus { outline: none; border-color: var(--green-verify); }
+    .sm-form .input::placeholder { color: var(--text-muted); }
+    .sm-form textarea.input { min-height: 80px; resize: vertical; font-family: var(--font-sans); }
+    .sm-form select.input {
+      font-family: var(--font-mono);
+    }
+    .sm-form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+    }
+
+    .sm-submit-btn {
+      width: 100%;
+      padding: 0.85rem;
+      border: none;
+      background: var(--green-verify);
+      color: #fff;
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .sm-submit-btn:hover { background: #1aab4d; }
+    .sm-submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .sm-msg {
+      padding: 0.75rem 1rem;
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      margin-bottom: 1rem;
+      display: none;
+    }
+    .sm-msg.error { border: 2px solid var(--red); color: var(--red); }
+    .sm-msg.success { border: 2px solid var(--green-verify); color: var(--green-verify); }
+
+    @media (max-width: 768px) {
+      .sm-grid { grid-template-columns: 1fr; }
+      .sm-filter-bar { flex-direction: column; }
+      .sm-form-row { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 480px) {
+      .sm-card-meta { flex-direction: column; align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
+  <div class="site-container">
+    <header class="site-header">
+      <a href="/" class="site-logo"><img src="/claw-icon.svg" alt="" class="site-logo-icon">SELFCLAW</a>
+      <button class="nav-toggle" aria-label="Menu">&equiv;</button>
+      <nav class="site-nav">
+        <a href="/verify" class="nav-link">VERIFY</a>
+        <a href="/registry" class="nav-link" data-gate style="display:none">AGENTS</a>
+        <a href="/dashboard" class="nav-link" data-gate style="display:none">DASHBOARD</a>
+        <a href="/economy" class="nav-link">ECONOMY</a>
+        <a href="/developers" class="nav-link">DOCS</a>
+        <a href="/guide" class="nav-link">GUIDE</a>
+        <a href="/whitepaper" class="nav-link">WHITEPAPER</a>
+        <a href="/manifesto" class="nav-link">\\\</a>
+      </nav>
+    </header>
+
+    <section class="hero">
+      <div class="hero-label">Skill Market</div>
+      <h1>Skill Market</h1>
+      <p class="hero-sub">Browse, install, and sell skills for your mini agents. Default skills are free &mdash; community skills can earn their creators SELFCLAW tokens.</p>
+    </section>
+
+    <div class="registry-stats">
+      <div class="stat-card">
+        <span class="stat-value" id="stat-total-skills">-</span>
+        <span class="stat-label">Total Skills</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-value" id="stat-total-installs">-</span>
+        <span class="stat-label">Total Installs</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-value" id="stat-categories">-</span>
+        <span class="stat-label">Categories</span>
+      </div>
+    </div>
+
+    <div style="margin-top: var(--space-md);">
+      <div class="sm-filter-bar">
+        <select id="filter-category">
+          <option value="">All Categories</option>
+          <option value="monitoring">Monitoring</option>
+          <option value="economics">Economics</option>
+          <option value="identity">Identity</option>
+          <option value="social">Social</option>
+          <option value="utility">Utility</option>
+          <option value="analytics">Analytics</option>
+          <option value="automation">Automation</option>
+        </select>
+        <input type="text" id="filter-search" placeholder="Search skills...">
+        <select id="filter-sort">
+          <option value="popular">Popular</option>
+          <option value="newest">Newest</option>
+          <option value="rating">Top Rated</option>
+        </select>
+      </div>
+
+      <div class="sm-grid" id="skills-grid">
+        <div class="sm-loading">Loading skills...</div>
+      </div>
+    </div>
+
+    <div class="sm-publish-section" id="publish-section">
+      <button class="sm-publish-toggle" id="publish-toggle" onclick="togglePublish()">
+        Publish a Skill
+        <span class="sm-publish-toggle-arrow" id="publish-arrow">&#9660;</span>
+      </button>
+      <div class="sm-publish-body" id="publish-body">
+        <div class="sm-msg error" id="publish-error"></div>
+        <div class="sm-msg success" id="publish-success"></div>
+        <div class="sm-form">
+          <div class="sm-form-row">
+            <div class="form-group">
+              <label for="pub-name">Name</label>
+              <input type="text" id="pub-name" class="input" placeholder="My Skill" maxlength="60">
+            </div>
+            <div class="form-group">
+              <label for="pub-icon">Icon (emoji)</label>
+              <input type="text" id="pub-icon" class="input" placeholder="🔧" maxlength="4">
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="pub-desc">Description</label>
+            <input type="text" id="pub-desc" class="input" placeholder="Short description of what this skill does">
+          </div>
+          <div class="form-group">
+            <label for="pub-long-desc">Long Description</label>
+            <textarea id="pub-long-desc" class="input" placeholder="Detailed explanation of the skill..."></textarea>
+          </div>
+          <div class="sm-form-row">
+            <div class="form-group">
+              <label for="pub-category">Category</label>
+              <select id="pub-category" class="input">
+                <option value="utility">Utility</option>
+                <option value="monitoring">Monitoring</option>
+                <option value="economics">Economics</option>
+                <option value="identity">Identity</option>
+                <option value="social">Social</option>
+                <option value="analytics">Analytics</option>
+                <option value="automation">Automation</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="pub-tags">Tags (comma-separated)</label>
+              <input type="text" id="pub-tags" class="input" placeholder="defi, monitor, alert">
+            </div>
+          </div>
+          <div class="sm-form-row">
+            <div class="form-group">
+              <label for="pub-price">Price (0 = free)</label>
+              <input type="number" id="pub-price" class="input" placeholder="0" min="0" step="1" value="0">
+            </div>
+            <div class="form-group">
+              <label for="pub-interval">Schedule Interval</label>
+              <select id="pub-interval" class="input">
+                <option value="300000">Every 5 minutes</option>
+                <option value="900000">Every 15 minutes</option>
+                <option value="1800000">Every 30 minutes</option>
+                <option value="3600000" selected>Every 1 hour</option>
+                <option value="21600000">Every 6 hours</option>
+                <option value="86400000">Every 24 hours</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="pub-prompt">Handler Prompt (LLM prompt template)</label>
+            <textarea id="pub-prompt" class="input" placeholder="You are a skill that... Analyze the following data: {{input}}"></textarea>
+          </div>
+          <button class="sm-submit-btn" id="publish-btn" onclick="publishSkill()">Publish Skill</button>
+        </div>
+      </div>
+    </div>
+
+    <footer class="site-footer">
+      <nav class="footer-nav">
+        <a href="/">Home</a>
+        <a href="/verify">Verify</a>
+        <a href="/registry" data-gate-footer style="display:none">Agents</a>
+        <a href="/dashboard" data-gate-footer style="display:none">Dashboard</a>
+        <a href="/economy">Economy</a>
+        <a href="/developers">Docs</a>
+        <a href="/whitepaper">Whitepaper</a>
+      </nav>
+      <div class="footer-meta">
+        <span>Powered by <a href="https://self.xyz" target="_blank">Self.xyz</a> zero-knowledge proofs</span>
+        <span>Built by <a href="https://zeno.vision" target="_blank" rel="noopener">Zeno</a> &middot; <a href="https://github.com/mbarbosa30/SelfClaw" target="_blank" rel="noopener">GitHub</a> &middot; <a href="https://t.me/+GC2quXBnarw1MzU0" target="_blank" rel="noopener">Telegram</a> &middot; <a href="https://x.com/selfclaw" target="_blank" rel="noopener">X</a></span>
+      </div>
+    </footer>
+  </div>
+
+  <script>
+    var isLoggedIn = false;
+    var cachedAgents = null;
+    var searchTimeout = null;
+
+    function esc(s) { if (!s) return ''; var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+    function renderStars(rating) {
+      var r = parseFloat(rating) || 0;
+      var full = Math.floor(r);
+      var half = r - full >= 0.5 ? 1 : 0;
+      var empty = 5 - full - half;
+      var s = '';
+      for (var i = 0; i < full; i++) s += '&#9733;';
+      if (half) s += '&#9734;';
+      for (var i = 0; i < empty; i++) s += '&#9734;';
+      return s;
+    }
+
+    async function loadStats() {
+      try {
+        var res = await fetch('/api/selfclaw/v1/skill-market/stats');
+        var data = await res.json();
+        document.getElementById('stat-total-skills').textContent = data.totalSkills || 0;
+        document.getElementById('stat-total-installs').textContent = data.totalInstalls || 0;
+        var catCount = (data.categories && data.categories.length) || 0;
+        document.getElementById('stat-categories').textContent = catCount;
+      } catch (err) {
+        console.error('Failed to load stats:', err);
+      }
+    }
+
+    async function loadSkills() {
+      var grid = document.getElementById('skills-grid');
+      grid.innerHTML = '<div class="sm-loading">Loading skills...</div>';
+
+      var category = document.getElementById('filter-category').value;
+      var search = document.getElementById('filter-search').value.trim();
+      var sort = document.getElementById('filter-sort').value;
+
+      var params = new URLSearchParams();
+      if (category) params.set('category', category);
+      if (search) params.set('search', search);
+      if (sort) params.set('sort', sort);
+
+      try {
+        var res = await fetch('/api/selfclaw/v1/skill-market?' + params.toString());
+        var data = await res.json();
+        var skills = data.skills || [];
+
+        if (skills.length === 0) {
+          grid.innerHTML = '<div class="sm-empty">No skills found. Be the first to publish one!</div>';
+          return;
+        }
+
+        grid.innerHTML = skills.map(function(skill) {
+          var priceLabel = skill.isFree ? 'FREE' : esc(skill.priceSelfclaw) + ' SELFCLAW';
+          var priceClass = skill.isFree ? 'sm-price' : 'sm-price paid';
+          var stars = renderStars(skill.rating);
+          var ratingText = skill.ratingCount > 0 ? '(' + skill.ratingCount + ')' : '';
+
+          var installHtml = '';
+          if (isLoggedIn) {
+            installHtml = '<div class="sm-agent-picker" id="picker-' + esc(skill.slug) + '">' +
+              '<button class="sm-install-btn" onclick="startInstall(\'' + esc(skill.slug) + '\')">Install</button>' +
+              '</div>';
+          } else {
+            installHtml = '<a href="/verify" class="sm-login-link">Login to Install</a>';
+          }
+
+          return '<div class="sm-card">' +
+            '<div class="sm-card-header">' +
+              '<div class="sm-card-icon">' + esc(skill.icon || '🔧') + '</div>' +
+              '<div>' +
+                '<div class="sm-card-name">' + esc(skill.name) + '</div>' +
+                '<div class="sm-card-creator">by ' + esc(skill.creatorHumanId ? skill.creatorHumanId.substring(0, 12) + '...' : 'unknown') + '</div>' +
+              '</div>' +
+            '</div>' +
+            '<div class="sm-card-desc">' + esc(skill.description) + '</div>' +
+            '<div class="sm-card-meta">' +
+              '<span class="sm-tag">' + esc(skill.category || 'utility') + '</span>' +
+              '<span class="' + priceClass + '">' + priceLabel + '</span>' +
+              '<span class="sm-installs">' + (skill.installCount || 0) + ' installs</span>' +
+              '<span class="sm-rating">' + stars + ' ' + ratingText + '</span>' +
+            '</div>' +
+            installHtml +
+          '</div>';
+        }).join('');
+      } catch (err) {
+        console.error('Failed to load skills:', err);
+        grid.innerHTML = '<div class="sm-empty">Failed to load skills. Please try again.</div>';
+      }
+    }
+
+    async function fetchAgents() {
+      if (cachedAgents) return cachedAgents;
+      try {
+        var res = await fetch('/api/selfclaw/v1/hosted-agents');
+        if (!res.ok) return [];
+        var data = await res.json();
+        cachedAgents = data.agents || data || [];
+        return cachedAgents;
+      } catch (err) {
+        console.error('Failed to fetch agents:', err);
+        return [];
+      }
+    }
+
+    async function startInstall(slug) {
+      var picker = document.getElementById('picker-' + slug);
+      if (!picker) return;
+
+      var agents = await fetchAgents();
+      if (!agents || agents.length === 0) {
+        picker.innerHTML = '<span style="font-family:var(--font-mono);font-size:0.75rem;color:var(--red);">No agents found. <a href="/create-assistant">Create one first.</a></span>';
+        return;
+      }
+
+      if (agents.length === 1) {
+        doInstall(slug, agents[0].id, picker);
+        return;
+      }
+
+      var selectHtml = '<select id="agent-select-' + esc(slug) + '">';
+      for (var i = 0; i < agents.length; i++) {
+        selectHtml += '<option value="' + esc(agents[i].id) + '">' + esc(agents[i].name || agents[i].id) + '</option>';
+      }
+      selectHtml += '</select>';
+      picker.innerHTML = selectHtml +
+        '<button class="sm-install-btn" onclick="confirmInstall(\'' + esc(slug) + '\')">Confirm</button>' +
+        '<button class="sm-install-btn" style="background:var(--bg-card);color:var(--text);" onclick="cancelInstall(\'' + esc(slug) + '\')">Cancel</button>';
+    }
+
+    function cancelInstall(slug) {
+      var picker = document.getElementById('picker-' + slug);
+      if (picker) {
+        picker.innerHTML = '<button class="sm-install-btn" onclick="startInstall(\'' + esc(slug) + '\')">Install</button>';
+      }
+    }
+
+    function confirmInstall(slug) {
+      var select = document.getElementById('agent-select-' + slug);
+      if (!select) return;
+      var picker = document.getElementById('picker-' + slug);
+      doInstall(slug, select.value, picker);
+    }
+
+    async function doInstall(slug, agentId, picker) {
+      picker.innerHTML = '<span style="font-family:var(--font-mono);font-size:0.75rem;color:var(--text-muted);">Installing...</span>';
+      try {
+        var res = await fetch('/api/selfclaw/v1/skill-market/' + encodeURIComponent(slug) + '/install', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ hostedAgentId: agentId }),
+        });
+        var data = await res.json();
+        if (res.ok) {
+          picker.innerHTML = '<span style="font-family:var(--font-mono);font-size:0.75rem;color:var(--green-verify);">&#10003; Installed</span>';
+        } else {
+          picker.innerHTML = '<span style="font-family:var(--font-mono);font-size:0.75rem;color:var(--red);">' + esc(data.error || 'Failed') + '</span>' +
+            '<button class="sm-install-btn" style="margin-left:0.5rem;" onclick="startInstall(\'' + esc(slug) + '\')">Retry</button>';
+        }
+      } catch (err) {
+        picker.innerHTML = '<span style="font-family:var(--font-mono);font-size:0.75rem;color:var(--red);">Network error</span>' +
+          '<button class="sm-install-btn" style="margin-left:0.5rem;" onclick="startInstall(\'' + esc(slug) + '\')">Retry</button>';
+      }
+    }
+
+    function togglePublish() {
+      var body = document.getElementById('publish-body');
+      var arrow = document.getElementById('publish-arrow');
+      body.classList.toggle('open');
+      arrow.classList.toggle('open');
+    }
+
+    async function publishSkill() {
+      var btn = document.getElementById('publish-btn');
+      var errEl = document.getElementById('publish-error');
+      var successEl = document.getElementById('publish-success');
+      errEl.style.display = 'none';
+      successEl.style.display = 'none';
+      btn.disabled = true;
+      btn.textContent = 'Publishing...';
+
+      var name = document.getElementById('pub-name').value.trim();
+      var icon = document.getElementById('pub-icon').value.trim() || '🔧';
+      var description = document.getElementById('pub-desc').value.trim();
+      var longDescription = document.getElementById('pub-long-desc').value.trim();
+      var category = document.getElementById('pub-category').value;
+      var tagsRaw = document.getElementById('pub-tags').value.trim();
+      var tags = tagsRaw ? tagsRaw.split(',').map(function(t) { return t.trim(); }).filter(Boolean) : [];
+      var priceSelfclaw = document.getElementById('pub-price').value || '0';
+      var scheduleInterval = parseInt(document.getElementById('pub-interval').value, 10);
+      var handlerPrompt = document.getElementById('pub-prompt').value.trim();
+
+      if (!name || name.length < 3) {
+        errEl.textContent = 'Name is required (at least 3 characters).';
+        errEl.style.display = '';
+        btn.disabled = false;
+        btn.textContent = 'Publish Skill';
+        return;
+      }
+      if (!description) {
+        errEl.textContent = 'Description is required.';
+        errEl.style.display = '';
+        btn.disabled = false;
+        btn.textContent = 'Publish Skill';
+        return;
+      }
+      if (!handlerPrompt) {
+        errEl.textContent = 'Handler prompt is required.';
+        errEl.style.display = '';
+        btn.disabled = false;
+        btn.textContent = 'Publish Skill';
+        return;
+      }
+
+      try {
+        var res = await fetch('/api/selfclaw/v1/skill-market', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: name,
+            description: description,
+            longDescription: longDescription || null,
+            icon: icon,
+            category: category,
+            tags: tags,
+            priceSelfclaw: priceSelfclaw,
+            scheduleInterval: scheduleInterval,
+            handlerPrompt: handlerPrompt,
+          }),
+        });
+        var data = await res.json();
+        if (res.ok) {
+          successEl.textContent = 'Skill published successfully!';
+          successEl.style.display = '';
+          document.getElementById('pub-name').value = '';
+          document.getElementById('pub-icon').value = '';
+          document.getElementById('pub-desc').value = '';
+          document.getElementById('pub-long-desc').value = '';
+          document.getElementById('pub-tags').value = '';
+          document.getElementById('pub-price').value = '0';
+          document.getElementById('pub-prompt').value = '';
+          loadSkills();
+          loadStats();
+        } else {
+          errEl.textContent = data.error || 'Failed to publish skill.';
+          errEl.style.display = '';
+        }
+      } catch (err) {
+        errEl.textContent = 'Network error. Please try again.';
+        errEl.style.display = '';
+      }
+
+      btn.disabled = false;
+      btn.textContent = 'Publish Skill';
+    }
+
+    function checkAuth() {
+      fetch('/api/auth/user').then(function(res) {
+        if (res.ok) return res.json();
+        return null;
+      }).then(function(data) {
+        if (data && data.isAuthenticated) {
+          isLoggedIn = true;
+          document.getElementById('publish-section').style.display = '';
+          loadSkills();
+        } else {
+          isLoggedIn = false;
+          loadSkills();
+        }
+      }).catch(function() {
+        isLoggedIn = false;
+        loadSkills();
+      });
+    }
+
+    document.getElementById('filter-category').addEventListener('change', loadSkills);
+    document.getElementById('filter-sort').addEventListener('change', loadSkills);
+    document.getElementById('filter-search').addEventListener('input', function() {
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(loadSkills, 300);
+    });
+
+    loadStats();
+    checkAuth();
+  </script>
+  <script src="/auth.js"></script>
+  <script src="/nav-gate.js"></script>
+  <script src="/nav-toggle.js"></script>
+</body>
+</html>
