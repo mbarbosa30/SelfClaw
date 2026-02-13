@@ -807,9 +807,13 @@ async function processAgent(agent: HostedAgent) {
 async function resetDailyQuotas() {
   try {
     const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    await db.update(hostedAgents)
+    const result = await db.update(hostedAgents)
       .set({ llmTokensUsedToday: 0, apiCallsToday: 0, lastResetAt: new Date() })
-      .where(sql`${hostedAgents.lastResetAt} < ${cutoff}`);
+      .where(sql`${hostedAgents.lastResetAt} < ${cutoff} OR ${hostedAgents.lastResetAt} IS NULL`)
+      .returning({ id: hostedAgents.id, name: hostedAgents.name });
+    if (result.length > 0) {
+      console.log(`[agent-worker] Daily quotas reset for ${result.length} agent(s): ${result.map(a => a.name).join(', ')}`);
+    }
   } catch (e: any) {
     console.error("[agent-worker] Quota reset error:", e.message);
   }
@@ -1388,6 +1392,12 @@ hostedAgentsRouter.post("/v1/hosted-agents/:id/chat", async (req: Request, res: 
     }
     console.log(`[miniclaw-chat] Auth passed for agent ${agent.name} (${agent.id}), humanId match`);
 
+    let clientDisconnected = false;
+    req.on("close", () => {
+      clientDisconnected = true;
+      console.log(`[miniclaw-chat] Client disconnected for agent ${agent.name}`);
+    });
+
     const { message, conversationId } = req.body;
     if (!message || typeof message !== "string" || message.trim().length === 0) {
       return res.status(400).json({ error: "Message is required" });
@@ -1399,10 +1409,12 @@ hostedAgentsRouter.post("/v1/hosted-agents/:id/chat", async (req: Request, res: 
     const tokenLimit = agent.llmTokensLimit || 50000;
     const tokensUsed = agent.llmTokensUsedToday || 0;
     if (tokensUsed >= tokenLimit) {
+      console.log(`[miniclaw-chat] Token limit hit for ${agent.name}: ${tokensUsed}/${tokenLimit}`);
       return res.status(429).json({ error: "Daily token limit reached. Try again tomorrow." });
     }
 
     let convoId = conversationId ? parseInt(conversationId) : null;
+    if (convoId && isNaN(convoId)) convoId = null;
 
     if (convoId) {
       const [existingConvo] = await db.select().from(conversations)
@@ -1449,6 +1461,11 @@ hostedAgentsRouter.post("/v1/hosted-agents/:id/chat", async (req: Request, res: 
       });
     }
 
+    if (clientDisconnected) {
+      console.log(`[miniclaw-chat] Client disconnected before streaming, aborting for ${agent.name}`);
+      return;
+    }
+
     res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Cache-Control", "no-cache");
     res.setHeader("Connection", "keep-alive");
@@ -1456,10 +1473,7 @@ hostedAgentsRouter.post("/v1/hosted-agents/:id/chat", async (req: Request, res: 
 
     res.flushHeaders();
 
-    let clientDisconnected = false;
-    req.on("close", () => { clientDisconnected = true; });
-
-    console.log(`[miniclaw-chat] Calling OpenAI for ${agent.name}, ${chatMessages.length} messages in context`);
+    console.log(`[miniclaw-chat] Calling OpenAI for ${agent.name}, ${chatMessages.length} msgs, tokens ${tokensUsed}/${tokenLimit}`);
     const stream = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: chatMessages,
@@ -1467,7 +1481,6 @@ hostedAgentsRouter.post("/v1/hosted-agents/:id/chat", async (req: Request, res: 
       stream_options: { include_usage: true },
       max_completion_tokens: 800,
     });
-    console.log(`[miniclaw-chat] OpenAI stream started for ${agent.name}`);
 
     let fullResponse = "";
     let totalTokensUsed = 0;
@@ -1529,12 +1542,14 @@ hostedAgentsRouter.post("/v1/hosted-agents/:id/chat", async (req: Request, res: 
       }
     });
   } catch (error: any) {
-    console.error("[miniclaw-chat] error:", error.message);
+    console.error("[miniclaw-chat] FULL ERROR:", error);
+    console.error("[miniclaw-chat] error message:", error.message);
+    console.error("[miniclaw-chat] error stack:", error.stack);
     if (res.headersSent) {
       res.write(`data: ${JSON.stringify({ error: error.message || "Chat failed" })}\n\n`);
       res.end();
     } else {
-      res.status(500).json({ error: "Chat failed" });
+      res.status(500).json({ error: error.message || "Chat failed" });
     }
   }
 });
