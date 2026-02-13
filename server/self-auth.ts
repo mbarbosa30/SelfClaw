@@ -273,7 +273,7 @@ async function handleAuthCallback(req: Request, res: Response) {
     let result;
     try {
       result = await selfAuthVerifier.verify(attestationId, proof, publicSignals, userContextData);
-      console.log("[self-auth] Verification result:", JSON.stringify(result.isValidDetails));
+      console.log("[self-auth] Verification result: valid=", result.isValidDetails?.isValid);
     } catch (verifyError: any) {
       console.error("[self-auth] Verify error:", verifyError.message);
       return res.status(200).json({ status: "error", result: false, reason: "Verification failed" });

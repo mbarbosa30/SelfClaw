@@ -788,7 +788,7 @@ async function processAgent(agent: HostedAgent) {
         updatedAt: new Date(),
       }).where(sql`${hostedAgents.id} = ${agent.id}`);
 
-      console.log(`[agent-worker] ${agent.name} (${agent.id}): ${skill.name} completed — ${result.summary.slice(0, 80)}`);
+      console.log(`[agent-worker] ${agent.name} (${agent.id}): ${skill.name} completed (${result.summary.length} chars)`);
     } catch (skillErr: any) {
       console.error(`[agent-worker] ${agent.name} skill ${skillId} error:`, skillErr.message);
       await db.insert(agentTaskQueue).values({
@@ -1127,6 +1127,38 @@ Mark as SAFE (safe: true) if:
 
 const PINNED_CATEGORIES = ["identity", "context"];
 const SOFT_CATEGORIES = ["interest", "preference", "goal"];
+
+const SENSITIVE_PATTERNS = [
+  /(?:private[_\s]?key|secret[_\s]?key|priv[_\s]?key)[\s:="']*0x[0-9a-fA-F]{64}/gi,
+  /-----BEGIN (?:RSA |EC )?PRIVATE KEY-----[\s\S]*?-----END (?:RSA |EC )?PRIVATE KEY-----/g,
+  /sk-[a-zA-Z0-9]{20,}/g,
+  /xox[bpras]-[a-zA-Z0-9\-]{10,}/g,
+];
+
+const SENSITIVE_ENV_KEYS = ["CELO_PRIVATE_KEY", "SESSION_SECRET", "ADMIN_PASSWORD", "HOSTINGER_API_TOKEN", "DATABASE_URL"];
+
+let _sensitiveValues: string[] | null = null;
+function getSensitiveValues(): string[] {
+  if (_sensitiveValues) return _sensitiveValues;
+  _sensitiveValues = SENSITIVE_ENV_KEYS
+    .map(key => process.env[key])
+    .filter((val): val is string => !!val && val.length >= 12)
+    .sort((a, b) => b.length - a.length);
+  return _sensitiveValues;
+}
+
+function redactSensitiveContent(text: string): string {
+  let redacted = text;
+  for (const pattern of SENSITIVE_PATTERNS) {
+    redacted = redacted.replace(new RegExp(pattern.source, pattern.flags), "[REDACTED]");
+  }
+  for (const val of getSensitiveValues()) {
+    if (redacted.includes(val)) {
+      redacted = redacted.split(val).join("[REDACTED]");
+    }
+  }
+  return redacted;
+}
 
 async function getMemoryContext(agentId: string, conversationId: number): Promise<{ context: string; categories: string[] }> {
   const memories = await db.select().from(agentMemories)
@@ -1547,6 +1579,8 @@ hostedAgentsRouter.post("/v1/hosted-agents/:id/chat", async (req: Request, res: 
 
     let fullResponse = "";
     let totalTokensUsed = 0;
+    let pendingBuffer = "";
+    const overlapSize = Math.min(Math.max(...getSensitiveValues().map(v => v.length), 40), 128);
 
     for await (const chunk of stream) {
       if (clientDisconnected) {
@@ -1556,18 +1590,35 @@ hostedAgentsRouter.post("/v1/hosted-agents/:id/chat", async (req: Request, res: 
       const content = chunk.choices[0]?.delta?.content || "";
       if (content) {
         fullResponse += content;
-        res.write(`data: ${JSON.stringify({ content })}\n\n`);
+        pendingBuffer += content;
+
+        if (pendingBuffer.length > overlapSize) {
+          const flushLen = pendingBuffer.length - overlapSize;
+          const toFlush = redactSensitiveContent(pendingBuffer.slice(0, flushLen));
+          if (toFlush) res.write(`data: ${JSON.stringify({ content: toFlush })}\n\n`);
+          pendingBuffer = pendingBuffer.slice(flushLen);
+        }
       }
       if (chunk.usage) {
         totalTokensUsed = chunk.usage.total_tokens || chunk.usage.completion_tokens || 0;
       }
     }
 
-    if (fullResponse.length > 0) {
+    if (pendingBuffer.length > 0) {
+      const remaining = redactSensitiveContent(pendingBuffer);
+      if (remaining) res.write(`data: ${JSON.stringify({ content: remaining })}\n\n`);
+    }
+
+    const safeFullResponse = redactSensitiveContent(fullResponse);
+    if (safeFullResponse !== fullResponse) {
+      console.log(`[miniclaw-chat] Exfiltration guard triggered for ${agent.name} — sensitive content redacted`);
+    }
+
+    if (safeFullResponse.length > 0) {
       await db.insert(messages).values({
         conversationId: convoId!,
         role: "assistant",
-        content: fullResponse,
+        content: safeFullResponse,
       });
     }
 
@@ -1605,14 +1656,13 @@ hostedAgentsRouter.post("/v1/hosted-agents/:id/chat", async (req: Request, res: 
       }
     });
   } catch (error: any) {
-    console.error("[miniclaw-chat] FULL ERROR:", error);
-    console.error("[miniclaw-chat] error message:", error.message);
-    console.error("[miniclaw-chat] error stack:", error.stack);
+    console.error("[miniclaw-chat] error:", error.message);
+    if (error.stack) console.error("[miniclaw-chat] stack:", error.stack);
     if (res.headersSent) {
-      res.write(`data: ${JSON.stringify({ error: error.message || "Chat failed" })}\n\n`);
+      res.write(`data: ${JSON.stringify({ error: "Something went wrong. Please try again." })}\n\n`);
       res.end();
     } else {
-      res.status(500).json({ error: error.message || "Chat failed" });
+      res.status(500).json({ error: "Something went wrong. Please try again." });
     }
   }
 });
