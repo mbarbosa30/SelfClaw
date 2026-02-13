@@ -1310,7 +1310,7 @@ hostedAgentsRouter.post("/v1/hosted-agents/:id/chat", async (req: Request, res: 
     req.on("close", () => { clientDisconnected = true; });
 
     const stream = await openai.chat.completions.create({
-      model: "gpt-5.2",
+      model: "gpt-5-nano",
       messages: chatMessages,
       stream: true,
       stream_options: { include_usage: true },
