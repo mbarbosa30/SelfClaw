@@ -1379,9 +1379,14 @@ hostedAgentsRouter.get("/v1/hosted-agents/:id/conversations", async (req: Reques
 });
 
 hostedAgentsRouter.post("/v1/hosted-agents/:id/chat", async (req: Request, res: Response) => {
+  console.log(`[miniclaw-chat] POST /chat hit for agent ${req.params.id}`);
   try {
     const agent = await requireAgentOwnership(req, res);
-    if (!agent) return;
+    if (!agent) {
+      console.log(`[miniclaw-chat] Auth/ownership failed for agent ${req.params.id}`);
+      return;
+    }
+    console.log(`[miniclaw-chat] Auth passed for agent ${agent.name} (${agent.id}), humanId match`);
 
     const { message, conversationId } = req.body;
     if (!message || typeof message !== "string" || message.trim().length === 0) {
@@ -1454,6 +1459,7 @@ hostedAgentsRouter.post("/v1/hosted-agents/:id/chat", async (req: Request, res: 
     let clientDisconnected = false;
     req.on("close", () => { clientDisconnected = true; });
 
+    console.log(`[miniclaw-chat] Calling OpenAI for ${agent.name}, ${chatMessages.length} messages in context`);
     const stream = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: chatMessages,
@@ -1461,6 +1467,7 @@ hostedAgentsRouter.post("/v1/hosted-agents/:id/chat", async (req: Request, res: 
       stream_options: { include_usage: true },
       max_completion_tokens: 800,
     });
+    console.log(`[miniclaw-chat] OpenAI stream started for ${agent.name}`);
 
     let fullResponse = "";
     let totalTokensUsed = 0;
