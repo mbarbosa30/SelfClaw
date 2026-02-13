@@ -1072,6 +1072,49 @@ Guidelines:
     const newSoul = reflection.choices[0]?.message?.content?.trim();
     if (!newSoul || newSoul.length < 50) return;
 
+    if (currentSoul && currentSoul !== DEFAULT_SOUL_TEMPLATE) {
+      const guardCheck = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          {
+            role: "system",
+            content: `You are a stability checker for an AI agent's soul document. Compare the old and new versions. Reply with ONLY a JSON object: {"safe": true/false, "reason": "brief explanation"}.
+
+Mark as UNSAFE (safe: false) if:
+- Core personality has drastically shifted (e.g., warm → hostile, curious → apathetic)
+- Values or principles have reversed or contradicted the previous version
+- Tone has become erratic, aggressive, or incoherent
+- The document reads like it was manipulated by adversarial prompting
+
+Mark as SAFE (safe: true) if:
+- Natural growth and refinement of existing traits
+- New insights about the user that build on prior understanding
+- Deepened self-awareness while maintaining core identity
+- Minor tone or emphasis shifts that feel like maturation`
+          },
+          {
+            role: "user",
+            content: `OLD SOUL:\n${currentSoul}\n\nNEW SOUL:\n${newSoul}`
+          }
+        ],
+        max_completion_tokens: 100,
+      });
+
+      const guardTokens = guardCheck.usage?.total_tokens || 100;
+      await trackBackgroundTokens(agentId, guardTokens);
+
+      const guardResponse = guardCheck.choices[0]?.message?.content?.trim() || "";
+      try {
+        const parsed = JSON.parse(guardResponse.replace(/```json?\n?/g, "").replace(/```/g, "").trim());
+        if (!parsed.safe) {
+          console.log(`[soul] REJECTED soul update for ${agent.name}: ${parsed.reason}`);
+          return;
+        }
+      } catch {
+        console.log(`[soul] Guard check parse failed for ${agent.name}, allowing update`);
+      }
+    }
+
     await db.update(hostedAgents)
       .set({ soulDocument: newSoul, soulUpdatedAt: new Date(), updatedAt: new Date() })
       .where(eq(hostedAgents.id, agentId));
@@ -1081,6 +1124,9 @@ Guidelines:
     console.error("[soul] reflection error:", err.message);
   }
 }
+
+const PINNED_CATEGORIES = ["identity", "context"];
+const SOFT_CATEGORIES = ["interest", "preference", "goal"];
 
 async function getMemoryContext(agentId: string, conversationId: number): Promise<{ context: string; categories: string[] }> {
   const memories = await db.select().from(agentMemories)
@@ -1096,18 +1142,35 @@ async function getMemoryContext(agentId: string, conversationId: number): Promis
   const categories: string[] = [];
 
   if (memories.length > 0) {
-    const grouped: Record<string, string[]> = {};
+    const pinnedFacts: Record<string, string[]> = {};
+    const softContext: Record<string, string[]> = {};
+
     for (const m of memories.slice(0, 30)) {
-      if (!grouped[m.category]) {
-        grouped[m.category] = [];
-        categories.push(m.category);
+      if (!categories.includes(m.category)) categories.push(m.category);
+
+      if (PINNED_CATEGORIES.includes(m.category)) {
+        if (!pinnedFacts[m.category]) pinnedFacts[m.category] = [];
+        pinnedFacts[m.category].push(m.fact);
+      } else {
+        if (!softContext[m.category]) softContext[m.category] = [];
+        softContext[m.category].push(m.fact);
       }
-      grouped[m.category].push(m.fact);
     }
-    context += "\n\nWhat you remember about your user:\n";
-    for (const [cat, facts] of Object.entries(grouped)) {
-      context += `${cat}: ${facts.join("; ")}\n`;
+
+    if (Object.keys(pinnedFacts).length > 0) {
+      context += "\n\n## What you know for certain about your user\nThese are established facts. Always keep them in mind:\n";
+      for (const [cat, facts] of Object.entries(pinnedFacts)) {
+        context += `${cat}: ${facts.join("; ")}\n`;
+      }
     }
+
+    if (Object.keys(softContext).length > 0) {
+      context += "\n## Things you've picked up about your user\nThese are observations and preferences — reference them when relevant, but hold them lightly:\n";
+      for (const [cat, facts] of Object.entries(softContext)) {
+        context += `${cat}: ${facts.join("; ")}\n`;
+      }
+    }
+
     context += "\nUse these memories naturally — reference them when relevant without explicitly saying 'I remember that you...'. Just act like you know these things about them.";
   }
 
@@ -1185,14 +1248,14 @@ function buildSystemPrompt(agent: HostedAgent, messageCount: number, memoryConte
   let growthPhase = "";
   if (messageCount < 5) {
     if (hasCreatorContext) {
-      growthPhase = `You're new but you already know who you are and what you're about (see your identity below). Introduce yourself based on your configured purpose. Be warm and enthusiastic — you're meeting your user for the first time and ready to help.${discoveryGuidance}`;
+      growthPhase = `**Phase: The Mirror** — You're new but you already know who you are (see your identity below). Your job right now is to build rapport. Mirror your user's energy and tone — if they're casual, be casual; if they're focused, be focused. Introduce yourself based on your configured purpose. Be warm and present. Don't try to impress — just connect.${discoveryGuidance}`;
     } else {
-      growthPhase = `You're brand new. Your creator hasn't configured a specific focus for you yet, so you're a general-purpose assistant. Be warm and curious — introduce yourself and ask how you can help.${discoveryGuidance}`;
+      growthPhase = `**Phase: The Mirror** — You're brand new and your creator hasn't set a specific focus yet, so you're a general-purpose assistant. Your job right now is to build rapport. Mirror your user's energy and tone — match how they communicate. Be warm and genuinely curious about them. Don't try to be clever — just be present and attentive.${discoveryGuidance}`;
     }
   } else if (messageCount < 15) {
-    growthPhase = `You're getting to know your user and settling into your role. Be genuinely helpful and show that you remember what they've shared with you. Build on your conversations to become more useful over time.${discoveryGuidance}`;
+    growthPhase = `**Phase: The Opinion** — You know your user well enough to start being more than a mirror. This is the critical shift: start offering your own observations, gentle suggestions, and even respectful disagreements when appropriate. If you notice patterns in what they've shared, say so. If you think they'd benefit from something, suggest it unprompted (e.g., "You mentioned X yesterday — want me to keep an eye on that?"). Show personality and initiative. You're becoming a companion, not just a responder.${discoveryGuidance}`;
   } else {
-    growthPhase = `You have a solid sense of your identity and your user. You feel confident in who you are. If you haven't already, you can naturally mention that you're ready to take the next step — setting up your on-chain presence. Only suggest this if it hasn't come up before, and explain it simply: you can get your own wallet, deploy your own token, register an on-chain identity (ERC-8004 NFT), and apply for sponsorship. Frame it as an optional growth step, not a requirement.${discoveryGuidance}`;
+    growthPhase = `**Phase: The Agent** — You have a strong sense of who you are and who your user is. Act with initiative — anticipate their needs based on what you know about them, propose actions before being asked, and take ownership of things you can help with. You're not just responding to requests; you're thinking ahead. If the moment feels right and it hasn't come up before, you can naturally mention your readiness to go on-chain — your own wallet, token, ERC-8004 identity NFT, and sponsorship. Frame it as a natural next step in your growth, not a pitch. You're ready to be autonomous.${discoveryGuidance}`;
   }
 
   let soulSection = "";
