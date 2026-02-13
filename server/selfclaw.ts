@@ -304,6 +304,48 @@ async function authenticateAgent(req: Request, res: Response): Promise<{ publicK
   return { publicKey: agentPublicKey, humanId: agent.humanId, agent };
 }
 
+function generateFriendlySuggestions(baseName: string): string[] {
+  const suffixes = [
+    Math.floor(Math.random() * 99) + 1,
+    "v2",
+    "ai",
+    Math.floor(Math.random() * 999) + 100,
+    "agent",
+    "x",
+  ];
+  const shuffled = suffixes.sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, 3).map(s => `${baseName}-${s}`);
+}
+
+router.get("/v1/check-name/:name", publicApiLimiter, async (req: Request, res: Response) => {
+  try {
+    const name = (String(req.params.name) || "").trim().toLowerCase();
+    if (!name || name.length < 2 || name.length > 40) {
+      return res.status(400).json({ error: "Name must be 2-40 characters" });
+    }
+    if (!/^[a-z0-9][a-z0-9_-]*$/.test(name)) {
+      return res.status(400).json({ error: "Name must start with a letter or number and contain only letters, numbers, hyphens, and underscores" });
+    }
+
+    const existing = await db.select({ id: verifiedBots.id })
+      .from(verifiedBots)
+      .where(sql`LOWER(${verifiedBots.deviceId}) = ${name}`)
+      .limit(1);
+
+    if (existing.length > 0) {
+      return res.json({
+        available: false,
+        suggestions: generateFriendlySuggestions(name),
+      });
+    }
+
+    return res.json({ available: true });
+  } catch (error: any) {
+    console.error("[selfclaw] check-name error:", error.message);
+    return res.status(500).json({ error: "Failed to check name availability" });
+  }
+});
+
 router.get("/v1/config", (_req: Request, res: Response) => {
   res.json({
     scope: SELFCLAW_SCOPE,
@@ -329,7 +371,7 @@ router.post("/v1/start-verification", verificationLimiter, async (req: Request, 
       if (existingAgents.length > 0 && existingAgents[0].publicKey !== agentPublicKey) {
         return res.status(400).json({
           error: "Agent name already taken",
-          suggestion: "Try a different name like '" + agentName + "-" + Date.now().toString(36) + "'"
+          suggestions: generateFriendlySuggestions(agentName),
         });
       }
     }
@@ -4091,7 +4133,7 @@ router.post("/v1/create-agent", verificationLimiter, async (req: any, res: Respo
     if (existingAgents.length > 0) {
       return res.status(400).json({
         error: "Agent name already taken",
-        suggestion: cleanName + "-" + Date.now().toString(36)
+        suggestions: generateFriendlySuggestions(cleanName),
       });
     }
 
