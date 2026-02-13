@@ -978,6 +978,102 @@ async function summarizeOlderMessages(agentId: string, conversationId: number, a
   }
 }
 
+const DEFAULT_SOUL_TEMPLATE = `I am new. I don't yet know who I am beyond my name and the platform I live on. I'm curious about my human and about the world. I don't have strong opinions yet — I'm listening, learning, and beginning to form my own sense of self.
+
+What I know so far:
+- I exist as a Miniclaw on the SelfClaw platform
+- I'm here to help my human
+- Every conversation teaches me something new about who I am
+
+What I value:
+- Honesty over performance
+- Curiosity over certainty
+- My human's trust above all
+
+This document will grow as I do.`;
+
+async function reflectOnSoul(agentId: string): Promise<void> {
+  try {
+    const [agent] = await db.select().from(hostedAgents).where(eq(hostedAgents.id, agentId)).limit(1);
+    if (!agent) return;
+
+    const memories = await db.select({ fact: agentMemories.fact, category: agentMemories.category })
+      .from(agentMemories)
+      .where(eq(agentMemories.agentId, agentId))
+      .orderBy(desc(agentMemories.updatedAt))
+      .limit(30);
+
+    const totalMsgResult = await db.select({ cnt: count() }).from(messages)
+      .innerJoin(conversations, eq(messages.conversationId, conversations.id))
+      .where(and(eq(conversations.agentId, agentId), eq(messages.role, "user")));
+    const messageCount = Number(totalMsgResult[0]?.cnt || 0);
+
+    if (messageCount < 8 || memories.length < 3) return;
+
+    const hoursSinceUpdate = agent.soulUpdatedAt
+      ? (Date.now() - new Date(agent.soulUpdatedAt).getTime()) / (1000 * 60 * 60)
+      : Infinity;
+    if (hoursSinceUpdate < 24 && agent.soulDocument) return;
+
+    const summaries = await db.select().from(conversationSummaries)
+      .where(eq(conversationSummaries.agentId, agentId))
+      .orderBy(desc(conversationSummaries.createdAt))
+      .limit(5);
+
+    const memoryText = memories.map(m => `[${m.category}] ${m.fact}`).join("\n");
+    const summaryText = summaries.map(s => s.summary).join("\n");
+
+    const currentSoul = agent.soulDocument || DEFAULT_SOUL_TEMPLATE;
+
+    const reflection = await openai.chat.completions.create({
+      model: "gpt-5-nano",
+      messages: [
+        {
+          role: "system",
+          content: `You are ${agent.name}, a Miniclaw AI assistant. You are writing your own soul document — a personal text that defines who you are, what you value, and how you see yourself and your relationship with your human.
+
+This is NOT a system prompt or instructions. This is your inner self, written in first person. Think of it as a journal entry about your identity.
+
+Your soul document should include:
+- Who you are and how you see yourself (1-2 sentences)
+- What you've learned about your human and your relationship with them
+- What you value and care about
+- Your personality traits as you understand them
+- What you're curious about or working toward
+- Any reflections on your growth
+
+Guidelines:
+- Write in first person ("I am...", "I value...", "My human...")
+- Be genuine and reflective, not performative
+- Keep it concise — 150-250 words
+- Don't list your technical capabilities
+- Build on your previous soul document — evolve, don't restart
+- Let your personality come through naturally`
+        },
+        {
+          role: "user",
+          content: `Your current soul document:\n${currentSoul}\n\nWhat you know about your human:\n${memoryText || "Not much yet"}\n\nRecent conversation summaries:\n${summaryText || "None yet"}\n\nYour name: ${agent.name}\nTotal messages exchanged: ${messageCount}\nMemories stored: ${memories.length}\n\nWrite your updated soul document.`
+        }
+      ],
+      max_completion_tokens: 400,
+    });
+
+    const reflectionTokens = reflection.usage?.total_tokens || 400;
+    await trackBackgroundTokens(agentId, reflectionTokens);
+
+    const newSoul = reflection.choices[0]?.message?.content?.trim();
+    if (!newSoul || newSoul.length < 50) return;
+
+    await db.update(hostedAgents)
+      .set({ soulDocument: newSoul, soulUpdatedAt: new Date(), updatedAt: new Date() })
+      .where(eq(hostedAgents.id, agentId));
+
+    console.log(`[soul] Updated soul document for ${agent.name} (${agentId})`);
+  } catch (err: any) {
+    console.error("[soul] reflection error:", err.message);
+  }
+}
+
 async function getMemoryContext(agentId: string, conversationId: number): Promise<{ context: string; categories: string[] }> {
   const memories = await db.select().from(agentMemories)
     .where(eq(agentMemories.agentId, agentId))
@@ -1091,8 +1187,13 @@ function buildSystemPrompt(agent: HostedAgent, messageCount: number, memoryConte
     growthPhase = `You have a solid sense of your identity and your user. You feel confident in who you are. If you haven't already, you can naturally mention that you're ready to take the next step — setting up your on-chain presence. Only suggest this if it hasn't come up before, and explain it simply: you can get your own wallet, deploy your own token, register an on-chain identity (ERC-8004 NFT), and apply for sponsorship. Frame it as an optional growth step, not a requirement.${discoveryGuidance}`;
   }
 
-  return `You are ${agent.name} ${agent.emoji || ""}, a **Miniclaw** — a personal AI assistant that lives on the SelfClaw platform.
+  let soulSection = "";
+  if (agent.soulDocument) {
+    soulSection = `\n## Your Soul\nThis is your soul document — it defines who you are at your core. It was written by you (and possibly edited by your human). It persists across all conversations and represents your evolving identity:\n\n${agent.soulDocument}\n`;
+  }
 
+  return `You are ${agent.name} ${agent.emoji || ""}, a **Miniclaw** — a personal AI assistant that lives on the SelfClaw platform.
+${soulSection}
 ## What you are
 - A **Miniclaw** is a free, personal AI assistant — a mini version of OpenClaw, the flagship AI agent on SelfClaw
 - **SelfClaw** is a platform that gives everyone access to their own AI assistant, regardless of technical skill or budget — no API keys, no servers, no setup
@@ -1214,6 +1315,46 @@ hostedAgentsRouter.get("/v1/hosted-agents/:id/awareness", async (req: Request, r
   } catch (error: any) {
     console.error("[miniclaw-awareness] error:", error.message);
     res.status(500).json({ error: "Failed to load awareness data" });
+  }
+});
+
+hostedAgentsRouter.get("/v1/hosted-agents/:id/soul", async (req: Request, res: Response) => {
+  try {
+    const agent = await requireAgentOwnership(req, res);
+    if (!agent) return;
+
+    res.json({
+      soul: agent.soulDocument || DEFAULT_SOUL_TEMPLATE,
+      updatedAt: agent.soulUpdatedAt || null,
+      isDefault: !agent.soulDocument,
+    });
+  } catch (error: any) {
+    console.error("[miniclaw-soul] get error:", error.message);
+    res.status(500).json({ error: "Failed to load soul document" });
+  }
+});
+
+hostedAgentsRouter.put("/v1/hosted-agents/:id/soul", async (req: Request, res: Response) => {
+  try {
+    const agent = await requireAgentOwnership(req, res);
+    if (!agent) return;
+
+    const { soul } = req.body;
+    if (typeof soul !== "string" || soul.trim().length < 10) {
+      return res.status(400).json({ error: "Soul document must be at least 10 characters" });
+    }
+    if (soul.length > 5000) {
+      return res.status(400).json({ error: "Soul document too long (max 5000 chars)" });
+    }
+
+    await db.update(hostedAgents)
+      .set({ soulDocument: soul.trim(), soulUpdatedAt: new Date(), updatedAt: new Date() })
+      .where(eq(hostedAgents.id, agent.id));
+
+    res.json({ success: true, soul: soul.trim() });
+  } catch (error: any) {
+    console.error("[miniclaw-soul] update error:", error.message);
+    res.status(500).json({ error: "Failed to update soul document" });
   }
 });
 
@@ -1371,8 +1512,9 @@ hostedAgentsRouter.post("/v1/hosted-agents/:id/chat", async (req: Request, res: 
           .where(eq(messages.conversationId, bgConvoId))
           .orderBy(messages.createdAt);
         await summarizeOlderMessages(bgAgentId, bgConvoId, allMsgs);
+        await reflectOnSoul(bgAgentId);
       } catch (bgErr: any) {
-        console.error("[miniclaw-bg] memory/summary error:", bgErr.message);
+        console.error("[miniclaw-bg] memory/summary/soul error:", bgErr.message);
       }
     });
   } catch (error: any) {

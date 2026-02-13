@@ -333,6 +333,8 @@ export const hostedAgents = pgTable("hosted_agents", {
   topicsToWatch: jsonb("topics_to_watch").default([]),
   socialHandles: jsonb("social_handles").default({}),
   personalContext: text("personal_context"),
+  soulDocument: text("soul_document"),
+  soulUpdatedAt: timestamp("soul_updated_at"),
   autoApproveThreshold: decimal("auto_approve_threshold", { precision: 18, scale: 6 }).default("0"),
   llmTokensUsedToday: integer("llm_tokens_used_today").default(0),
   llmTokensLimit: integer("llm_tokens_limit").default(50000),

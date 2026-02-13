@@ -266,6 +266,77 @@
       padding: 0.2rem 0; margin-top: 0.2rem;
     }
     .onchain-dismiss:hover { color: var(--text); }
+
+    .soul-btn {
+      margin-left: auto; display: flex; align-items: center; gap: 0.25rem;
+      background: none; border: 1.5px solid var(--border); padding: 0.2rem 0.45rem;
+      font-family: var(--font-mono); font-size: 0.55rem; font-weight: 600;
+      color: var(--text-muted); cursor: pointer; text-transform: uppercase;
+      letter-spacing: 0.06em; transition: border-color 0.2s, color 0.2s;
+    }
+    .soul-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .soul-btn .soul-icon { font-size: 0.8rem; line-height: 1; }
+
+    .soul-overlay {
+      position: fixed; inset: 0; z-index: 100;
+      background: rgba(0,0,0,0.4); display: none;
+      align-items: flex-end; justify-content: center;
+    }
+    .soul-overlay.open { display: flex; }
+    .soul-panel {
+      width: 100%; max-width: 600px; max-height: 85vh;
+      background: var(--bg); border-top: 2px solid var(--border-heavy);
+      display: flex; flex-direction: column;
+      animation: slideUp 0.25s ease-out;
+    }
+    @keyframes slideUp {
+      from { transform: translateY(100%); }
+      to { transform: translateY(0); }
+    }
+    .soul-panel-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--border);
+    }
+    .soul-panel-title {
+      font-family: var(--font-mono); font-size: 0.7rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.08em;
+    }
+    .soul-panel-meta {
+      font-family: var(--font-mono); font-size: 0.55rem; color: var(--text-muted);
+    }
+    .soul-panel-close {
+      background: none; border: none; font-size: 1.2rem; cursor: pointer;
+      color: var(--text-muted); padding: 0.2rem; line-height: 1;
+    }
+    .soul-panel-close:hover { color: var(--text); }
+    .soul-panel-body {
+      flex: 1; overflow-y: auto; padding: 0.75rem;
+    }
+    .soul-textarea {
+      width: 100%; min-height: 200px; max-height: 50vh;
+      font-family: var(--font-sans); font-size: 0.85rem; line-height: 1.6;
+      color: var(--text); background: var(--bg-card);
+      border: 1.5px solid var(--border); padding: 0.6rem;
+      resize: vertical; outline: none;
+    }
+    .soul-textarea:focus { border-color: var(--border-heavy); }
+    .soul-panel-footer {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0.5rem 0.75rem; border-top: 1px solid var(--border);
+      gap: 0.5rem;
+    }
+    .soul-save-btn {
+      background: var(--border-heavy); color: var(--bg); border: none;
+      font-family: var(--font-mono); font-size: 0.6rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.06em;
+      padding: 0.35rem 0.8rem; cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    .soul-save-btn:hover { opacity: 0.8; }
+    .soul-save-btn:disabled { opacity: 0.4; cursor: default; }
+    .soul-status {
+      font-family: var(--font-mono); font-size: 0.55rem; color: var(--text-muted);
+    }
   </style>
 </head>
 <body>
@@ -276,6 +347,28 @@
       <div class="chat-agent-info">
         <div class="chat-agent-name" id="agent-name">Loading...</div>
         <div class="chat-agent-status" id="agent-status">online</div>
+      </div>
+      <button class="soul-btn" id="soul-btn" onclick="openSoul()">
+        <span class="soul-icon">&#9775;</span> soul
+      </button>
+    </div>
+
+    <div class="soul-overlay" id="soul-overlay" onclick="if(event.target===this)closeSoul()">
+      <div class="soul-panel">
+        <div class="soul-panel-header">
+          <div>
+            <div class="soul-panel-title">&#9775; Soul Document</div>
+            <div class="soul-panel-meta" id="soul-meta"></div>
+          </div>
+          <button class="soul-panel-close" onclick="closeSoul()">&times;</button>
+        </div>
+        <div class="soul-panel-body">
+          <textarea class="soul-textarea" id="soul-textarea" placeholder="Your miniclaw's soul will appear here as it grows..."></textarea>
+        </div>
+        <div class="soul-panel-footer">
+          <div class="soul-status" id="soul-status"></div>
+          <button class="soul-save-btn" id="soul-save-btn" onclick="saveSoul()">Save Changes</button>
+        </div>
       </div>
     </div>
 
@@ -722,6 +815,76 @@
       ctaDismissed = true;
       localStorage.setItem('miniclaw-cta-dismissed-' + agentId, 'true');
       document.getElementById('onchain-cta').style.display = 'none';
+    }
+
+    var soulLoaded = false;
+    var soulOriginal = '';
+
+    function openSoul() {
+      document.getElementById('soul-overlay').classList.add('open');
+      if (!soulLoaded) loadSoul();
+    }
+
+    function closeSoul() {
+      document.getElementById('soul-overlay').classList.remove('open');
+    }
+
+    async function loadSoul() {
+      var statusEl = document.getElementById('soul-status');
+      var textarea = document.getElementById('soul-textarea');
+      var metaEl = document.getElementById('soul-meta');
+      statusEl.textContent = 'loading...';
+      try {
+        var res = await fetch('/api/selfclaw/v1/hosted-agents/' + agentId + '/soul', { credentials: 'include' });
+        if (!res.ok) throw new Error('Failed to load');
+        var data = await res.json();
+        textarea.value = data.soul || '';
+        soulOriginal = textarea.value;
+        soulLoaded = true;
+        if (data.isDefault) {
+          metaEl.textContent = 'default template — will evolve through conversation';
+        } else if (data.updatedAt) {
+          var d = new Date(data.updatedAt);
+          metaEl.textContent = 'last self-reflection: ' + d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+        } else {
+          metaEl.textContent = '';
+        }
+        statusEl.textContent = '';
+      } catch (e) {
+        statusEl.textContent = 'failed to load soul';
+      }
+    }
+
+    async function saveSoul() {
+      var textarea = document.getElementById('soul-textarea');
+      var statusEl = document.getElementById('soul-status');
+      var saveBtn = document.getElementById('soul-save-btn');
+      var text = textarea.value.trim();
+      if (text === soulOriginal) {
+        statusEl.textContent = 'no changes to save';
+        setTimeout(function() { statusEl.textContent = ''; }, 2000);
+        return;
+      }
+      saveBtn.disabled = true;
+      statusEl.textContent = 'saving...';
+      try {
+        var res = await fetch('/api/selfclaw/v1/hosted-agents/' + agentId + '/soul', {
+          method: 'PUT', credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ soul: text })
+        });
+        if (!res.ok) {
+          var err = await res.json().catch(function() { return {}; });
+          throw new Error(err.error || 'Save failed');
+        }
+        soulOriginal = text;
+        statusEl.textContent = 'saved';
+        document.getElementById('soul-meta').textContent = 'edited by you — ' + new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+        setTimeout(function() { statusEl.textContent = ''; }, 2000);
+      } catch (e) {
+        statusEl.textContent = e.message || 'save failed';
+      }
+      saveBtn.disabled = false;
     }
 
     function startChat() {
