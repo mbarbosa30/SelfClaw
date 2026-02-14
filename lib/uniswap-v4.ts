@@ -878,21 +878,38 @@ export async function createPoolAndAddLiquidity(params: CreatePoolParams): Promi
       });
       console.log('[uniswap-v4] Simulation passed, sending transaction...');
     } catch (simErr: any) {
-      console.error('[uniswap-v4] Simulation failed:', simErr.message?.substring(0, 500));
-      const details = simErr.cause?.data || simErr.data || simErr.shortMessage || '';
-      console.error('[uniswap-v4] Revert details:', typeof details === 'object' ? JSON.stringify(details) : String(details).substring(0, 500));
+      console.error('[uniswap-v4] Simulation failed:', String(simErr.message || simErr).substring(0, 500));
+      try {
+        console.error('[uniswap-v4] Revert details:', String(simErr.cause?.data || simErr.data || simErr.shortMessage || '').substring(0, 500));
+      } catch (_) {}
       return { success: false, error: `Pool creation simulation failed: ${simErr.shortMessage || simErr.message}` };
     }
 
-    const mintTxHash = await walletClient.writeContract({
-      address: POSITION_MANAGER,
-      abi: POSITION_MANAGER_ABI,
-      functionName: 'modifyLiquidities',
-      args: [unlockData, deadline],
-      value: celoValue,
-    });
+    let mintTxHash: `0x${string}`;
+    try {
+      console.log(`[uniswap-v4] Sending modifyLiquidities tx... celoValue=${celoValue}`);
+      mintTxHash = await walletClient.writeContract({
+        address: POSITION_MANAGER,
+        abi: POSITION_MANAGER_ABI,
+        functionName: 'modifyLiquidities',
+        args: [unlockData, deadline],
+        value: celoValue,
+      });
+      console.log(`[uniswap-v4] modifyLiquidities tx submitted: ${mintTxHash}`);
+    } catch (mintErr: any) {
+      const errMsg = mintErr.shortMessage || mintErr.message || String(mintErr);
+      console.error(`[uniswap-v4] modifyLiquidities writeContract FAILED: ${errMsg}`);
+      try {
+        const cause = mintErr.cause?.data || mintErr.data || '';
+        if (cause) {
+          console.error(`[uniswap-v4] modifyLiquidities cause:`, String(cause).substring(0, 500));
+        }
+      } catch (_) {}
+      return { success: false, error: `modifyLiquidities failed to submit: ${errMsg}` };
+    }
 
     const mintReceipt = await publicClient.waitForTransactionReceipt({ hash: mintTxHash });
+    console.log(`[uniswap-v4] modifyLiquidities receipt: status=${mintReceipt.status}, gasUsed=${mintReceipt.gasUsed}, tx=${mintTxHash}`);
 
     if (mintReceipt.status === 'reverted') {
       return { success: false, error: `Mint transaction reverted: ${mintTxHash}` };
@@ -908,9 +925,11 @@ export async function createPoolAndAddLiquidity(params: CreatePoolParams): Promi
       receipt: mintReceipt,
     };
   } catch (error: any) {
-    console.error('[uniswap-v4] createPoolAndAddLiquidity error:', error.message?.substring(0, 500));
-    const details = error.cause?.data || error.data || error.shortMessage || '';
-    console.error('[uniswap-v4] Error details:', typeof details === 'object' ? JSON.stringify(details) : String(details).substring(0, 500));
+    console.error('[uniswap-v4] createPoolAndAddLiquidity UNEXPECTED error:', String(error.message || error).substring(0, 500));
+    try {
+      console.error('[uniswap-v4] Error details:', String(error.shortMessage || error.cause?.data || error.data || '').substring(0, 500));
+      console.error('[uniswap-v4] Stack:', String(error.stack || '').substring(0, 800));
+    } catch (_) {}
     return { success: false, error: error.shortMessage || error.message || 'Failed to create pool and add liquidity' };
   }
 }
