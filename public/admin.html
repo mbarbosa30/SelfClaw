@@ -492,6 +492,13 @@
       </section>
 
       <section class="admin-section">
+        <h2 class="admin-section-title">Agent Management</h2>
+        <p style="color:var(--text-muted);font-size:0.75rem;margin-bottom:1rem;line-height:1.4;">All registered agents with pipeline progress. Remove old or stale agents and their associated data.</p>
+        <div id="agentmgmt-loading" style="text-align:center;padding:2rem;color:var(--text-muted);"><span class="spinner"></span> Loading agents...</div>
+        <div id="agentmgmt-content" style="display:none;overflow-x:auto;"></div>
+      </section>
+
+      <section class="admin-section">
         <h2 class="admin-section-title">Token Prices</h2>
         <div id="prices-loading" style="text-align:center;padding:2rem;color:var(--text-muted);"><span class="spinner"></span> Loading prices...</div>
         <div id="prices-content" style="display:none;">
@@ -853,6 +860,7 @@
     function refreshAll() {
       loadStats();
       loadTokenManagement();
+      loadAgentManagement();
       loadTokenPrices();
       loadPoolInfo();
       loadWalletBalances();
@@ -2001,6 +2009,115 @@
         alert('Error: ' + e.message);
       });
     }
+
+    function loadAgentManagement() {
+      var loading = document.getElementById('agentmgmt-loading');
+      var content = document.getElementById('agentmgmt-content');
+      loading.style.display = 'block';
+      content.style.display = 'none';
+
+      fetch('/api/admin/agents', { headers: authHeaders() })
+        .then(function(r) {
+          if (handleAuthError(r)) throw new Error('auth');
+          return r.json();
+        })
+        .then(function(data) {
+          loading.style.display = 'none';
+          content.style.display = 'block';
+          var agents = data.agents || [];
+          if (agents.length === 0) {
+            content.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text-muted);">No registered agents</div>';
+            return;
+          }
+
+          var allStages = ['verified', 'wallet', 'gas', 'erc8004', 'token', 'sponsored'];
+          var stageLabels = { verified: 'V', wallet: 'W', gas: 'G', erc8004: '8004', token: 'T', sponsored: 'S' };
+          var stageTitles = { verified: 'Verified', wallet: 'Wallet', gas: 'Gas', erc8004: 'ERC-8004', token: 'Token', sponsored: 'Sponsored' };
+
+          var html = '<table style="width:100%;border-collapse:collapse;font-size:0.75rem;">';
+          html += '<thead><tr style="border-bottom:2px solid var(--border-heavy);">';
+          var headers = ['Agent', 'Human ID', 'Verified', 'Pipeline', 'Progress', 'Next Step', ''];
+          headers.forEach(function(h) {
+            html += '<th style="text-align:left;padding:0.5rem;font-family:IBM Plex Mono,monospace;font-size:0.65rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-muted);">' + h + '</th>';
+          });
+          html += '</tr></thead><tbody>';
+
+          agents.forEach(function(agent) {
+            html += '<tr data-pk="' + encodeURIComponent(agent.publicKey) + '" style="border-bottom:1px solid var(--border-light, #d4d0ca);">';
+
+            html += '<td style="padding:0.6rem 0.5rem;">';
+            html += '<div style="font-weight:600;">' + (agent.agentName ? esc(agent.agentName) : '<span style="color:var(--text-muted);font-style:italic;">unnamed</span>') + '</div>';
+            html += '<div style="font-family:IBM Plex Mono,monospace;font-size:0.55rem;color:var(--text-muted);">' + esc(agent.publicKey.slice(0, 20)) + '...</div>';
+            if (agent.tokenSymbol) html += '<div style="font-family:IBM Plex Mono,monospace;font-size:0.6rem;color:#FF6B4A;">$' + esc(agent.tokenSymbol) + '</div>';
+            html += '</td>';
+
+            html += '<td style="padding:0.6rem 0.5rem;font-family:IBM Plex Mono,monospace;font-size:0.65rem;color:var(--text-muted);">' + (agent.humanId ? esc(agent.humanId.slice(0, 10)) + '...' : '-') + '</td>';
+
+            var vDate = agent.verifiedAt ? new Date(agent.verifiedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' }) : '-';
+            html += '<td style="padding:0.6rem 0.5rem;font-size:0.7rem;">' + vDate + '</td>';
+
+            html += '<td style="padding:0.6rem 0.5rem;">';
+            html += '<div style="display:flex;gap:3px;flex-wrap:wrap;">';
+            allStages.forEach(function(stage) {
+              var active = agent.pipelineStages.indexOf(stage) !== -1;
+              var bg = active ? 'var(--green-verify)' : 'var(--border-light, #d4d0ca)';
+              var color = active ? '#fff' : 'var(--text-muted)';
+              html += '<span title="' + stageTitles[stage] + '" style="display:inline-block;padding:2px 4px;font-family:IBM Plex Mono,monospace;font-size:0.5rem;font-weight:600;background:' + bg + ';color:' + color + ';letter-spacing:0.02em;">' + stageLabels[stage] + '</span>';
+            });
+            html += '</div></td>';
+
+            html += '<td style="padding:0.6rem 0.5rem;font-family:IBM Plex Mono,monospace;font-size:0.65rem;font-weight:600;color:' + (agent.pipelineProgress === 100 ? 'var(--green-verify)' : '#FF6B4A') + ';">' + agent.pipelineProgress + '%</td>';
+
+            var nextLabel = agent.nextStage === 'complete' ? '<span style="color:var(--green-verify);">Complete</span>' : stageTitles[agent.nextStage] || agent.nextStage;
+            html += '<td style="padding:0.6rem 0.5rem;font-size:0.7rem;">' + nextLabel + '</td>';
+
+            html += '<td style="padding:0.6rem 0.5rem;text-align:center;">';
+            html += '<button data-remove-agent="' + encodeURIComponent(agent.publicKey) + '" data-agent-name="' + esc(agent.agentName || agent.publicKey.slice(0, 16)) + '" style="background:none;border:2px solid #ef4444;color:#ef4444;padding:0.25rem 0.6rem;cursor:pointer;font-family:IBM Plex Mono,monospace;font-size:0.55rem;font-weight:600;text-transform:uppercase;letter-spacing:0.03em;">Remove</button>';
+            html += '</td>';
+            html += '</tr>';
+          });
+
+          html += '</tbody></table>';
+          html += '<div style="margin-top:0.75rem;font-family:IBM Plex Mono,monospace;font-size:0.6rem;color:var(--text-muted);">Total: ' + agents.length + ' agents &mdash; Pipeline: V=Verified W=Wallet G=Gas 8004=ERC-8004 T=Token S=Sponsored</div>';
+          content.innerHTML = html;
+        })
+        .catch(function(e) {
+          if (e.message === 'auth') return;
+          loading.style.display = 'none';
+          content.style.display = 'block';
+          content.innerHTML = '<div style="text-align:center;color:#ef4444;padding:1rem;">Failed to load agents</div>';
+        });
+    }
+
+    document.addEventListener('click', function(e) {
+      var btn = e.target.closest('[data-remove-agent]');
+      if (!btn) return;
+      var pk = decodeURIComponent(btn.getAttribute('data-remove-agent'));
+      var name = btn.getAttribute('data-agent-name') || pk.slice(0, 16);
+      if (!confirm('Remove agent "' + name + '" and ALL related data?\n\nThis will delete: wallet, token plans, pools, sponsorships, services, revenue, costs, activity logs, and hosted agent data.\n\nThis action cannot be undone.')) return;
+      btn.disabled = true;
+      btn.textContent = '...';
+      fetch('/api/admin/agents/' + encodeURIComponent(pk), {
+        method: 'DELETE',
+        headers: authHeaders()
+      })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (data.success) {
+          loadAgentManagement();
+          loadStats();
+        } else {
+          btn.disabled = false;
+          btn.textContent = 'REMOVE';
+          alert('Failed: ' + (data.error || 'Unknown error'));
+        }
+      })
+      .catch(function(e) {
+        btn.disabled = false;
+        btn.textContent = 'REMOVE';
+        alert('Error: ' + e.message);
+      });
+    });
 
     (function() {
       var token = getToken();

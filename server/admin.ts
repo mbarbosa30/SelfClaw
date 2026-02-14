@@ -2,8 +2,8 @@ import { Router, Request, Response } from "express";
 import rateLimit from "express-rate-limit";
 import crypto from "crypto";
 import { db } from "./db.js";
-import { agentActivity, verifiedBots, agentWallets, bridgeTransactions, sponsoredAgents, trackedPools, sponsorshipRequests } from "../shared/schema.js";
-import { sql, desc, eq, inArray } from "drizzle-orm";
+import { agentActivity, verifiedBots, agentWallets, bridgeTransactions, sponsoredAgents, trackedPools, sponsorshipRequests, tokenPlans, agentServices, revenueEvents, costEvents, hostedAgents, conversations, messages, agentMemories, conversationSummaries } from "../shared/schema.js";
+import { sql, desc, eq, inArray, count } from "drizzle-orm";
 import {
   attestToken,
   completeAttestation,
@@ -1246,6 +1246,154 @@ router.put("/token-management/:id", async (req: Request, res: Response) => {
     res.json({ success: true });
   } catch (error: any) {
     console.error("[admin] token-management update error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get("/agents", async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    const agents = await db.select().from(verifiedBots).orderBy(desc(verifiedBots.verifiedAt));
+
+    const humanIds = agents.map(a => a.humanId).filter(Boolean) as string[];
+    const publicKeys = agents.map(a => a.publicKey);
+
+    const [walletRows, poolRows, planRows] = await Promise.all([
+      humanIds.length > 0
+        ? db.select({ humanId: agentWallets.humanId, address: agentWallets.address, gasReceived: agentWallets.gasReceived })
+            .from(agentWallets).where(inArray(agentWallets.humanId, humanIds))
+        : Promise.resolve([]),
+      humanIds.length > 0
+        ? db.select({ humanId: trackedPools.humanId, tokenAddress: trackedPools.tokenAddress, tokenSymbol: trackedPools.tokenSymbol, poolVersion: trackedPools.poolVersion, v4PoolId: trackedPools.v4PoolId })
+            .from(trackedPools).where(inArray(trackedPools.humanId, humanIds))
+        : Promise.resolve([]),
+      humanIds.length > 0
+        ? db.select({ humanId: tokenPlans.humanId, status: tokenPlans.status, tokenAddress: tokenPlans.tokenAddress })
+            .from(tokenPlans).where(inArray(tokenPlans.humanId, humanIds))
+        : Promise.resolve([]),
+    ]);
+
+    const walletMap = new Map<string, typeof walletRows[0]>();
+    for (const w of walletRows) walletMap.set(w.humanId, w);
+    const poolMap = new Map<string, typeof poolRows[0]>();
+    for (const p of poolRows) poolMap.set(p.humanId, p);
+    const planMap = new Map<string, typeof planRows[0]>();
+    for (const p of planRows) planMap.set(p.humanId, p);
+
+    const result = agents.map(agent => {
+      const hid = agent.humanId || '';
+      const wallet = walletMap.get(hid);
+      const pool = poolMap.get(hid);
+      const plan = planMap.get(hid);
+      const metadata = (agent.metadata as Record<string, any>) || {};
+
+      const pipelineStages: string[] = [];
+      pipelineStages.push('verified');
+      if (wallet) {
+        pipelineStages.push('wallet');
+        if (wallet.gasReceived) pipelineStages.push('gas');
+      }
+      if (metadata.erc8004Minted || metadata.erc8004TokenId) pipelineStages.push('erc8004');
+      if (plan?.tokenAddress || pool?.tokenAddress) pipelineStages.push('token');
+      if (pool?.v4PoolId || pool?.poolVersion === 'v4') pipelineStages.push('sponsored');
+
+      const allStages = ['verified', 'wallet', 'gas', 'erc8004', 'token', 'sponsored'];
+      const nextStage = allStages.find(s => !pipelineStages.includes(s)) || 'complete';
+
+      return {
+        publicKey: agent.publicKey,
+        agentName: agent.deviceId || null,
+        humanId: agent.humanId,
+        verificationLevel: agent.verificationLevel || 'passport',
+        verifiedAt: agent.verifiedAt,
+        walletAddress: wallet?.address || null,
+        tokenSymbol: pool?.tokenSymbol || null,
+        tokenAddress: pool?.tokenAddress || plan?.tokenAddress || null,
+        erc8004: !!(metadata.erc8004Minted || metadata.erc8004TokenId),
+        pipelineStages,
+        nextStage,
+        pipelineProgress: Math.round((pipelineStages.length / allStages.length) * 100),
+      };
+    });
+
+    res.json({ agents: result, total: result.length });
+  } catch (error: any) {
+    console.error("[admin] agents list error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.delete("/agents/:publicKey", async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    const { publicKey } = req.params;
+    if (!publicKey) {
+      return res.status(400).json({ error: "publicKey is required" });
+    }
+
+    const agents = await db.select().from(verifiedBots)
+      .where(sql`${verifiedBots.publicKey} = ${publicKey}`).limit(1);
+    if (agents.length === 0) {
+      return res.status(404).json({ error: "Agent not found" });
+    }
+
+    const agent = agents[0];
+    const humanId = agent.humanId;
+    const deleted: string[] = [];
+
+    if (humanId) {
+      await db.delete(agentWallets).where(sql`${agentWallets.humanId} = ${humanId}`);
+      deleted.push('wallets');
+      await db.delete(trackedPools).where(sql`${trackedPools.humanId} = ${humanId}`);
+      deleted.push('pools');
+      await db.delete(tokenPlans).where(sql`${tokenPlans.humanId} = ${humanId}`);
+      deleted.push('tokenPlans');
+      await db.delete(sponsoredAgents).where(sql`${sponsoredAgents.humanId} = ${humanId}`);
+      deleted.push('sponsoredAgents');
+      await db.delete(sponsorshipRequests).where(sql`${sponsorshipRequests.humanId} = ${humanId}`);
+      deleted.push('sponsorshipRequests');
+      await db.delete(agentServices).where(sql`${agentServices.humanId} = ${humanId}`);
+      deleted.push('services');
+      await db.delete(revenueEvents).where(sql`${revenueEvents.humanId} = ${humanId}`);
+      deleted.push('revenueEvents');
+      await db.delete(costEvents).where(sql`${costEvents.humanId} = ${humanId}`);
+      deleted.push('costEvents');
+      await db.delete(agentActivity).where(sql`${agentActivity.humanId} = ${humanId}`);
+      deleted.push('activity');
+    }
+
+    await db.delete(agentActivity).where(sql`${agentActivity.agentPublicKey} = ${publicKey}`);
+
+    const hostedRows = await db.select({ id: hostedAgents.id }).from(hostedAgents)
+      .where(humanId
+        ? sql`${hostedAgents.humanId} = ${humanId} OR ${hostedAgents.publicKey} = ${publicKey}`
+        : sql`${hostedAgents.publicKey} = ${publicKey}`
+      );
+    if (hostedRows.length > 0) {
+      const hostedIds = hostedRows.map(h => h.id);
+      for (const hId of hostedIds) {
+        await db.delete(messages).where(sql`${messages.conversationId} IN (SELECT id FROM conversations WHERE ${conversations.agentId} = ${hId})`);
+        await db.delete(conversationSummaries).where(sql`${conversationSummaries.agentId} = ${hId}`);
+        await db.delete(conversations).where(sql`${conversations.agentId} = ${hId}`);
+        await db.delete(agentMemories).where(sql`${agentMemories.agentId} = ${hId}`);
+      }
+      await db.delete(hostedAgents).where(inArray(hostedAgents.id, hostedIds));
+      deleted.push('hostedAgents');
+    }
+
+    await db.delete(verifiedBots).where(sql`${verifiedBots.publicKey} = ${publicKey}`);
+    deleted.push('agent');
+
+    console.log(`[admin] Deleted agent ${agent.deviceId || publicKey.slice(0, 16)}... and related data: ${deleted.join(', ')}`);
+
+    res.json({
+      success: true,
+      deleted,
+      agentName: agent.deviceId || null,
+      message: `Agent and all related data removed (${deleted.join(', ')})`,
+    });
+  } catch (error: any) {
+    console.error("[admin] agent delete error:", error);
     res.status(500).json({ error: error.message });
   }
 });
