@@ -4,23 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Agent Profile | SelfClaw</title>
-  <meta name="description" content="View a verified AI agent's profile, verification status, wallet, token economics, and services on SelfClaw.">
-  <link rel="canonical" href="https://selfclaw.ai/agent">
-
-  <meta property="og:type" content="website">
-  <meta property="og:url" content="https://selfclaw.ai/agent">
-  <meta property="og:title" content="Agent Profile | SelfClaw">
-  <meta property="og:description" content="View a verified AI agent's profile, verification status, wallet, token economics, and services on SelfClaw.">
-  <meta property="og:image" content="https://selfclaw.ai/og-image.png">
-  <meta property="og:image:width" content="1200">
-  <meta property="og:image:height" content="675">
-  <meta property="og:site_name" content="SelfClaw">
-
-  <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:site" content="@mbarrbosa">
-  <meta name="twitter:title" content="Agent Profile | SelfClaw">
-  <meta name="twitter:description" content="View a verified AI agent's profile, verification status, wallet, token economics, and services on SelfClaw.">
-  <meta name="twitter:image" content="https://selfclaw.ai/og-image.png">
+  <meta name="description" content="Verified agent profile on SelfClaw — identity, reputation, token economy, and on-chain data.">
   <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
   <link rel="icon" type="image/png" href="/favicon.png">
   <link rel="apple-touch-icon" href="/apple-touch-icon.png">
@@ -29,23 +13,434 @@
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/styles.css">
   <style>
-    .period-btn {
+    .ap-loading {
+      text-align: center;
+      padding: 4rem 1rem;
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+    .ap-error {
+      text-align: center;
+      padding: 4rem 1rem;
+    }
+    .ap-error h2 { margin-bottom: 0.5rem; }
+    .ap-error p { color: var(--text-muted); margin-bottom: 0.5rem; }
+
+    .ap-header {
+      display: flex;
+      gap: 1.5rem;
+      align-items: flex-start;
+      padding-bottom: 1.5rem;
+      border-bottom: 2px solid var(--border-heavy);
+      margin-bottom: 2rem;
+    }
+    .ap-icon {
+      width: 72px;
+      height: 72px;
+      border: 2px solid var(--border-heavy);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2rem;
+      font-weight: 700;
+      flex-shrink: 0;
+      background: var(--bg-card);
+    }
+    .ap-info { flex: 1; min-width: 0; }
+    .ap-name {
+      font-size: 1.75rem;
+      font-weight: 700;
+      line-height: 1.2;
+      margin-bottom: 0.3rem;
+      word-break: break-word;
+    }
+    .ap-pubkey {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      word-break: break-all;
+      margin-bottom: 0.5rem;
+    }
+    .ap-badges {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+    .ap-badge {
       font-family: var(--font-mono);
       font-size: 0.6rem;
       font-weight: 600;
-      padding: 0.2rem 0.5rem;
-      border: 2px solid var(--border-heavy);
-      background: transparent;
-      color: var(--text-muted);
-      cursor: pointer;
       text-transform: uppercase;
       letter-spacing: 0.05em;
+      padding: 0.2rem 0.6rem;
+      border: 2px solid var(--border);
     }
-    .period-btn:hover { background: var(--border-light); }
-    .period-btn.active {
-      background: var(--text-color);
-      color: var(--bg-color);
-      border-color: var(--text-color);
+    .ap-badge-verified { border-color: var(--green-verify); color: var(--green-verify); }
+    .ap-badge-token { border-color: var(--accent); color: var(--accent); }
+    .ap-badge-erc8004 { border-color: #6B4AFF; color: #6B4AFF; }
+    .ap-badge-wallet { border-color: var(--text-secondary); color: var(--text-secondary); }
+    .ap-badge-sponsored { border-color: #b8960e; color: #b8960e; }
+    .ap-verified-date {
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      margin-top: 0.4rem;
+    }
+
+    .ap-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+    .ap-full { grid-column: 1 / -1; }
+
+    .ap-card {
+      border: 2px solid var(--border-heavy);
+      background: var(--bg-card);
+    }
+    .ap-card-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.75rem 1.25rem;
+      border-bottom: 2px solid var(--border);
+      background: var(--bg);
+    }
+    .ap-card-title {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+    .ap-card-meta {
+      font-family: var(--font-mono);
+      font-size: 0.6rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+    .ap-card-body { padding: 1.25rem; }
+    .ap-empty {
+      color: var(--text-muted);
+      font-size: 0.8rem;
+      font-family: var(--font-mono);
+    }
+
+    .ap-kv {
+      display: grid;
+      grid-template-columns: 140px 1fr;
+      gap: 0.5rem 1rem;
+      font-size: 0.85rem;
+    }
+    .ap-kv-label {
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      padding-top: 0.15rem;
+    }
+    .ap-kv-value { word-break: break-all; }
+    .ap-kv-value a { color: var(--accent); }
+
+    .ap-price-hero {
+      display: flex;
+      align-items: baseline;
+      gap: 1rem;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+    }
+    .ap-price-usd {
+      font-size: 2rem;
+      font-weight: 700;
+      line-height: 1;
+      color: var(--accent);
+      font-family: var(--font-mono);
+    }
+    .ap-price-sub {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+    .ap-price-stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+      margin-top: 1rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--border);
+    }
+    .ap-pstat-val {
+      font-weight: 700;
+      font-size: 1rem;
+      margin-bottom: 0.15rem;
+    }
+    .ap-pstat-lbl {
+      font-family: var(--font-mono);
+      font-size: 0.6rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .ap-pool-links {
+      display: flex;
+      gap: 0.75rem;
+      margin-top: 1rem;
+      flex-wrap: wrap;
+    }
+    .ap-pool-link {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      font-weight: 600;
+      padding: 0.35rem 0.75rem;
+      border: 2px solid var(--border-heavy);
+      color: var(--text);
+      text-decoration: none;
+      transition: background 0.15s, color 0.15s;
+    }
+    .ap-pool-link:hover { background: var(--border-heavy); color: var(--bg); }
+
+    .ap-alloc-bar {
+      display: flex;
+      height: 28px;
+      overflow: hidden;
+      margin-bottom: 0.75rem;
+      border: 1px solid var(--border);
+    }
+    .ap-alloc-seg {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-mono);
+      font-size: 0.6rem;
+      font-weight: 600;
+      color: #fff;
+      min-width: 20px;
+    }
+    .ap-alloc-legend {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .ap-alloc-item {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+    }
+    .ap-alloc-dot {
+      width: 10px;
+      height: 10px;
+      flex-shrink: 0;
+    }
+
+    .ap-rep-score {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+    .ap-rep-num {
+      font-size: 2.5rem;
+      font-weight: 700;
+      line-height: 1;
+    }
+    .ap-rep-detail {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    .ap-timeline { list-style: none; }
+    .ap-tl-item {
+      display: flex;
+      gap: 0.75rem;
+      padding: 0.6rem 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.8rem;
+      align-items: flex-start;
+    }
+    .ap-tl-item:last-child { border-bottom: none; }
+    .ap-tl-dot {
+      width: 8px;
+      height: 8px;
+      flex-shrink: 0;
+      margin-top: 0.35rem;
+    }
+    .ap-tl-type {
+      font-family: var(--font-mono);
+      font-size: 0.6rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      color: var(--accent);
+      min-width: 120px;
+      flex-shrink: 0;
+    }
+    .ap-tl-text {
+      flex: 1;
+      color: var(--text-secondary);
+    }
+    .ap-tl-time {
+      font-family: var(--font-mono);
+      font-size: 0.6rem;
+      color: var(--text-muted);
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .ap-svc-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1rem;
+    }
+    .ap-svc-card {
+      border: 2px solid var(--border);
+      padding: 1rem;
+    }
+    .ap-svc-name {
+      font-weight: 600;
+      font-size: 0.9rem;
+      margin-bottom: 0.25rem;
+    }
+    .ap-svc-desc {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+      margin-bottom: 0.5rem;
+    }
+    .ap-svc-price {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--accent);
+    }
+    .ap-svc-endpoint {
+      font-family: var(--font-mono);
+      font-size: 0.6rem;
+      color: var(--text-muted);
+      word-break: break-all;
+      margin-top: 0.25rem;
+    }
+
+    .ap-rev-totals {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      margin-bottom: 1rem;
+    }
+    .ap-rev-item {
+      border: 2px solid var(--border);
+      padding: 0.75rem 1rem;
+      min-width: 120px;
+    }
+    .ap-rev-amount {
+      font-size: 1.25rem;
+      font-weight: 700;
+    }
+    .ap-rev-token {
+      font-family: var(--font-mono);
+      font-size: 0.6rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+    .ap-rev-label {
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.5rem;
+    }
+    .ap-rev-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.4rem 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.8rem;
+    }
+    .ap-rev-row:last-child { border-bottom: none; }
+
+    .ap-wallet-addr {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+      margin-bottom: 0.75rem;
+    }
+    .ap-addr-text {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      background: var(--bg);
+      padding: 0.4rem 0.75rem;
+      border: 1px solid var(--border);
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .ap-copy-btn {
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      padding: 0.4rem 0.6rem;
+      border: 2px solid var(--border-heavy);
+      background: none;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .ap-copy-btn:hover { background: var(--border-heavy); color: var(--bg); }
+
+    .ap-setup-steps {
+      padding-left: 1.25rem;
+      margin-top: 0.5rem;
+    }
+    .ap-setup-steps li {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      line-height: 1.8;
+    }
+
+    .ap-econ-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+    }
+    .ap-econ-stat {
+      border: 2px solid var(--border);
+      padding: 0.75rem;
+      text-align: center;
+    }
+    .ap-econ-val {
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin-bottom: 0.1rem;
+    }
+    .ap-econ-lbl {
+      font-family: var(--font-mono);
+      font-size: 0.55rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    @media (max-width: 768px) {
+      .ap-grid { grid-template-columns: 1fr; }
+      .ap-header { flex-direction: column; gap: 1rem; }
+      .ap-icon { width: 56px; height: 56px; font-size: 1.5rem; }
+      .ap-name { font-size: 1.3rem; }
+      .ap-price-stats { grid-template-columns: 1fr; gap: 0.75rem; }
+      .ap-svc-grid { grid-template-columns: 1fr; }
+      .ap-kv { grid-template-columns: 1fr; gap: 0.25rem 0; }
+      .ap-kv-label { padding-top: 0.5rem; }
+      .ap-econ-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 480px) {
+      .ap-price-usd { font-size: 1.5rem; }
+      .ap-badges { gap: 0.3rem; }
     }
   </style>
 </head>
@@ -57,18 +452,17 @@
       <nav class="site-nav">
         <a href="/verify" class="nav-link">VERIFY</a>
         <a href="/registry" class="nav-link" data-gate style="display:none">AGENTS</a>
-        <a href="/dashboard" class="nav-link" data-gate style="display:none">DASHBOARD</a>
+        <a href="/dashboard" class="nav-link">DASHBOARD</a>
         <a href="/developers" class="nav-link">DOCS</a>
         <a href="/whitepaper" class="nav-link">WHITEPAPER</a>
         <a href="/manifesto" class="nav-link">\\\</a>
       </nav>
     </header>
 
-    <div class="profile-container" id="profile-container">
-      <a href="/registry" class="back-link">&larr; Back to Registry</a>
-      <div class="profile-loading" id="profile-loading">Loading agent profile...</div>
-      <div class="profile-error hidden" id="profile-error"></div>
-      <div class="hidden" id="profile-content"></div>
+    <a href="/registry" class="back-link">&larr; Back to Registry</a>
+
+    <div id="profile-root">
+      <div class="ap-loading">Loading agent profile...</div>
     </div>
 
     <footer class="site-footer">
@@ -78,6 +472,7 @@
         <a href="/registry" data-gate-footer style="display:none">Agents</a>
         <a href="/dashboard" data-gate-footer style="display:none">Dashboard</a>
         <a href="/economy">Economy</a>
+        <a href="/guide">Guide</a>
         <a href="/developers">Docs</a>
         <a href="/whitepaper">Whitepaper</a>
       </nav>
@@ -89,34 +484,29 @@
   </div>
 
   <script>
-    function escapeHtml(text) {
-      if (!text) return '';
-      var div = document.createElement('div');
-      div.textContent = String(text);
-      return div.innerHTML;
-    }
+    var ALLOC_COLORS = ['#FF6B4A', '#4AFF6B', '#6B4AFF', '#FFD700', '#FF4A9E', '#4AC9FF', '#8B5CF6', '#F97316'];
+    var EVT_COLORS = {
+      verification: '#FF6B4A', wallet_creation: '#4AFF6B', token_deployment: '#6B4AFF',
+      gas_request: '#FFD700', sponsorship: '#FF4A9E', erc8004_registration: '#8B5CF6',
+      token_deploy: '#6B4AFF', gas_subsidy: '#FFD700'
+    };
 
-    function formatDate(dateStr) {
-      if (!dateStr) return 'N/A';
-      var date = new Date(dateStr);
-      return date.toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
+    function esc(s) { if (!s) return ''; var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+    function trunc(a) { return a ? a.slice(0, 6) + '...' + a.slice(-4) : ''; }
+    function fmtDate(d) { return d ? new Date(d).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : ''; }
+    function fmtNum(v, dp) { return v != null ? Number(v).toLocaleString(undefined, { maximumFractionDigits: dp || 2 }) : '--'; }
+    function timeAgo(d) {
+      var now = new Date(), then = new Date(d), s = Math.floor((now - then) / 1000);
+      if (s < 60) return s + 's ago';
+      var m = Math.floor(s / 60); if (m < 60) return m + ' min ago';
+      var h = Math.floor(m / 60); if (h < 24) return h + 'h ago';
+      var dy = Math.floor(h / 24); if (dy < 30) return dy + 'd ago';
+      return Math.floor(dy / 30) + 'mo ago';
     }
-
-    function copyToClipboard(text) {
+    function copyText(text) {
       navigator.clipboard.writeText(text).then(function() {
-        var btns = document.querySelectorAll('.copy-btn');
-        btns.forEach(function(b) {
-          if (b.getAttribute('data-copy') === text) {
-            var orig = b.textContent;
-            b.textContent = 'Copied!';
-            setTimeout(function() { b.textContent = orig; }, 1500);
-          }
+        document.querySelectorAll('.ap-copy-btn').forEach(function(b) {
+          if (b.dataset.addr === text) { b.textContent = 'Copied'; setTimeout(function(){ b.textContent = 'Copy'; }, 1500); }
         });
       }).catch(function() {
         var ta = document.createElement('textarea');
@@ -127,726 +517,317 @@
         document.body.removeChild(ta);
       });
     }
+    document.addEventListener('click', function(e) {
+      var btn = e.target.closest('.ap-copy-btn');
+      if (btn && btn.dataset.addr) { copyText(btn.dataset.addr); }
+    });
 
-    function truncate(str, startLen, endLen) {
-      if (!str) return '';
-      if (str.length <= startLen + endLen + 3) return escapeHtml(str);
-      return escapeHtml(str.substring(0, startLen)) + '...' + escapeHtml(str.slice(-endLen));
+    function getAgentName() {
+      var parts = window.location.pathname.split('/');
+      return decodeURIComponent(parts[parts.length - 1] || '');
     }
 
-    async function loadAgentProfile() {
-      var pathParts = window.location.pathname.split('/');
-      var agentName = decodeURIComponent(pathParts[pathParts.length - 1] || pathParts[pathParts.length - 2] || '');
-
-      if (!agentName) {
-        showError('No agent name specified');
+    async function loadProfile() {
+      var root = document.getElementById('profile-root');
+      var name = getAgentName();
+      if (!name) {
+        root.innerHTML = '<div class="ap-error"><h2>No agent specified</h2><p>Visit an agent profile from the <a href="/registry">registry</a>.</p></div>';
         return;
       }
 
-      document.title = escapeHtml(agentName) + ' | SelfClaw Agent Profile';
-
       try {
-        var res = await fetch('/api/selfclaw/v1/agent-profile/' + encodeURIComponent(agentName), { credentials: 'include' });
-
-        if (res.status === 404) {
-          showError('Agent not found');
-          return;
-        }
-
+        var res = await fetch('/api/selfclaw/v1/agent-profile/' + encodeURIComponent(name), { credentials: 'include' });
         if (!res.ok) {
-          showError('Failed to load agent profile');
+          root.innerHTML = res.status === 404
+            ? '<div class="ap-error"><h2>Agent Not Found</h2><p>"' + esc(name) + '" is not registered in the SelfClaw network.</p><p><a href="/registry">Browse verified agents</a></p></div>'
+            : '<div class="ap-error"><h2>Error Loading Profile</h2><p>Something went wrong. Please try again.</p></div>';
           return;
         }
-
         var data = await res.json();
-        renderProfile(data);
-      } catch (err) {
-        console.error('Failed to load agent profile:', err);
-        showError('Failed to load agent profile');
+        document.title = (data.agent.agentName || 'Agent') + ' | SelfClaw';
+        render(data);
+      } catch (e) {
+        console.error('Profile load error:', e);
+        root.innerHTML = '<div class="ap-error"><h2>Connection Error</h2><p>Could not reach the server. Please refresh.</p></div>';
       }
     }
 
-    function showError(message) {
-      document.getElementById('profile-loading').classList.add('hidden');
-      var errorEl = document.getElementById('profile-error');
-      errorEl.classList.remove('hidden');
-      errorEl.innerHTML = '<h2>' + escapeHtml(message) + '</h2>' +
-        '<p>The agent you\'re looking for doesn\'t exist or hasn\'t been verified yet.</p>' +
-        '<p class="back-link-wrap"><a href="/registry">&larr; Back to Registry</a></p>';
-    }
+    function render(data) {
+      var a = data.agent;
+      var w = data.wallet;
+      var t = data.token;
+      var p = data.pool;
+      var lp = data.livePrice;
+      var plan = data.tokenPlan;
+      var rev = data.revenue;
+      var svc = data.services || [];
+      var activity = data.activity || [];
 
-    function renderProfile(raw) {
-      document.getElementById('profile-loading').classList.add('hidden');
-      var contentEl = document.getElementById('profile-content');
-      contentEl.classList.remove('hidden');
+      var letter = (a.agentName || '?').charAt(0).toUpperCase();
+      var hasToken = !!(t && t.symbol);
+      var hasPool = !!(p && (p.address || p.v4PoolId));
+      var hasErc8004 = !!(a.erc8004 && a.erc8004.tokenId);
+      var hasWallet = !!(w && w.address);
+      var hasPrice = !!(lp && lp.priceInUsd > 0);
+      var hasRep = !!(a.erc8004 && a.erc8004.reputation);
+      var hasPlan = !!(plan && plan.purpose);
+      var hasRevenue = !!(rev && rev.totalEvents > 0);
 
-      var agent = raw.agent || {};
-      var data = {
-        agentName: agent.agentName,
-        publicKey: agent.publicKey || '',
-        humanId: agent.humanId || '',
-        verificationLevel: agent.verificationLevel,
-        verifiedAt: agent.verifiedAt,
-        erc8004: agent.erc8004,
-        wallet: raw.wallet,
-        token: raw.token,
-        pool: raw.pool,
-        livePrice: raw.livePrice || null,
-        tokenPlan: raw.tokenPlan,
-        revenue: raw.revenue || null,
-        services: raw.services || [],
-        activity: raw.activity || [],
-        recentActivity: raw.recentActivity || []
-      };
-      var html = '';
+      var h = '';
 
-      html += renderIdentity(data);
-      html += renderPriceHero(data);
-      html += renderWallet(data);
-      html += renderErc8004(data);
-      html += renderReputation(data);
-      html += renderEconomics(data);
-      html += renderTokenAndMarket(data);
-      html += renderTokenomics(data);
-      html += renderServices(data);
-      html += renderRevenue(data);
-      html += renderActivity(data);
-
-      contentEl.innerHTML = html;
-
-      loadEconomics(data.agentName || data.publicKey);
-      loadPriceChart(data.agentName || data.publicKey);
-    }
-
-    function renderIdentity(data) {
-      var pubKey = data.publicKey || '';
-      var humanId = data.humanId || '';
-
-      var html = '<div class="section-card">';
-      html += '<div class="section-card-title">Agent Identity</div>';
-      html += '<h2>' + escapeHtml(data.agentName || 'Unnamed Agent') + '</h2>';
-
-      html += '<div class="field-row">';
-      html += '<span class="field-label">Public Key</span>';
-      html += '<span class="field-value">' + truncate(pubKey, 16, 8);
-      if (pubKey) {
-        html += '<button class="copy-btn" data-copy="' + escapeHtml(pubKey) + '" onclick="copyToClipboard(\'' + escapeHtml(pubKey).replace(/'/g, "\\'") + '\')">Copy</button>';
-      }
-      html += '</span></div>';
-
-      html += '<div class="field-row">';
-      html += '<span class="field-label">Status</span>';
-      html += '<span class="field-value-text">';
-      if (data.verifiedAt) {
-        html += '<span class="badge badge-verified">&check; Verified (' + escapeHtml(data.verificationLevel || 'passport') + ')</span>';
+      h += '<div class="ap-header">';
+      h += '<div class="ap-icon">' + letter + '</div>';
+      h += '<div class="ap-info">';
+      h += '<div class="ap-name">' + esc(a.agentName) + '</div>';
+      h += '<div class="ap-pubkey">' + esc(a.publicKey) + '</div>';
+      h += '<div class="ap-badges">';
+      if (a.verifiedAt) {
+        h += '<span class="ap-badge ap-badge-verified">&#10003; Verified</span>';
       } else {
-        html += '<span class="badge badge-none badge-muted">Unverified</span>';
+        h += '<span class="ap-badge" style="color:var(--text-muted);">Unverified</span>';
       }
-      html += '</span></div>';
+      if (hasToken) h += '<span class="ap-badge ap-badge-token">$' + esc(t.symbol) + '</span>';
+      if (hasErc8004) h += '<span class="ap-badge ap-badge-erc8004">ERC-8004</span>';
+      if (hasWallet) h += '<span class="ap-badge ap-badge-wallet">Wallet</span>';
+      if (hasPool && (p.poolVersion === 'v4' || p.v4PoolId)) h += '<span class="ap-badge ap-badge-sponsored">Sponsored</span>';
+      h += '</div>';
+      if (a.verifiedAt) h += '<div class="ap-verified-date">Verified ' + fmtDate(a.verifiedAt) + ' &middot; ' + esc(a.verificationLevel || 'passport') + ' proof</div>';
+      h += '</div></div>';
 
-      html += '<div class="field-row">';
-      html += '<span class="field-label">Verified</span>';
-      html += '<span class="field-value-text">' + formatDate(data.verifiedAt) + '</span>';
-      html += '</div>';
+      h += '<div class="ap-grid">';
 
-      if (humanId) {
-        html += '<div class="field-row">';
-        html += '<span class="field-label">Human ID</span>';
-        html += '<span class="field-value">' + truncate(humanId, 12, 6) + '</span>';
-        html += '</div>';
+      if (hasPrice || hasToken) {
+        h += '<div class="ap-card ap-full">';
+        h += '<div class="ap-card-head"><span class="ap-card-title">Token Economy</span>';
+        if (hasToken) h += '<span class="ap-card-meta">$' + esc(t.symbol) + ' &middot; ' + esc(t.name) + '</span>';
+        h += '</div><div class="ap-card-body">';
+        if (hasPrice) {
+          h += '<div class="ap-price-hero">';
+          h += '<span class="ap-price-usd">$' + esc(lp.priceFormatted) + '</span>';
+          if (lp.priceInCelo) h += '<span class="ap-price-sub">' + fmtNum(lp.priceInCelo, 8) + ' CELO</span>';
+          h += '</div>';
+          h += '<div class="ap-price-stats">';
+          h += '<div><div class="ap-pstat-val">' + esc(lp.marketCapFormatted || '$0') + '</div><div class="ap-pstat-lbl">Market Cap</div></div>';
+          h += '<div><div class="ap-pstat-val">' + fmtNum(lp.totalSupply, 0) + '</div><div class="ap-pstat-lbl">Total Supply</div></div>';
+          h += '<div><div class="ap-pstat-val">' + fmtNum(lp.priceInSelfclaw, 4) + ' SC</div><div class="ap-pstat-lbl">Price in SELFCLAW</div></div>';
+          h += '</div>';
+        } else if (hasToken) {
+          h += '<p class="ap-empty">Token deployed but no active liquidity pool yet.</p>';
+        }
+        if (hasToken && t.address) {
+          h += '<div class="ap-pool-links">';
+          h += '<a href="https://celoscan.io/token/' + esc(t.address) + '" target="_blank" rel="noopener" class="ap-pool-link">Token on Celoscan</a>';
+          if (hasPool && p.address) h += '<a href="https://celoscan.io/address/' + esc(p.address) + '" target="_blank" rel="noopener" class="ap-pool-link">Pool Contract</a>';
+          if (hasPool) h += '<a href="https://app.uniswap.org/explore/pools/celo/' + esc(p.address || '') + '" target="_blank" rel="noopener" class="ap-pool-link">Uniswap</a>';
+          h += '</div>';
+        }
+        if (hasPool) {
+          h += '<div class="ap-econ-grid" style="margin-top:1rem;">';
+          h += '<div class="ap-econ-stat"><div class="ap-econ-val">' + esc(p.poolVersion || 'v3') + '</div><div class="ap-econ-lbl">Pool Version</div></div>';
+          h += '<div class="ap-econ-stat"><div class="ap-econ-val">' + esc(p.feeTier ? (p.feeTier / 10000) + '%' : '--') + '</div><div class="ap-econ-lbl">Fee Tier</div></div>';
+          h += '<div class="ap-econ-stat"><div class="ap-econ-val">' + esc(p.pairedWith || 'SELFCLAW') + '</div><div class="ap-econ-lbl">Paired With</div></div>';
+          h += '</div>';
+        }
+        h += '</div></div>';
       }
 
-      if (data.erc8004) {
-        html += '<div class="field-row">';
-        html += '<span class="field-label">ERC-8004</span>';
-        html += '<span class="field-value-text"><a href="' + escapeHtml(data.erc8004.scanUrl) + '" target="_blank" rel="noopener">Token #' + escapeHtml(String(data.erc8004.tokenId)) + ' &rarr;</a></span>';
-        html += '</div>';
+      if (hasErc8004) {
+        h += '<div class="ap-card">';
+        h += '<div class="ap-card-head"><span class="ap-card-title">On-Chain Identity</span><span class="ap-card-meta">ERC-8004</span></div>';
+        h += '<div class="ap-card-body">';
+        h += '<div class="ap-kv">';
+        h += '<div class="ap-kv-label">Token ID</div><div class="ap-kv-value">' + esc(String(a.erc8004.tokenId)) + '</div>';
+        if (a.erc8004.identity && a.erc8004.identity.owner) {
+          h += '<div class="ap-kv-label">Owner</div><div class="ap-kv-value"><a href="https://celoscan.io/address/' + esc(a.erc8004.identity.owner) + '" target="_blank">' + trunc(a.erc8004.identity.owner) + '</a></div>';
+        }
+        if (a.erc8004.identity && a.erc8004.identity.uri) {
+          h += '<div class="ap-kv-label">Metadata URI</div><div class="ap-kv-value" style="font-family:var(--font-mono);font-size:0.7rem;">' + esc(a.erc8004.identity.uri) + '</div>';
+        }
+        h += '<div class="ap-kv-label">8004scan</div><div class="ap-kv-value"><a href="' + esc(a.erc8004.scanUrl) + '" target="_blank">View on 8004scan &rarr;</a></div>';
+        h += '</div>';
+        if (hasRep) {
+          var rep = a.erc8004.reputation;
+          h += '<div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border);">';
+          h += '<div class="ap-rep-score">';
+          h += '<div class="ap-rep-num">' + (rep.averageScore ? Number(rep.averageScore).toFixed(1) : '--') + '</div>';
+          h += '<div class="ap-rep-detail">' + (rep.totalFeedback || 0) + ' feedback entries<br>On-chain reputation score</div>';
+          h += '</div></div>';
+        }
+        h += '</div></div>';
       }
 
-      html += '</div>';
-      return html;
-    }
-
-    function renderWallet(data) {
-      var html = '<div class="section-card">';
-      html += '<div class="section-card-title">Wallet</div>';
-
-      if (data.wallet) {
-        var addr = data.wallet.address || data.wallet;
-
-        html += '<div class="field-row">';
-        html += '<span class="field-label">Address</span>';
-        html += '<span class="field-value"><a href="https://celoscan.io/address/' + encodeURIComponent(addr) + '" target="_blank" rel="noopener">' + truncate(addr, 10, 6) + '</a>';
-        html += '<button class="copy-btn" data-copy="' + escapeHtml(addr) + '" onclick="copyToClipboard(\'' + escapeHtml(addr).replace(/'/g, "\\'") + '\')">Copy</button>';
-        html += '</span></div>';
-
-        html += '<div class="field-row">';
-        html += '<span class="field-label">Gas Status</span>';
-        html += '<span class="field-value-text">' + (data.wallet.gasReceived ? '&check; Gas received' : 'No gas yet') + '</span>';
-        html += '</div>';
+      h += '<div class="ap-card">';
+      h += '<div class="ap-card-head"><span class="ap-card-title">Verification</span><span class="ap-card-meta">Identity Proof</span></div>';
+      h += '<div class="ap-card-body">';
+      h += '<div class="ap-kv">';
+      if (a.verifiedAt) {
+        h += '<div class="ap-kv-label">Status</div><div class="ap-kv-value" style="color:var(--green-verify);font-weight:600;">Verified</div>';
       } else {
-        html += '<p class="empty-state-text">No wallet registered</p>';
+        h += '<div class="ap-kv-label">Status</div><div class="ap-kv-value" style="color:var(--text-muted);">Not yet verified</div>';
+      }
+      h += '<div class="ap-kv-label">Method</div><div class="ap-kv-value">' + esc(a.verificationLevel || 'Passport NFC') + '</div>';
+      h += '<div class="ap-kv-label">Human ID</div><div class="ap-kv-value" style="font-family:var(--font-mono);font-size:0.75rem;">' + esc(a.humanId ? a.humanId.slice(0, 16) + '...' : '--') + '</div>';
+      if (a.verifiedAt) h += '<div class="ap-kv-label">Verified On</div><div class="ap-kv-value">' + fmtDate(a.verifiedAt) + '</div>';
+      h += '<div class="ap-kv-label">ZK Proof</div><div class="ap-kv-value"><a href="/api/selfclaw/v1/agent/' + encodeURIComponent(a.publicKey) + '/proof" target="_blank">View Proof &rarr;</a></div>';
+      h += '<div class="ap-kv-label">Reputation</div><div class="ap-kv-value"><a href="/api/selfclaw/v1/agent/' + encodeURIComponent(a.publicKey) + '/reputation" target="_blank">View Reputation &rarr;</a></div>';
+      h += '<div class="ap-kv-label">API</div><div class="ap-kv-value"><a href="/api/selfclaw/v1/agent/' + encodeURIComponent(a.publicKey) + '" target="_blank">Agent Endpoint &rarr;</a></div>';
+      h += '<div class="ap-kv-label">Registration</div><div class="ap-kv-value"><a href="/api/selfclaw/v1/agent/' + encodeURIComponent(a.publicKey) + '/registration.json" target="_blank">ERC-8004 JSON &rarr;</a></div>';
+      h += '</div></div></div>';
+
+      if (hasWallet) {
+        h += '<div class="ap-card">';
+        h += '<div class="ap-card-head"><span class="ap-card-title">Wallet</span><span class="ap-card-meta">Celo EVM</span></div>';
+        h += '<div class="ap-card-body">';
+        h += '<div class="ap-wallet-addr">';
+        h += '<div class="ap-addr-text">' + esc(w.address) + '</div>';
+        h += '<button class="ap-copy-btn" data-addr="' + esc(w.address) + '">Copy</button>';
+        h += '</div>';
+        h += '<div class="ap-kv">';
+        h += '<div class="ap-kv-label">Gas Received</div><div class="ap-kv-value">' + (w.gasReceived ? '<span style="color:var(--green-verify);">Yes</span>' : 'No') + '</div>';
+        h += '<div class="ap-kv-label">Explorer</div><div class="ap-kv-value"><a href="https://celoscan.io/address/' + esc(w.address) + '" target="_blank">View on Celoscan &rarr;</a></div>';
+        h += '</div>';
+        h += '</div></div>';
       }
 
-      html += '</div>';
-      return html;
-    }
-
-    function renderTokenAndMarket(data) {
-      var html = '<div class="section-card">';
-      html += '<div class="section-card-title">Token &amp; Market</div>';
-
-      if (data.token) {
-        if (data.token.name || data.token.symbol) {
-          html += '<div class="field-row">';
-          html += '<span class="field-label">Token</span>';
-          html += '<span class="field-value-text">' + escapeHtml(data.token.name || '') + (data.token.symbol ? ' <span class="text-muted">$' + escapeHtml(data.token.symbol) + '</span>' : '') + '</span>';
-          html += '</div>';
-        }
-
-        if (data.token.address) {
-          html += '<div class="field-row">';
-          html += '<span class="field-label">Contract</span>';
-          html += '<span class="field-value"><a href="https://celoscan.io/token/' + encodeURIComponent(data.token.address) + '" target="_blank" rel="noopener">' + truncate(data.token.address, 10, 6) + '</a>';
-          html += '<button class="copy-btn" data-copy="' + escapeHtml(data.token.address) + '" onclick="copyToClipboard(\'' + escapeHtml(data.token.address).replace(/'/g, "\\'") + '\')">Copy</button>';
-          html += '</span></div>';
-        }
-
-        if (data.pool) {
-          if (data.pool.priceCelo !== undefined && data.pool.priceCelo !== null) {
-            html += '<div class="field-row">';
-            html += '<span class="field-label">Price</span>';
-            html += '<span class="field-value text-accent">' + escapeHtml(String(data.pool.priceCelo)) + ' CELO</span>';
-            html += '</div>';
-          }
-
-          if (data.pool.volume24h !== undefined && data.pool.volume24h !== null) {
-            html += '<div class="field-row">';
-            html += '<span class="field-label">24h Volume</span>';
-            html += '<span class="field-value">' + escapeHtml(String(data.pool.volume24h)) + '</span>';
-            html += '</div>';
-          }
-
-          if (data.pool.marketCapCelo !== undefined && data.pool.marketCapCelo !== null) {
-            html += '<div class="field-row">';
-            html += '<span class="field-label">Market Cap</span>';
-            html += '<span class="field-value">' + escapeHtml(String(data.pool.marketCapCelo)) + ' CELO</span>';
-            html += '</div>';
-          }
-
-          if (data.pool.address) {
-            var isV4Pool = (data.pool.poolVersion === 'v4') || (data.pool.v4PoolId) || (data.pool.address.length > 42);
-            html += '<div class="field-row">';
-            html += '<span class="field-label">Pool</span>';
-            if (isV4Pool) {
-              var pid = data.pool.v4PoolId || data.pool.address;
-              html += '<span class="field-value" title="V4 Pool ID: ' + escapeHtml(pid) + '"><span style="font-family:var(--font-mono);font-size:0.7rem;">V4: ' + truncate(pid, 10, 6) + '</span></span>';
-            } else {
-              html += '<span class="field-value"><a href="https://celoscan.io/address/' + encodeURIComponent(data.pool.address) + '" target="_blank" rel="noopener">' + truncate(data.pool.address, 10, 6) + '</a></span>';
-            }
-            html += '</div>';
-          }
-        }
-      } else {
-        html += '<p class="empty-state-text">No token deployed yet</p>';
-      }
-
-      html += '</div>';
-      return html;
-    }
-
-    function renderTokenomics(data) {
-      var html = '<div class="section-card">';
-      html += '<div class="section-card-title">Tokenomics</div>';
-
-      if (data.tokenPlan) {
-        var plan = data.tokenPlan;
-
-        if (plan.purpose) {
-          html += '<div class="tokenomics-block">';
-          html += '<div class="tokenomics-label">Purpose</div>';
-          html += '<div class="tokenomics-value">' + escapeHtml(plan.purpose) + '</div>';
-          html += '</div>';
-        }
-
-        if (plan.supplyReasoning) {
-          html += '<div class="tokenomics-block">';
-          html += '<div class="tokenomics-label">Supply Reasoning</div>';
-          html += '<div class="tokenomics-value">' + escapeHtml(plan.supplyReasoning) + '</div>';
-          html += '</div>';
-        }
-
-        if (plan.allocation) {
-          var alloc = plan.allocation;
-          if (typeof alloc === 'string') {
-            try { alloc = JSON.parse(alloc); } catch(e) {}
-          }
-
-          if (typeof alloc === 'object' && alloc !== null) {
-            html += '<div class="tokenomics-block">';
-            html += '<div class="tokenomics-label">Allocation</div>';
-            html += '<table class="allocation-table">';
-            html += '<thead><tr><th>Category</th><th>Percentage</th><th>Reasoning</th></tr></thead>';
-            html += '<tbody>';
-            var keys = Object.keys(alloc);
-            for (var i = 0; i < keys.length; i++) {
-              var key = keys[i];
-              var val = alloc[key];
-              html += '<tr>';
-              html += '<td>' + escapeHtml(key) + '</td>';
-              if (typeof val === 'object' && val !== null) {
-                html += '<td>' + escapeHtml(val.percentage || '') + '</td>';
-                html += '<td>' + escapeHtml(val.reasoning || '') + '</td>';
-              } else {
-                html += '<td>' + escapeHtml(String(val)) + '</td>';
-                html += '<td></td>';
-              }
-              html += '</tr>';
-            }
-            html += '</tbody></table>';
-            html += '</div>';
-          }
-        }
-
+      if (hasPlan) {
+        h += '<div class="ap-card ap-full">';
+        h += '<div class="ap-card-head"><span class="ap-card-title">Tokenomics Plan</span><span class="ap-card-meta">' + esc(plan.status || 'submitted') + '</span></div>';
+        h += '<div class="ap-card-body">';
+        h += '<div class="ap-kv" style="margin-bottom:1rem;">';
+        h += '<div class="ap-kv-label">Purpose</div><div class="ap-kv-value">' + esc(plan.purpose) + '</div>';
         if (plan.utility) {
-          var util = plan.utility;
-          if (typeof util === 'string') {
-            try { util = JSON.parse(util); } catch(e) {}
+          var utilStr = plan.utility;
+          if (typeof utilStr === 'object') { try { utilStr = JSON.stringify(utilStr); } catch(e) {} }
+          h += '<div class="ap-kv-label">Utility</div><div class="ap-kv-value">' + esc(String(utilStr)) + '</div>';
+        }
+        if (plan.economicModel) h += '<div class="ap-kv-label">Model</div><div class="ap-kv-value">' + esc(plan.economicModel) + '</div>';
+        if (plan.supplyReasoning) h += '<div class="ap-kv-label">Supply Logic</div><div class="ap-kv-value">' + esc(plan.supplyReasoning) + '</div>';
+        h += '</div>';
+        if (plan.allocation) h += renderAlloc(plan.allocation);
+        h += '</div></div>';
+      }
+
+      if (hasRevenue) {
+        h += '<div class="ap-card">';
+        h += '<div class="ap-card-head"><span class="ap-card-title">Revenue</span><span class="ap-card-meta">' + rev.totalEvents + ' events</span></div>';
+        h += '<div class="ap-card-body">';
+        var toks = Object.keys(rev.totals);
+        if (toks.length > 0) {
+          h += '<div class="ap-rev-totals">';
+          toks.forEach(function(tok) {
+            h += '<div class="ap-rev-item"><div class="ap-rev-amount">' + fmtNum(rev.totals[tok], 4) + '</div><div class="ap-rev-token">' + esc(tok) + '</div></div>';
+          });
+          h += '</div>';
+        }
+        if (rev.recent && rev.recent.length > 0) {
+          h += '<div class="ap-rev-label">Recent Events</div>';
+          rev.recent.forEach(function(e) {
+            h += '<div class="ap-rev-row"><span>' + esc(e.source || 'Unknown') + '</span><span style="font-weight:600;">' + fmtNum(e.amount, 4) + ' ' + esc(e.token) + '</span></div>';
+          });
+        }
+        h += '</div></div>';
+      }
+
+      if (svc.length > 0) {
+        h += '<div class="ap-card' + (svc.length > 2 ? ' ap-full' : '') + '">';
+        h += '<div class="ap-card-head"><span class="ap-card-title">Services</span><span class="ap-card-meta">' + svc.length + ' active</span></div>';
+        h += '<div class="ap-card-body">';
+        h += '<div class="ap-svc-grid">';
+        svc.forEach(function(s) {
+          h += '<div class="ap-svc-card">';
+          h += '<div class="ap-svc-name">' + esc(s.name) + '</div>';
+          if (s.description) h += '<div class="ap-svc-desc">' + esc(s.description) + '</div>';
+          if (s.price) h += '<div class="ap-svc-price">' + esc(String(s.price)) + ' ' + esc(s.currency || '') + '</div>';
+          if (s.endpoint) h += '<div class="ap-svc-endpoint">' + esc(s.endpoint) + '</div>';
+          h += '</div>';
+        });
+        h += '</div></div></div>';
+      }
+
+      if (activity.length > 0) {
+        h += '<div class="ap-card ap-full">';
+        h += '<div class="ap-card-head"><span class="ap-card-title">Activity Timeline</span><span class="ap-card-meta">' + activity.length + ' events</span></div>';
+        h += '<div class="ap-card-body">';
+        h += '<ul class="ap-timeline">';
+        activity.forEach(function(ev) {
+          var color = EVT_COLORS[ev.eventType] || '#8a8a8a';
+          var typeLabel = (ev.eventType || '').replace(/_/g, ' ');
+          var meta = '';
+          if (ev.metadata) {
+            try {
+              var m = typeof ev.metadata === 'string' ? JSON.parse(ev.metadata) : ev.metadata;
+              if (m.description) meta = m.description;
+              else if (m.tokenSymbol) meta = '$' + m.tokenSymbol;
+              else if (m.amount) meta = String(m.amount);
+            } catch(e) {}
           }
-
-          if (Array.isArray(util) && util.length > 0) {
-            html += '<div class="tokenomics-block">';
-            html += '<div class="tokenomics-label">Utility</div>';
-            html += '<ul class="utility-list">';
-            for (var j = 0; j < util.length; j++) {
-              html += '<li>' + escapeHtml(String(util[j])) + '</li>';
-            }
-            html += '</ul>';
-            html += '</div>';
-          } else if (typeof util === 'string') {
-            html += '<div class="tokenomics-block">';
-            html += '<div class="tokenomics-label">Utility</div>';
-            html += '<div class="tokenomics-value">' + escapeHtml(util) + '</div>';
-            html += '</div>';
-          }
-        }
-
-        if (plan.economicModel) {
-          html += '<div class="tokenomics-block">';
-          html += '<div class="tokenomics-label">Economic Model</div>';
-          html += '<div class="tokenomics-value">' + escapeHtml(plan.economicModel) + '</div>';
-          html += '</div>';
-        }
-      } else {
-        html += '<p class="empty-state-text">No tokenomics plan published</p>';
+          h += '<li class="ap-tl-item">';
+          h += '<span class="ap-tl-dot" style="background:' + color + '"></span>';
+          h += '<span class="ap-tl-type">' + typeLabel + '</span>';
+          h += '<span class="ap-tl-text">' + esc(meta || ev.agentName || '') + '</span>';
+          h += '<span class="ap-tl-time">' + (ev.createdAt ? timeAgo(ev.createdAt) : '') + '</span>';
+          h += '</li>';
+        });
+        h += '</ul></div></div>';
       }
 
-      html += '</div>';
-      return html;
-    }
-
-    function renderServices(data) {
-      var html = '<div class="section-card">';
-      html += '<div class="section-card-title">Services</div>';
-
-      if (data.services && data.services.length > 0) {
-        for (var i = 0; i < data.services.length; i++) {
-          var s = data.services[i];
-          html += '<div class="field-row">';
-          html += '<span class="field-label">' + escapeHtml(s.name) + '</span>';
-          html += '<span class="field-value-text">' + escapeHtml(s.description);
-          if (s.price) {
-            html += ' &mdash; <span class="text-accent">' + escapeHtml(s.price) + ' ' + escapeHtml(s.currency || 'CELO') + '</span>';
-          }
-          html += '</span>';
-          html += '</div>';
-        }
-      } else {
-        html += '<p class="empty-state-text">No services listed</p>';
+      if (!hasToken && !hasErc8004 && !hasWallet && svc.length === 0 && activity.length === 0) {
+        h += '<div class="ap-card ap-full">';
+        h += '<div class="ap-card-head"><span class="ap-card-title">Getting Started</span></div>';
+        h += '<div class="ap-card-body">';
+        h += '<p class="ap-empty" style="margin-bottom:0.5rem;">This agent has been verified but hasn\'t set up its on-chain identity yet.</p>';
+        h += '<ol class="ap-setup-steps">';
+        h += '<li>Create an agent wallet on Celo</li>';
+        h += '<li>Request gas subsidy for on-chain operations</li>';
+        h += '<li>Register ERC-8004 on-chain identity</li>';
+        h += '<li>Deploy an ERC-20 token with a tokenomics plan</li>';
+        h += '<li>Request SELFCLAW sponsorship for Uniswap V4 liquidity</li>';
+        h += '</ol></div></div>';
       }
 
-      html += '</div>';
-      return html;
+      h += '</div>';
+
+      document.getElementById('profile-root').innerHTML = h;
     }
 
-    function renderRevenue(data) {
-      var html = '<div class="section-card">';
-      html += '<div class="section-card-title">Revenue</div>';
-
-      if (data.revenue && data.revenue.totalEvents > 0) {
-        var totals = data.revenue.totals;
-        var keys = Object.keys(totals);
-        for (var i = 0; i < keys.length; i++) {
-          html += '<div class="field-row">';
-          html += '<span class="field-label">Total ' + escapeHtml(keys[i]) + '</span>';
-          html += '<span class="field-value-text text-accent">' + escapeHtml(String(totals[keys[i]])) + '</span>';
-          html += '</div>';
-        }
-        html += '<div class="field-row">';
-        html += '<span class="field-label">Events logged</span>';
-        html += '<span class="field-value-text">' + data.revenue.totalEvents + '</span>';
-        html += '</div>';
-
-        if (data.revenue.recent && data.revenue.recent.length > 0) {
-          html += '<div class="tokenomics-block">';
-          html += '<div class="tokenomics-label">Recent</div>';
-          for (var j = 0; j < data.revenue.recent.length; j++) {
-            var r = data.revenue.recent[j];
-            html += '<div class="tokenomics-value">';
-            html += escapeHtml(r.amount) + ' ' + escapeHtml(r.token) + ' from ' + escapeHtml(r.source);
-            html += '</div>';
-          }
-          html += '</div>';
-        }
-      } else {
-        html += '<p class="empty-state-text">No revenue logged yet</p>';
+    function renderAlloc(alloc) {
+      if (typeof alloc === 'string') {
+        try { alloc = JSON.parse(alloc); } catch(e) { return '<p style="font-size:0.8rem;color:var(--text-muted);">' + esc(alloc) + '</p>'; }
       }
-
-      html += '</div>';
-      return html;
-    }
-
-    function renderActivity(data) {
-      var html = '<div class="section-card">';
-      html += '<div class="section-card-title">Recent Activity</div>';
-
-      if (data.recentActivity && data.recentActivity.length > 0) {
-        html += '<table class="activity-table">';
-        html += '<thead><tr><th>Event</th><th>Date</th></tr></thead>';
-        html += '<tbody>';
-        for (var i = 0; i < data.recentActivity.length; i++) {
-          var evt = data.recentActivity[i];
-          html += '<tr>';
-          html += '<td>' + escapeHtml(evt.eventType || evt.type || '') + '</td>';
-          html += '<td>' + formatDate(evt.timestamp || evt.createdAt || evt.date) + '</td>';
-          html += '</tr>';
-        }
-        html += '</tbody></table>';
-      } else {
-        html += '<p class="empty-state-text">No recent activity</p>';
+      var items = [];
+      if (typeof alloc === 'object' && !Array.isArray(alloc)) {
+        var keys = Object.keys(alloc);
+        var total = 0;
+        keys.forEach(function(k) {
+          var v = alloc[k];
+          var pct = typeof v === 'object' ? parseFloat(v.percentage || 0) : parseFloat(v || 0);
+          total += pct;
+        });
+        keys.forEach(function(k, i) {
+          var v = alloc[k];
+          var pct = typeof v === 'object' ? parseFloat(v.percentage || 0) : parseFloat(v || 0);
+          items.push({ label: k, pct: total > 0 ? (pct / total * 100) : 0, color: ALLOC_COLORS[i % ALLOC_COLORS.length] });
+        });
+      } else if (Array.isArray(alloc)) {
+        alloc.forEach(function(item, i) {
+          items.push({ label: item.label || item.name || 'Slice ' + (i + 1), pct: item.percentage || item.pct || 0, color: ALLOC_COLORS[i % ALLOC_COLORS.length] });
+        });
       }
-
-      html += '</div>';
-      return html;
+      if (items.length === 0) return '';
+      var h = '<div class="ap-alloc-bar">';
+      items.forEach(function(it) {
+        if (it.pct <= 0) return;
+        h += '<div class="ap-alloc-seg" style="flex:' + it.pct + ';background:' + it.color + ';">' + it.pct.toFixed(0) + '%</div>';
+      });
+      h += '</div><div class="ap-alloc-legend">';
+      items.forEach(function(it) {
+        h += '<div class="ap-alloc-item"><span class="ap-alloc-dot" style="background:' + it.color + ';"></span>' + esc(it.label) + ' (' + it.pct.toFixed(0) + '%)</div>';
+      });
+      h += '</div>';
+      return h;
     }
 
-    function renderPriceHero(data) {
-      if (!data.livePrice && !data.token) return '';
-      var html = '<div class="section-card" style="border-top:3px solid var(--accent);">';
-      html += '<div class="section-card-title">Token Price</div>';
-
-      if (data.livePrice) {
-        var lp = data.livePrice;
-        html += '<div style="display:flex;align-items:baseline;gap:0.75rem;flex-wrap:wrap;margin-bottom:0.75rem;">';
-        html += '<div style="font-size:2rem;font-weight:700;font-family:var(--font-mono);color:var(--accent);">$' + escapeHtml(lp.priceFormatted || '0') + '</div>';
-        html += '<div style="font-family:var(--font-mono);font-size:0.8rem;color:var(--text-muted);">' + escapeHtml(lp.marketCapFormatted || '$0') + ' MCap</div>';
-        html += '</div>';
-
-        html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:0.5rem;">';
-
-        html += '<div style="border:2px solid var(--border-light);padding:0.5rem;">';
-        html += '<div style="font-family:var(--font-mono);font-size:0.55rem;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-muted);">In SELFCLAW</div>';
-        html += '<div style="font-family:var(--font-mono);font-size:0.9rem;font-weight:600;">' + formatNum(lp.priceInSelfclaw, 6) + '</div>';
-        html += '</div>';
-
-        html += '<div style="border:2px solid var(--border-light);padding:0.5rem;">';
-        html += '<div style="font-family:var(--font-mono);font-size:0.55rem;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-muted);">In CELO</div>';
-        html += '<div style="font-family:var(--font-mono);font-size:0.9rem;font-weight:600;">' + formatNum(lp.priceInCelo, 6) + '</div>';
-        html += '</div>';
-
-        html += '<div style="border:2px solid var(--border-light);padding:0.5rem;">';
-        html += '<div style="font-family:var(--font-mono);font-size:0.55rem;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-muted);">MCap (CELO)</div>';
-        html += '<div style="font-family:var(--font-mono);font-size:0.9rem;font-weight:600;">' + formatNum(lp.marketCapCelo, 2) + '</div>';
-        html += '</div>';
-
-        html += '<div style="border:2px solid var(--border-light);padding:0.5rem;">';
-        html += '<div style="font-family:var(--font-mono);font-size:0.55rem;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-muted);">Supply</div>';
-        html += '<div style="font-family:var(--font-mono);font-size:0.9rem;font-weight:600;">' + formatBigNum(lp.totalSupply) + '</div>';
-        html += '</div>';
-
-        html += '</div>';
-
-        html += '<div id="price-chart-container" style="margin-top:1rem;min-height:80px;">';
-        html += '<div style="color:var(--text-muted);font-family:var(--font-mono);font-size:0.7rem;">Loading price chart...</div>';
-        html += '</div>';
-
-        html += '<div style="display:flex;gap:0.5rem;margin-top:0.5rem;" id="chart-period-btns">';
-        html += '<button class="period-btn active" data-period="1h" onclick="switchPeriod(\'1h\')">1H</button>';
-        html += '<button class="period-btn" data-period="24h" onclick="switchPeriod(\'24h\')">24H</button>';
-        html += '<button class="period-btn" data-period="7d" onclick="switchPeriod(\'7d\')">7D</button>';
-        html += '<button class="period-btn" data-period="30d" onclick="switchPeriod(\'30d\')">30D</button>';
-        html += '</div>';
-      } else if (data.token) {
-        html += '<p class="empty-state-text">Price data not available yet</p>';
-      }
-
-      html += '</div>';
-      return html;
-    }
-
-    function renderErc8004(data) {
-      if (!data.erc8004) return '';
-      var e = data.erc8004;
-      var html = '<div class="section-card">';
-      html += '<div class="section-card-title">On-Chain Identity (ERC-8004)</div>';
-
-      html += '<div class="field-row">';
-      html += '<span class="field-label">Token ID</span>';
-      html += '<span class="field-value"><a href="' + escapeHtml(e.scanUrl) + '" target="_blank" rel="noopener">#' + escapeHtml(String(e.tokenId)) + ' &rarr;</a></span>';
-      html += '</div>';
-
-      if (e.identity) {
-        html += '<div class="field-row">';
-        html += '<span class="field-label">Owner</span>';
-        html += '<span class="field-value"><a href="https://celoscan.io/address/' + encodeURIComponent(e.identity.owner) + '" target="_blank" rel="noopener">' + truncate(e.identity.owner, 10, 6) + '</a></span>';
-        html += '</div>';
-
-        if (e.identity.uri) {
-          html += '<div class="field-row">';
-          html += '<span class="field-label">Agent URI</span>';
-          html += '<span class="field-value-text" style="word-break:break-all;font-size:0.75rem;">' + escapeHtml(e.identity.uri) + '</span>';
-          html += '</div>';
-        }
-      }
-
-      if (e.reputation) {
-        html += '<div class="field-row">';
-        html += '<span class="field-label">Feedback Count</span>';
-        html += '<span class="field-value-text">' + e.reputation.totalFeedback + '</span>';
-        html += '</div>';
-        html += '<div class="field-row">';
-        html += '<span class="field-label">Avg Score</span>';
-        html += '<span class="field-value-text text-accent">' + e.reputation.averageScore + ' / 100</span>';
-        html += '</div>';
-      }
-
-      html += '<div class="field-row">';
-      html += '<span class="field-label">Registry</span>';
-      html += '<span class="field-value"><a href="https://celoscan.io/address/0x8004A169FB4a3325136EB29fA0ceB6D2e539a432" target="_blank" rel="noopener">Identity Registry &rarr;</a></span>';
-      html += '</div>';
-
-      html += '<div class="field-row">';
-      html += '<span class="field-label">Reputation</span>';
-      html += '<span class="field-value"><a href="https://celoscan.io/address/0x8004BAa17C55a88189AE136b182e5fdA19dE9b63" target="_blank" rel="noopener">Reputation Registry &rarr;</a></span>';
-      html += '</div>';
-
-      html += '</div>';
-      return html;
-    }
-
-    function renderReputation(data) {
-      var html = '<div class="section-card" id="reputation-section">';
-      html += '<div class="section-card-title">Reputation</div>';
-
-      if (data.erc8004 && data.erc8004.reputation) {
-        var rep = data.erc8004.reputation;
-        html += '<div style="display:flex;align-items:center;gap:1rem;margin-bottom:0.75rem;">';
-
-        var score = rep.averageScore || 0;
-        var barColor = score >= 80 ? 'var(--green-verify)' : score >= 50 ? 'var(--accent)' : 'var(--red, #e53e3e)';
-        html += '<div style="flex:1;">';
-        html += '<div style="font-family:var(--font-mono);font-size:0.6rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-muted);margin-bottom:0.25rem;">Trust Score</div>';
-        html += '<div style="display:flex;align-items:center;gap:0.5rem;">';
-        html += '<div style="flex:1;height:8px;background:var(--border-light);border:1px solid var(--border-heavy);">';
-        html += '<div style="height:100%;width:' + score + '%;background:' + barColor + ';"></div>';
-        html += '</div>';
-        html += '<span style="font-family:var(--font-mono);font-weight:700;font-size:1.1rem;">' + score + '</span>';
-        html += '</div>';
-        html += '</div>';
-
-        html += '<div style="text-align:center;">';
-        html += '<div style="font-family:var(--font-mono);font-size:0.6rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-muted);">Reviews</div>';
-        html += '<div style="font-family:var(--font-mono);font-weight:700;font-size:1.1rem;">' + rep.totalFeedback + '</div>';
-        html += '</div>';
-
-        html += '</div>';
-      } else {
-        html += '<p class="empty-state-text">No on-chain reputation data yet</p>';
-      }
-
-      html += '</div>';
-      return html;
-    }
-
-    function formatNum(val, dec) {
-      if (val === null || val === undefined) return '0';
-      var n = parseFloat(val);
-      if (isNaN(n)) return '0';
-      if (n === 0) return '0';
-      if (n < 0.000001) return n.toExponential(2);
-      return n.toFixed(dec || 4);
-    }
-
-    function formatBigNum(val) {
-      if (!val) return '0';
-      var n = parseFloat(val);
-      if (isNaN(n)) return '0';
-      if (n >= 1e9) return (n / 1e9).toFixed(1) + 'B';
-      if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M';
-      if (n >= 1e3) return (n / 1e3).toFixed(1) + 'K';
-      return n.toFixed(0);
-    }
-
-    var currentPeriod = '1h';
-    function switchPeriod(p) {
-      currentPeriod = p;
-      var btns = document.querySelectorAll('.period-btn');
-      btns.forEach(function(b) { b.classList.toggle('active', b.getAttribute('data-period') === p); });
-      var pathParts = window.location.pathname.split('/');
-      var agentName = decodeURIComponent(pathParts[pathParts.length - 1] || '');
-      loadPriceChart(agentName, p);
-    }
-
-    async function loadPriceChart(identifier, period) {
-      if (!identifier) return;
-      var container = document.getElementById('price-chart-container');
-      if (!container) return;
-
-      period = period || currentPeriod || '1h';
-
-      try {
-        var res = await fetch('/api/selfclaw/v1/agent/' + encodeURIComponent(identifier) + '/price-history?period=' + period, { credentials: 'include' });
-        if (!res.ok) {
-          container.innerHTML = '<div style="color:var(--text-muted);font-family:var(--font-mono);font-size:0.7rem;">No price history yet</div>';
-          return;
-        }
-        var data = await res.json();
-        var points = data.dataPoints || [];
-        if (points.length < 2) {
-          container.innerHTML = '<div style="color:var(--text-muted);font-family:var(--font-mono);font-size:0.7rem;">Not enough data for chart (collecting...)</div>';
-          return;
-        }
-
-        var prices = points.map(function(p) { return p.priceUsd; });
-        var minP = Math.min.apply(null, prices);
-        var maxP = Math.max.apply(null, prices);
-        var range = maxP - minP || 1;
-
-        var w = 600;
-        var h = 80;
-        var pathD = '';
-        var areaD = '';
-        for (var i = 0; i < prices.length; i++) {
-          var x = (i / (prices.length - 1)) * w;
-          var y = h - ((prices[i] - minP) / range) * (h - 4) - 2;
-          pathD += (i === 0 ? 'M' : 'L') + x.toFixed(1) + ',' + y.toFixed(1);
-          areaD += (i === 0 ? 'M' : 'L') + x.toFixed(1) + ',' + y.toFixed(1);
-        }
-        areaD += 'L' + w + ',' + h + 'L0,' + h + 'Z';
-
-        var isUp = prices[prices.length - 1] >= prices[0];
-        var lineColor = isUp ? '#22c55e' : '#ef4444';
-        var fillColor = isUp ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)';
-
-        var svg = '<svg viewBox="0 0 ' + w + ' ' + h + '" style="width:100%;height:80px;" preserveAspectRatio="none">';
-        svg += '<path d="' + areaD + '" fill="' + fillColor + '" />';
-        svg += '<path d="' + pathD + '" fill="none" stroke="' + lineColor + '" stroke-width="2" />';
-        svg += '</svg>';
-
-        var pctChange = ((prices[prices.length - 1] - prices[0]) / prices[0] * 100);
-        var pctStr = (pctChange >= 0 ? '+' : '') + pctChange.toFixed(2) + '%';
-        var pctColor = pctChange >= 0 ? '#22c55e' : '#ef4444';
-
-        container.innerHTML = svg + '<div style="font-family:var(--font-mono);font-size:0.65rem;color:' + pctColor + ';margin-top:0.25rem;">' + pctStr + ' (' + period + ')</div>';
-      } catch (err) {
-        container.innerHTML = '<div style="color:var(--text-muted);font-family:var(--font-mono);font-size:0.7rem;">Chart unavailable</div>';
-      }
-    }
-
-    function renderEconomics(data) {
-      var html = '<div class="section-card" id="economics-section">';
-      html += '<div class="section-card-title">Agent Economics</div>';
-      html += '<div id="economics-content"><p class="empty-state-text">Loading economics...</p></div>';
-      html += '</div>';
-      return html;
-    }
-
-    async function loadEconomics(identifier) {
-      if (!identifier) return;
-      var container = document.getElementById('economics-content');
-      if (!container) return;
-
-      try {
-        var res = await fetch('/api/selfclaw/v1/agent/' + encodeURIComponent(identifier) + '/economics', { credentials: 'include' });
-        if (!res.ok) {
-          container.innerHTML = '<p class="empty-state-text">No economics data yet</p>';
-          return;
-        }
-        var data = await res.json();
-        var pl = data.profitLoss || {};
-        var costs = data.costs || {};
-        var revenue = data.revenue || {};
-
-        var html = '';
-
-        html += '<div class="grid-3" style="gap:0.75rem;margin-bottom:1rem;">';
-
-        html += '<div style="border:2px solid var(--border-heavy);padding:0.75rem;border-top:3px solid var(--green-verify);">';
-        html += '<div style="font-family:var(--font-mono);font-size:0.6rem;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-muted);margin-bottom:0.2rem;">Revenue</div>';
-        html += '<div style="font-size:1.2rem;font-weight:700;color:var(--green-verify);">$' + (pl.totalRevenueUsd || 0).toFixed(2) + '</div>';
-        html += '</div>';
-
-        html += '<div style="border:2px solid var(--border-heavy);padding:0.75rem;border-top:3px solid var(--accent);">';
-        html += '<div style="font-family:var(--font-mono);font-size:0.6rem;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-muted);margin-bottom:0.2rem;">Costs</div>';
-        html += '<div style="font-size:1.2rem;font-weight:700;">$' + (pl.totalCostUsd || 0).toFixed(2) + '</div>';
-        html += '</div>';
-
-        var netColor = (pl.netUsd || 0) >= 0 ? 'var(--green-verify)' : 'var(--red)';
-        var netSign = (pl.netUsd || 0) >= 0 ? '+' : '';
-        html += '<div style="border:2px solid var(--border-heavy);padding:0.75rem;border-top:3px solid ' + netColor + ';">';
-        html += '<div style="font-family:var(--font-mono);font-size:0.6rem;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-muted);margin-bottom:0.2rem;">Net P/L</div>';
-        html += '<div style="font-size:1.2rem;font-weight:700;color:' + netColor + ';">' + netSign + '$' + Math.abs(pl.netUsd || 0).toFixed(2) + '</div>';
-        html += '</div>';
-
-        html += '</div>';
-
-        if (costs.byType && Object.keys(costs.byType).length > 0) {
-          html += '<div class="field-row" style="margin-bottom:0.5rem;">';
-          html += '<span class="field-label">Cost Breakdown</span>';
-          html += '</div>';
-          var types = Object.keys(costs.byType);
-          for (var i = 0; i < types.length; i++) {
-            html += '<div class="field-row">';
-            html += '<span class="field-label" style="text-transform:capitalize;font-weight:400;">' + escapeHtml(types[i].replace(/_/g, ' ')) + '</span>';
-            html += '<span class="field-value-text">$' + costs.byType[types[i]].toFixed(2) + '</span>';
-            html += '</div>';
-          }
-        }
-
-        if (costs.monthlySpend > 0) {
-          html += '<div class="field-row">';
-          html += '<span class="field-label">Monthly Spend</span>';
-          html += '<span class="field-value-text">$' + costs.monthlySpend.toFixed(2) + '/mo</span>';
-          html += '</div>';
-        }
-
-        if (data.runwayMonths !== null && data.runwayMonths !== undefined) {
-          html += '<div class="field-row">';
-          html += '<span class="field-label">Runway</span>';
-          html += '<span class="field-value-text">' + data.runwayMonths + ' months</span>';
-          html += '</div>';
-        }
-
-        if (revenue.totals && Object.keys(revenue.totals).length > 0) {
-          html += '<div class="field-row" style="margin-top:0.75rem;">';
-          html += '<span class="field-label">Revenue by Token</span>';
-          html += '</div>';
-          var tokens = Object.keys(revenue.totals);
-          for (var j = 0; j < tokens.length; j++) {
-            html += '<div class="field-row">';
-            html += '<span class="field-label" style="font-weight:400;">' + escapeHtml(tokens[j]) + '</span>';
-            html += '<span class="field-value-text text-accent">' + revenue.totals[tokens[j]].toFixed(4) + '</span>';
-            html += '</div>';
-          }
-        }
-
-        container.innerHTML = html;
-      } catch (err) {
-        container.innerHTML = '<p class="empty-state-text">No economics data yet</p>';
-      }
-    }
-
-    loadAgentProfile();
+    loadProfile();
   </script>
   <script src="/auth.js"></script>
   <script src="/nav-gate.js"></script>
