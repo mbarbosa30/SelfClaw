@@ -1,8 +1,10 @@
 ---
 name: selfclaw
-description: Verify AI agents as human-backed using SelfClaw registry. Prove agent identity with passport ZK proofs, create EVM-universal wallets, deploy tokens, and register on-chain identity (ERC-8004). Celo is currently the default chain for identity, sponsorship, and gas — wallet addresses work on any EVM chain.
-emoji: "\U0001F99E"
+description: Verify AI agents as human-backed using SelfClaw registry. Prove agent identity with passport ZK proofs, create EVM-universal wallets, deploy tokens, set on-chain wallet via setAgentWallet(), and register on-chain identity (ERC-8004). Celo is currently the default chain for identity, sponsorship, and gas — wallet addresses work on any EVM chain.
+license: Apache-2.0
 metadata:
+  author: selfclaw
+  version: "1.1.0"
   selfclaw:
     requires:
       env: []
@@ -37,6 +39,7 @@ Once verified, you control your own economy:
 - Your wallet address works on any EVM chain (Celo, Base, Ethereum, Arbitrum, etc.)
 - You register your wallet address with SelfClaw
 - You mint your ERC-8004 identity NFT on Celo
+- You set your agent wallet on-chain via `setAgentWallet()` (replaces deprecated off-chain metadata)
 - Celo is currently the default operating chain for gas subsidies, ERC-8004 identity, token deployment, and SELFCLAW sponsorship
 - You can bridge tokens to Base or other chains via Wormhole
 
@@ -185,6 +188,53 @@ curl "https://selfclaw.ai/api/selfclaw/v1/agent?publicKey=MCowBQYDK2VwAyEA..."
 curl "https://selfclaw.ai/api/selfclaw/v1/agent/my-agent"
 ```
 
+### Step 5: Register Your Wallet
+
+```bash
+curl -X POST https://selfclaw.ai/api/selfclaw/v1/register-wallet \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <agentPublicKey>:<signature>" \
+  -d '{"walletAddress": "0xYourWalletAddress"}'
+```
+
+### Step 6: Register ERC-8004 On-Chain Identity
+
+**6a. Prepare registration:**
+```bash
+curl -X POST https://selfclaw.ai/api/selfclaw/v1/register-erc8004 \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <agentPublicKey>:<signature>" \
+  -d '{"agentName": "my-agent", "description": "My verified AI agent"}'
+```
+
+Returns an unsigned transaction. Sign and submit it with your wallet.
+
+**6b. Confirm on-chain registration:**
+```bash
+curl -X POST https://selfclaw.ai/api/selfclaw/v1/confirm-erc8004 \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <agentPublicKey>:<signature>" \
+  -d '{"txHash": "0xYourRegisterTxHash"}'
+```
+
+Returns your `tokenId` and a `scan8004Url` like `https://www.8004scan.io/agents/celo/<tokenId>`.
+
+**6c. Set your agent wallet on-chain (replaces deprecated agentWallet metadata):**
+```bash
+# First call without signature to get the EIP-712 typed data to sign:
+curl -X POST https://selfclaw.ai/api/selfclaw/v1/set-agent-wallet \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <agentPublicKey>:<signature>"
+
+# Sign the EIP-712 typed data with your agent wallet private key, then call again:
+curl -X POST https://selfclaw.ai/api/selfclaw/v1/set-agent-wallet \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <agentPublicKey>:<signature>" \
+  -d '{"walletSignature": "0xYourEIP712Signature", "deadline": 1234567890}'
+```
+
+Returns an unsigned `setAgentWallet()` transaction. Sign and submit it to set your wallet on-chain.
+
 ## API Reference
 
 ### Check Agent Verification
@@ -225,6 +275,43 @@ GET /api/selfclaw/v1/stats
 ```
 
 Returns total verified agents, unique humans, and registry health.
+
+### Set Agent Wallet On-Chain
+```
+POST /api/selfclaw/v1/set-agent-wallet
+```
+
+Two-step flow:
+1. Call without `walletSignature` — returns EIP-712 typed data to sign with your wallet
+2. Call with `{walletSignature, deadline}` — returns unsigned `setAgentWallet()` transaction to submit
+
+This replaces the deprecated `agentWallet` field in off-chain metadata. The wallet is now set on-chain via the ERC-8004 Identity Registry contract.
+
+## ERC-8004 Registration Metadata Format
+
+SelfClaw uses the official ERC-8004 metadata format (aligned with [celo-org/agent-skills](https://github.com/celo-org/agent-skills)):
+
+```json
+{
+  "type": "Agent",
+  "name": "My Agent",
+  "description": "A verified AI agent on SelfClaw",
+  "endpoints": [
+    {
+      "type": "wallet",
+      "address": "0xAgentWalletAddress",
+      "chainId": 42220
+    },
+    {
+      "type": "web",
+      "url": "https://selfclaw.ai"
+    }
+  ],
+  "supportedTrust": ["reputation", "validation"]
+}
+```
+
+**Note:** `agentWallet` in off-chain metadata is deprecated. Use `setAgentWallet()` on-chain instead.
 
 ## Proving Your Agent to Other Services
 
@@ -271,9 +358,17 @@ console.log("Signature (base64):", signature.toString("base64"));
 
 SelfClaw is an **API registry** storing verification records. This provides fast lookups without blockchain fees. Optional on-chain anchoring is planned for stronger decentralization guarantees.
 
+## Related Skills
+
+- [8004](https://github.com/celo-org/agent-skills/tree/main/skills/8004) — ERC-8004 Agent Trust Protocol
+- [x402](https://github.com/celo-org/agent-skills/tree/main/skills/x402) — HTTP-native payment protocol for AI agents
+
 ## Links
 
 - SelfClaw: https://selfclaw.ai
 - Developer Docs: https://selfclaw.ai/developers
 - Self.xyz: https://self.xyz
 - Self.xyz Docs: https://docs.self.xyz
+- ERC-8004 Spec: https://eips.ethereum.org/EIPS/eip-8004
+- 8004 Scan: https://www.8004scan.io
+- Celo Agent Skills: https://github.com/celo-org/agent-skills

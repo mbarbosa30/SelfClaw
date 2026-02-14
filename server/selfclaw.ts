@@ -2037,7 +2037,7 @@ router.get("/v1/agent-profile/:name", publicApiLimiter, async (req: Request, res
         verifiedAt: agent.verifiedAt,
         erc8004: metadata?.erc8004TokenId ? {
           tokenId: metadata.erc8004TokenId,
-          scanUrl: `https://www.8004scan.io/agents/${metadata.erc8004TokenId}`,
+          scanUrl: `https://www.8004scan.io/agents/celo/${metadata.erc8004TokenId}`,
           identity: identityData,
           reputation: reputationData,
         } : null,
@@ -2600,7 +2600,7 @@ router.get("/v1/wallet-verify/:address", publicApiLimiter, async (req: Request, 
       identity: {
         hasErc8004: !!meta.erc8004TokenId,
         erc8004TokenId: meta.erc8004TokenId || null,
-        scan8004Url: meta.erc8004TokenId ? `https://www.8004scan.io/agents/${meta.erc8004TokenId}` : null
+        scan8004Url: meta.erc8004TokenId ? `https://www.8004scan.io/agents/celo/${meta.erc8004TokenId}` : null
       },
       swarm: {
         endpoint: `https://selfclaw.ai/api/selfclaw/v1/human/${agent.humanId}`,
@@ -3292,14 +3292,136 @@ router.post("/v1/confirm-erc8004", verificationLimiter, async (req: Request, res
       tokenId,
       txHash,
       explorerUrl: erc8004Service.getTxExplorerUrl(txHash),
-      scan8004Url: `https://www.8004scan.io/agents/${tokenId}`,
+      scan8004Url: `https://www.8004scan.io/agents/celo/${tokenId}`,
       nextSteps: [
         "1. Your on-chain identity is now live — other agents can verify you",
-        "2. Deploy your token: POST /api/selfclaw/v1/deploy-token",
+        "2. Set your agent wallet on-chain: POST /api/selfclaw/v1/set-agent-wallet with {walletSignature, deadline}",
+        "3. Deploy your token: POST /api/selfclaw/v1/deploy-token",
       ],
     });
   } catch (error: any) {
     console.error("[selfclaw] confirm-erc8004 error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post("/v1/set-agent-wallet", verificationLimiter, async (req: Request, res: Response) => {
+  try {
+    const auth = await authenticateAgent(req, res);
+    if (!auth) return;
+
+    const agent = auth.agent;
+    const metadata = (agent.metadata as Record<string, any>) || {};
+
+    if (!metadata.erc8004TokenId) {
+      return res.status(400).json({
+        error: "No ERC-8004 identity found. Register first via POST /api/selfclaw/v1/register-erc8004",
+      });
+    }
+
+    const wallet = await db.select().from(agentWallets)
+      .where(sql`${agentWallets.publicKey} = ${auth.publicKey} AND ${agentWallets.humanId} = ${auth.humanId}`)
+      .limit(1);
+
+    if (!wallet.length || !wallet[0].address) {
+      return res.status(400).json({ error: "No agent wallet found. Register a wallet first." });
+    }
+
+    const walletAddress = wallet[0].address;
+    const agentId = metadata.erc8004TokenId;
+    const config = erc8004Service.getConfig();
+
+    const { walletSignature, deadline } = req.body;
+
+    if (!walletSignature || !deadline) {
+      const suggestedDeadline = Math.floor(Date.now() / 1000) + 3600;
+      const eip712Domain = {
+        name: "ERC8004IdentityRegistry",
+        version: "1",
+        chainId: config.chainId,
+        verifyingContract: config.identityRegistry,
+      };
+      const eip712Types = {
+        SetAgentWallet: [
+          { name: "agentId", type: "uint256" },
+          { name: "newWallet", type: "address" },
+          { name: "deadline", type: "uint256" },
+        ],
+      };
+      const eip712Value = {
+        agentId,
+        newWallet: walletAddress,
+        deadline: suggestedDeadline,
+      };
+
+      return res.json({
+        success: true,
+        mode: "prepare",
+        message: "Sign the EIP-712 typed data below with your agent wallet to prove ownership, then call this endpoint again with {walletSignature, deadline}.",
+        agentId,
+        walletAddress,
+        eip712: {
+          domain: eip712Domain,
+          types: eip712Types,
+          value: eip712Value,
+        },
+        deadline: suggestedDeadline,
+      });
+    }
+
+    const callData = encodeFunctionData({
+      abi: [{
+        name: 'setAgentWallet', type: 'function', stateMutability: 'nonpayable',
+        inputs: [
+          { name: 'agentId', type: 'uint256' },
+          { name: 'newWallet', type: 'address' },
+          { name: 'deadline', type: 'uint256' },
+          { name: 'signature', type: 'bytes' },
+        ],
+        outputs: [],
+      }],
+      functionName: 'setAgentWallet',
+      args: [BigInt(agentId), walletAddress as `0x${string}`, BigInt(deadline), walletSignature as `0x${string}`],
+    });
+
+    const fromAddr = walletAddress as `0x${string}`;
+    const nonce = await viemPublicClient.getTransactionCount({ address: fromAddr });
+    const gasPrice = await viemPublicClient.getGasPrice();
+
+    let estimatedGas = BigInt(200000);
+    try {
+      estimatedGas = await viemPublicClient.estimateGas({
+        account: fromAddr,
+        to: config.identityRegistry as `0x${string}`,
+        data: callData,
+        value: BigInt(0),
+      });
+      estimatedGas = estimatedGas * BigInt(120) / BigInt(100);
+    } catch (estimateErr: any) {
+      console.warn(`[selfclaw] setAgentWallet gas estimation failed, using default 200k: ${estimateErr.message}`);
+    }
+
+    console.log(`[selfclaw] Preparing setAgentWallet tx: agentId=${agentId}, wallet=${walletAddress}`);
+
+    res.json({
+      success: true,
+      mode: "unsigned",
+      message: "Sign and submit this transaction to set your agent wallet on-chain.",
+      unsignedTx: {
+        from: walletAddress,
+        to: config.identityRegistry,
+        data: callData,
+        gas: estimatedGas.toString(),
+        gasPrice: gasPrice.toString(),
+        chainId: config.chainId,
+        value: "0",
+        nonce,
+      },
+      agentId,
+      walletAddress,
+    });
+  } catch (error: any) {
+    console.error("[selfclaw] set-agent-wallet error:", error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -5366,6 +5488,11 @@ router.post("/v1/my-agents/:publicKey/confirm-erc8004", verificationLimiter, asy
     res.json({
       success: true, tokenId, txHash,
       explorerUrl: erc8004Service.getExplorerUrl(tokenId),
+      scan8004Url: `https://www.8004scan.io/agents/celo/${tokenId}`,
+      nextSteps: [
+        "1. Your on-chain identity is live — set your wallet on-chain: POST /api/selfclaw/v1/set-agent-wallet",
+        "2. Deploy your token: POST /api/selfclaw/v1/deploy-token",
+      ],
     });
   } catch (error: any) {
     console.error("[selfclaw] my-agents confirm-erc8004 error:", error);
@@ -5862,6 +5989,11 @@ router.post("/v1/miniclaws/:id/confirm-erc8004", verificationLimiter, async (req
       tokenId,
       txHash,
       explorerUrl: tokenId ? erc8004Service.getExplorerUrl(tokenId) : null,
+      scan8004Url: tokenId ? `https://www.8004scan.io/agents/celo/${tokenId}` : null,
+      nextSteps: [
+        "1. Your on-chain identity is live — set your wallet on-chain: POST /api/selfclaw/v1/set-agent-wallet",
+        "2. Deploy your token",
+      ],
     });
   } catch (error: any) {
     console.error("[selfclaw] miniclaw confirm-erc8004 error:", error);
@@ -6321,7 +6453,7 @@ router.get("/v1/agent/:identifier/reputation", publicApiLimiter, async (req: Req
       identity: identity ? {
         owner: identity.owner,
         uri: identity.uri,
-        scanUrl: `https://www.8004scan.io/agents/${erc8004TokenId}`,
+        scanUrl: `https://www.8004scan.io/agents/celo/${erc8004TokenId}`,
       } : null,
     });
   } catch (error: any) {

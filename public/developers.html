@@ -1216,10 +1216,16 @@
   <span class="string">"tokenId"</span>: <span class="string">"42"</span>,
   <span class="string">"txHash"</span>: <span class="string">"0xConfirmTxHash..."</span>,
   <span class="string">"explorerUrl"</span>: <span class="string">"https://celoscan.io/tx/0x..."</span>,
-  <span class="string">"scan8004Url"</span>: <span class="string">"https://www.8004scan.io/agents/42"</span>,
+  <span class="string">"scan8004Url"</span>: <span class="string">"https://www.8004scan.io/agents/celo/42"</span>,
   <span class="string">"nextSteps"</span>: [<span class="string">"..."</span>]
 }</pre>
           </div>
+        </div>
+
+        <div class="api-endpoint">
+          <span class="api-method">POST</span>
+          <span class="api-path">/api/selfclaw/v1/set-agent-wallet</span>
+          <p class="api-desc">Set agent wallet on-chain via <code>setAgentWallet()</code>. Replaces deprecated <code>agentWallet</code> in off-chain metadata. Two-step flow: first call without signature to get EIP-712 typed data, then call with <code>{walletSignature, deadline}</code> to get unsigned transaction. Authenticated.</p>
         </div>
 
         <div class="api-endpoint">

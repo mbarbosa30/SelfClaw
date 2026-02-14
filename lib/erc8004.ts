@@ -2,12 +2,14 @@
 // Handles agent identity registration, reputation, and attestations
 
 import { ethers } from "ethers";
-import { ERC8004_CONFIG, generateRegistrationFile, type ERC8004RegistrationFile } from "./erc8004-config.js";
+import { ERC8004_CONFIG, generateRegistrationFile, type ERC8004RegistrationFile, type ERC8004Endpoint } from "./erc8004-config.js";
 
 // Simplified ABI for ERC-8004 Identity Registry
 const IDENTITY_REGISTRY_ABI = [
   "function register(string agentURI) external returns (uint256)",
   "function setAgentURI(uint256 agentId, string agentURI) external",
+  "function setAgentWallet(uint256 agentId, address newWallet, uint256 deadline, bytes signature) external",
+  "function getAgentWallet(uint256 agentId) external view returns (address)",
   "function ownerOf(uint256 tokenId) external view returns (address)",
   "function tokenURI(uint256 tokenId) external view returns (string)",
   "function totalSupply() external view returns (uint256)",
@@ -136,6 +138,81 @@ export class ERC8004Service {
     }
   }
   
+  async setAgentWallet(
+    agentId: string,
+    walletAddress: string,
+    walletPrivateKey: string,
+    signerPrivateKey?: string,
+  ): Promise<{ txHash: string } | null> {
+    if (!this.isReady()) {
+      console.log("[erc8004] Contracts not deployed yet");
+      return null;
+    }
+
+    const config = ERC8004_CONFIG.active;
+    const signer = signerPrivateKey
+      ? new ethers.Wallet(signerPrivateKey, this.provider)
+      : this.wallet;
+
+    if (!signer) {
+      throw new Error("No signer available for setAgentWallet");
+    }
+
+    const registry = new ethers.Contract(config.identityRegistry, IDENTITY_REGISTRY_ABI, signer);
+
+    try {
+      const deadline = Math.floor(Date.now() / 1000) + 3600;
+
+      const walletSigner = new ethers.Wallet(walletPrivateKey);
+      const domain = {
+        name: "ERC8004IdentityRegistry",
+        version: "1",
+        chainId: config.chainId,
+        verifyingContract: config.identityRegistry,
+      };
+      const types = {
+        SetAgentWallet: [
+          { name: "agentId", type: "uint256" },
+          { name: "newWallet", type: "address" },
+          { name: "deadline", type: "uint256" },
+        ],
+      };
+      const value = {
+        agentId: BigInt(agentId),
+        newWallet: walletAddress,
+        deadline: BigInt(deadline),
+      };
+
+      const signature = await walletSigner.signTypedData(domain, types, value);
+
+      console.log(`[erc8004] Setting agent wallet: agentId=${agentId}, wallet=${walletAddress}`);
+      const tx = await registry.setAgentWallet(agentId, walletAddress, deadline, signature);
+      const receipt = await tx.wait();
+      console.log(`[erc8004] setAgentWallet tx: ${receipt.hash}`);
+      return { txHash: receipt.hash };
+    } catch (error: any) {
+      console.error("[erc8004] setAgentWallet failed:", error.message);
+      throw error;
+    }
+  }
+
+  async getAgentWallet(agentId: string): Promise<string | null> {
+    if (!this.isReady()) {
+      return null;
+    }
+
+    const config = ERC8004_CONFIG.active;
+    const registry = new ethers.Contract(config.identityRegistry, IDENTITY_REGISTRY_ABI, this.provider);
+
+    try {
+      const wallet = await registry.getAgentWallet(agentId);
+      return wallet === ethers.ZeroAddress ? null : wallet;
+    } catch (error: any) {
+      console.error("[erc8004] getAgentWallet failed:", error.message);
+      return null;
+    }
+  }
+
   // Get agent identity by token ID
   async getAgentIdentity(tokenId: string): Promise<{ owner: string; uri: string } | null> {
     if (!this.isReady()) {

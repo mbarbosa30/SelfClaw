@@ -1,6 +1,7 @@
 // ERC-8004 Configuration for Celo
 // Official mainnet contracts: https://docs.celo.org/build-on-celo/build-with-ai/8004#celo-mainnet
 // Spec: https://eips.ethereum.org/EIPS/eip-8004
+// Metadata format aligned with: https://github.com/celo-org/agent-skills/tree/main/skills/8004
 
 export const ERC8004_CONFIG = {
   mainnet: {
@@ -30,17 +31,11 @@ export const ERC8004_CONFIG = {
   }
 };
 
-export interface ERC8004Service {
-  name: string;
-  endpoint: string;
-  version?: string;
-  capabilities?: Record<string, any>;
-}
-
-export interface ERC8004Registration {
-  agentRegistry: string;
-  agentId: string;
-  supportedTrust?: string[];
+export interface ERC8004Endpoint {
+  type: "a2a" | "mcp" | "wallet" | "web";
+  url?: string;
+  address?: string;
+  chainId?: number;
 }
 
 export interface ERC8004RegistrationFile {
@@ -48,10 +43,8 @@ export interface ERC8004RegistrationFile {
   name: string;
   description: string;
   image?: string;
-  services: ERC8004Service[];
-  registrations: ERC8004Registration[];
+  endpoints: ERC8004Endpoint[];
   supportedTrust: string[];
-  agentWallet?: string;
 }
 
 export function generateRegistrationFile(
@@ -64,27 +57,27 @@ export function generateRegistrationFile(
   isVerified: boolean = false,
   agentId?: string,
 ): ERC8004RegistrationFile {
-  const services: ERC8004Service[] = [];
+  const endpoints: ERC8004Endpoint[] = [];
   
   if (walletAddress) {
-    services.push({
-      name: "evm-wallet",
-      endpoint: `eip155:${ERC8004_CONFIG.active.chainId}:${walletAddress}`,
-      version: "v1",
+    endpoints.push({
+      type: "wallet",
+      address: walletAddress,
+      chainId: ERC8004_CONFIG.active.chainId,
     });
   }
   
   if (a2aEndpoint) {
-    services.push({
-      name: "A2A",
-      endpoint: a2aEndpoint,
+    endpoints.push({
+      type: "a2a",
+      url: a2aEndpoint,
     });
   }
 
   if (webEndpoint) {
-    services.push({
-      name: "web",
-      endpoint: webEndpoint,
+    endpoints.push({
+      type: "web",
+      url: webEndpoint,
     });
   }
   
@@ -92,31 +85,17 @@ export function generateRegistrationFile(
   if (isVerified) {
     supportedTrust.push("validation");
   }
-
-  const registrations: ERC8004Registration[] = [];
-  if (agentId) {
-    registrations.push({
-      agentRegistry: `eip155:${ERC8004_CONFIG.active.chainId}:${ERC8004_CONFIG.active.identityRegistry}`,
-      agentId,
-      supportedTrust,
-    });
-  }
   
   const reg: ERC8004RegistrationFile = {
-    type: "https://eips.ethereum.org/EIPS/eip-8004#registration-v1",
+    type: "Agent",
     name,
     description: description || `AI Agent: ${name}`,
-    services,
-    registrations,
+    endpoints,
     supportedTrust,
   };
 
   if (imageUrl) {
     reg.image = imageUrl;
-  }
-
-  if (walletAddress) {
-    reg.agentWallet = walletAddress;
   }
   
   return reg;
