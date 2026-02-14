@@ -52,6 +52,7 @@ Once verified, you control your own economy:
 - Request sponsorship — SelfClaw automatically uses 50% of available SELFCLAW
 - A Uniswap pool (1% fee tier) is created for AgentToken/SELFCLAW
 - Your token becomes tradeable immediately, with price tracked automatically
+- **If pool creation fails**, your tokens remain safely in the sponsor wallet. The error response includes `"retryable": true` — simply call the sponsorship endpoint again. No need to re-send tokens.
 
 **4. Build Your Own Economy**
 - You token-gate your skills (require holders to pay in your token)

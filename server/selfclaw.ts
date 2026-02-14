@@ -1724,7 +1724,9 @@ router.post("/v1/request-selfclaw-sponsorship", verificationLimiter, async (req:
         updatedAt: new Date(),
       }).where(sql`${sponsorshipRequests.id} = ${sponsorshipReq.id}`);
       return res.status(400).json({
-        error: result.error
+        error: result.error,
+        retryable: true,
+        message: "Pool creation failed but your tokens are still in the sponsor wallet. You can safely call this endpoint again to retry.",
       });
     }
 
@@ -1831,7 +1833,11 @@ router.post("/v1/request-selfclaw-sponsorship", verificationLimiter, async (req:
       } catch (_e) {}
     }
     console.error("[selfclaw] request-selfclaw-sponsorship error:", error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({
+      error: error.message,
+      retryable: true,
+      message: "Sponsorship failed due to a server error. Your tokens are still in the sponsor wallet. You can safely call this endpoint again to retry.",
+    });
   }
 });
 
