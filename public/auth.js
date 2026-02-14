@@ -175,8 +175,9 @@
       loginBtn.href = '#';
       loginBtn.className = 'nav-link';
       loginBtn.style.border = '2px solid var(--border-heavy)';
-      loginBtn.style.padding = '0.2rem 0.6rem';
+      loginBtn.style.padding = '0.25rem 0.65rem';
       loginBtn.style.fontSize = '0.7rem';
+      loginBtn.style.marginLeft = '0.25rem';
       loginBtn.textContent = 'LOGIN';
       loginBtn.addEventListener('click', function(e) {
         e.preventDefault();
