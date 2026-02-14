@@ -480,6 +480,10 @@ async function ensurePermit2Approval(
     const approveReceipt = await publicClient.waitForTransactionReceipt({ hash: approveTx });
     console.log(`[uniswap-v4] ERC-20 approval tx: ${approveTx} (status: ${approveReceipt.status})`);
 
+    if (approveReceipt.status === 'reverted') {
+      throw new Error(`ERC-20 approve() tx reverted for ${tokenShort}... → Permit2. tx: ${approveTx}. The token contract may have a non-standard approve (try setting allowance to 0 first).`);
+    }
+
     const verifyAllowance = await publicClient.readContract({
       address: token,
       abi: ERC20_ABI,
@@ -519,6 +523,10 @@ async function ensurePermit2Approval(
     });
     const p2Receipt = await publicClient.waitForTransactionReceipt({ hash: permit2ApproveTx });
     console.log(`[uniswap-v4] Permit2 approval tx: ${permit2ApproveTx} (status: ${p2Receipt.status}), expiry=${expiration} (${new Date(expiration * 1000).toISOString()})`);
+
+    if (p2Receipt.status === 'reverted') {
+      throw new Error(`Permit2 approve() tx reverted for ${tokenShort}... → ${spenderShort}.... tx: ${permit2ApproveTx}`);
+    }
 
     const verifyP2 = await publicClient.readContract({
       address: PERMIT2,
