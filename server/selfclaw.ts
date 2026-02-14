@@ -4152,6 +4152,10 @@ router.get("/v1/human/:humanId/economics", publicApiLimiter, async (req: Request
     const sponsorships = await db.select().from(sponsoredAgents)
       .where(sql`${sponsoredAgents.humanId} = ${humanId}`);
 
+    const sponsorshipReqs = await db.select().from(sponsorshipRequests)
+      .where(sql`${sponsorshipRequests.humanId} = ${humanId}`)
+      .orderBy(desc(sponsorshipRequests.createdAt));
+
     const alerts = await db.select().from(agentActivity)
       .where(sql`${agentActivity.humanId} = ${humanId} AND ${agentActivity.eventType} = 'fund_alert'`)
       .orderBy(desc(agentActivity.createdAt))
@@ -4194,10 +4198,11 @@ router.get("/v1/human/:humanId/economics", publicApiLimiter, async (req: Request
       const agentRevenue = revenue.filter(r => r.agentPublicKey === a.publicKey);
       const agentCosts = costs.filter(c => c.agentPublicKey === a.publicKey);
       const agentWallet = wallets.find(w => w.publicKey === a.publicKey);
-      const agentPool = pools.find(p => p.agentPublicKey === a.publicKey) || pools.find(p => p.humanId === a.humanId);
+      const agentPool = pools.find(p => p.agentPublicKey === a.publicKey);
       const agentPlan = tokenPlansList.find(t => t.agentPublicKey === a.publicKey);
       const agentServicesList = services.filter(s => s.agentPublicKey === a.publicKey);
-      const agentSponsorship = sponsorships.find(s => s.publicKey === a.publicKey) || sponsorships.find(s => s.humanId === a.humanId);
+      const agentSponsorship = sponsorships.find(s => s.publicKey === a.publicKey);
+      const latestSponsorshipReq = sponsorshipReqs.find(r => r.publicKey === a.publicKey);
 
       const rev = agentRevenue.reduce((sum, r) => sum + parseFloat(r.amount || "0"), 0);
       const cost = agentCosts.reduce((sum, c) => sum + parseFloat(c.amount || "0"), 0);
@@ -4243,6 +4248,12 @@ router.get("/v1/human/:humanId/economics", publicApiLimiter, async (req: Request
           amount: agentSponsorship.sponsoredAmountCelo,
         } : null,
         erc8004: erc8004Info,
+        sponsorshipRequest: latestSponsorshipReq ? {
+          status: latestSponsorshipReq.status,
+          errorMessage: latestSponsorshipReq.errorMessage,
+          retryCount: latestSponsorshipReq.retryCount,
+          createdAt: latestSponsorshipReq.createdAt,
+        } : null,
         services: agentServicesList.length,
         economics: {
           totalRevenue: rev,
