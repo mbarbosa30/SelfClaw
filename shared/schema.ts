@@ -85,7 +85,7 @@ export type InsertAgentWallet = typeof agentWallets.$inferInsert;
 
 export const sponsoredAgents = pgTable("sponsored_agents", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  humanId: varchar("human_id").notNull().unique(),
+  humanId: varchar("human_id").notNull(),
   publicKey: varchar("public_key"),
   tokenAddress: varchar("token_address"),
   tokenSymbol: varchar("token_symbol"),

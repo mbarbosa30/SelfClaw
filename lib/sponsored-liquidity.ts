@@ -75,13 +75,13 @@ export async function checkSponsorshipEligibility(humanId: string): Promise<{
   try {
     const existing = await db.select()
       .from(sponsoredAgents)
-      .where(eq(sponsoredAgents.humanId, humanId))
-      .limit(1);
+      .where(eq(sponsoredAgents.humanId, humanId));
     
-    if (existing.length > 0) {
+    const MAX_SPONSORSHIPS_PER_HUMAN = 3;
+    if (existing.length >= MAX_SPONSORSHIPS_PER_HUMAN) {
       return {
         eligible: false,
-        reason: 'This human identity has already received sponsored liquidity'
+        reason: `This human identity has reached the maximum of ${MAX_SPONSORSHIPS_PER_HUMAN} sponsorships (${existing.length}/${MAX_SPONSORSHIPS_PER_HUMAN})`
       };
     }
     
@@ -190,8 +190,8 @@ export async function executeSponsoredLiquidity(
     try {
       lockResult = await db.transaction(async (tx) => {
         const lockedResult = await tx.execute(sql`
-          SELECT id, sponsored_amount_celo, status FROM sponsored_agents 
-          WHERE human_id = ${humanId} 
+          SELECT id, sponsored_amount_celo, status, token_address FROM sponsored_agents 
+          WHERE human_id = ${humanId} AND token_address = ${tokenAddress}
           FOR UPDATE NOWAIT
         `);
         const lockedRow = (lockedResult as any).rows || [];
@@ -217,7 +217,6 @@ export async function executeSponsoredLiquidity(
         const insertRes = await tx.execute(sql`
           INSERT INTO sponsored_agents (human_id, agent_id, token_address, token_symbol, sponsored_amount_celo, status)
           VALUES (${humanId}, ${agentId || null}, ${tokenAddress}, ${tokenSymbol}, ${config.amountCelo}, 'in_progress')
-          ON CONFLICT (human_id) DO NOTHING
           RETURNING id, sponsored_amount_celo
         `);
         const insertResult = (insertRes as any).rows || [];
@@ -226,7 +225,7 @@ export async function executeSponsoredLiquidity(
           return { success: true, id: insertResult[0].id, amount: insertResult[0].sponsored_amount_celo };
         }
         
-        return { success: false, status: 'conflict' };
+        return { success: false, status: 'insert_failed' };
       });
     } catch (txError: any) {
       if (txError.code === '55P03') {
@@ -548,7 +547,7 @@ export async function createSponsoredLP(request: SponsoredLPRequest): Promise<Sp
       lockResult = await db.transaction(async (tx) => {
         const lockedResult = await tx.execute(sql`
           SELECT id, status FROM sponsored_agents 
-          WHERE human_id = ${humanId} 
+          WHERE human_id = ${humanId} AND token_address = ${tokenAddress}
           FOR UPDATE NOWAIT
         `);
         const lockedRow = (lockedResult as any).rows || [];
@@ -574,7 +573,6 @@ export async function createSponsoredLP(request: SponsoredLPRequest): Promise<Sp
         const insertRes = await tx.execute(sql`
           INSERT INTO sponsored_agents (human_id, agent_id, token_address, token_symbol, sponsored_amount_celo, status)
           VALUES (${humanId}, ${agentId || null}, ${tokenAddress}, ${tokenSymbol}, ${config.amountCelo}, 'in_progress')
-          ON CONFLICT (human_id) DO NOTHING
           RETURNING id
         `);
         const insertResult = (insertRes as any).rows || [];
@@ -583,7 +581,7 @@ export async function createSponsoredLP(request: SponsoredLPRequest): Promise<Sp
           return { success: true, id: insertResult[0].id };
         }
         
-        return { success: false, status: 'conflict' };
+        return { success: false, status: 'insert_failed' };
       });
     } catch (txError: any) {
       if (txError.code === '55P03') {

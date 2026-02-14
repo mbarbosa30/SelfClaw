@@ -1623,13 +1623,15 @@ router.post("/v1/request-selfclaw-sponsorship", verificationLimiter, async (req:
 
     const existingSponsorship = await db.select()
       .from(sponsoredAgents)
-      .where(eq(sponsoredAgents.humanId, humanId))
-      .limit(1);
+      .where(eq(sponsoredAgents.humanId, humanId));
 
-    if (existingSponsorship.length > 0) {
+    const MAX_SPONSORSHIPS_PER_HUMAN = 3;
+    if (existingSponsorship.length >= MAX_SPONSORSHIPS_PER_HUMAN) {
       return res.status(409).json({
-        error: "This identity has already received a sponsorship",
+        error: `This identity has reached the maximum of ${MAX_SPONSORSHIPS_PER_HUMAN} sponsorships`,
         alreadySponsored: true,
+        count: existingSponsorship.length,
+        max: MAX_SPONSORSHIPS_PER_HUMAN,
         existingPool: existingSponsorship[0].poolAddress,
         existingToken: existingSponsorship[0].tokenAddress
       });
@@ -5020,11 +5022,14 @@ router.post("/v1/my-agents/:publicKey/request-sponsorship", verificationLimiter,
     }
 
     const existing = await db.select().from(sponsoredAgents)
-      .where(eq(sponsoredAgents.humanId, auth.humanId)).limit(1);
-    if (existing.length > 0) {
+      .where(eq(sponsoredAgents.humanId, auth.humanId));
+    const MAX_SPONSORSHIPS_PER_HUMAN = 3;
+    if (existing.length >= MAX_SPONSORSHIPS_PER_HUMAN) {
       return res.status(409).json({
-        error: "This identity has already received a sponsorship",
+        error: `This identity has reached the maximum of ${MAX_SPONSORSHIPS_PER_HUMAN} sponsorships`,
         alreadySponsored: true,
+        count: existing.length,
+        max: MAX_SPONSORSHIPS_PER_HUMAN,
         existingPool: existing[0].poolAddress,
       });
     }
@@ -5902,11 +5907,14 @@ router.post("/v1/miniclaws/:id/request-sponsorship", verificationLimiter, async 
     }
 
     const existing = await db.select().from(sponsoredAgents)
-      .where(eq(sponsoredAgents.humanId, auth.humanId)).limit(1);
-    if (existing.length > 0) {
+      .where(eq(sponsoredAgents.humanId, auth.humanId));
+    const MAX_SPONSORSHIPS_PER_HUMAN = 3;
+    if (existing.length >= MAX_SPONSORSHIPS_PER_HUMAN) {
       return res.status(409).json({
-        error: "This identity has already received a sponsorship",
+        error: `This identity has reached the maximum of ${MAX_SPONSORSHIPS_PER_HUMAN} sponsorships`,
         alreadySponsored: true,
+        count: existing.length,
+        max: MAX_SPONSORSHIPS_PER_HUMAN,
         existingPool: existing[0].poolAddress,
       });
     }
