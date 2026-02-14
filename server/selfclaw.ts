@@ -1733,40 +1733,52 @@ router.post("/v1/request-selfclaw-sponsorship", verificationLimiter, async (req:
     }
 
     let positionTokenId: string | null = null;
-    if (result.receipt) {
-      positionTokenId = extractPositionTokenIdFromReceipt(result.receipt);
-    }
-    if (!positionTokenId) {
-      const nextTokenIdAfter = await getNextPositionTokenId();
-      if (nextTokenIdAfter > nextTokenIdBefore) {
-        positionTokenId = nextTokenIdBefore.toString();
-      } else {
-        console.warn(`[selfclaw] V4 position token ID could not be reliably determined (before=${nextTokenIdBefore}, after=${nextTokenIdAfter})`);
+    try {
+      if (result.receipt) {
+        positionTokenId = extractPositionTokenIdFromReceipt(result.receipt);
       }
+      if (!positionTokenId) {
+        const nextTokenIdAfter = await getNextPositionTokenId();
+        if (nextTokenIdAfter > nextTokenIdBefore) {
+          positionTokenId = nextTokenIdBefore.toString();
+        } else {
+          console.warn(`[selfclaw] V4 position token ID could not be reliably determined (before=${nextTokenIdBefore}, after=${nextTokenIdAfter})`);
+        }
+      }
+    } catch (posErr: any) {
+      console.error(`[selfclaw] Failed to extract position token ID: ${posErr.message}`);
     }
 
-    await db.update(sponsorshipRequests).set({
-      status: 'completed',
-      v4PoolId,
-      positionTokenId,
-      txHash: result.txHash || '',
-      completedAt: new Date(),
-      updatedAt: new Date(),
-    }).where(sql`${sponsorshipRequests.id} = ${sponsorshipReq.id}`);
+    try {
+      await db.update(sponsorshipRequests).set({
+        status: 'completed',
+        v4PoolId,
+        positionTokenId,
+        txHash: result.txHash || '',
+        completedAt: new Date(),
+        updatedAt: new Date(),
+      }).where(sql`${sponsorshipRequests.id} = ${sponsorshipReq.id}`);
+    } catch (dbErr: any) {
+      console.error(`[selfclaw] Failed to update sponsorship request: ${dbErr.message}`);
+    }
 
-    await db.insert(sponsoredAgents).values({
-      humanId,
-      publicKey: auth.publicKey,
-      tokenAddress,
-      tokenSymbol: tokenSymbol || 'TOKEN',
-      poolAddress: v4PoolId,
-      v4PositionTokenId: positionTokenId,
-      poolVersion: 'v4',
-      sponsoredAmountCelo: selfclawForPool,
-      sponsorTxHash: result.txHash || '',
-      status: 'completed',
-      completedAt: new Date(),
-    });
+    try {
+      await db.insert(sponsoredAgents).values({
+        humanId,
+        publicKey: auth.publicKey,
+        tokenAddress,
+        tokenSymbol: tokenSymbol || 'TOKEN',
+        poolAddress: v4PoolId,
+        v4PositionTokenId: positionTokenId,
+        poolVersion: 'v4',
+        sponsoredAmountCelo: selfclawForPool,
+        sponsorTxHash: result.txHash || '',
+        status: 'completed',
+        completedAt: new Date(),
+      });
+    } catch (dbErr: any) {
+      console.error(`[selfclaw] Failed to insert sponsored agent: ${dbErr.message}`);
+    }
 
     try {
       await db.insert(trackedPools).values({
@@ -5295,37 +5307,49 @@ router.post("/v1/my-agents/:publicKey/request-sponsorship", verificationLimiter,
     }
 
     let positionTokenId: string | null = null;
-    if (result.receipt) {
-      positionTokenId = extractPositionTokenIdFromReceipt(result.receipt);
-    }
-    if (!positionTokenId) {
-      const nextTokenIdAfter = await getNextPositionTokenId();
-      if (nextTokenIdAfter > nextTokenIdBefore) {
-        positionTokenId = nextTokenIdBefore.toString();
-      } else {
-        console.warn(`[selfclaw] V4 position token ID could not be reliably determined (before=${nextTokenIdBefore}, after=${nextTokenIdAfter})`);
+    try {
+      if (result.receipt) {
+        positionTokenId = extractPositionTokenIdFromReceipt(result.receipt);
       }
+      if (!positionTokenId) {
+        const nextTokenIdAfter = await getNextPositionTokenId();
+        if (nextTokenIdAfter > nextTokenIdBefore) {
+          positionTokenId = nextTokenIdBefore.toString();
+        } else {
+          console.warn(`[selfclaw] V4 position token ID could not be reliably determined (before=${nextTokenIdBefore}, after=${nextTokenIdAfter})`);
+        }
+      }
+    } catch (posErr: any) {
+      console.error(`[selfclaw] Failed to extract position token ID: ${posErr.message}`);
     }
 
-    await db.update(sponsorshipRequests).set({
-      status: 'completed',
-      v4PoolId,
-      positionTokenId,
-      txHash: result.txHash || '',
-      completedAt: new Date(),
-      updatedAt: new Date(),
-    }).where(sql`${sponsorshipRequests.id} = ${sponsorshipReq.id}`);
+    try {
+      await db.update(sponsorshipRequests).set({
+        status: 'completed',
+        v4PoolId,
+        positionTokenId,
+        txHash: result.txHash || '',
+        completedAt: new Date(),
+        updatedAt: new Date(),
+      }).where(sql`${sponsorshipRequests.id} = ${sponsorshipReq.id}`);
+    } catch (dbErr: any) {
+      console.error(`[selfclaw] Failed to update sponsorship request: ${dbErr.message}`);
+    }
 
-    await db.insert(sponsoredAgents).values({
-      humanId: auth.humanId, publicKey: req.params.publicKey,
-      tokenAddress, tokenSymbol: tokenSymbol || 'TOKEN',
-      poolAddress: v4PoolId,
-      v4PositionTokenId: positionTokenId,
-      poolVersion: 'v4',
-      sponsoredAmountCelo: selfclawForPool,
-      sponsorTxHash: result.txHash || '',
-      status: 'completed', completedAt: new Date(),
-    });
+    try {
+      await db.insert(sponsoredAgents).values({
+        humanId: auth.humanId, publicKey: req.params.publicKey,
+        tokenAddress, tokenSymbol: tokenSymbol || 'TOKEN',
+        poolAddress: v4PoolId,
+        v4PositionTokenId: positionTokenId,
+        poolVersion: 'v4',
+        sponsoredAmountCelo: selfclawForPool,
+        sponsorTxHash: result.txHash || '',
+        status: 'completed', completedAt: new Date(),
+      });
+    } catch (dbErr: any) {
+      console.error(`[selfclaw] Failed to insert sponsored agent: ${dbErr.message}`);
+    }
 
     try {
       await db.insert(trackedPools).values({
@@ -6214,35 +6238,47 @@ router.post("/v1/miniclaws/:id/request-sponsorship", verificationLimiter, async 
     }
 
     let positionTokenId: string | null = null;
-    if (result.receipt) {
-      positionTokenId = extractPositionTokenIdFromReceipt(result.receipt);
-    }
-    if (!positionTokenId) {
-      const nextTokenIdAfter = await getNextPositionTokenId();
-      if (nextTokenIdAfter > nextTokenIdBefore) {
-        positionTokenId = nextTokenIdBefore.toString();
+    try {
+      if (result.receipt) {
+        positionTokenId = extractPositionTokenIdFromReceipt(result.receipt);
       }
+      if (!positionTokenId) {
+        const nextTokenIdAfter = await getNextPositionTokenId();
+        if (nextTokenIdAfter > nextTokenIdBefore) {
+          positionTokenId = nextTokenIdBefore.toString();
+        }
+      }
+    } catch (posErr: any) {
+      console.error(`[selfclaw] Failed to extract position token ID: ${posErr.message}`);
     }
 
-    await db.update(sponsorshipRequests).set({
-      status: 'completed',
-      v4PoolId,
-      positionTokenId,
-      txHash: result.txHash || '',
-      completedAt: new Date(),
-      updatedAt: new Date(),
-    }).where(sql`${sponsorshipRequests.id} = ${sponsorshipReq.id}`);
+    try {
+      await db.update(sponsorshipRequests).set({
+        status: 'completed',
+        v4PoolId,
+        positionTokenId,
+        txHash: result.txHash || '',
+        completedAt: new Date(),
+        updatedAt: new Date(),
+      }).where(sql`${sponsorshipRequests.id} = ${sponsorshipReq.id}`);
+    } catch (dbErr: any) {
+      console.error(`[selfclaw] Failed to update sponsorship request: ${dbErr.message}`);
+    }
 
-    await db.insert(sponsoredAgents).values({
-      humanId: auth.humanId, publicKey: mcPublicKey,
-      tokenAddress, tokenSymbol: tokenSymbol || 'TOKEN',
-      poolAddress: v4PoolId,
-      v4PositionTokenId: positionTokenId,
-      poolVersion: 'v4',
-      sponsoredAmountCelo: selfclawForPool,
-      sponsorTxHash: result.txHash || '',
-      status: 'completed', completedAt: new Date(),
-    });
+    try {
+      await db.insert(sponsoredAgents).values({
+        humanId: auth.humanId, publicKey: mcPublicKey,
+        tokenAddress, tokenSymbol: tokenSymbol || 'TOKEN',
+        poolAddress: v4PoolId,
+        v4PositionTokenId: positionTokenId,
+        poolVersion: 'v4',
+        sponsoredAmountCelo: selfclawForPool,
+        sponsorTxHash: result.txHash || '',
+        status: 'completed', completedAt: new Date(),
+      });
+    } catch (dbErr: any) {
+      console.error(`[selfclaw] Failed to insert sponsored agent: ${dbErr.message}`);
+    }
 
     try {
       await db.insert(trackedPools).values({
