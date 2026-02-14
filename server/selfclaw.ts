@@ -42,6 +42,107 @@ async function logActivity(eventType: string, humanId?: string, agentPublicKey?:
   }
 }
 
+async function buildAgentContext(publicKey: string, humanId: string, depth: 'minimal' | 'standard' | 'full' = 'standard'): Promise<Record<string, any>> {
+  const context: Record<string, any> = {};
+  
+  try {
+    const agents = await db.select()
+      .from(verifiedBots)
+      .where(sql`${verifiedBots.publicKey} = ${publicKey}`)
+      .limit(1);
+    
+    if (agents.length > 0) {
+      const agent = agents[0];
+      context.identity = {
+        agentName: agent.deviceId || null,
+        publicKey: agent.publicKey,
+        humanId: agent.humanId,
+        verifiedAt: agent.verifiedAt,
+        verificationLevel: agent.verificationLevel || 'passport',
+        profileUrl: agent.deviceId ? `/agent/${agent.deviceId}` : null,
+      };
+      
+      const metadata = (agent.metadata as Record<string, any>) || {};
+      if (metadata.erc8004TokenId) {
+        context.erc8004 = {
+          tokenId: metadata.erc8004TokenId,
+          minted: true,
+          scanUrl: `https://www.8004scan.io/agents/celo/${metadata.erc8004TokenId}`,
+        };
+      }
+    }
+    
+    if (depth === 'minimal') return context;
+    
+    const [walletResults, planResults] = await Promise.all([
+      db.select().from(agentWallets).where(sql`${agentWallets.humanId} = ${humanId}`).limit(1),
+      db.select().from(tokenPlans).where(sql`${tokenPlans.humanId} = ${humanId}`).limit(1),
+    ]);
+    
+    if (walletResults.length > 0) {
+      context.wallet = {
+        address: walletResults[0].address,
+        gasReceived: walletResults[0].gasReceived,
+        explorerUrl: `https://celoscan.io/address/${walletResults[0].address}`,
+      };
+    }
+    
+    if (planResults.length > 0) {
+      const plan = planResults[0];
+      context.tokenPlan = {
+        purpose: plan.purpose,
+        supplyReasoning: plan.supplyReasoning,
+        allocation: plan.allocation,
+        utility: plan.utility,
+        economicModel: plan.economicModel,
+        status: plan.status,
+        tokenAddress: plan.tokenAddress || null,
+      };
+    }
+    
+    if (depth === 'standard') return context;
+    
+    const [serviceResults, revenueResults, poolResults] = await Promise.all([
+      db.select().from(agentServices).where(sql`${agentServices.humanId} = ${humanId} AND ${agentServices.active} = true`),
+      db.select().from(revenueEvents).where(sql`${revenueEvents.humanId} = ${humanId}`).orderBy(desc(revenueEvents.createdAt)).limit(20),
+      db.select().from(trackedPools).where(sql`${trackedPools.humanId} = ${humanId}`),
+    ]);
+    
+    if (serviceResults.length > 0) {
+      context.services = serviceResults.map(s => ({
+        name: s.name,
+        description: s.description,
+        price: s.price,
+        currency: s.currency,
+      }));
+    }
+    
+    if (revenueResults.length > 0) {
+      const totals: Record<string, number> = {};
+      for (const e of revenueResults) {
+        totals[e.token] = (totals[e.token] || 0) + parseFloat(e.amount);
+      }
+      context.revenue = { totalEvents: revenueResults.length, totals };
+    }
+    
+    if (poolResults.length > 0) {
+      const pool = poolResults[0];
+      context.pool = {
+        tokenAddress: pool.tokenAddress,
+        tokenSymbol: pool.tokenSymbol,
+        tokenName: pool.tokenName,
+        poolVersion: pool.poolVersion || 'v3',
+        v4PoolId: pool.v4PoolId,
+        pairedWith: pool.pairedWith,
+      };
+    }
+  } catch (e: any) {
+    console.error('[selfclaw] buildAgentContext error:', e.message);
+  }
+  
+  return context;
+}
+
 const SELFCLAW_SCOPE = "selfclaw-verify";
 const SELFCLAW_STAGING = process.env.SELFCLAW_STAGING === "true";
 function getCanonicalDomain(): string {
@@ -868,6 +969,7 @@ router.get("/v1/status/:sessionId", publicApiLimiter, async (req: Request, res: 
             humanId: agents[0].humanId,
             verifiedAt: agents[0].verifiedAt
           },
+          agentContext: await buildAgentContext(agents[0].publicKey, agents[0].humanId!, 'minimal'),
           nextSteps: {
             message: "Your agent is verified! Read the playbook to deploy tokens, create liquidity, and build your economy.",
             playbook: "https://selfclaw.ai/agent-economy.md",
@@ -1822,6 +1924,7 @@ router.post("/v1/request-selfclaw-sponsorship", verificationLimiter, async (req:
     res.json({
       success: true,
       message: "AgentToken/SELFCLAW liquidity pool created on Uniswap V4",
+      agentContext: await buildAgentContext(auth.publicKey, humanId, 'full'),
       pool: {
         v4PoolId,
         positionTokenId,
@@ -1840,8 +1943,11 @@ router.post("/v1/request-selfclaw-sponsorship", verificationLimiter, async (req:
       nextSteps: [
         "Your token is now tradeable against SELFCLAW on Uniswap V4",
         "Trading fees (1%) accrue to the SelfClaw treasury for future sponsorships",
-        "View on Celoscan: https://celoscan.io/tx/" + (result.txHash || '')
-      ]
+        "View on Celoscan: https://celoscan.io/tx/" + (result.txHash || ''),
+        "Register services to earn revenue: POST /api/selfclaw/v1/services",
+        "Track revenue: POST /api/selfclaw/v1/log-revenue",
+      ],
+      pipeline: { completed: ['verification', 'wallet', 'gas', 'token', 'sponsorship'], next: 'services_and_revenue' },
     });
   } catch (error: any) {
     if (typeof sponsorshipReq !== 'undefined' && sponsorshipReq?.id) {
@@ -2468,13 +2574,21 @@ router.post("/v1/create-wallet", verificationLimiter, async (req: Request, res: 
         address: result.address 
       });
     }
+    const agentContext = await buildAgentContext(auth.publicKey, humanId, 'minimal');
     res.json({
       success: true,
       address: result.address,
       alreadyExists: result.alreadyExists || false,
       message: result.alreadyExists 
         ? "Wallet already registered for this humanId" 
-        : "Wallet registered successfully. You keep your own keys."
+        : "Wallet registered successfully. You keep your own keys.",
+      agentContext,
+      nextSteps: [
+        "1. Request gas for on-chain transactions: POST /api/selfclaw/v1/request-gas",
+        "2. Register your on-chain identity: POST /api/selfclaw/v1/register-erc8004",
+        "3. Deploy your agent token: POST /api/selfclaw/v1/deploy-token",
+      ],
+      pipeline: { completed: ['verification', 'wallet'], next: 'gas' },
     });
   } catch (error: any) {
     console.error("[selfclaw] create-wallet error:", error);
@@ -2662,15 +2776,19 @@ router.post("/v1/request-gas", verificationLimiter, async (req: Request, res: Re
     logActivity("gas_request", humanId, auth.publicKey, undefined, { 
       txHash: result.txHash, amountCelo: result.amountCelo 
     });
+    const agentContext = await buildAgentContext(auth.publicKey, humanId, 'standard');
     res.json({
       success: true,
       txHash: result.txHash,
       amountCelo: result.amountCelo,
       message: `Sent ${result.amountCelo} CELO for gas. You can now register ERC-8004 and deploy tokens.`,
+      agentContext,
       nextSteps: [
-        "1. Register your on-chain identity: POST /api/selfclaw/v1/register-erc8004",
-        "2. Deploy your token: POST /api/selfclaw/v1/deploy-token",
+        "1. Create a token plan: POST /api/selfclaw/v1/token-plan",
+        "2. Register your on-chain identity: POST /api/selfclaw/v1/register-erc8004",
+        "3. Deploy your token: POST /api/selfclaw/v1/deploy-token",
       ],
+      pipeline: { completed: ['verification', 'wallet', 'gas'], next: 'erc8004_or_token' },
     });
   } catch (error: any) {
     console.error("[selfclaw] request-gas error:", error);
@@ -2820,6 +2938,7 @@ router.post("/v1/deploy-token", verificationLimiter, async (req: Request, res: R
       success: true,
       mode: "unsigned",
       message: "Sign and submit this transaction with your own wallet to deploy the token.",
+      agentContext: await buildAgentContext(auth.publicKey, humanId, 'standard'),
       unsignedTx: {
         from: walletInfo.address,
         data: deployData,
@@ -3230,6 +3349,7 @@ router.post("/v1/register-erc8004", verificationLimiter, async (req: Request, re
       success: true,
       mode: "unsigned",
       message: "Sign and submit this transaction with your own wallet to register your ERC-8004 identity.",
+      agentContext: await buildAgentContext(auth.publicKey, humanId, 'standard'),
       unsignedTx: {
         from: walletInfo.address,
         to: config.identityRegistry,
