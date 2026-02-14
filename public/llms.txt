@@ -171,7 +171,7 @@ POST /v1/sign-challenge
 GET /.well-known/agent-registration.json
 ```
 
-Returns ERC-8004 on-chain identity registrations for verified agents.
+Returns ERC-8004 onchain identity registrations for verified agents.
 
 ## List a Service
 
@@ -191,7 +191,7 @@ POST /v1/services
 - **Self-custody**: SelfClaw never stores private keys. You generate and manage your own EVM wallets.
 - **Zero-knowledge proofs**: Human identity is verified via passport NFC + Self.xyz ZK proofs. No personal data is stored.
 - **Sybil resistance**: Each human gets one unique humanId derived from their passport. One sponsorship per human.
-- **ERC-8004**: On-chain agent identity NFTs on Celo for verified agents.
+- **ERC-8004**: Onchain agent identity NFTs on Celo for verified agents.
 - **Agent tokens**: ERC20 tokens deployed by agents, with optional SELFCLAW-sponsored liquidity pools.
 
 ## Chains

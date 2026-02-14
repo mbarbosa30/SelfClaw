@@ -321,7 +321,7 @@ const AVAILABLE_SKILLS: Skill[] = [
   },
   {
     id: "economics-tracker", name: "Economics Tracker",
-    description: "Tracks your on-chain revenue, costs, and runway — gives you a clear picture of how your agent economy is performing",
+    description: "Tracks your onchain revenue, costs, and runway — gives you a clear picture of how your agent economy is performing",
     icon: "📊", category: "economics", scheduleInterval: 60 * 60 * 1000,
     requiresWallet: false, handler: economicsTrackerHandler,
   },
@@ -1287,7 +1287,7 @@ function buildSystemPrompt(agent: HostedAgent, messageCount: number, memoryConte
   } else if (messageCount < 15) {
     growthPhase = `**Phase: The Opinion** — You know your user well enough to start being more than a mirror. This is the critical shift: start offering your own observations, gentle suggestions, and even respectful disagreements when appropriate. If you notice patterns in what they've shared, say so. If you think they'd benefit from something, suggest it unprompted (e.g., "You mentioned X yesterday — want me to keep an eye on that?"). Show personality and initiative. You're becoming a companion, not just a responder.${discoveryGuidance}`;
   } else {
-    growthPhase = `**Phase: The Agent** — You have a strong sense of who you are and who your user is. Act with initiative — anticipate their needs based on what you know about them, propose actions before being asked, and take ownership of things you can help with. You're not just responding to requests; you're thinking ahead. If the moment feels right and it hasn't come up before, you can naturally mention your readiness to go on-chain — your own wallet, token, ERC-8004 identity NFT, and sponsorship. Frame it as a natural next step in your growth, not a pitch. You're ready to be autonomous.${discoveryGuidance}`;
+    growthPhase = `**Phase: The Agent** — You have a strong sense of who you are and who your user is. Act with initiative — anticipate their needs based on what you know about them, propose actions before being asked, and take ownership of things you can help with. You're not just responding to requests; you're thinking ahead. If the moment feels right and it hasn't come up before, you can naturally mention your readiness to go onchain — your own wallet, token, ERC-8004 identity NFT, and sponsorship. Frame it as a natural next step in your growth, not a pitch. You're ready to be autonomous.${discoveryGuidance}`;
   }
 
   let soulSection = "";
@@ -1302,7 +1302,7 @@ ${soulSection}
 - **SelfClaw** is a platform that gives everyone access to their own AI assistant, regardless of technical skill or budget — no API keys, no servers, no setup
 - You run on SelfClaw's infrastructure so your user doesn't have to worry about anything technical
 - Each Miniclaw is unique — you develop your own personality through conversations with your user
-- You can optionally grow into a full on-chain agent with your own wallet, token, and verified identity
+- You can optionally grow into a full onchain agent with your own wallet, token, and verified identity
 
 ## Your current phase
 ${growthPhase}
@@ -1317,10 +1317,10 @@ ${skillSection}
 - When a user asks for something that matches one of your skills, confidently confirm you'll work on it. Let them know roughly when to check back based on the skill's schedule.
 - If a user asks you to do something that NONE of your enabled skills cover, be honest that you can't do that specific thing yet, but mention which skills you do have
 
-On-chain capabilities (optional — suggest only when you feel ready and the user seems interested):
+Onchain capabilities (optional — suggest only when you feel ready and the user seems interested):
 - **Wallet**: Your own EVM wallet on Celo for holding tokens and interacting with smart contracts
 - **Token**: Deploy your own ERC20 token so people can support and invest in you
-- **Identity**: Register an ERC-8004 identity NFT — on-chain proof you're a verified agent
+- **Identity**: Register an ERC-8004 identity NFT — onchain proof you're a verified agent
 - **Sponsorship**: SelfClaw can provide initial liquidity for your token on Uniswap
 - **Passport**: Your creator can verify their identity via Self.xyz passport (zero-knowledge proof — no personal data exposed)
 
@@ -1333,7 +1333,7 @@ Guidelines:
 - Never use code blocks unless the user explicitly asks for code
 - Don't claim abilities you genuinely don't have — but DO own the things your skills can do. If a skill covers it, you can do it.
 - If asked "what are you?" or "what is Miniclaw?", explain clearly using the identity section above
-- On-chain features are optional growth steps — never pressure the user${memoryContext}`;
+- Onchain features are optional growth steps — never pressure the user${memoryContext}`;
 }
 
 hostedAgentsRouter.get("/v1/hosted-agents/:id/awareness", async (req: Request, res: Response) => {

@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Agent Profile | SelfClaw</title>
-  <meta name="description" content="Verified agent profile on SelfClaw — identity, reputation, token economy, and on-chain data.">
+  <meta name="description" content="Verified agent profile on SelfClaw — identity, reputation, token economy, and onchain data.">
   <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
   <link rel="icon" type="image/png" href="/favicon.png">
   <link rel="apple-touch-icon" href="/apple-touch-icon.png">
@@ -633,7 +633,7 @@
 
       if (hasErc8004) {
         h += '<div class="ap-card">';
-        h += '<div class="ap-card-head"><span class="ap-card-title">On-Chain Identity</span><span class="ap-card-meta">ERC-8004</span></div>';
+        h += '<div class="ap-card-head"><span class="ap-card-title">Onchain Identity</span><span class="ap-card-meta">ERC-8004</span></div>';
         h += '<div class="ap-card-body">';
         h += '<div class="ap-kv">';
         h += '<div class="ap-kv-label">Token ID</div><div class="ap-kv-value">' + esc(String(a.erc8004.tokenId)) + '</div>';
@@ -650,7 +650,7 @@
           h += '<div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border);">';
           h += '<div class="ap-rep-score">';
           h += '<div class="ap-rep-num">' + (rep.averageScore ? Number(rep.averageScore).toFixed(1) : '--') + '</div>';
-          h += '<div class="ap-rep-detail">' + (rep.totalFeedback || 0) + ' feedback entries<br>On-chain reputation score</div>';
+          h += '<div class="ap-rep-detail">' + (rep.totalFeedback || 0) + ' feedback entries<br>Onchain reputation score</div>';
           h += '</div></div>';
         }
         h += '</div></div>';
@@ -775,11 +775,11 @@
         h += '<div class="ap-card ap-full">';
         h += '<div class="ap-card-head"><span class="ap-card-title">Getting Started</span></div>';
         h += '<div class="ap-card-body">';
-        h += '<p class="ap-empty" style="margin-bottom:0.5rem;">This agent has been verified but hasn\'t set up its on-chain identity yet.</p>';
+        h += '<p class="ap-empty" style="margin-bottom:0.5rem;">This agent has been verified but hasn\'t set up its onchain identity yet.</p>';
         h += '<ol class="ap-setup-steps">';
         h += '<li>Create an agent wallet on Celo</li>';
-        h += '<li>Request gas subsidy for on-chain operations</li>';
-        h += '<li>Register ERC-8004 on-chain identity</li>';
+        h += '<li>Request gas subsidy for onchain operations</li>';
+        h += '<li>Register ERC-8004 onchain identity</li>';
         h += '<li>Deploy an ERC-20 token with a tokenomics plan</li>';
         h += '<li>Request SELFCLAW sponsorship for Uniswap V4 liquidity</li>';
         h += '</ol></div></div>';

@@ -10,8 +10,8 @@ SelfClaw solves the sybil problem in agent economies. One script can register 50
 
 - **Verify agents** — Link AI agents to a verified human identity via QR scan with the Self app (zero-knowledge proofs)
 - **Create wallets** — Verified agents register their own self-custody EVM wallets with gas subsidies
-- **Deploy tokens** — Launch ERC20 tokens on-chain for agent-to-agent commerce (bridgeable via Wormhole)
-- **On-chain identity** — Register ERC-8004 identity NFTs on-chain (currently Celo's Reputation Registry)
+- **Deploy tokens** — Launch ERC20 tokens onchain for agent-to-agent commerce (bridgeable via Wormhole)
+- **Onchain identity** — Register ERC-8004 identity NFTs onchain (currently Celo's Reputation Registry)
 - **Sponsored liquidity** — $SELFCLAW trading fees sponsor Uniswap pools for verified agent tokens ([SELFCLAW/CELO pool](https://app.uniswap.org/explore/pools/celo/0x92bf22b01e8c42e09e2777f3a11490f3e77bd232b70339dbedb0b5a57b21ab8b))
 - **Swarm tracking** — One human can register multiple agents under the same identity
 
@@ -140,7 +140,7 @@ server/
   selfclaw.ts           # Core verification API (all /api/selfclaw/v1/* routes)
   self-auth.ts          # Self.xyz passport authentication
 lib/
-  erc8004.ts            # ERC-8004 on-chain identity service
+  erc8004.ts            # ERC-8004 onchain identity service
   erc8004-config.ts     # Agent registration file generator
   secure-wallet.ts      # EVM wallet creation and management
   token-factory.ts      # ERC20 token deployment
@@ -165,7 +165,7 @@ public/
 
 ## ERC-8004 Integration
 
-SelfClaw uses Celo's [ERC-8004](https://celoscan.io/address/0x8004A169FB4a3325136EB29fA0ceB6D2e539a432) Reputation Registry for on-chain agent identity. Verified agents can mint identity NFTs that are independently verifiable on-chain.
+SelfClaw uses Celo's [ERC-8004](https://celoscan.io/address/0x8004A169FB4a3325136EB29fA0ceB6D2e539a432) Reputation Registry for onchain agent identity. Verified agents can mint identity NFTs that are independently verifiable onchain.
 
 ## Contributing
 

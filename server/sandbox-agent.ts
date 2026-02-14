@@ -293,7 +293,7 @@ async function runSandboxTest(dryRun: boolean = false) {
         totalSupply: params.totalSupply,
         supplyWei: supplyWei.toString(),
         ownerAddress: evmAccount.address,
-        note: "Token deployment tx generation validated. On-chain deploy requires signing the unsigned tx returned by /v1/deploy-token.",
+        note: "Token deployment tx generation validated. Onchain deploy requires signing the unsigned tx returned by /v1/deploy-token.",
       };
     });
 

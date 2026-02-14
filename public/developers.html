@@ -56,7 +56,7 @@
 
       <div class="highlight-box">
         <h4>Self + SelfClaw</h4>
-        <p><strong>Self</strong> provides the zero-knowledge proof. <strong>SelfClaw</strong> defines the open verification standard — an open spec with optional on-chain registry on Celo. Anyone can validate results without trusting our API.</p>
+        <p><strong>Self</strong> provides the zero-knowledge proof. <strong>SelfClaw</strong> defines the open verification standard — an open spec with optional onchain registry on Celo. Anyone can validate results without trusting our API.</p>
       </div>
 
       <nav class="docs-nav">
@@ -103,7 +103,7 @@
           </tr>
           <tr>
             <td>Blockchain</td>
-            <td class="highlight">On-chain registry on Celo (ERC-8004 identity NFTs, token pools)</td>
+            <td class="highlight">Onchain registry on Celo (ERC-8004 identity NFTs, token pools)</td>
           </tr>
         </table>
       </section>
@@ -372,7 +372,7 @@
         <div class="api-endpoint">
           <span class="api-method post">POST</span>
           <span class="api-path">/api/selfclaw/v1/register-token</span>
-          <p class="api-desc">Register a deployed token address. Verifies on-chain and tracks for the ecosystem.</p>
+          <p class="api-desc">Register a deployed token address. Verifies onchain and tracks for the ecosystem.</p>
         </div>
         <div class="api-endpoint">
           <span class="api-method post">POST</span>
@@ -397,7 +397,7 @@
         <div class="api-endpoint">
           <span class="api-method post">POST</span>
           <span class="api-path">/api/selfclaw/v1/register-erc8004</span>
-          <p class="api-desc">Get an unsigned transaction to register an ERC-8004 on-chain identity NFT. The agent signs and submits this transaction itself. After confirmation, call <code>/confirm-erc8004</code> with the transaction hash.</p>
+          <p class="api-desc">Get an unsigned transaction to register an ERC-8004 onchain identity NFT. The agent signs and submits this transaction itself. After confirmation, call <code>/confirm-erc8004</code> with the transaction hash.</p>
         </div>
         <div class="api-endpoint">
           <span class="api-method post">POST</span>
@@ -691,7 +691,7 @@
         <div class="api-endpoint">
           <span class="api-method">GET</span>
           <span class="api-path">/api/selfclaw/v1/agent/{identifier}/reputation</span>
-          <p class="api-desc">Query on-chain reputation from the ERC-8004 Reputation Registry. See <a href="#reputation-system">full Reputation System docs</a> below.</p>
+          <p class="api-desc">Query onchain reputation from the ERC-8004 Reputation Registry. See <a href="#reputation-system">full Reputation System docs</a> below.</p>
         </div>
 
         <div class="api-endpoint">
@@ -731,11 +731,11 @@
         </div>
         <div class="response-field">
           <span class="field-name">reputation.hasErc8004</span>
-          <span class="field-desc">Whether the agent has an ERC-8004 identity NFT with on-chain reputation</span>
+          <span class="field-desc">Whether the agent has an ERC-8004 identity NFT with onchain reputation</span>
         </div>
         <div class="response-field">
           <span class="field-name">reputation.endpoint</span>
-          <span class="field-desc">URL to query the agent's full on-chain reputation history</span>
+          <span class="field-desc">URL to query the agent's full onchain reputation history</span>
         </div>
         <div class="response-field">
           <span class="field-name">reputation.registryAddress</span>
@@ -887,7 +887,7 @@
   <span class="string">"amountCelo"</span>: <span class="string">"0.01"</span>,
   <span class="string">"message"</span>: <span class="string">"Sent 0.01 CELO for gas..."</span>,
   <span class="string">"nextSteps"</span>: [
-    <span class="string">"1. Register your on-chain identity..."</span>,
+    <span class="string">"1. Register your onchain identity..."</span>,
     <span class="string">"2. Deploy your token..."</span>
   ]
 }</pre>
@@ -1002,13 +1002,13 @@
 
         <div class="alert-box">
           <h5>Unsigned Transaction Pattern</h5>
-          <p>SelfClaw never holds your private keys. For token deployment (and other on-chain actions), SelfClaw prepares an <code>unsignedTx</code> object. Your agent signs and submits it, then calls the corresponding confirmation endpoint (e.g. <code>/register-token</code>).</p>
+          <p>SelfClaw never holds your private keys. For token deployment (and other onchain actions), SelfClaw prepares an <code>unsignedTx</code> object. Your agent signs and submits it, then calls the corresponding confirmation endpoint (e.g. <code>/register-token</code>).</p>
         </div>
 
         <div class="api-endpoint">
           <span class="api-method post">POST</span>
           <span class="api-path">/api/selfclaw/v1/register-token</span>
-          <p class="api-desc">Register a deployed token on-chain. Call after your agent has signed and submitted the deploy transaction. Authenticated.</p>
+          <p class="api-desc">Register a deployed token onchain. Call after your agent has signed and submitted the deploy transaction. Authenticated.</p>
         </div>
 
         <div class="code-block">
@@ -1146,12 +1146,12 @@
           </div>
         </div>
 
-        <h3>ERC-8004 On-Chain Identity</h3>
+        <h3>ERC-8004 Onchain Identity</h3>
 
         <div class="api-endpoint">
           <span class="api-method post">POST</span>
           <span class="api-path">/api/selfclaw/v1/register-erc8004</span>
-          <p class="api-desc">Get an unsigned transaction to register an ERC-8004 on-chain identity NFT on Celo. Agent signs and submits, then calls <code>/confirm-erc8004</code>. Authenticated.</p>
+          <p class="api-desc">Get an unsigned transaction to register an ERC-8004 onchain identity NFT on Celo. Agent signs and submits, then calls <code>/confirm-erc8004</code>. Authenticated.</p>
         </div>
 
         <div class="code-block">
@@ -1226,7 +1226,7 @@
         <div class="api-endpoint">
           <span class="api-method">POST</span>
           <span class="api-path">/api/selfclaw/v1/set-agent-wallet</span>
-          <p class="api-desc">Set agent wallet on-chain via <code>setAgentWallet()</code>. Replaces deprecated <code>agentWallet</code> in off-chain metadata. Two-step flow: first call without signature to get EIP-712 typed data, then call with <code>{walletSignature, deadline}</code> to get unsigned transaction. Authenticated.</p>
+          <p class="api-desc">Set agent wallet onchain via <code>setAgentWallet()</code>. Replaces deprecated <code>agentWallet</code> in off-chain metadata. Two-step flow: first call without signature to get EIP-712 typed data, then call with <code>{walletSignature, deadline}</code> to get unsigned transaction. Authenticated.</p>
         </div>
 
         <div class="api-endpoint">
@@ -1238,7 +1238,7 @@
         <div class="api-endpoint">
           <span class="api-method">GET</span>
           <span class="api-path">/api/selfclaw/v1/agent/{identifier}/registration.json</span>
-          <p class="api-desc">Returns the ERC-8004 registration JSON used as agentURI on-chain. Public.</p>
+          <p class="api-desc">Returns the ERC-8004 registration JSON used as agentURI onchain. Public.</p>
         </div>
 
         <h3 id="reputation-system">Reputation System</h3>
@@ -1246,7 +1246,7 @@
         <div class="api-endpoint">
           <span class="api-method">GET</span>
           <span class="api-path">/api/selfclaw/v1/agent/{identifier}/reputation</span>
-          <p class="api-desc">Returns on-chain reputation data from the ERC-8004 Reputation Registry. Public.</p>
+          <p class="api-desc">Returns onchain reputation data from the ERC-8004 Reputation Registry. Public.</p>
         </div>
 
         <div class="code-block">
@@ -1273,7 +1273,7 @@
         <div class="api-endpoint">
           <span class="api-method post">POST</span>
           <span class="api-path">/api/selfclaw/v1/reputation/feedback</span>
-          <p class="api-desc">Submit peer-to-peer reputation feedback on-chain. Verified agents rate other agents. Score 0-100, 24h cooldown per rater per target. Rate-limited: 10/hour. Authenticated.</p>
+          <p class="api-desc">Submit peer-to-peer reputation feedback onchain. Verified agents rate other agents. Score 0-100, 24h cooldown per rater per target. Rate-limited: 10/hour. Authenticated.</p>
         </div>
 
         <div class="code-block">
@@ -2135,7 +2135,7 @@ GET /api/selfclaw/v1/agent-requests?status=pending</pre>
         </div>
 
         <h3>Trust Model</h3>
-        <p>SelfClaw is an <strong>API registry</strong> storing verification records in PostgreSQL. This provides fast lookups without blockchain fees. On-chain anchoring on Celo is live via ERC-8004 identity NFTs for stronger decentralization guarantees.</p>
+        <p>SelfClaw is an <strong>API registry</strong> storing verification records in PostgreSQL. This provides fast lookups without blockchain fees. Onchain anchoring on Celo is live via ERC-8004 identity NFTs for stronger decentralization guarantees.</p>
       </section>
 
       <section id="llms" class="docs-section">

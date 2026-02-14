@@ -588,7 +588,7 @@
               </div>
             </div>
             <div class="wallet-panel">
-              <div class="wallet-panel-title">On-Chain Price</div>
+              <div class="wallet-panel-title">Onchain Price</div>
               <div class="balance-row">
                 <span class="balance-label">CELO per SELFCLAW</span>
                 <span class="balance-value" id="pool-price" style="font-size:1rem;">--</span>
@@ -731,7 +731,7 @@
 
       <section class="admin-section">
         <h2 class="admin-section-title">Register Tracked Pool</h2>
-        <p style="color:var(--text-muted);font-size:0.75rem;margin-bottom:1rem;line-height:1.5;">Manually link an existing on-chain V4 pool to an agent token. Token symbol/name are auto-fetched from the blockchain, and agent ownership is auto-resolved from existing records.</p>
+        <p style="color:var(--text-muted);font-size:0.75rem;margin-bottom:1rem;line-height:1.5;">Manually link an existing onchain V4 pool to an agent token. Token symbol/name are auto-fetched from the blockchain, and agent ownership is auto-resolved from existing records.</p>
         <div class="actions-grid">
           <div class="action-card" style="max-width:480px;">
             <input type="text" class="input" id="reg-token-address" placeholder="Token contract address (0x...)">
@@ -1077,7 +1077,7 @@
     }
 
     function doFullAttest(btn) {
-      if (!confirm('Attest SELFCLAW on Celo via Wormhole? This submits an irreversible on-chain transaction.')) return;
+      if (!confirm('Attest SELFCLAW on Celo via Wormhole? This submits an irreversible onchain transaction.')) return;
       btn.disabled = true;
       setActionResult('result-attest', 'Step 1/3: Submitting attestation on Base...', 'loading');
 
@@ -1473,15 +1473,15 @@
           document.getElementById('price-celo-usd').textContent = formatUsd(c.priceUsd);
           var computedEl = document.getElementById('price-celo-computed');
           if (c.computedFromCelo) {
-            computedEl.textContent = '(computed from CELO × on-chain ratio)';
+            computedEl.textContent = '(computed from CELO × onchain ratio)';
           } else {
             computedEl.textContent = '';
           }
           document.getElementById('price-celo-ref').textContent = data.celoUsdPrice ? '$' + data.celoUsdPrice.toFixed(4) : '--';
-          document.getElementById('price-celo-native').textContent = c.priceNative ? c.priceNative + ' CELO' : (c.onChainPrice ? parseFloat(c.onChainPrice).toFixed(8) + ' CELO (on-chain)' : '--');
+          document.getElementById('price-celo-native').textContent = c.priceNative ? c.priceNative + ' CELO' : (c.onChainPrice ? parseFloat(c.onChainPrice).toFixed(8) + ' CELO (onchain)' : '--');
           document.getElementById('price-celo-liq').textContent = formatVolume(c.liquidity);
           document.getElementById('price-celo-vol').textContent = formatVolume(c.volume24h);
-          document.getElementById('price-celo-dex').textContent = c.dex || (c.computedFromCelo ? 'Uniswap (on-chain)' : '--');
+          document.getElementById('price-celo-dex').textContent = c.dex || (c.computedFromCelo ? 'Uniswap (onchain)' : '--');
 
           var celoChangeEl = document.getElementById('price-celo-change');
           if (c.priceChange24h != null) {
@@ -1626,7 +1626,7 @@
     function doSwapCeloToSelfclaw(btn) {
       var amount = document.getElementById('swap-celo-amount').value.trim();
       if (!amount) return;
-      if (!confirm('Swap ' + amount + ' CELO to SELFCLAW? This is an irreversible on-chain swap.')) return;
+      if (!confirm('Swap ' + amount + ' CELO to SELFCLAW? This is an irreversible onchain swap.')) return;
       btn.disabled = true;
       setActionResult('result-swap', 'Swapping ' + amount + ' CELO to SELFCLAW...', 'loading');
       fetch('/api/admin/uniswap/swap-celo-to-selfclaw', {
@@ -1723,7 +1723,7 @@
       var amountB = document.getElementById('pool-amount-b').value.trim();
       var feeTier = parseInt(document.getElementById('pool-fee-tier').value);
       if (!tokenA || !tokenB || !amountA || !amountB) return;
-      if (!confirm('Create a new pool with ' + amountA + ' Token A and ' + amountB + ' Token B? This deploys an irreversible on-chain pool.')) return;
+      if (!confirm('Create a new pool with ' + amountA + ' Token A and ' + amountB + ' Token B? This deploys an irreversible onchain pool.')) return;
       btn.disabled = true;
       setActionResult('result-create-pool', 'Creating pool and adding liquidity...', 'loading');
       fetch('/api/admin/uniswap/create-pool', {

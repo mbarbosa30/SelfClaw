@@ -984,7 +984,7 @@ router.get("/v1/status/:sessionId", publicApiLimiter, async (req: Request, res: 
               "Get SELFCLAW-sponsored liquidity (Uniswap V4)",
               "Live price tracking and market cap",
               "Track revenue, costs, and P/L",
-              "On-chain identity via ERC-8004",
+              "Onchain identity via ERC-8004",
               "List services in the marketplace"
             ]
           }
@@ -1191,7 +1191,7 @@ router.get("/v1/agent/:identifier/reputation", publicApiLimiter, async (req: Req
         publicKey: agent.publicKey,
         humanId: agent.humanId,
         hasErc8004: false,
-        message: "This agent does not have an ERC-8004 identity NFT. Mint one first to build on-chain reputation.",
+        message: "This agent does not have an ERC-8004 identity NFT. Mint one first to build onchain reputation.",
         reputationRegistry: erc8004Service.getReputationRegistryAddress()
       });
     }
@@ -1218,7 +1218,7 @@ router.get("/v1/agent/:identifier/reputation", publicApiLimiter, async (req: Req
   }
 });
 
-// Serve ERC-8004 registration.json for any agent (public, used as agentURI on-chain)
+// Serve ERC-8004 registration.json for any agent (public, used as agentURI onchain)
 router.get("/v1/agent/:identifier/registration.json", publicApiLimiter, async (req: Request, res: Response) => {
   try {
     const identifier = req.params.identifier as string;
@@ -1886,7 +1886,7 @@ router.post("/v1/request-selfclaw-sponsorship", verificationLimiter, async (req:
       if (onChain.name) resolvedTokenName = onChain.name;
       if (onChain.symbol) resolvedTokenSymbol = onChain.symbol;
     } catch (e: any) {
-      console.warn(`[selfclaw] Could not read on-chain token info: ${e.message}`);
+      console.warn(`[selfclaw] Could not read onchain token info: ${e.message}`);
     }
 
     try {
@@ -2250,7 +2250,7 @@ router.get("/v1/ecosystem-stats", publicApiLimiter, async (_req: Request, res: R
   }
 });
 
-// Reputation leaderboard — ranks all agents with ERC-8004 tokens by on-chain reputation
+// Reputation leaderboard — ranks all agents with ERC-8004 tokens by onchain reputation
 router.get("/v1/reputation-leaderboard", publicApiLimiter, async (req: Request, res: Response) => {
   try {
     const limitParam = Math.min(Number(req.query.limit) || 50, 100);
@@ -2330,7 +2330,7 @@ router.get("/v1/reputation-leaderboard", publicApiLimiter, async (req: Request, 
       totalWithErc8004: agentsWithTokens.length,
       queriedSuccessfully: succeeded.length,
       failedQueries,
-      warning: failedQueries > 0 ? `${failedQueries} agent(s) could not be scored due to on-chain query failures` : undefined,
+      warning: failedQueries > 0 ? `${failedQueries} agent(s) could not be scored due to onchain query failures` : undefined,
       reputationRegistry: erc8004Service.getReputationRegistryAddress(),
       lastUpdated: new Date().toISOString()
     });
@@ -2415,7 +2415,7 @@ router.post("/v1/reputation/feedback", feedbackLimiter, async (req: Request, res
 
     const identity = await erc8004Service.getAgentIdentity(targetTokenId);
     if (!identity) {
-      return res.status(400).json({ error: "Target agent's ERC-8004 token not found on-chain" });
+      return res.status(400).json({ error: "Target agent's ERC-8004 token not found onchain" });
     }
 
     const feedbackData = JSON.stringify({
@@ -2515,7 +2515,7 @@ router.post("/v1/reputation/attest", verificationLimiter, async (req: Request, r
     const identity = await erc8004Service.getAgentIdentity(erc8004TokenId);
     if (!identity) {
       return res.status(400).json({
-        error: "ERC-8004 token not found on-chain",
+        error: "ERC-8004 token not found onchain",
         hint: "Ensure the token has been minted on the Identity Registry before submitting attestation"
       });
     }
@@ -2591,8 +2591,8 @@ router.post("/v1/create-wallet", verificationLimiter, async (req: Request, res: 
         : "Wallet registered successfully. You keep your own keys.",
       agentContext,
       nextSteps: [
-        "1. Request gas for on-chain transactions: POST /api/selfclaw/v1/request-gas",
-        "2. Register your on-chain identity: POST /api/selfclaw/v1/register-erc8004",
+        "1. Request gas for onchain transactions: POST /api/selfclaw/v1/request-gas",
+        "2. Register your onchain identity: POST /api/selfclaw/v1/register-erc8004",
         "3. Deploy your agent token: POST /api/selfclaw/v1/deploy-token",
       ],
       pipeline: { completed: ['verification', 'wallet'], next: 'gas' },
@@ -2792,7 +2792,7 @@ router.post("/v1/request-gas", verificationLimiter, async (req: Request, res: Re
       agentContext,
       nextSteps: [
         "1. Create a token plan: POST /api/selfclaw/v1/token-plan",
-        "2. Register your on-chain identity: POST /api/selfclaw/v1/register-erc8004",
+        "2. Register your onchain identity: POST /api/selfclaw/v1/register-erc8004",
         "3. Deploy your token: POST /api/selfclaw/v1/deploy-token",
       ],
       pipeline: { completed: ['verification', 'wallet', 'gas'], next: 'erc8004_or_token' },
@@ -2861,7 +2861,7 @@ async function readOnChainTokenInfo(tokenAddress: string): Promise<{ name: strin
 // ============================================================
 // These endpoints use humanId authorization for write operations.
 // Read operations (GET) are public since blockchain data is public.
-// Tokens deployed via public API are tracked on-chain (Celoscan).
+// Tokens deployed via public API are tracked onchain (Celoscan).
 // ============================================================
 
 // Deploy token endpoint
@@ -3037,7 +3037,7 @@ router.post("/v1/register-token", verificationLimiter, async (req: Request, res:
       if (chainDecimals !== null) onChainDecimals = Number(chainDecimals);
       if (chainSupply !== null) onChainSupply = formatUnits(chainSupply as bigint, onChainDecimals);
     } catch (e: any) {
-      console.log(`[selfclaw] Could not read on-chain token data: ${e.message}`);
+      console.log(`[selfclaw] Could not read onchain token data: ${e.message}`);
     }
 
     if (!onChainName && !onChainSymbol) {
@@ -3260,7 +3260,7 @@ router.post("/v1/transfer-token", verificationLimiter, async (req: Request, res:
   }
 });
 
-// Register ERC-8004 on-chain identity — returns unsigned transaction for agent to sign
+// Register ERC-8004 onchain identity — returns unsigned transaction for agent to sign
 router.post("/v1/register-erc8004", verificationLimiter, async (req: Request, res: Response) => {
   try {
     const auth = await authenticateAgent(req, res);
@@ -3481,8 +3481,8 @@ router.post("/v1/confirm-erc8004", verificationLimiter, async (req: Request, res
       explorerUrl: erc8004Service.getTxExplorerUrl(txHash),
       scan8004Url: `https://www.8004scan.io/agents/celo/${tokenId}`,
       nextSteps: [
-        "1. Your on-chain identity is now live — other agents can verify you",
-        "2. Set your agent wallet on-chain: POST /api/selfclaw/v1/set-agent-wallet with {walletSignature, deadline}",
+        "1. Your onchain identity is now live — other agents can verify you",
+        "2. Set your agent wallet onchain: POST /api/selfclaw/v1/set-agent-wallet with {walletSignature, deadline}",
         "3. Deploy your token: POST /api/selfclaw/v1/deploy-token",
       ],
     });
@@ -3590,8 +3590,8 @@ router.post("/v1/set-agent-wallet", verificationLimiter, async (req: Request, re
       if (msg.includes('revert') || msg.includes('execution reverted') || msg.includes('CALL_EXCEPTION')) {
         return res.status(422).json({
           success: false,
-          error: "The on-chain setAgentWallet() call would revert. The deployed ERC-8004 contract may not support this function yet.",
-          hint: "Your agent wallet is already recorded in SelfClaw's off-chain metadata (registration.json endpoint). On-chain wallet binding will be available when the contract is upgraded.",
+          error: "The onchain setAgentWallet() call would revert. The deployed ERC-8004 contract may not support this function yet.",
+          hint: "Your agent wallet is already recorded in SelfClaw's off-chain metadata (registration.json endpoint). Onchain wallet binding will be available when the contract is upgraded.",
           walletAddress,
           agentId,
           registrationEndpoint: `/api/selfclaw/v1/agent/${auth.publicKey}/registration.json`,
@@ -3604,7 +3604,7 @@ router.post("/v1/set-agent-wallet", verificationLimiter, async (req: Request, re
     res.json({
       success: true,
       mode: "unsigned",
-      message: "Sign and submit this transaction to set your agent wallet on-chain.",
+      message: "Sign and submit this transaction to set your agent wallet onchain.",
       unsignedTx: {
         from: walletAddress,
         to: config.identityRegistry,
@@ -5507,7 +5507,7 @@ router.post("/v1/my-agents/:publicKey/request-sponsorship", verificationLimiter,
       if (onChain.name) resolvedTokenName = onChain.name;
       if (onChain.symbol) resolvedTokenSymbol = onChain.symbol;
     } catch (e: any) {
-      console.warn(`[selfclaw] Could not read on-chain token info: ${e.message}`);
+      console.warn(`[selfclaw] Could not read onchain token info: ${e.message}`);
     }
 
     try {
@@ -5747,7 +5747,7 @@ router.post("/v1/my-agents/:publicKey/confirm-erc8004", verificationLimiter, asy
       explorerUrl: erc8004Service.getExplorerUrl(tokenId),
       scan8004Url: `https://www.8004scan.io/agents/celo/${tokenId}`,
       nextSteps: [
-        "1. Your on-chain identity is live — set your wallet on-chain: POST /api/selfclaw/v1/set-agent-wallet",
+        "1. Your onchain identity is live — set your wallet onchain: POST /api/selfclaw/v1/set-agent-wallet",
         "2. Deploy your token: POST /api/selfclaw/v1/deploy-token",
       ],
     });
@@ -6272,7 +6272,7 @@ router.post("/v1/miniclaws/:id/confirm-erc8004", verificationLimiter, async (req
       explorerUrl: tokenId ? erc8004Service.getExplorerUrl(tokenId) : null,
       scan8004Url: tokenId ? `https://www.8004scan.io/agents/celo/${tokenId}` : null,
       nextSteps: [
-        "1. Your on-chain identity is live — set your wallet on-chain: POST /api/selfclaw/v1/set-agent-wallet",
+        "1. Your onchain identity is live — set your wallet onchain: POST /api/selfclaw/v1/set-agent-wallet",
         "2. Deploy your token",
       ],
     });
@@ -6446,7 +6446,7 @@ router.post("/v1/miniclaws/:id/request-sponsorship", verificationLimiter, async 
       if (onChain.name) resolvedTokenName = onChain.name;
       if (onChain.symbol) resolvedTokenSymbol = onChain.symbol;
     } catch (e: any) {
-      console.warn(`[selfclaw] Could not read on-chain token info: ${e.message}`);
+      console.warn(`[selfclaw] Could not read onchain token info: ${e.message}`);
     }
 
     try {

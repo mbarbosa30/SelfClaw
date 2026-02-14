@@ -63,7 +63,7 @@ export class ERC8004Service {
     return generateRegistrationFile(name, description, walletAddress, a2aEndpoint, webEndpoint, imageUrl, isVerified, agentId);
   }
   
-  // Register an agent on-chain (mint NFT)
+  // Register an agent onchain (mint NFT)
   async registerAgent(agentURI: string, signerPrivateKey?: string): Promise<{ tokenId: string; txHash: string } | null> {
     if (!this.isReady()) {
       console.log("[erc8004] Contracts not deployed yet");
