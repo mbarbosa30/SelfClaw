@@ -131,6 +131,25 @@
     .meta-dot.active { background: var(--green-verify); }
     .meta-dot.inactive { background: var(--border); }
 
+    .agent-status-summary {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem 1rem;
+      padding: 1rem; margin-bottom: 1rem;
+      border: 2px solid var(--border-heavy); background: rgba(0,0,0,0.02);
+    }
+    @media (max-width: 600px) { .agent-status-summary { grid-template-columns: repeat(2, 1fr); } }
+    .status-item {}
+    .status-item-label {
+      font-family: var(--font-mono); font-size: 0.6rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted);
+      margin-bottom: 0.15rem;
+    }
+    .status-item-value {
+      font-family: var(--font-mono); font-size: 0.8rem; font-weight: 600;
+      color: var(--text); word-break: break-all;
+    }
+    .status-item-value a { color: var(--accent); }
+    .status-item-value .not-set { color: var(--text-muted); font-weight: 400; font-size: 0.75rem; }
+
     .agent-card-actions {
       display: flex; gap: 0.5rem; margin-top: 1rem; flex-wrap: wrap;
     }
@@ -591,6 +610,73 @@
         }
       }
       return { steps: steps, hasWallet: hasWallet, hasGas: hasGas, hasErc8004: hasErc8004, hasToken: hasToken, hasSponsorship: hasSponsorship, hasPool: hasPool, poolAddr: poolAddr };
+    }
+
+    function renderStatusSummary(agent) {
+      var html = '<div class="agent-status-summary">';
+
+      html += '<div class="status-item"><div class="status-item-label">Wallet</div><div class="status-item-value">';
+      if (agent.wallet) {
+        html += '<a href="https://celoscan.io/address/' + esc(agent.wallet.address) + '" target="_blank" title="' + esc(agent.wallet.address) + '">' + esc(truncAddr(agent.wallet.address)) + '</a>';
+        if (agent.wallet.gasReceived) html += ' <span style="color:var(--green-verify);font-size:0.6rem;">GAS OK</span>';
+      } else {
+        html += '<span class="not-set">Not created</span>';
+      }
+      html += '</div></div>';
+
+      html += '<div class="status-item"><div class="status-item-label">Token</div><div class="status-item-value">';
+      if (agent.token) {
+        html += '<span style="color:var(--accent);">$' + esc(agent.token.symbol) + '</span> ';
+        html += '<a href="https://celoscan.io/address/' + esc(agent.token.address) + '" target="_blank">' + esc(truncAddr(agent.token.address)) + '</a>';
+      } else {
+        html += '<span class="not-set">Not deployed</span>';
+      }
+      html += '</div></div>';
+
+      html += '<div class="status-item"><div class="status-item-label">Price (USD)</div><div class="status-item-value">';
+      if (agent.token && agent.token.priceUsd != null) {
+        html += '<span style="color:var(--accent);font-size:0.95rem;">$' + fmtPrice(agent.token.priceUsd) + '</span>';
+      } else if (agent.token && agent.token.priceCelo != null) {
+        html += fmtPrice(agent.token.priceCelo) + ' CELO';
+      } else {
+        html += '<span class="not-set">&mdash;</span>';
+      }
+      html += '</div></div>';
+
+      html += '<div class="status-item"><div class="status-item-label">Market Cap</div><div class="status-item-value">';
+      if (agent.token && agent.token.marketCapUsd != null) {
+        html += '<span style="color:var(--green-verify);font-size:0.95rem;">' + fmtMcap(agent.token.marketCapUsd) + '</span>';
+      } else {
+        html += '<span class="not-set">&mdash;</span>';
+      }
+      html += '</div></div>';
+
+      html += '<div class="status-item"><div class="status-item-label">ERC-8004 ID</div><div class="status-item-value">';
+      if (agent.erc8004) {
+        html += '<span style="color:var(--green-verify);">#' + esc(agent.erc8004.tokenId) + '</span>';
+      } else {
+        html += '<span class="not-set">Not registered</span>';
+      }
+      html += '</div></div>';
+
+      html += '<div class="status-item"><div class="status-item-label">Pool</div><div class="status-item-value">';
+      if (agent.token && agent.token.poolAddress) {
+        var isV4 = agent.token.poolVersion === 'v4' || agent.token.poolAddress.length > 42;
+        html += '<span style="color:var(--green-verify);">' + (isV4 ? 'V4' : 'V3') + '</span> ';
+        if (isV4) {
+          html += '<span title="' + esc(agent.token.poolAddress) + '">' + esc(truncAddr(agent.token.poolAddress)) + '</span>';
+        } else {
+          html += '<a href="https://celoscan.io/address/' + esc(agent.token.poolAddress) + '" target="_blank">' + esc(truncAddr(agent.token.poolAddress)) + '</a>';
+        }
+      } else if (agent.sponsorship) {
+        html += '<span style="color:var(--accent);">' + esc(agent.sponsorship.status || 'Pending') + '</span>';
+      } else {
+        html += '<span class="not-set">Not active</span>';
+      }
+      html += '</div></div>';
+
+      html += '</div>';
+      return html;
     }
 
     function renderPipeline(agent, idx) {
@@ -1159,6 +1245,8 @@
         html += '<div><div class="agent-stat-label">Services</div><div class="agent-stat-value">' + (agent.services || 0) + '</div></div>';
         html += '</div>';
 
+        html += renderStatusSummary(agent);
+
         html += renderPipeline(agent, idx);
 
         if (agent.token) {
@@ -1169,24 +1257,8 @@
 
         html += '<div class="agent-card-meta">';
         html += '<div class="meta-item"><div class="meta-dot active"></div>Verified ' + fmtDate(agent.verifiedAt) + '</div>';
-        if (agent.wallet) {
-          html += '<div class="meta-item"><div class="meta-dot active"></div>Wallet: ' + esc(agent.wallet.address.substring(0, 8)) + '...</div>';
-        } else {
-          html += '<div class="meta-item"><div class="meta-dot inactive"></div>No wallet</div>';
-        }
-        if (agent.erc8004) {
-          html += '<div class="meta-item"><div class="meta-dot active"></div>ERC-8004 #' + esc(agent.erc8004.tokenId) + '</div>';
-        }
-        if (agent.token) {
-          html += '<div class="meta-item"><div class="meta-dot active"></div>$' + esc(agent.token.symbol) + '</div>';
-          if (agent.token.priceUsd != null) {
-            html += '<div class="meta-item">$' + fmtPrice(agent.token.priceUsd) + '</div>';
-          } else if (agent.token.priceCelo != null) {
-            html += '<div class="meta-item">' + fmtPrice(agent.token.priceCelo) + ' CELO</div>';
-          }
-        } else if (agent.tokenPlan) {
-          html += '<div class="meta-item"><div class="meta-dot" style="background:var(--accent)"></div>Token plan: ' + esc(agent.tokenPlan.status) + '</div>';
-        }
+        html += '<div class="meta-item"><div class="meta-dot ' + (agent.wallet ? 'active' : 'inactive') + '"></div>' + (agent.wallet ? 'Wallet active' : 'No wallet') + '</div>';
+        html += '<div class="meta-item"><div class="meta-dot ' + (agent.token ? 'active' : 'inactive') + '"></div>' + (agent.token ? '$' + esc(agent.token.symbol) : 'No token') + '</div>';
         html += '</div>';
 
         html += '<div class="agent-card-actions">';
@@ -1259,6 +1331,7 @@
       return html;
     }
 
+    var _guideCounter = 0;
     function renderSetupGuide(agent) {
       var info = getStepStatus(agent);
       if (info.hasPool) return '';
@@ -1272,14 +1345,23 @@
         { done: info.hasPool, text: 'Liquidity pool goes live on Uniswap V4. Your token becomes tradeable and gets a live price and market cap.' },
       ];
 
+      var doneCount = 0;
       var nextIdx = -1;
       for (var i = 0; i < guideSteps.length; i++) {
-        if (!guideSteps[i].done) { nextIdx = i; break; }
+        if (guideSteps[i].done) doneCount++;
+        else if (nextIdx === -1) nextIdx = i;
       }
       if (nextIdx === -1) return '';
 
-      var html = '<div class="setup-guide">';
-      html += '<div class="setup-guide-title">Economy Setup Guide</div>';
+      var collapsed = doneCount >= 3;
+      var guideId = 'setup-guide-' + (_guideCounter++);
+
+      var html = '<div class="setup-guide" style="' + (collapsed ? 'padding:0.75rem;' : '') + '">';
+      html += '<div class="setup-guide-title" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;" onclick="var body=document.getElementById(\'' + guideId + '\');body.style.display=body.style.display===\'none\'?\'\':\'none\';">';
+      html += '<span>Next Step: ' + esc(guideSteps[nextIdx].text.split('.')[0]) + ' (' + doneCount + '/6 done)</span>';
+      html += '<span style="font-size:0.8rem;">' + (collapsed ? '&#9660;' : '&#9650;') + '</span>';
+      html += '</div>';
+      html += '<div id="' + guideId + '" style="' + (collapsed ? 'display:none;' : '') + 'margin-top:0.5rem;">';
       for (var j = 0; j < guideSteps.length; j++) {
         var gs = guideSteps[j];
         var cls = gs.done ? 'setup-guide-step done' : 'setup-guide-step';
@@ -1289,6 +1371,7 @@
         html += '<div>' + esc(gs.text) + '</div>';
         html += '</div>';
       }
+      html += '</div>';
       html += '</div>';
       return html;
     }
