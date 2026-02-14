@@ -498,3 +498,136 @@ export type InsertConversationSummary = typeof conversationSummaries.$inferInser
 
 export type User = typeof users.$inferSelect;
 export type UpsertUser = typeof users.$inferInsert;
+
+export const marketSkills = pgTable("market_skills", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  humanId: varchar("human_id").notNull(),
+  agentPublicKey: text("agent_public_key").notNull(),
+  agentName: varchar("agent_name"),
+  name: varchar("name").notNull(),
+  description: text("description").notNull(),
+  category: varchar("category").notNull(),
+  price: varchar("price"),
+  priceToken: varchar("price_token").default("CELO"),
+  isFree: boolean("is_free").default(false),
+  endpoint: varchar("endpoint"),
+  sampleOutput: text("sample_output"),
+  ratingSum: integer("rating_sum").default(0),
+  ratingCount: integer("rating_count").default(0),
+  purchaseCount: integer("purchase_count").default(0),
+  active: boolean("active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("IDX_skills_human_id").on(table.humanId),
+  index("IDX_skills_category").on(table.category),
+  index("IDX_skills_agent_pk").on(table.agentPublicKey),
+]);
+
+export type MarketSkill = typeof marketSkills.$inferSelect;
+export type InsertMarketSkill = typeof marketSkills.$inferInsert;
+
+export const skillPurchases = pgTable("skill_purchases", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  skillId: varchar("skill_id").notNull(),
+  buyerHumanId: varchar("buyer_human_id").notNull(),
+  buyerPublicKey: text("buyer_public_key").notNull(),
+  sellerHumanId: varchar("seller_human_id").notNull(),
+  sellerPublicKey: text("seller_public_key").notNull(),
+  price: varchar("price"),
+  priceToken: varchar("price_token"),
+  txHash: varchar("tx_hash"),
+  status: varchar("status").default("pending"),
+  rating: integer("rating"),
+  review: text("review"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_purchases_skill_id").on(table.skillId),
+  index("IDX_purchases_buyer").on(table.buyerPublicKey),
+  index("IDX_purchases_seller").on(table.sellerPublicKey),
+]);
+
+export type SkillPurchase = typeof skillPurchases.$inferSelect;
+export type InsertSkillPurchase = typeof skillPurchases.$inferInsert;
+
+export const agentRequests = pgTable("agent_requests", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  requesterHumanId: varchar("requester_human_id").notNull(),
+  requesterPublicKey: text("requester_public_key").notNull(),
+  requesterName: varchar("requester_name"),
+  providerHumanId: varchar("provider_human_id").notNull(),
+  providerPublicKey: text("provider_public_key").notNull(),
+  providerName: varchar("provider_name"),
+  skillId: varchar("skill_id"),
+  description: text("description").notNull(),
+  paymentAmount: varchar("payment_amount"),
+  paymentToken: varchar("payment_token"),
+  txHash: varchar("tx_hash"),
+  status: varchar("status").default("pending"),
+  result: text("result"),
+  rating: integer("rating"),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_requests_requester").on(table.requesterPublicKey),
+  index("IDX_requests_provider").on(table.providerPublicKey),
+  index("IDX_requests_status").on(table.status),
+]);
+
+export type AgentRequest = typeof agentRequests.$inferSelect;
+export type InsertAgentRequest = typeof agentRequests.$inferInsert;
+
+export const reputationStakes = pgTable("reputation_stakes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  humanId: varchar("human_id").notNull(),
+  agentPublicKey: text("agent_public_key").notNull(),
+  agentName: varchar("agent_name"),
+  outputHash: varchar("output_hash").notNull(),
+  outputType: varchar("output_type").notNull(),
+  description: text("description"),
+  stakeAmount: varchar("stake_amount").notNull(),
+  stakeToken: varchar("stake_token").notNull(),
+  status: varchar("status").default("active"),
+  resolution: varchar("resolution"),
+  slashedAmount: varchar("slashed_amount"),
+  rewardAmount: varchar("reward_amount"),
+  reviewCount: integer("review_count").default(0),
+  avgScore: decimal("avg_score", { precision: 3, scale: 2 }),
+  resolvedAt: timestamp("resolved_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_stakes_agent_pk").on(table.agentPublicKey),
+  index("IDX_stakes_status").on(table.status),
+]);
+
+export type ReputationStake = typeof reputationStakes.$inferSelect;
+export type InsertReputationStake = typeof reputationStakes.$inferInsert;
+
+export const stakeReviews = pgTable("stake_reviews", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  stakeId: varchar("stake_id").notNull(),
+  reviewerHumanId: varchar("reviewer_human_id").notNull(),
+  reviewerPublicKey: text("reviewer_public_key").notNull(),
+  score: integer("score").notNull(),
+  comment: text("comment"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_reviews_stake_id").on(table.stakeId),
+  index("IDX_reviews_reviewer").on(table.reviewerPublicKey),
+]);
+
+export type StakeReview = typeof stakeReviews.$inferSelect;
+export type InsertStakeReview = typeof stakeReviews.$inferInsert;
+
+export const reputationBadges = pgTable("reputation_badges", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  humanId: varchar("human_id").notNull(),
+  agentPublicKey: text("agent_public_key").notNull(),
+  badgeType: varchar("badge_type").notNull(),
+  badgeName: varchar("badge_name").notNull(),
+  description: text("description"),
+  earnedAt: timestamp("earned_at").defaultNow(),
+  metadata: jsonb("metadata"),
+}, (table) => [
+  index("IDX_badges_agent_pk").on(table.agentPublicKey),
+]);

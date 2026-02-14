@@ -10,6 +10,8 @@ import hostingerRouter from "./hostinger-routes.js";
 import sandboxRouter, { initOpenClawGateway } from "./sandbox-agent.js";
 import { hostedAgentsRouter, startAgentWorker } from "./hosted-agents.js";
 import { skillMarketRouter } from "./skill-market.js";
+import agentCommerceRouter from "./agent-commerce.js";
+import reputationRouter from "./reputation.js";
 import { erc8004Service } from "../lib/erc8004.js";
 
 process.on('unhandledRejection', (reason: any) => {
@@ -112,6 +114,8 @@ async function main() {
   app.use("/api/admin/sandbox", sandboxRouter);
   app.use("/api/selfclaw", hostedAgentsRouter);
   app.use("/api/selfclaw", skillMarketRouter);
+  app.use("/api/selfclaw", agentCommerceRouter);
+  app.use("/api/selfclaw", reputationRouter);
   app.use("/api/hostinger", hostingerRouter);
 
   app.get("/.well-known/agent-registration.json", async (req: Request, res: Response) => {
