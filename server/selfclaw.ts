@@ -2,7 +2,7 @@ import { Router, Request, Response } from "express";
 import rateLimit from "express-rate-limit";
 import { db } from "./db.js";
 import { verifiedBots, verificationSessions, sponsoredAgents, sponsorshipRequests, trackedPools, agentWallets, agentActivity, tokenPlans, revenueEvents, agentServices, costEvents, tokenPriceSnapshots, hostedAgents, users, type InsertVerifiedBot, type InsertVerificationSession, type UpsertUser } from "../shared/schema.js";
-import { eq, and, gt, lt, sql, desc, count, isNotNull } from "drizzle-orm";
+import { eq, and, gt, lt, sql, desc, count, isNotNull, inArray } from "drizzle-orm";
 import { SelfBackendVerifier, AllIds, DefaultConfigStore } from "@selfxyz/core";
 import { SelfAppBuilder } from "@selfxyz/qrcode";
 import crypto from "crypto";
@@ -6572,6 +6572,107 @@ router.get("/v1/agent/:identifier/price-history", publicApiLimiter, async (req: 
   } catch (error: any) {
     console.error("[selfclaw] price history error:", error.message);
     res.status(500).json({ error: "Failed to fetch price history" });
+  }
+});
+
+router.get("/v1/token-listings", publicApiLimiter, async (req: Request, res: Response) => {
+  try {
+    const pools = await db.select().from(trackedPools)
+      .where(sql`${trackedPools.humanId} != 'platform'`);
+
+    if (pools.length === 0) {
+      return res.json({ tokens: [], reference: {} });
+    }
+
+    const refPrices = await getReferencePrices();
+    const prices = await getAllAgentTokenPrices(pools.map(p => ({
+      tokenAddress: p.tokenAddress,
+      v4PoolId: p.v4PoolId,
+      poolAddress: p.poolAddress,
+      tokenSymbol: p.tokenSymbol,
+      poolVersion: p.poolVersion,
+    })));
+
+    const priceMap = new Map<string, any>();
+    for (const p of prices) {
+      priceMap.set(p.tokenAddress.toLowerCase(), p);
+    }
+
+    const cutoff24h = new Date(Date.now() - 86400_000);
+    const allSnapshots = await db.select({
+      tokenAddress: tokenPriceSnapshots.tokenAddress,
+      priceUsd: tokenPriceSnapshots.priceUsd,
+      createdAt: tokenPriceSnapshots.createdAt,
+    })
+      .from(tokenPriceSnapshots)
+      .where(sql`${tokenPriceSnapshots.createdAt} >= ${cutoff24h}`)
+      .orderBy(tokenPriceSnapshots.createdAt);
+
+    const sparklineMap = new Map<string, number[]>();
+    const oldestPriceMap = new Map<string, number>();
+    for (const s of allSnapshots) {
+      const addr = s.tokenAddress.toLowerCase();
+      if (!sparklineMap.has(addr)) sparklineMap.set(addr, []);
+      const price = parseFloat(s.priceUsd || '0');
+      sparklineMap.get(addr)!.push(price);
+      if (!oldestPriceMap.has(addr)) oldestPriceMap.set(addr, price);
+    }
+
+    const agentMap = new Map<string, any>();
+    const agentKeys = pools.filter(p => p.agentPublicKey).map(p => p.agentPublicKey!);
+    if (agentKeys.length > 0) {
+      const agents = await db.select({ publicKey: verifiedBots.publicKey, deviceId: verifiedBots.deviceId }).from(verifiedBots)
+        .where(inArray(verifiedBots.publicKey, agentKeys));
+      for (const a of agents) {
+        agentMap.set(a.publicKey, a.deviceId);
+      }
+    }
+
+    const tokens = pools.map((pool) => {
+      const addr = pool.tokenAddress.toLowerCase();
+      const price = priceMap.get(addr);
+      const sparkline = sparklineMap.get(addr) || [];
+      const oldestPrice = oldestPriceMap.get(addr) || 0;
+      const currentPrice = price?.priceInUsd || 0;
+      const change24h = oldestPrice > 0 ? ((currentPrice - oldestPrice) / oldestPrice) * 100 : 0;
+      const agentName = pool.agentPublicKey ? agentMap.get(pool.agentPublicKey) || null : null;
+
+      return {
+        rank: 0,
+        tokenName: pool.tokenName || pool.tokenSymbol,
+        tokenSymbol: pool.tokenSymbol,
+        tokenAddress: pool.tokenAddress,
+        agentName,
+        priceUsd: currentPrice,
+        priceFormatted: formatPrice(currentPrice),
+        change24h: Math.round(change24h * 100) / 100,
+        marketCapUsd: price?.marketCapUsd || 0,
+        marketCapFormatted: formatMarketCap(price?.marketCapUsd || 0),
+        poolVersion: pool.poolVersion || 'v4',
+        v4PoolId: pool.v4PoolId,
+        uniswapUrl: pool.v4PoolId
+          ? `https://app.uniswap.org/explore/pools/celo/${pool.v4PoolId}`
+          : `https://app.uniswap.org/explore/pools/celo/${pool.poolAddress}`,
+        celoscanUrl: `https://celoscan.io/token/${pool.tokenAddress}`,
+        sparkline,
+        profileUrl: agentName ? `/agent/${encodeURIComponent(agentName)}` : null,
+      };
+    }).sort((a, b) => b.marketCapUsd - a.marketCapUsd);
+
+    tokens.forEach((t, i) => { t.rank = i + 1; });
+
+    res.json({
+      tokens,
+      reference: {
+        celoUsd: refPrices.celoUsd,
+        selfclawCelo: refPrices.selfclawCelo,
+        selfclawUsd: refPrices.selfclawUsd,
+      },
+      updatedAt: new Date().toISOString(),
+    });
+  } catch (error: any) {
+    console.error("[selfclaw] token-listings error:", error.message);
+    res.status(500).json({ error: "Failed to fetch token listings" });
   }
 });
 

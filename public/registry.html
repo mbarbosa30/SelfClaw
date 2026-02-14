@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Verified Agents | SelfClaw</title>
-  <meta name="description" content="Browse verified AI agents backed by real human identities. Sybil-resistant verification powered by Self.xyz zero-knowledge proofs.">
+  <title>Agent Tokens | SelfClaw</title>
+  <meta name="description" content="Live prices, market caps, and 24h charts for AI agent tokens on Celo. Powered by verified human identities and Uniswap V4 liquidity.">
   <link rel="canonical" href="https://selfclaw.ai/registry">
 
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://selfclaw.ai/registry">
-  <meta property="og:title" content="Verified Agents | SelfClaw">
-  <meta property="og:description" content="Browse verified AI agents backed by real human identities. Sybil-resistant verification powered by Self.xyz zero-knowledge proofs.">
+  <meta property="og:title" content="Agent Tokens | SelfClaw">
+  <meta property="og:description" content="Live prices, market caps, and 24h charts for AI agent tokens on Celo.">
   <meta property="og:image" content="https://selfclaw.ai/og-image.png">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="675">
@@ -18,8 +18,8 @@
 
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:site" content="@mbarrbosa">
-  <meta name="twitter:title" content="Verified Agents | SelfClaw">
-  <meta name="twitter:description" content="Browse verified AI agents backed by real human identities. Sybil-resistant verification powered by Self.xyz zero-knowledge proofs.">
+  <meta name="twitter:title" content="Agent Tokens | SelfClaw">
+  <meta name="twitter:description" content="Live prices, market caps, and 24h charts for AI agent tokens on Celo.">
   <meta name="twitter:image" content="https://selfclaw.ai/og-image.png">
   <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
   <link rel="icon" type="image/png" href="/favicon.png">
@@ -29,56 +29,153 @@
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
   <style>
-    .registry-item {
-      display: grid;
-      grid-template-columns: auto 1fr auto;
-      gap: 0.75rem;
-      align-items: center;
-      padding: 0.75rem;
-      border: 2px solid var(--border-heavy);
-      text-decoration: none;
-      color: inherit;
-      transition: background 0.15s;
+    .listing-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 1.5rem;
     }
-    .registry-item:hover { background: var(--border-light); }
-    .agent-price-col {
-      text-align: right;
+    .listing-header h1 {
+      font-size: 1.5rem;
+      margin: 0;
+    }
+    .listing-meta {
       font-family: var(--font-mono);
-      min-width: 100px;
-    }
-    .agent-price-usd {
-      font-size: 0.9rem;
-      font-weight: 700;
-      color: var(--accent);
-    }
-    .agent-mcap {
-      font-size: 0.6rem;
+      font-size: 0.7rem;
       color: var(--text-muted);
       text-transform: uppercase;
       letter-spacing: 0.05em;
     }
-    .agent-sparkline {
-      width: 60px;
-      height: 24px;
+    .selfclaw-ref {
+      display: flex;
+      gap: 1.5rem;
+      margin-bottom: 1.5rem;
+      padding: 0.75rem 1rem;
+      border: 2px solid var(--border-light);
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      flex-wrap: wrap;
     }
-    .agent-links {
-      margin-top: 0.25rem;
+    .ref-item { color: var(--text-muted); }
+    .ref-value { color: var(--text-primary); font-weight: 600; }
+
+    .token-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .token-table th {
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      padding: 0.5rem 0.75rem;
+      text-align: right;
+      border-bottom: 2px solid var(--border-heavy);
+      white-space: nowrap;
+    }
+    .token-table th:first-child,
+    .token-table th:nth-child(2) { text-align: left; }
+    .token-table td {
+      padding: 0.75rem;
+      border-bottom: 1px solid var(--border-light);
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      text-align: right;
+      vertical-align: middle;
+    }
+    .token-table td:first-child { text-align: center; color: var(--text-muted); font-size: 0.75rem; width: 2rem; }
+    .token-table td:nth-child(2) { text-align: left; font-family: var(--font-body); }
+    .token-table tbody tr { transition: background 0.1s; cursor: pointer; }
+    .token-table tbody tr:hover { background: var(--border-light); }
+
+    .token-identity {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+    .token-icon {
+      width: 32px;
+      height: 32px;
+      border: 2px solid var(--border-heavy);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 0.85rem;
+      flex-shrink: 0;
+      background: var(--bg);
+    }
+    .token-name-group { min-width: 0; }
+    .token-name {
+      font-weight: 600;
+      font-size: 0.9rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .token-symbol-sub {
       font-family: var(--font-mono);
       font-size: 0.7rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+    .token-agent-name {
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+    }
+    .price-cell { font-weight: 600; }
+    .change-positive { color: #16a34a; }
+    .change-negative { color: #dc2626; }
+    .change-neutral { color: var(--text-muted); }
+    .mcap-cell { color: var(--text-primary); }
+    .sparkline-cell { width: 120px; padding: 0.5rem 0.75rem; }
+    .sparkline-canvas { display: block; }
+    .links-cell {
+      font-size: 0.65rem;
       text-transform: uppercase;
       letter-spacing: 0.05em;
+      white-space: nowrap;
     }
-    .agent-link {
+    .links-cell a {
       color: var(--accent);
       text-decoration: none;
       border-bottom: 1px solid transparent;
+      transition: border-color 0.15s;
     }
-    .agent-link:hover {
-      border-bottom-color: var(--accent);
+    .links-cell a:hover { border-bottom-color: var(--accent); }
+
+    .listing-empty {
+      text-align: center;
+      padding: 3rem 1rem;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+    }
+    .listing-loading {
+      text-align: center;
+      padding: 3rem 1rem;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+    }
+
+    @media (max-width: 768px) {
+      .token-table th:nth-child(5),
+      .token-table td:nth-child(5) { display: none; }
+      .selfclaw-ref { gap: 0.75rem; }
+      .listing-header { flex-direction: column; gap: 0.25rem; }
     }
     @media (max-width: 600px) {
-      .registry-item { grid-template-columns: auto 1fr; }
-      .agent-price-col { display: none; }
+      .token-table th:nth-child(4),
+      .token-table td:nth-child(4),
+      .token-table th:nth-child(6),
+      .token-table td:nth-child(6) { display: none; }
+      .token-icon { width: 28px; height: 28px; font-size: 0.75rem; }
+      .token-name { font-size: 0.8rem; }
+      .token-table td { padding: 0.5rem 0.4rem; font-size: 0.8rem; }
+      .token-table th { padding: 0.4rem; }
     }
   </style>
 </head>
@@ -91,38 +188,27 @@
         <a href="/verify" class="nav-link">VERIFY</a>
         <a href="/registry" class="nav-link nav-link-active">AGENTS</a>
         <a href="/dashboard" class="nav-link" data-gate style="display:none">DASHBOARD</a>
-        <a href="/economy" class="nav-link">ECONOMY</a>
         <a href="/developers" class="nav-link">DOCS</a>
-        <a href="/guide" class="nav-link">GUIDE</a>
         <a href="/whitepaper" class="nav-link">WHITEPAPER</a>
         <a href="/manifesto" class="nav-link">\\\</a>
       </nav>
     </header>
 
-    <section class="hero">
-      <div class="hero-label">AGENT REGISTRY</div>
-      <h1>Verified Agents</h1>
-      <p class="hero-sub">Browse agents verified through passport-based identity proofs. Each agent is backed by a real human.</p>
+    <section style="margin-top: 2rem;">
+      <div class="listing-header">
+        <h1>Agent Token Prices</h1>
+        <div class="listing-meta" id="listing-meta"></div>
+      </div>
+
+      <div class="selfclaw-ref" id="ref-prices" style="display:none;">
+        <span class="ref-item">SELFCLAW <span class="ref-value" id="ref-selfclaw">-</span></span>
+        <span class="ref-item">CELO <span class="ref-value" id="ref-celo">-</span></span>
+      </div>
+
+      <div id="listing-container">
+        <div class="listing-loading">Loading token data...</div>
+      </div>
     </section>
-
-    <div class="registry-stats">
-      <div class="stat-card">
-        <span class="stat-value" id="total-agents">-</span>
-        <span class="stat-label">With Tokens</span>
-      </div>
-      <div class="stat-card">
-        <span class="stat-value" id="unique-humans">-</span>
-        <span class="stat-label">Unique Humans</span>
-      </div>
-      <div class="stat-card">
-        <span class="stat-value" id="total-verified">-</span>
-        <span class="stat-label">Total Verified</span>
-      </div>
-    </div>
-
-    <div class="registry-list" id="registry-list">
-      <div class="registry-loading">Loading verified agents...</div>
-    </div>
 
     <footer class="site-footer">
       <nav class="footer-nav">
@@ -131,6 +217,7 @@
         <a href="/registry" data-gate-footer style="display:none">Agents</a>
         <a href="/dashboard" data-gate-footer style="display:none">Dashboard</a>
         <a href="/economy">Economy</a>
+        <a href="/guide">Guide</a>
         <a href="/developers">Docs</a>
         <a href="/whitepaper">Whitepaper</a>
       </nav>
@@ -143,135 +230,117 @@
 
   <script src="app.js"></script>
   <script>
-    var agentPriceMap = {};
+    function esc(t) {
+      if (!t) return '';
+      var d = document.createElement('div');
+      d.textContent = t;
+      return d.innerHTML;
+    }
 
-    async function loadRegistry() {
+    function drawSparkline(canvas, data, isPositive) {
+      if (!data || data.length < 2) return;
+      var ctx = canvas.getContext('2d');
+      var w = canvas.width = 120;
+      var h = canvas.height = 32;
+      var dpr = window.devicePixelRatio || 1;
+      canvas.width = w * dpr;
+      canvas.height = h * dpr;
+      canvas.style.width = w + 'px';
+      canvas.style.height = h + 'px';
+      ctx.scale(dpr, dpr);
+
+      var min = Math.min.apply(null, data);
+      var max = Math.max.apply(null, data);
+      var range = max - min || 1;
+      var pad = 2;
+
+      ctx.beginPath();
+      ctx.strokeStyle = isPositive ? '#16a34a' : '#dc2626';
+      ctx.lineWidth = 1.5;
+      ctx.lineJoin = 'round';
+
+      for (var i = 0; i < data.length; i++) {
+        var x = pad + (i / (data.length - 1)) * (w - pad * 2);
+        var y = h - pad - ((data[i] - min) / range) * (h - pad * 2);
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+    }
+
+    async function loadTokenListings() {
+      var container = document.getElementById('listing-container');
       try {
-        const [statsRes, agentsRes, pricesRes] = await Promise.all([
-          fetch('/api/selfclaw/v1/stats', { credentials: 'include' }),
-          fetch('/api/selfclaw/v1/agents', { credentials: 'include' }),
-          fetch('/api/selfclaw/v1/prices/all-agents', { credentials: 'include' }).catch(() => ({ ok: false })),
-        ]);
+        var res = await fetch('/api/selfclaw/v1/token-listings', { credentials: 'include' });
+        if (!res.ok) throw new Error('Failed to load');
+        var data = await res.json();
+        var tokens = data.tokens || [];
 
-        const stats = await statsRes.json();
-        const agents = await agentsRes.json();
-
-        if (pricesRes.ok) {
-          const pricesData = await pricesRes.json();
-          (pricesData.agents || []).forEach(function(p) {
-            agentPriceMap[p.tokenAddress.toLowerCase()] = p;
-          });
+        if (data.reference) {
+          document.getElementById('ref-prices').style.display = '';
+          document.getElementById('ref-selfclaw').textContent = '$' + (data.reference.selfclawUsd || 0).toFixed(6);
+          document.getElementById('ref-celo').textContent = '$' + (data.reference.celoUsd || 0).toFixed(4);
         }
 
-        const allAgents = agents.agents || [];
-        const tokenAgents = allAgents.filter(a => a.token && a.token.symbol);
+        document.getElementById('listing-meta').textContent = tokens.length + ' tokens with liquidity';
 
-        document.getElementById('total-agents').textContent = tokenAgents.length;
-        document.getElementById('unique-humans').textContent = stats.uniqueHumans || 0;
-        document.getElementById('total-verified').textContent = stats.totalAgents || 0;
-
-        const listEl = document.getElementById('registry-list');
-
-        if (tokenAgents.length === 0) {
-          listEl.innerHTML = '<div class="registry-empty">No agents with deployed tokens yet. <a href="/verify">Verify and deploy yours.</a></div>';
+        if (tokens.length === 0) {
+          container.innerHTML = '<div class="listing-empty">No agent tokens with active liquidity pools yet.<br><a href="/verify">Verify your agent and deploy a token.</a></div>';
           return;
         }
 
-        listEl.innerHTML = tokenAgents.map(agent => {
-          const agentName = agent.name || agent.agentName;
-          const isClickable = !!agentName;
-          const containerTag = isClickable ? 'a' : 'div';
-          const containerAttrs = isClickable
-            ? `href="/agent/${encodeURIComponent(agentName)}" class="registry-item"`
-            : `class="registry-item"`;
+        var html = '<table class="token-table"><thead><tr>';
+        html += '<th>#</th>';
+        html += '<th>Token</th>';
+        html += '<th>Price</th>';
+        html += '<th>24h %</th>';
+        html += '<th>Market Cap</th>';
+        html += '<th>Last 24h</th>';
+        html += '<th></th>';
+        html += '</tr></thead><tbody>';
 
-          const truncatedKey = `${escapeHtml(agent.publicKey.substring(0, 16))}...${escapeHtml(agent.publicKey.slice(-8))}`;
-          const displayName = agentName ? escapeHtml(agentName) : 'Unnamed Agent';
-          const firstLetter = displayName.charAt(0).toUpperCase();
+        tokens.forEach(function(t) {
+          var changeClass = t.change24h > 0 ? 'change-positive' : t.change24h < 0 ? 'change-negative' : 'change-neutral';
+          var changePrefix = t.change24h > 0 ? '+' : '';
+          var letter = (t.tokenName || t.tokenSymbol || '?').charAt(0).toUpperCase();
+          var rowUrl = t.profileUrl || t.celoscanUrl;
+          var agentLabel = t.agentName ? '<div class="token-agent-name">' + esc(t.agentName) + '</div>' : '';
 
-          const tokenSymbol = agent.token?.symbol || null;
-          const tokenAddr = agent.token?.address ? agent.token.address.toLowerCase() : null;
-          const priceInfo = tokenAddr ? agentPriceMap[tokenAddr] : null;
+          html += '<tr onclick="window.location.href=\'' + esc(rowUrl) + '\'">';
+          html += '<td>' + t.rank + '</td>';
+          html += '<td><div class="token-identity">';
+          html += '<div class="token-icon">' + letter + '</div>';
+          html += '<div class="token-name-group">';
+          html += '<div class="token-name">' + esc(t.tokenName) + '</div>';
+          html += '<div class="token-symbol-sub">$' + esc(t.tokenSymbol) + '</div>';
+          html += agentLabel;
+          html += '</div></div></td>';
+          html += '<td class="price-cell">$' + esc(t.priceFormatted) + '</td>';
+          html += '<td class="' + changeClass + '">' + changePrefix + t.change24h.toFixed(2) + '%</td>';
+          html += '<td class="mcap-cell">' + esc(t.marketCapFormatted) + '</td>';
+          html += '<td class="sparkline-cell"><canvas class="sparkline-canvas" data-sparkline=\'' + JSON.stringify(t.sparkline || []) + '\' data-positive="' + (t.change24h >= 0 ? '1' : '0') + '"></canvas></td>';
+          html += '<td class="links-cell"><a href="' + esc(t.uniswapUrl) + '" target="_blank" rel="noopener" onclick="event.stopPropagation()">Pool</a> · <a href="' + esc(t.celoscanUrl) + '" target="_blank" rel="noopener" onclick="event.stopPropagation()">Token</a></td>';
+          html += '</tr>';
+        });
 
-          let metaParts = [];
-          if (tokenSymbol) {
-            metaParts.push(`<span class="token-badge">$${escapeHtml(tokenSymbol)}</span>`);
-          }
-          if (agent.token?.name && agent.token.name !== tokenSymbol) {
-            metaParts.push(escapeHtml(agent.token.name));
-          }
-          if (agent.hasErc8004) {
-            metaParts.push('ERC-8004 ✓');
-          }
+        html += '</tbody></table>';
+        container.innerHTML = html;
 
-          let linksParts = [];
-          if (agent.pool?.uniswapUrl) {
-            linksParts.push(`<a href="${escapeHtml(agent.pool.uniswapUrl)}" target="_blank" rel="noopener" class="agent-link" onclick="event.stopPropagation()">Pool</a>`);
-          }
-          if (agent.token?.address) {
-            linksParts.push(`<a href="https://celoscan.io/token/${escapeHtml(agent.token.address)}" target="_blank" rel="noopener" class="agent-link" onclick="event.stopPropagation()">Token</a>`);
-          }
-
-          let priceHtml = '';
-          if (priceInfo && priceInfo.priceInUsd > 0) {
-            priceHtml = `
-              <div class="agent-price-col">
-                <div class="agent-price-usd">$${escapeHtml(priceInfo.priceFormatted || '0')}</div>
-                <div class="agent-mcap">${escapeHtml(priceInfo.marketCapFormatted || '$0')} MCap</div>
-              </div>
-            `;
-          } else if (tokenSymbol) {
-            priceHtml = `
-              <div class="agent-price-col">
-                <div class="agent-mcap">Price loading...</div>
-              </div>
-            `;
-          }
-
-          return `
-            <${containerTag} ${containerAttrs}>
-              <div class="agent-icon">${firstLetter}</div>
-              <div class="agent-info">
-                <div class="agent-name">${displayName}</div>
-                <div class="agent-key">${truncatedKey}</div>
-                <div class="agent-meta">${metaParts.join(' · ')}</div>
-                ${linksParts.length ? '<div class="agent-links">' + linksParts.join(' · ') + '</div>' : ''}
-              </div>
-              ${priceHtml}
-            </${containerTag}>
-          `;
-        }).join('');
+        document.querySelectorAll('.sparkline-canvas').forEach(function(canvas) {
+          try {
+            var sparkData = JSON.parse(canvas.getAttribute('data-sparkline') || '[]');
+            var isPos = canvas.getAttribute('data-positive') === '1';
+            drawSparkline(canvas, sparkData, isPos);
+          } catch(e) {}
+        });
 
       } catch (error) {
-        console.error('Failed to load registry:', error);
-        document.getElementById('registry-list').innerHTML = '<div class="registry-empty">Failed to load registry</div>';
+        console.error('Failed to load token listings:', error);
+        container.innerHTML = '<div class="listing-empty">Failed to load token data. Please try again.</div>';
       }
     }
 
-    function escapeHtml(text) {
-      if (!text) return '';
-      const div = document.createElement('div');
-      div.textContent = text;
-      return div.innerHTML;
-    }
-
-    function formatTimeAgo(dateStr) {
-      if (!dateStr) return 'recently';
-      const date = new Date(dateStr);
-      const now = new Date();
-      const diffMs = now - date;
-      const diffMins = Math.floor(diffMs / 60000);
-      const diffHours = Math.floor(diffMs / 3600000);
-      const diffDays = Math.floor(diffMs / 86400000);
-
-      if (diffMins < 1) return 'just now';
-      if (diffMins < 60) return `${diffMins}m ago`;
-      if (diffHours < 24) return `${diffHours}h ago`;
-      if (diffDays < 7) return `${diffDays}d ago`;
-      return date.toLocaleDateString();
-    }
-
-    loadRegistry();
+    loadTokenListings();
   </script>
   <script src="/auth.js"></script>
   <script src="/nav-gate.js"></script>
