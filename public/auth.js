@@ -349,7 +349,7 @@
               window.onAuthLogin(authState.user);
             }
 
-            var stayPages = ['/my-agents', '/create-agent', '/verify'];
+            var stayPages = ['/my-agents', '/create-agent'];
             var currentPath = window.location.pathname;
             var shouldStay = stayPages.some(function(p) { return currentPath.startsWith(p); });
             if (!shouldStay) {

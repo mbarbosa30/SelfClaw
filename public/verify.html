@@ -126,5 +126,22 @@
   <script src="/auth.js"></script>
   <script src="/nav-gate.js"></script>
   <script src="/nav-toggle.js"></script>
+  <script>
+    (function() {
+      if (!window.selfclawAuth) return;
+      window.selfclawAuth.onReady(function(user) {
+        if (!user) return;
+        var section = document.querySelector('.section');
+        if (!section) return;
+        var banner = document.createElement('div');
+        banner.style.cssText = 'border:2px solid var(--green-verify);padding:0.75rem 1rem;margin-bottom:1.5rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem;';
+        banner.innerHTML = '<div style="font-family:var(--font-mono);font-size:0.8rem;color:var(--text);">' +
+          '<span style="color:var(--green-verify);font-weight:600;">SIGNED IN</span> &mdash; View your agents\u2019 status, wallets, tokens, and prices.' +
+          '</div>' +
+          '<a href="/my-agents" style="font-family:var(--font-mono);font-size:0.75rem;font-weight:600;color:#fff;background:var(--green-verify);padding:0.4rem 1rem;text-decoration:none;text-transform:uppercase;letter-spacing:0.06em;">Go to My Agents</a>';
+        section.parentNode.insertBefore(banner, section);
+      });
+    })();
+  </script>
 </body>
 </html>
