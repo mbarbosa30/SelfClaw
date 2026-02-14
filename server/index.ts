@@ -163,6 +163,16 @@ async function main() {
     }
   });
 
+  try {
+    await pool.query(`
+      ALTER TABLE verification_sessions 
+      ADD COLUMN IF NOT EXISTS human_id VARCHAR;
+    `);
+    console.log('[migration] verification_sessions.human_id column ensured');
+  } catch (err: any) {
+    console.error('[migration] Could not ensure human_id column:', err.message);
+  }
+
   const server = app.listen(PORT, "0.0.0.0", () => {
     console.log(`
 ╔════════════════════════════════════════════════════════════╗
