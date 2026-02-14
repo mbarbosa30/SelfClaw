@@ -93,13 +93,7 @@ interface DebugVerificationAttempt {
 
 let lastVerificationAttempt: DebugVerificationAttempt | null = null;
 
-const verificationHumanIds = new Map<string, string>();
-setInterval(() => {
-  const now = Date.now();
-  for (const [key] of verificationHumanIds) {
-    if (verificationHumanIds.size > 1000) verificationHumanIds.delete(key);
-  }
-}, 10 * 60 * 1000);
+// humanId now persisted in verification_sessions table instead of in-memory
 
 const deployEconomySessions = new Map<string, {
   publicKey: string;
@@ -404,12 +398,12 @@ router.post("/v1/start-verification", verificationLimiter, async (req: Request, 
       status: "pending"
     };
     
-    await db.insert(verificationSessions).values(newSession);
-
     const reqAny = req as any;
     if (reqAny.session?.isAuthenticated && reqAny.session?.humanId) {
-      verificationHumanIds.set(sessionId, reqAny.session.humanId);
+      (newSession as any).humanId = reqAny.session.humanId;
     }
+
+    await db.insert(verificationSessions).values(newSession);
     
     // Build properly formatted Self app config using the official SDK
     const userDefinedData = agentKeyHash.padEnd(128, '0');
@@ -711,12 +705,11 @@ async function handleCallback(req: Request, res: Response) {
       return res.status(200).json({ status: "error", result: false, reason: "Agent key binding mismatch" });
     }
     
-    const storedHumanId = verificationHumanIds.get(sessionId);
+    const storedHumanId = session.humanId;
     let humanId: string;
     if (storedHumanId) {
       humanId = storedHumanId;
-      verificationHumanIds.delete(sessionId);
-      console.log("[selfclaw] Using logged-in user's humanId for agent:", humanId.substring(0, 8) + "...");
+      console.log("[selfclaw] Using persisted humanId from session for agent:", humanId.substring(0, 8) + "...");
     } else {
       const nullifier = result.discloseOutput?.nullifier;
       if (nullifier) {
@@ -765,13 +758,17 @@ async function handleCallback(req: Request, res: Response) {
 
     try {
       if (existing.length > 0) {
-        await db.update(verifiedBots)
-          .set({
+        const updateData: any = {
             humanId,
             metadata,
             verificationLevel: session.signatureVerified ? "passport+signature" : "passport",
             verifiedAt: new Date()
-          })
+        };
+        if (session.agentName) {
+          updateData.deviceId = session.agentName;
+        }
+        await db.update(verifiedBots)
+          .set(updateData)
           .where(sql`${verifiedBots.publicKey} = ${session.agentPublicKey}`);
       } else {
         const newBot: InsertVerifiedBot = {

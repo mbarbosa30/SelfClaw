@@ -45,6 +45,7 @@ export const verificationSessions = pgTable("verification_sessions", {
   challengeExpiry: timestamp("challenge_expiry").notNull(),
   signatureVerified: boolean("signature_verified").default(false),
   status: varchar("status").default("pending"),
+  humanId: varchar("human_id"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
