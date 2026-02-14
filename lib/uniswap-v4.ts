@@ -674,44 +674,40 @@ export async function createPoolAndAddLiquidity(params: CreatePoolParams): Promi
       hooks: '0x0000000000000000000000000000000000000000' as `0x${string}`,
     };
 
-    console.log(`[uniswap-v4] Initializing pool: ${token0} / ${token1}, fee=${feeTier}, sqrtPriceX96=${sqrtPriceX96}`);
+    const poolId = computePoolId(token0, token1, feeTier, tickSpacing);
+    let poolAlreadyExists = false;
 
-    let poolInitialized = false;
     try {
-      const initTx = await walletClient.writeContract({
-        address: POOL_MANAGER,
-        abi: POOL_MANAGER_ABI,
-        functionName: 'initialize',
-        args: [poolKey, sqrtPriceX96],
-      });
-      const initReceipt = await publicClient.waitForTransactionReceipt({ hash: initTx });
-      if (initReceipt.status === 'reverted') {
-        console.log('[uniswap-v4] Pool initialize tx reverted — checking if pool exists...');
-      } else {
-        console.log(`[uniswap-v4] Pool initialized: ${initTx}`);
-        poolInitialized = true;
+      const existingState = await getPoolState(poolId as `0x${string}`);
+      const existingSqrtPrice = BigInt(existingState.sqrtPriceX96);
+      if (existingSqrtPrice > 0n) {
+        poolAlreadyExists = true;
+        console.log(`[uniswap-v4] Pool already initialized, skipping initialize. poolId=${poolId}, sqrtPriceX96=${existingState.sqrtPriceX96}, tick=${existingState.tick}`);
       }
-    } catch (initErr: any) {
-      const msg = initErr.message || '';
-      if (msg.includes('PoolAlreadyInitialized') || msg.includes('already initialized') || msg.includes('execution reverted')) {
-        console.log('[uniswap-v4] Pool init reverted (likely already initialized), verifying...');
-      } else {
-        throw initErr;
-      }
+    } catch (_checkErr: any) {
     }
 
-    if (!poolInitialized) {
-      const poolId = computePoolId(token0, token1, feeTier, tickSpacing);
+    if (!poolAlreadyExists) {
+      console.log(`[uniswap-v4] Initializing new pool: ${token0} / ${token1}, fee=${feeTier}, sqrtPriceX96=${sqrtPriceX96}`);
       try {
-        const poolState = await getPoolState(poolId as `0x${string}`);
-        const sqrtPrice = BigInt(poolState.sqrtPriceX96);
-        if (sqrtPrice === 0n) {
-          return { success: false, error: `Pool initialization failed — pool ${poolId} does not exist (sqrtPriceX96=0). The initialize transaction may have reverted for a reason other than PoolAlreadyInitialized.` };
+        const initTx = await walletClient.writeContract({
+          address: POOL_MANAGER,
+          abi: POOL_MANAGER_ABI,
+          functionName: 'initialize',
+          args: [poolKey, sqrtPriceX96],
+        });
+        const initReceipt = await publicClient.waitForTransactionReceipt({ hash: initTx });
+        if (initReceipt.status === 'reverted') {
+          return { success: false, error: `Pool initialize transaction reverted: ${initTx}` };
         }
-        console.log(`[uniswap-v4] Pool confirmed initialized: poolId=${poolId}, sqrtPriceX96=${poolState.sqrtPriceX96}, tick=${poolState.tick}, fee=${poolState.lpFee}`);
-      } catch (stateErr: any) {
-        const errMsg = stateErr.message || '';
-        return { success: false, error: `Pool initialization could not be verified (poolId=${poolId}): ${errMsg.substring(0, 300)}` };
+        console.log(`[uniswap-v4] Pool initialized: ${initTx}`);
+      } catch (initErr: any) {
+        const msg = (initErr.message || '') + (initErr.shortMessage || '');
+        if (msg.includes('PoolAlreadyInitialized') || msg.includes('already initialized')) {
+          console.log('[uniswap-v4] Pool already initialized (caught during init), continuing...');
+        } else {
+          return { success: false, error: `Pool initialization failed: ${initErr.shortMessage || initErr.message}` };
+        }
       }
     }
 
