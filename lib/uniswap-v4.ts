@@ -469,16 +469,23 @@ async function ensurePermit2Approval(
 
   if (forceRenew || erc20Allowance < amount) {
     console.log(`[uniswap-v4] Setting ERC-20 approval: ${tokenShort}... → Permit2 (${forceRenew ? 'forced' : 'insufficient'})`);
-    const approveTx = await walletClient.writeContract({
-      address: token,
-      abi: ERC20_ABI,
-      functionName: 'approve',
-      args: [PERMIT2, maxUint256],
-      chain: celo,
-      account,
-    });
+    let approveTx: `0x${string}`;
+    try {
+      approveTx = await walletClient.writeContract({
+        address: token,
+        abi: ERC20_ABI,
+        functionName: 'approve',
+        args: [PERMIT2, maxUint256],
+        chain: celo,
+        account,
+      });
+    } catch (sendErr: any) {
+      const errMsg = sendErr.shortMessage || sendErr.message || String(sendErr);
+      console.error(`[uniswap-v4] ERC-20 approve() writeContract FAILED for ${tokenShort}...: ${errMsg}`);
+      throw new Error(`ERC-20 approve() failed to submit tx for ${tokenShort}... → Permit2: ${errMsg}`);
+    }
     const approveReceipt = await publicClient.waitForTransactionReceipt({ hash: approveTx });
-    console.log(`[uniswap-v4] ERC-20 approval tx: ${approveTx} (status: ${approveReceipt.status})`);
+    console.log(`[uniswap-v4] ERC-20 approval tx: ${approveTx} (status: ${approveReceipt.status}, gasUsed: ${approveReceipt.gasUsed})`);
 
     if (approveReceipt.status === 'reverted') {
       throw new Error(`ERC-20 approve() tx reverted for ${tokenShort}... → Permit2. tx: ${approveTx}. The token contract may have a non-standard approve (try setting allowance to 0 first).`);
@@ -513,16 +520,27 @@ async function ensurePermit2Approval(
   if (needsRenewal) {
     const maxUint160 = (2n ** 160n) - 1n;
     const expiration = now + 86400 * 30;
-    const permit2ApproveTx = await walletClient.writeContract({
-      address: PERMIT2,
-      abi: PERMIT2_ABI,
-      functionName: 'approve',
-      args: [token, spender, maxUint160, expiration],
-      chain: celo,
-      account,
-    });
+
+    console.log(`[uniswap-v4] Sending Permit2 approve() for ${tokenShort}... → ${spenderShort}...`);
+
+    let permit2ApproveTx: `0x${string}`;
+    try {
+      permit2ApproveTx = await walletClient.writeContract({
+        address: PERMIT2,
+        abi: PERMIT2_ABI,
+        functionName: 'approve',
+        args: [token, spender, maxUint160, expiration],
+        chain: celo,
+        account,
+      });
+    } catch (sendErr: any) {
+      const errMsg = sendErr.shortMessage || sendErr.message || String(sendErr);
+      console.error(`[uniswap-v4] Permit2 approve() writeContract FAILED for ${tokenShort}...: ${errMsg}`);
+      throw new Error(`Permit2 approve() failed to submit tx for ${tokenShort}... → ${spenderShort}...: ${errMsg}`);
+    }
+
     const p2Receipt = await publicClient.waitForTransactionReceipt({ hash: permit2ApproveTx });
-    console.log(`[uniswap-v4] Permit2 approval tx: ${permit2ApproveTx} (status: ${p2Receipt.status}), expiry=${expiration} (${new Date(expiration * 1000).toISOString()})`);
+    console.log(`[uniswap-v4] Permit2 approval tx: ${permit2ApproveTx} (status: ${p2Receipt.status}, gasUsed: ${p2Receipt.gasUsed}), expiry=${expiration} (${new Date(expiration * 1000).toISOString()})`);
 
     if (p2Receipt.status === 'reverted') {
       throw new Error(`Permit2 approve() tx reverted for ${tokenShort}... → ${spenderShort}.... tx: ${permit2ApproveTx}`);
