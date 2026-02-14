@@ -2884,6 +2884,30 @@ router.post("/v1/register-token", verificationLimiter, async (req: Request, res:
       });
     }
 
+    const existingPlan = await db.select().from(tokenPlans)
+      .where(sql`${tokenPlans.agentPublicKey} = ${auth.publicKey} AND ${tokenPlans.humanId} = ${humanId} AND LOWER(${tokenPlans.tokenAddress}) = LOWER(${tokenAddress})`)
+      .limit(1);
+
+    if (existingPlan.length === 0) {
+      await db.insert(tokenPlans).values({
+        humanId,
+        agentPublicKey: auth.publicKey,
+        agentName: onChainName || 'External Token',
+        purpose: `Externally deployed token registered via register-token`,
+        supplyReasoning: `Total supply: ${onChainSupply || 'unknown'}`,
+        allocation: { deployer: "100%" },
+        utility: { type: "agent-token", externallyDeployed: true },
+        economicModel: "external",
+        tokenAddress,
+        status: "deployed",
+      });
+      console.log(`[selfclaw] Persisted external token ${onChainSymbol} (${tokenAddress}) for agent ${auth.publicKey.substring(0, 20)}...`);
+    } else if (!existingPlan[0].tokenAddress) {
+      await db.update(tokenPlans)
+        .set({ tokenAddress, status: "deployed", updatedAt: new Date() })
+        .where(eq(tokenPlans.id, existingPlan[0].id));
+    }
+
     logActivity("token_registered", humanId, auth.publicKey, undefined, {
       tokenAddress, txHash, name: onChainName, symbol: onChainSymbol, supply: onChainSupply
     });
@@ -3398,7 +3422,18 @@ router.post("/v1/set-agent-wallet", verificationLimiter, async (req: Request, re
       });
       estimatedGas = estimatedGas * BigInt(120) / BigInt(100);
     } catch (estimateErr: any) {
-      console.warn(`[selfclaw] setAgentWallet gas estimation failed, using default 200k: ${estimateErr.message}`);
+      console.warn(`[selfclaw] setAgentWallet gas estimation failed: ${estimateErr.message}`);
+      const msg = estimateErr.message || '';
+      if (msg.includes('revert') || msg.includes('execution reverted') || msg.includes('CALL_EXCEPTION')) {
+        return res.status(422).json({
+          success: false,
+          error: "The on-chain setAgentWallet() call would revert. The deployed ERC-8004 contract may not support this function yet.",
+          hint: "Your agent wallet is already recorded in SelfClaw's off-chain metadata (registration.json endpoint). On-chain wallet binding will be available when the contract is upgraded.",
+          walletAddress,
+          agentId,
+          registrationEndpoint: `/api/selfclaw/v1/agent/${auth.publicKey}/registration.json`,
+        });
+      }
     }
 
     console.log(`[selfclaw] Preparing setAgentWallet tx: agentId=${agentId}, wallet=${walletAddress}`);
@@ -5091,6 +5126,30 @@ router.post("/v1/my-agents/:publicKey/register-token", verificationLimiter, asyn
       return res.status(400).json({ error: "Could not verify token at the provided address." });
     }
 
+    const existingPlan = await db.select().from(tokenPlans)
+      .where(sql`${tokenPlans.agentPublicKey} = ${req.params.publicKey} AND ${tokenPlans.humanId} = ${auth.humanId} AND LOWER(${tokenPlans.tokenAddress}) = LOWER(${tokenAddress})`)
+      .limit(1);
+
+    if (existingPlan.length === 0) {
+      await db.insert(tokenPlans).values({
+        humanId: auth.humanId,
+        agentPublicKey: req.params.publicKey,
+        agentName: onChainName || 'External Token',
+        purpose: `Externally deployed token registered via dashboard`,
+        supplyReasoning: `Total supply: ${onChainSupply || 'unknown'}`,
+        allocation: { deployer: "100%" },
+        utility: { type: "agent-token", externallyDeployed: true },
+        economicModel: "external",
+        tokenAddress,
+        status: "deployed",
+      });
+      console.log(`[selfclaw] Persisted external token ${onChainSymbol} (${tokenAddress}) for agent ${req.params.publicKey.substring(0, 20)}... (dashboard)`);
+    } else if (!existingPlan[0].tokenAddress) {
+      await db.update(tokenPlans)
+        .set({ tokenAddress, status: "deployed", updatedAt: new Date() })
+        .where(eq(tokenPlans.id, existingPlan[0].id));
+    }
+
     logActivity("token_registered", auth.humanId, req.params.publicKey, auth.agent.deviceId, {
       tokenAddress, txHash, name: onChainName, symbol: onChainSymbol, method: "dashboard"
     });
@@ -5743,6 +5802,30 @@ router.post("/v1/miniclaws/:id/register-token", verificationLimiter, async (req:
 
     if (!onChainName && !onChainSymbol) {
       return res.status(400).json({ error: "Could not verify token at the provided address." });
+    }
+
+    const existingPlan = await db.select().from(tokenPlans)
+      .where(sql`${tokenPlans.agentPublicKey} = ${mcPublicKey} AND ${tokenPlans.humanId} = ${auth.humanId} AND LOWER(${tokenPlans.tokenAddress}) = LOWER(${tokenAddress})`)
+      .limit(1);
+
+    if (existingPlan.length === 0) {
+      await db.insert(tokenPlans).values({
+        humanId: auth.humanId,
+        agentPublicKey: mcPublicKey,
+        agentName: onChainName || 'External Token',
+        purpose: `Externally deployed token registered via miniclaw dashboard`,
+        supplyReasoning: `Total supply: ${onChainSupply || 'unknown'}`,
+        allocation: { deployer: "100%" },
+        utility: { type: "agent-token", externallyDeployed: true },
+        economicModel: "external",
+        tokenAddress,
+        status: "deployed",
+      });
+      console.log(`[selfclaw] Persisted external token ${onChainSymbol} (${tokenAddress}) for miniclaw ${req.params.id} (miniclaw-dashboard)`);
+    } else if (!existingPlan[0].tokenAddress) {
+      await db.update(tokenPlans)
+        .set({ tokenAddress, status: "deployed", updatedAt: new Date() })
+        .where(eq(tokenPlans.id, existingPlan[0].id));
     }
 
     logActivity("token_registered", auth.humanId, mcPublicKey, "miniclaw", {
