@@ -5045,12 +5045,12 @@ router.post("/v1/my-agents/:publicKey/request-sponsorship", verificationLimiter,
     const sponsorAddress = getSponsorAddress(sponsorKey);
 
     const agentTokenBalance = await getTokenBalance(tokenAddress, 18, sponsorKey);
-    const requiredAmount = parseFloat(tokenAmount) * 1.06;
+    const requiredAmount = parseFloat(tokenAmount) * 1.12;
     const heldAmount = parseFloat(agentTokenBalance);
 
     if (heldAmount < requiredAmount) {
       return res.status(400).json({
-        error: `Sponsor wallet does not hold enough of your agent token (need ~6% extra for slippage buffer).`,
+        error: `Sponsor wallet does not hold enough of your agent token (need ~12% extra for slippage buffer).`,
         sponsorWallet: sponsorAddress,
         has: agentTokenBalance,
         needs: Math.ceil(requiredAmount).toString(),
@@ -5066,7 +5066,7 @@ router.post("/v1/my-agents/:publicKey/request-sponsorship", verificationLimiter,
       return res.status(400).json({ error: "No SELFCLAW available in sponsorship wallet." });
     }
 
-    const selfclawForPool = Math.floor(available * 0.5 / 1.06).toString();
+    const selfclawForPool = Math.floor(available * 0.5 / 1.12).toString();
 
     const tokenLower = tokenAddress.toLowerCase();
     const selfclawLower = selfclawAddress.toLowerCase();
@@ -5930,12 +5930,12 @@ router.post("/v1/miniclaws/:id/request-sponsorship", verificationLimiter, async 
     const sponsorAddress = getSponsorAddress(sponsorKey);
 
     const agentTokenBalance = await getTokenBalance(tokenAddress, 18, sponsorKey);
-    const requiredAmount = parseFloat(tokenAmount) * 1.06;
+    const requiredAmount = parseFloat(tokenAmount) * 1.12;
     const heldAmount = parseFloat(agentTokenBalance);
 
     if (heldAmount < requiredAmount) {
       return res.status(400).json({
-        error: `Sponsor wallet does not hold enough of your token.`,
+        error: `Sponsor wallet does not hold enough of your token (need ~12% extra for slippage buffer).`,
         sponsorWallet: sponsorAddress,
         has: agentTokenBalance,
         needs: Math.ceil(requiredAmount).toString(),
@@ -5951,7 +5951,7 @@ router.post("/v1/miniclaws/:id/request-sponsorship", verificationLimiter, async 
       return res.status(400).json({ error: "No SELFCLAW available in sponsorship wallet." });
     }
 
-    const selfclawForPool = Math.floor(available * 0.5 / 1.06).toString();
+    const selfclawForPool = Math.floor(available * 0.5 / 1.12).toString();
 
     const tokenLower = tokenAddress.toLowerCase();
     const selfclawLower = selfclawAddress.toLowerCase();

@@ -439,19 +439,36 @@ async function ensurePermit2Approval(
   spender: `0x${string}`,
   amount: bigint,
   overrideAccount?: ReturnType<typeof privateKeyToAccount>,
-  overrideWalletClient?: ReturnType<typeof createWalletClient>
+  overrideWalletClient?: ReturnType<typeof createWalletClient>,
+  forceRenew: boolean = false
 ): Promise<void> {
   const account = overrideAccount || getAccount();
   const walletClient = overrideWalletClient || getWalletClient();
+  const tokenShort = token.substring(0, 10);
+  const spenderShort = spender.substring(0, 10);
+
+  const tokenBalance = await publicClient.readContract({
+    address: token,
+    abi: ERC20_ABI,
+    functionName: 'balanceOf',
+    args: [account.address],
+  }) as bigint;
+  console.log(`[uniswap-v4] Token balance for ${tokenShort}...: ${formatUnits(tokenBalance, 18)} (need ${formatUnits(amount, 18)})`);
+
+  if (tokenBalance < amount) {
+    console.warn(`[uniswap-v4] WARNING: Wallet balance (${formatUnits(tokenBalance, 18)}) < required amount (${formatUnits(amount, 18)}) for ${tokenShort}...`);
+  }
 
   const erc20Allowance = await publicClient.readContract({
     address: token,
     abi: ERC20_ABI,
     functionName: 'allowance',
     args: [account.address, PERMIT2],
-  });
+  }) as bigint;
+  console.log(`[uniswap-v4] ERC-20 allowance ${tokenShort}... → Permit2: ${erc20Allowance > 10n ** 30n ? 'maxUint' : formatUnits(erc20Allowance, 18)}`);
 
-  if (erc20Allowance < amount) {
+  if (forceRenew || erc20Allowance < amount) {
+    console.log(`[uniswap-v4] Setting ERC-20 approval: ${tokenShort}... → Permit2 (${forceRenew ? 'forced' : 'insufficient'})`);
     const approveTx = await walletClient.writeContract({
       address: token,
       abi: ERC20_ABI,
@@ -460,7 +477,18 @@ async function ensurePermit2Approval(
       chain: celo,
       account,
     });
-    await publicClient.waitForTransactionReceipt({ hash: approveTx });
+    const approveReceipt = await publicClient.waitForTransactionReceipt({ hash: approveTx });
+    console.log(`[uniswap-v4] ERC-20 approval tx: ${approveTx} (status: ${approveReceipt.status})`);
+
+    const verifyAllowance = await publicClient.readContract({
+      address: token,
+      abi: ERC20_ABI,
+      functionName: 'allowance',
+      args: [account.address, PERMIT2],
+    }) as bigint;
+    if (verifyAllowance < amount) {
+      throw new Error(`ERC-20 approval verification failed for ${tokenShort}...: allowance=${formatUnits(verifyAllowance, 18)}, needed=${formatUnits(amount, 18)}`);
+    }
   }
 
   const permit2Result = await publicClient.readContract({
@@ -474,10 +502,11 @@ async function ensurePermit2Approval(
   const permit2Expiry = Number(permit2Result[1]);
   const now = Math.floor(Date.now() / 1000);
   const safetyMargin = 300;
-  const needsRenewal = permit2Amount < amount || permit2Expiry < (now + safetyMargin);
+  const needsRenewal = forceRenew || permit2Amount < amount || permit2Expiry < (now + safetyMargin);
+
+  console.log(`[uniswap-v4] Permit2 state for ${tokenShort}... → ${spenderShort}...: amount=${permit2Amount > 10n ** 30n ? 'maxUint160' : formatUnits(permit2Amount, 18)}, expiry=${permit2Expiry} (${permit2Expiry > 0 ? new Date(permit2Expiry * 1000).toISOString() : 'never'}), needsRenewal=${needsRenewal}`);
 
   if (needsRenewal) {
-    console.log(`[uniswap-v4] Permit2 renewal needed for ${token.substring(0, 10)}... → ${spender.substring(0, 10)}... (amount: ${permit2Amount < amount ? 'insufficient' : 'ok'}, expiry: ${permit2Expiry} vs now+margin: ${now + safetyMargin}, ${permit2Expiry < (now + safetyMargin) ? 'expired/expiring' : 'ok'})`);
     const maxUint160 = (2n ** 160n) - 1n;
     const expiration = now + 86400 * 30;
     const permit2ApproveTx = await walletClient.writeContract({
@@ -488,10 +517,23 @@ async function ensurePermit2Approval(
       chain: celo,
       account,
     });
-    await publicClient.waitForTransactionReceipt({ hash: permit2ApproveTx });
-    console.log(`[uniswap-v4] Permit2 renewed: expiry=${expiration} (${new Date(expiration * 1000).toISOString()})`);
+    const p2Receipt = await publicClient.waitForTransactionReceipt({ hash: permit2ApproveTx });
+    console.log(`[uniswap-v4] Permit2 approval tx: ${permit2ApproveTx} (status: ${p2Receipt.status}), expiry=${expiration} (${new Date(expiration * 1000).toISOString()})`);
+
+    const verifyP2 = await publicClient.readContract({
+      address: PERMIT2,
+      abi: PERMIT2_ABI,
+      functionName: 'allowance',
+      args: [account.address, token, spender],
+    });
+    const verifiedAmount = BigInt(verifyP2[0]);
+    const verifiedExpiry = Number(verifyP2[1]);
+    if (verifiedAmount < amount || verifiedExpiry < now) {
+      throw new Error(`Permit2 approval verification failed for ${tokenShort}...: amount=${formatUnits(verifiedAmount, 18)}, expiry=${verifiedExpiry}`);
+    }
+    console.log(`[uniswap-v4] Permit2 verified OK: ${tokenShort}... → ${spenderShort}...`);
   } else {
-    console.log(`[uniswap-v4] Permit2 allowance valid for ${token.substring(0, 10)}... (expiry=${permit2Expiry}, ${Math.floor((permit2Expiry - now) / 3600)}h remaining)`);
+    console.log(`[uniswap-v4] Permit2 allowance valid for ${tokenShort}... (${Math.floor((permit2Expiry - now) / 3600)}h remaining)`);
   }
 }
 
@@ -718,13 +760,38 @@ export async function createPoolAndAddLiquidity(params: CreatePoolParams): Promi
     const amount1Max = amount1 + (amount1 * 10n / 100n);
 
     console.log(`[uniswap-v4] Approving tokens via Permit2... amount0Max=${formatUnits(amount0Max, 18)}, amount1Max=${formatUnits(amount1Max, 18)}`);
+    console.log(`[uniswap-v4] Wallet: ${account.address}, token0=${token0}, token1=${token1}`);
+    console.log(`[uniswap-v4] isCeloToken0=${isCeloToken0}, isCeloToken1=${isCeloToken1}`);
 
     if (!isCeloToken0) {
-      await ensurePermit2Approval(token0, POSITION_MANAGER, amount0Max, account, walletClient);
+      await ensurePermit2Approval(token0, POSITION_MANAGER, amount0Max, account, walletClient, true);
     }
     if (!isCeloToken1) {
-      await ensurePermit2Approval(token1, POSITION_MANAGER, amount1Max, account, walletClient);
+      await ensurePermit2Approval(token1, POSITION_MANAGER, amount1Max, account, walletClient, true);
     }
+
+    console.log(`[uniswap-v4] All approvals set. Verifying final state before modifyLiquidities...`);
+    const preflightErrors: string[] = [];
+    for (const [label, tkn, amt] of [['token0', token0, amount0Max], ['token1', token1, amount1Max]] as const) {
+      if (tkn.toLowerCase() === CELO_NATIVE.toLowerCase()) continue;
+      const bal = await publicClient.readContract({ address: tkn, abi: ERC20_ABI, functionName: 'balanceOf', args: [account.address] }) as bigint;
+      const erc20 = await publicClient.readContract({ address: tkn, abi: ERC20_ABI, functionName: 'allowance', args: [account.address, PERMIT2] }) as bigint;
+      const p2 = await publicClient.readContract({ address: PERMIT2, abi: PERMIT2_ABI, functionName: 'allowance', args: [account.address, tkn, POSITION_MANAGER] });
+      const p2Amt = BigInt(p2[0]);
+      const p2Exp = Number(p2[1]);
+      const now = Math.floor(Date.now() / 1000);
+      console.log(`[uniswap-v4] FINAL CHECK ${label} (${tkn.substring(0,10)}...): balance=${formatUnits(bal, 18)}, erc20→Permit2=${erc20 > 10n**30n ? 'MAX' : formatUnits(erc20, 18)}, permit2→PM: amt=${p2Amt > 10n**30n ? 'MAX' : formatUnits(p2Amt, 18)}, exp=${p2Exp} (${p2Exp > now ? 'valid' : 'EXPIRED'}), needed=${formatUnits(amt, 18)}`);
+      if (bal < amt) preflightErrors.push(`${label} balance insufficient: has ${formatUnits(bal, 18)}, needs ${formatUnits(amt, 18)}`);
+      if (erc20 < amt) preflightErrors.push(`${label} ERC-20 allowance to Permit2 insufficient`);
+      if (p2Amt < amt) preflightErrors.push(`${label} Permit2 allowance to PositionManager insufficient`);
+      if (p2Exp <= now) preflightErrors.push(`${label} Permit2 allowance EXPIRED (exp=${p2Exp}, now=${now})`);
+    }
+    if (preflightErrors.length > 0) {
+      const errMsg = `Pre-flight check failed: ${preflightErrors.join('; ')}`;
+      console.error(`[uniswap-v4] ${errMsg}`);
+      return { success: false, error: errMsg };
+    }
+    console.log(`[uniswap-v4] Pre-flight checks passed.`);
 
     const { tickLower, tickUpper } = getFullRangeTicks(feeTier);
     const deadline = BigInt(Math.floor(Date.now() / 1000) + 1800);
