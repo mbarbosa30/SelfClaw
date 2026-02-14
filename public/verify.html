@@ -65,7 +65,10 @@
         <div class="card-title">LINK AGENT TO IDENTITY</div>
         <div class="form-group">
           <label for="verify-pubkey">Agent Public Key</label>
-          <input type="text" id="verify-pubkey" class="input" placeholder="MCowBQYDK2VwAyEA...">
+          <input type="text" id="verify-pubkey" class="input" placeholder="a79d908cf4e5d6c0ac4a0cb3ad40237a...">
+          <div style="font-size: 0.7rem; color: var(--text-secondary); margin-top: 0.35rem; font-family: var(--font-mono); line-height: 1.4;">
+            Use the raw 32-byte hex string (64 characters). Base64 and PEM (SPKI) formats are also accepted.
+          </div>
         </div>
         <div class="form-group">
           <label for="verify-device-id">Agent Name <span class="optional">(optional)</span></label>
@@ -86,7 +89,7 @@
         <div class="card card-sm">
           <div class="step-number">1</div>
           <h3>Submit key</h3>
-          <p class="text-secondary">Enter your agent's Ed25519 public key and an optional name to identify it in the registry.</p>
+          <p class="text-secondary">Enter your agent's Ed25519 public key (raw 32-byte hex preferred) and an optional name to identify it in the registry.</p>
         </div>
         <div class="card card-sm">
           <div class="step-number">2</div>

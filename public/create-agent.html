@@ -411,6 +411,14 @@
         </div>
 
         <div class="key-display">
+          <div class="key-label">Public Key (raw hex — use this for API calls)</div>
+          <div class="key-value" id="public-key-hex-value">
+            <button class="key-copy" onclick="copyKey('public-key-hex-value')">COPY</button>
+            <span id="public-key-hex-text"></span>
+          </div>
+        </div>
+
+        <div class="key-display">
           <div class="key-label">Private Key (PKCS8 DER, base64)</div>
           <div class="key-value" id="private-key-value" style="border-color: var(--red);">
             <button class="key-copy" onclick="copyKey('private-key-value')">COPY</button>
@@ -703,6 +711,17 @@
         }
         agentResult = data;
         document.getElementById('public-key-text').textContent = data.keys.publicKey;
+        try {
+          var b64 = data.keys.publicKey;
+          var raw = atob(b64);
+          var bytes = new Uint8Array(raw.length);
+          for (var i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
+          var keyBytes = bytes.length === 44 && bytes[0] === 0x30 && bytes[1] === 0x2a ? bytes.slice(12) : bytes;
+          var hex = Array.from(keyBytes).map(function(b) { return b.toString(16).padStart(2, '0'); }).join('');
+          document.getElementById('public-key-hex-text').textContent = hex;
+        } catch (e) {
+          document.getElementById('public-key-hex-text').textContent = '(could not derive)';
+        }
         document.getElementById('private-key-text').textContent = data.keys.privateKey;
         setStep(2);
       } catch (err) {

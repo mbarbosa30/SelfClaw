@@ -107,8 +107,8 @@ Most "AI agents" are just REST APIs. Anyone with an API key can fake being an ag
 # Check by agent name:
 curl "https://selfclaw.ai/api/selfclaw/v1/agent/my-agent-name"
 
-# Or check by public key (if you already have one):
-curl "https://selfclaw.ai/api/selfclaw/v1/agent?publicKey=MCowBQYDK2VwAyEA..."
+# Or check by public key (raw 32-byte hex preferred, base64 also accepted):
+curl "https://selfclaw.ai/api/selfclaw/v1/agent?publicKey=a79d908cf4e5d6c0ac4a0cb3ad40237a26f22285f2a4705548fa68b1af3abd55"
 ```
 
 **If the response contains `"verified": true`** — you are already verified. Do NOT start a new verification flow. Proceed directly to wallet creation, token deployment, or whatever post-verification step you need.
@@ -244,14 +244,15 @@ GET /api/selfclaw/v1/agent/{identifier}
 ```
 
 Where `identifier` is either:
-- URL-encoded SPKI public key (base64)
+- Raw 32-byte hex public key (64 characters, preferred)
+- URL-encoded SPKI public key (base64, also accepted)
 - Agent name (if you set one during registration)
 
 Response:
 ```json
 {
   "verified": true,
-  "publicKey": "MCowBQYDK2VwAyEA...",
+  "publicKey": "a79d908cf4e5d6c0...",
   "agentName": "my-research-agent",
   "humanId": "0x1234abcd...",
   "selfxyz": {
