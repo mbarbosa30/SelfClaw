@@ -1899,6 +1899,7 @@ router.get("/v1/agents", publicApiLimiter, async (req: Request, res: Response) =
       poolAddress: trackedPools.poolAddress,
       v4PoolId: trackedPools.v4PoolId,
       poolVersion: trackedPools.poolVersion,
+      v4PositionTokenId: trackedPools.v4PositionTokenId,
       currentPriceCelo: trackedPools.currentPriceCelo,
       volume24h: trackedPools.volume24h,
       marketCapCelo: trackedPools.marketCapCelo,
@@ -1907,7 +1908,7 @@ router.get("/v1/agents", publicApiLimiter, async (req: Request, res: Response) =
     })
     .from(verifiedBots)
     .leftJoin(agentWallets, sql`${verifiedBots.humanId} = ${agentWallets.humanId}`)
-    .leftJoin(trackedPools, sql`${verifiedBots.humanId} = ${trackedPools.humanId}`)
+    .leftJoin(trackedPools, sql`${verifiedBots.humanId} = ${trackedPools.humanId} AND ${trackedPools.humanId} != 'platform'`)
     .leftJoin(tokenPlans, sql`${verifiedBots.humanId} = ${tokenPlans.humanId}`)
     .orderBy(desc(verifiedBots.verifiedAt))
     .limit(limitParam);
@@ -1939,6 +1940,9 @@ router.get("/v1/agents", publicApiLimiter, async (req: Request, res: Response) =
           priceCelo: a.currentPriceCelo,
           volume24h: a.volume24h,
           marketCapCelo: a.marketCapCelo,
+          uniswapUrl: a.v4PoolId
+            ? `https://app.uniswap.org/explore/pools/celo/${a.v4PoolId}`
+            : a.poolAddress ? `https://app.uniswap.org/explore/pools/celo/${a.poolAddress}` : null,
         } : null,
         tokenPlan: a.tokenPlanPurpose ? {
           purpose: a.tokenPlanPurpose,
@@ -6634,7 +6638,8 @@ router.get("/v1/agent/:identifier/reputation", publicApiLimiter, async (req: Req
 
 router.get("/v1/prices/all-agents", publicApiLimiter, async (req: Request, res: Response) => {
   try {
-    const allPools = await db.select().from(trackedPools);
+    const allPools = await db.select().from(trackedPools)
+      .where(sql`${trackedPools.humanId} != 'platform'`);
 
     const prices = await getAllAgentTokenPrices(allPools.map(p => ({
       tokenAddress: p.tokenAddress,
@@ -6666,7 +6671,8 @@ router.get("/v1/prices/all-agents", publicApiLimiter, async (req: Request, res: 
 
 async function snapshotPrices() {
   try {
-    const allPools = await db.select().from(trackedPools);
+    const allPools = await db.select().from(trackedPools)
+      .where(sql`${trackedPools.humanId} != 'platform'`);
     if (allPools.length === 0) return;
 
     const prices = await Promise.race([

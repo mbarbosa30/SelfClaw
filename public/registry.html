@@ -61,6 +61,21 @@
       width: 60px;
       height: 24px;
     }
+    .agent-links {
+      margin-top: 0.25rem;
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .agent-link {
+      color: var(--accent);
+      text-decoration: none;
+      border-bottom: 1px solid transparent;
+    }
+    .agent-link:hover {
+      border-bottom-color: var(--accent);
+    }
     @media (max-width: 600px) {
       .registry-item { grid-template-columns: auto 1fr; }
       .agent-price-col { display: none; }
@@ -182,9 +197,19 @@
           if (tokenSymbol) {
             metaParts.push(`<span class="token-badge">$${escapeHtml(tokenSymbol)}</span>`);
           }
-          metaParts.push(`Verified ${formatTimeAgo(agent.verifiedAt)}`);
+          if (agent.token?.name && agent.token.name !== tokenSymbol) {
+            metaParts.push(escapeHtml(agent.token.name));
+          }
           if (agent.hasErc8004) {
             metaParts.push('ERC-8004 ✓');
+          }
+
+          let linksParts = [];
+          if (agent.pool?.uniswapUrl) {
+            linksParts.push(`<a href="${escapeHtml(agent.pool.uniswapUrl)}" target="_blank" rel="noopener" class="agent-link" onclick="event.stopPropagation()">Pool</a>`);
+          }
+          if (agent.token?.address) {
+            linksParts.push(`<a href="https://celoscan.io/token/${escapeHtml(agent.token.address)}" target="_blank" rel="noopener" class="agent-link" onclick="event.stopPropagation()">Token</a>`);
           }
 
           let priceHtml = '';
@@ -210,6 +235,7 @@
                 <div class="agent-name">${displayName}</div>
                 <div class="agent-key">${truncatedKey}</div>
                 <div class="agent-meta">${metaParts.join(' · ')}</div>
+                ${linksParts.length ? '<div class="agent-links">' + linksParts.join(' · ') + '</div>' : ''}
               </div>
               ${priceHtml}
             </${containerTag}>

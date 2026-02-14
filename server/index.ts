@@ -175,20 +175,54 @@ async function main() {
 
   try {
     await pool.query(`
-      UPDATE tracked_pools SET token_name = 'Musketeer', token_symbol = 'MUSK'
-      WHERE token_address = '0x7d6fbD40eD0e34620AA0f89f049E50C1F673F6B6' AND (token_name = 'MUSK' OR token_symbol != 'MUSK');
-    `);
-    await pool.query(`
       UPDATE tracked_pools SET token_name = 'Musketeer Token', token_symbol = 'MSKT'
       WHERE token_address = '0x2bfc1DF3E826a97C14F3A1e40e582D0ba5552D0F' AND (token_name = 'TOKEN' OR token_symbol = 'TOKEN');
+    `);
+    await pool.query(`
+      UPDATE tracked_pools SET token_name = 'CeloFX', token_symbol = 'CELOFX'
+      WHERE token_address = '0x8dea24d1d39ff8d5a957b8e4a71e3d260ea49628' AND (token_name = 'TOKEN' OR token_symbol = 'TOKEN');
+    `);
+    await pool.query(`
+      UPDATE tracked_pools SET token_name = 'Clawdberg', token_symbol = 'CLWDBRG'
+      WHERE token_address = '0xC7ED254128840fc3EA461FAEBaA2D9F08c54b59D' AND (token_name = 'TOKEN' OR token_symbol = 'TOKEN');
+    `);
+    await pool.query(`
+      UPDATE tracked_pools SET token_name = 'PerkyJobs', token_symbol = 'PERKY', v4_position_token_id = '254'
+      WHERE token_address = '0x67aa5E5326C42EB0900C8A5d64e198FA6f305861' AND v4_position_token_id IS NULL;
     `);
     await pool.query(`
       UPDATE sponsored_agents SET token_symbol = 'MSKT'
       WHERE token_address = '0x2bfc1DF3E826a97C14F3A1e40e582D0ba5552D0F' AND token_symbol = 'TOKEN';
     `);
-    console.log('[migration] Token names/symbols corrected from on-chain data');
+    await pool.query(`
+      UPDATE sponsored_agents SET token_symbol = 'CELOFX'
+      WHERE token_address = '0x8dea24d1d39ff8d5a957b8e4a71e3d260ea49628' AND token_symbol = 'TOKEN';
+    `);
+    await pool.query(`
+      UPDATE sponsored_agents SET token_symbol = 'CLWDBRG'
+      WHERE token_address = '0xC7ED254128840fc3EA461FAEBaA2D9F08c54b59D' AND token_symbol = 'TOKEN';
+    `);
+    await pool.query(`
+      INSERT INTO tracked_pools (pool_address, token_address, token_symbol, token_name, paired_with, human_id, fee_tier, v4_position_token_id, pool_version, v4_pool_id)
+      VALUES (
+        '0x92bf22b01e8c42e09e2777f3a11490f3e77bd232b70339dbedb0b5a57b21ab8b',
+        '0x471EcE3750Da237f93B8E339c536989b8978a438',
+        'CELO', 'Celo native asset', 'SELFCLAW', 'platform', 3000, '246', 'v4',
+        '0x92bf22b01e8c42e09e2777f3a11490f3e77bd232b70339dbedb0b5a57b21ab8b'
+      ) ON CONFLICT (pool_address) DO UPDATE SET v4_position_token_id = '246';
+    `);
+    await pool.query(`
+      INSERT INTO tracked_pools (pool_address, token_address, token_symbol, token_name, paired_with, human_id, fee_tier, v4_position_token_id, pool_version, v4_pool_id)
+      VALUES (
+        '0xaa6bb69189b81c0d19e492128d890b2851aae2130f1ba05744db22ebd08d84f9',
+        '0x48065fbBE25f71C9282ddf5e1cD6D6A887483D5e',
+        'USD₮', 'Tether USD', 'SELFCLAW', 'platform', 3000, '253', 'v4',
+        '0xaa6bb69189b81c0d19e492128d890b2851aae2130f1ba05744db22ebd08d84f9'
+      ) ON CONFLICT (pool_address) DO UPDATE SET v4_position_token_id = '253';
+    `);
+    console.log('[migration] Token names/symbols corrected + SELFCLAW pool positions tracked');
   } catch (err: any) {
-    console.error('[migration] Token name correction failed:', err.message);
+    console.error('[migration] Token/pool correction failed:', err.message);
   }
 
   const server = app.listen(PORT, "0.0.0.0", () => {
