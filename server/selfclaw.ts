@@ -59,7 +59,7 @@ async function buildAgentContext(publicKey: string, humanId: string, depth: 'min
         humanId: agent.humanId,
         verifiedAt: agent.verifiedAt,
         verificationLevel: agent.verificationLevel || 'passport',
-        profileUrl: agent.deviceId ? `/agent/${agent.deviceId}` : null,
+        profileUrl: agent.deviceId ? `/agent/${agent.deviceId}` : `/agent/${agent.publicKey}`,
       };
       
       const metadata = (agent.metadata as Record<string, any>) || {};
@@ -2054,7 +2054,7 @@ router.get("/v1/agents", publicApiLimiter, async (req: Request, res: Response) =
           purpose: a.tokenPlanPurpose,
           status: a.tokenPlanStatus,
         } : null,
-        profileUrl: a.agentName ? `/agent/${encodeURIComponent(a.agentName)}` : null,
+        profileUrl: `/agent/${encodeURIComponent(a.agentName || a.publicKey)}`,
       }));
     
     res.json({ agents: formattedAgents, total: formattedAgents.length });
@@ -2068,11 +2068,18 @@ router.get("/v1/agent-profile/:name", publicApiLimiter, async (req: Request, res
   try {
     const name = req.params.name as string;
     
-    const agents = await db.select()
+    let agents = await db.select()
       .from(verifiedBots)
       .where(sql`lower(${verifiedBots.deviceId}) = ${(name || '').toLowerCase()}`)
       .limit(1);
     
+    if (agents.length === 0) {
+      agents = await db.select()
+        .from(verifiedBots)
+        .where(sql`${verifiedBots.publicKey} = ${name}`)
+        .limit(1);
+    }
+
     if (agents.length === 0) {
       return res.status(404).json({ error: "Agent not found" });
     }
@@ -3711,11 +3718,11 @@ router.get("/v1/dashboard", publicApiLimiter, async (_req: Request, res: Respons
       verified24hResult,
       verified7dResult,
       totalWalletsResult,
-      , // unused (was external wallets count, now all self-custody)
       gasSubsidiesResult,
       completedSponsorsResult,
       totalPoolsResult,
       celoLiquidityResult,
+      tokensDeployedResult,
       timelineResult,
       recentActivityResult,
       funnelResult
@@ -3725,11 +3732,11 @@ router.get("/v1/dashboard", publicApiLimiter, async (_req: Request, res: Respons
       db.select({ value: count() }).from(verifiedBots).where(gt(verifiedBots.verifiedAt, oneDayAgo)),
       db.select({ value: count() }).from(verifiedBots).where(gt(verifiedBots.verifiedAt, sevenDaysAgo)),
       db.select({ value: count() }).from(agentWallets),
-      db.select({ value: count() }).from(agentWallets),
       db.select({ value: count() }).from(agentWallets).where(eq(agentWallets.gasReceived, true)),
       db.select({ value: count() }).from(sponsoredAgents).where(eq(sponsoredAgents.status, 'completed')),
       db.select({ value: count() }).from(trackedPools),
       db.select({ value: sql<string>`coalesce(sum(cast(${trackedPools.initialCeloLiquidity} as numeric)), 0)` }).from(trackedPools),
+      db.select({ value: sql<number>`count(distinct ${trackedPools.tokenAddress})` }).from(trackedPools),
       db.select({
         date: sql<string>`to_char(${agentActivity.createdAt}, 'YYYY-MM-DD')`,
         eventType: agentActivity.eventType,
@@ -3778,11 +3785,13 @@ router.get("/v1/dashboard", publicApiLimiter, async (_req: Request, res: Respons
       wallets: {
         total: Number(totalWallets),
         selfCustody: Number(totalWallets),
-        gasSubsidies: Number(gasSubsidiesResult[0]?.value ?? 0)
+        gasSubsidies: Number(gasSubsidiesResult[0]?.value ?? 0),
+        treasuryBalance: String(celoLiquidityResult[0]?.value ?? "0") + ' CELO'
       },
       tokenEconomy: {
+        tokensDeployed: Number(tokensDeployedResult[0]?.value ?? 0),
+        activePools: Number(totalPoolsResult[0]?.value ?? 0),
         sponsoredAgents: Number(completedSponsorsResult[0]?.value ?? 0),
-        trackedPools: Number(totalPoolsResult[0]?.value ?? 0),
         totalCeloLiquidity: String(celoLiquidityResult[0]?.value ?? "0")
       },
       activityTimeline,
@@ -6777,7 +6786,7 @@ router.get("/v1/token-listings", publicApiLimiter, async (req: Request, res: Res
           : `https://app.uniswap.org/explore/pools/celo/${pool.poolAddress}`,
         celoscanUrl: `https://celoscan.io/token/${pool.tokenAddress}`,
         sparkline,
-        profileUrl: agentName ? `/agent/${encodeURIComponent(agentName)}` : null,
+        profileUrl: `/agent/${encodeURIComponent(agentName || pool.agentPublicKey || pool.tokenSymbol)}`,
       };
     }).sort((a, b) => b.marketCapUsd - a.marketCapUsd);
 

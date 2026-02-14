@@ -540,7 +540,7 @@
           var letter = name.charAt(0).toUpperCase();
           var hasWallet = agent.wallet && agent.wallet.address;
           var hasErc8004 = agent.hasErc8004;
-          var link = agent.name ? '/agent/' + encodeURIComponent(agent.name) : '#';
+          var link = '/agent/' + encodeURIComponent(agent.name || agent.publicKey || '');
 
           html += '<a href="' + esc(link) + '" class="recent-agent-card">';
           html += '<div class="recent-agent-header">';
