@@ -225,6 +225,18 @@ async function main() {
     console.error('[migration] Token/pool correction failed:', err.message);
   }
 
+  try {
+    await pool.query(`
+      ALTER TABLE tracked_pools ADD COLUMN IF NOT EXISTS hidden_from_registry BOOLEAN DEFAULT false;
+      ALTER TABLE tracked_pools ADD COLUMN IF NOT EXISTS display_name_override VARCHAR;
+      ALTER TABLE tracked_pools ADD COLUMN IF NOT EXISTS display_symbol_override VARCHAR;
+      ALTER TABLE tracked_pools ADD COLUMN IF NOT EXISTS admin_notes TEXT;
+    `);
+    console.log('[migration] tracked_pools admin columns ensured');
+  } catch (err: any) {
+    console.error('[migration] tracked_pools admin columns failed:', err.message);
+  }
+
   const server = app.listen(PORT, "0.0.0.0", () => {
     console.log(`
 ╔════════════════════════════════════════════════════════════╗

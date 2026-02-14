@@ -6577,8 +6577,10 @@ router.get("/v1/agent/:identifier/price-history", publicApiLimiter, async (req: 
 
 router.get("/v1/token-listings", publicApiLimiter, async (req: Request, res: Response) => {
   try {
-    const pools = await db.select().from(trackedPools)
+    const allPools = await db.select().from(trackedPools)
       .where(sql`${trackedPools.humanId} != 'platform'`);
+
+    const pools = allPools.filter(p => !p.hiddenFromRegistry);
 
     if (pools.length === 0) {
       return res.json({ tokens: [], reference: {} });
@@ -6639,8 +6641,8 @@ router.get("/v1/token-listings", publicApiLimiter, async (req: Request, res: Res
 
       return {
         rank: 0,
-        tokenName: pool.tokenName || pool.tokenSymbol,
-        tokenSymbol: pool.tokenSymbol,
+        tokenName: pool.displayNameOverride || pool.tokenName || pool.tokenSymbol,
+        tokenSymbol: pool.displaySymbolOverride || pool.tokenSymbol,
         tokenAddress: pool.tokenAddress,
         agentName,
         priceUsd: currentPrice,

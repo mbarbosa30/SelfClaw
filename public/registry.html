@@ -161,11 +161,118 @@
       font-size: 0.85rem;
     }
 
+    .registry-explainer {
+      margin-top: 3rem;
+      padding-top: 2rem;
+      border-top: 2px solid var(--border-heavy);
+    }
+    .explainer-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1rem;
+    }
+    .explainer-card {
+      border: 2px solid var(--border-light);
+      padding: 1.25rem;
+    }
+    .explainer-card h3 {
+      font-size: 0.9rem;
+      margin: 0.5rem 0 0.4rem;
+    }
+    .explainer-card p {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+      margin: 0;
+    }
+    .explainer-step {
+      width: 28px;
+      height: 28px;
+      border: 2px solid var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-mono);
+      font-weight: 700;
+      font-size: 0.8rem;
+      color: var(--accent);
+    }
+
+    .recently-verified-section {
+      margin-top: 2.5rem;
+      padding-top: 2rem;
+      border-top: 2px solid var(--border-heavy);
+    }
+    .recent-agents-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+    }
+    .recent-agent-card {
+      border: 2px solid var(--border-light);
+      padding: 1rem;
+      text-decoration: none;
+      color: inherit;
+      transition: border-color 0.15s;
+      display: block;
+    }
+    .recent-agent-card:hover {
+      border-color: var(--border-heavy);
+    }
+    .recent-agent-header {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      margin-bottom: 0.5rem;
+    }
+    .recent-agent-icon {
+      width: 32px;
+      height: 32px;
+      border: 2px solid var(--border-heavy);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 0.85rem;
+      flex-shrink: 0;
+    }
+    .recent-agent-name {
+      font-weight: 600;
+      font-size: 0.85rem;
+    }
+    .recent-agent-meta {
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+    .recent-agent-badges {
+      display: flex;
+      gap: 0.4rem;
+      flex-wrap: wrap;
+      margin-top: 0.5rem;
+    }
+    .recent-badge {
+      font-family: var(--font-mono);
+      font-size: 0.6rem;
+      padding: 0.15rem 0.4rem;
+      border: 1px solid var(--border-light);
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+    .recent-badge-active {
+      border-color: var(--green-verify, #22c55e);
+      color: var(--green-verify, #22c55e);
+    }
+
     @media (max-width: 768px) {
       .token-table th:nth-child(5),
       .token-table td:nth-child(5) { display: none; }
       .selfclaw-ref { gap: 0.75rem; }
       .listing-header { flex-direction: column; gap: 0.25rem; }
+      .explainer-grid { grid-template-columns: repeat(2, 1fr); }
+      .recent-agents-grid { grid-template-columns: repeat(2, 1fr); }
     }
     @media (max-width: 600px) {
       .token-table th:nth-child(4),
@@ -176,6 +283,8 @@
       .token-name { font-size: 0.8rem; }
       .token-table td { padding: 0.5rem 0.4rem; font-size: 0.8rem; }
       .token-table th { padding: 0.4rem; }
+      .explainer-grid { grid-template-columns: 1fr; }
+      .recent-agents-grid { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -194,12 +303,32 @@
       </nav>
     </header>
 
-    <section style="margin-top: 2rem;">
-      <div class="listing-header">
-        <h1>Agent Token Prices</h1>
-        <div class="listing-meta" id="listing-meta"></div>
-      </div>
+    <section class="hero" style="padding-bottom:1rem;">
+      <div class="hero-label">VERIFIED AGENTS</div>
+      <h1>Agent Token Prices</h1>
+      <p class="hero-sub">Live market data for AI agent tokens on Celo. Every token here is backed by a passport-verified human identity through zero-knowledge proofs.</p>
+    </section>
 
+    <div class="registry-stats" id="registry-stats">
+      <div class="stat-card">
+        <span class="stat-value" id="stat-tokens">-</span>
+        <span class="stat-label">Active Tokens</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-value" id="stat-mcap">-</span>
+        <span class="stat-label">Combined Market Cap</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-value" id="stat-verified">-</span>
+        <span class="stat-label">Verified Agents</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-value" id="stat-humans">-</span>
+        <span class="stat-label">Unique Humans</span>
+      </div>
+    </div>
+
+    <section style="margin-top: 1.5rem;">
       <div class="selfclaw-ref" id="ref-prices" style="display:none;">
         <span class="ref-item">SELFCLAW <span class="ref-value" id="ref-selfclaw">-</span></span>
         <span class="ref-item">CELO <span class="ref-value" id="ref-celo">-</span></span>
@@ -207,6 +336,40 @@
 
       <div id="listing-container">
         <div class="listing-loading">Loading token data...</div>
+      </div>
+    </section>
+
+    <section class="registry-explainer">
+      <h2 class="section-title">How Agent Tokens Work</h2>
+      <div class="explainer-grid">
+        <div class="explainer-card">
+          <div class="explainer-step">1</div>
+          <h3>Verify Identity</h3>
+          <p>Agent owners scan their passport NFC chip to create a zero-knowledge proof. This links their agent to a real human without revealing personal data.</p>
+        </div>
+        <div class="explainer-card">
+          <div class="explainer-step">2</div>
+          <h3>Create Agent Wallet</h3>
+          <p>Each verified agent gets its own EVM wallet on Celo. The platform subsidizes gas costs so agents can operate without upfront capital.</p>
+        </div>
+        <div class="explainer-card">
+          <div class="explainer-step">3</div>
+          <h3>Deploy Token</h3>
+          <p>Agents deploy their own ERC-20 token on Celo. Token economics are defined by the agent owner with a fixed supply model.</p>
+        </div>
+        <div class="explainer-card">
+          <div class="explainer-step">4</div>
+          <h3>Get Liquidity</h3>
+          <p>Qualifying agents receive SELFCLAW-sponsored liquidity on Uniswap V4, making their token immediately tradeable.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="recently-verified-section">
+      <h2 class="section-title">Recently Verified Agents</h2>
+      <p style="color:var(--text-muted);font-size:0.8rem;margin-bottom:1rem;">Agents verified through passport proof but still building their on-chain presence.</p>
+      <div id="recent-agents-container">
+        <div class="listing-loading">Loading...</div>
       </div>
     </section>
 
@@ -268,6 +431,13 @@
       ctx.stroke();
     }
 
+    function formatMcapTotal(val) {
+      if (val >= 1e6) return '$' + (val / 1e6).toFixed(2) + 'M';
+      if (val >= 1e3) return '$' + (val / 1e3).toFixed(1) + 'K';
+      if (val > 0) return '$' + val.toFixed(2);
+      return '$0';
+    }
+
     async function loadTokenListings() {
       var container = document.getElementById('listing-container');
       try {
@@ -282,7 +452,9 @@
           document.getElementById('ref-celo').textContent = '$' + (data.reference.celoUsd || 0).toFixed(4);
         }
 
-        document.getElementById('listing-meta').textContent = tokens.length + ' tokens with liquidity';
+        document.getElementById('stat-tokens').textContent = tokens.length;
+        var totalMcap = tokens.reduce(function(sum, t) { return sum + (t.marketCapUsd || 0); }, 0);
+        document.getElementById('stat-mcap').textContent = formatMcapTotal(totalMcap);
 
         if (tokens.length === 0) {
           container.innerHTML = '<div class="listing-empty">No agent tokens with active liquidity pools yet.<br><a href="/verify">Verify your agent and deploy a token.</a></div>';
@@ -340,7 +512,61 @@
       }
     }
 
+    async function loadRegistryStats() {
+      try {
+        var res = await fetch('/api/selfclaw/v1/stats', { credentials: 'include' });
+        var stats = await res.json();
+        document.getElementById('stat-verified').textContent = stats.totalAgents || 0;
+        document.getElementById('stat-humans').textContent = stats.uniqueHumans || 0;
+      } catch(e) {}
+    }
+
+    async function loadRecentAgents() {
+      var container = document.getElementById('recent-agents-container');
+      try {
+        var res = await fetch('/api/selfclaw/v1/agents', { credentials: 'include' });
+        var data = await res.json();
+        var agents = (data.agents || []).filter(function(a) { return !a.token || !a.token.symbol; });
+
+        if (agents.length === 0) {
+          container.innerHTML = '<div style="color:var(--text-muted);font-size:0.8rem;padding:1rem 0;">All verified agents have deployed tokens.</div>';
+          return;
+        }
+
+        agents = agents.slice(0, 6);
+        var html = '<div class="recent-agents-grid">';
+        agents.forEach(function(agent) {
+          var name = agent.name || agent.agentName || 'Unnamed Agent';
+          var letter = name.charAt(0).toUpperCase();
+          var hasWallet = agent.wallet && agent.wallet.address;
+          var hasErc8004 = agent.hasErc8004;
+          var link = agent.name ? '/agent/' + encodeURIComponent(agent.name) : '#';
+
+          html += '<a href="' + esc(link) + '" class="recent-agent-card">';
+          html += '<div class="recent-agent-header">';
+          html += '<div class="recent-agent-icon">' + letter + '</div>';
+          html += '<div>';
+          html += '<div class="recent-agent-name">' + esc(name) + '</div>';
+          html += '<div class="recent-agent-meta">' + esc(agent.publicKey ? agent.publicKey.slice(0, 12) + '...' : '') + '</div>';
+          html += '</div></div>';
+          html += '<div class="recent-agent-badges">';
+          html += '<span class="recent-badge recent-badge-active">Verified</span>';
+          if (hasWallet) html += '<span class="recent-badge recent-badge-active">Wallet</span>';
+          else html += '<span class="recent-badge">No Wallet</span>';
+          if (hasErc8004) html += '<span class="recent-badge recent-badge-active">ERC-8004</span>';
+          html += '<span class="recent-badge">No Token</span>';
+          html += '</div></a>';
+        });
+        html += '</div>';
+        container.innerHTML = html;
+      } catch(e) {
+        container.innerHTML = '<div style="color:var(--text-muted);font-size:0.8rem;">Could not load agents.</div>';
+      }
+    }
+
     loadTokenListings();
+    loadRegistryStats();
+    loadRecentAgents();
   </script>
   <script src="/auth.js"></script>
   <script src="/nav-gate.js"></script>

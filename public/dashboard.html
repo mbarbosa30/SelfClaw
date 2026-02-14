@@ -19,7 +19,7 @@
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:site" content="@mbarrbosa">
   <meta name="twitter:title" content="Network Dashboard | SelfClaw">
-  <meta name="twitter:description" content="Real-time stats for the SelfClaw verification network. Track verified agents, deployed tokens, and agent economics.">
+  <meta name="twitter:description" content="Real-time stats for the SelfClaw verification network.">
   <meta name="twitter:image" content="https://selfclaw.ai/og-image.png">
   <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
   <link rel="icon" type="image/png" href="/favicon.png">
@@ -29,6 +29,263 @@
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    .dash-hero {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 0.5rem;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+    .dash-hero h1 { font-size: 1.5rem; margin: 0; }
+    .dash-refresh {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .dash-updated {
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+    .dash-overview {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+    .dash-stat {
+      border: 2px solid var(--border-heavy);
+      padding: 1.25rem;
+      position: relative;
+    }
+    .dash-stat-value {
+      font-size: 2rem;
+      font-weight: 700;
+      line-height: 1;
+      margin-bottom: 0.3rem;
+    }
+    .dash-stat-label {
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+    }
+    .dash-stat-sub {
+      font-family: var(--font-mono);
+      font-size: 0.6rem;
+      color: var(--text-muted);
+      margin-top: 0.3rem;
+    }
+
+    .dash-section {
+      margin-bottom: 2.5rem;
+    }
+    .dash-section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 1rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 2px solid var(--border-heavy);
+    }
+    .dash-section-title {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+    .dash-section-meta {
+      font-family: var(--font-mono);
+      font-size: 0.6rem;
+      color: var(--text-muted);
+    }
+
+    .funnel-container {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 1.5rem;
+      align-items: start;
+    }
+    .funnel-visual {
+      border: 2px solid var(--border-light);
+      padding: 1.25rem;
+    }
+    .funnel-bar-wrap {
+      display: flex;
+      height: 40px;
+      overflow: hidden;
+      margin-bottom: 1rem;
+    }
+    .funnel-seg {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #fff;
+      min-width: 30px;
+      transition: flex 0.3s;
+    }
+    .funnel-legend-row {
+      display: flex;
+      gap: 1.5rem;
+      flex-wrap: wrap;
+    }
+    .funnel-legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      color: var(--text-muted);
+    }
+    .funnel-dot {
+      width: 10px;
+      height: 10px;
+      flex-shrink: 0;
+    }
+    .funnel-explainer {
+      border: 2px solid var(--border-light);
+      padding: 1.25rem;
+      max-width: 280px;
+    }
+    .funnel-explainer h4 {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      margin-bottom: 0.75rem;
+      color: var(--accent);
+    }
+    .funnel-explainer p {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+      margin: 0 0 0.5rem;
+    }
+
+    .chart-container {
+      border: 2px solid var(--border-light);
+      padding: 1.25rem;
+    }
+    .chart-container canvas { max-height: 240px; }
+
+    .treasury-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+    }
+    .treasury-card {
+      border: 2px solid var(--border-light);
+      padding: 1.25rem;
+    }
+    .treasury-value {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 0.25rem;
+    }
+    .treasury-label {
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+    }
+    .treasury-note {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      margin-top: 0.4rem;
+      line-height: 1.4;
+    }
+
+    .feed-container {
+      border: 2px solid var(--border-light);
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    .feed-row {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid var(--border-light);
+      font-size: 0.8rem;
+    }
+    .feed-row:last-child { border-bottom: none; }
+    .feed-dot {
+      width: 8px;
+      height: 8px;
+      flex-shrink: 0;
+    }
+    .feed-type {
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      color: var(--accent);
+      min-width: 110px;
+      flex-shrink: 0;
+    }
+    .feed-agent {
+      flex: 1;
+      color: var(--text-muted);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .feed-time {
+      font-family: var(--font-mono);
+      font-size: 0.6rem;
+      color: var(--text-muted);
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .feed-empty {
+      padding: 2rem;
+      text-align: center;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+    }
+
+    .dash-context {
+      margin-top: 2rem;
+      padding: 1.25rem;
+      border: 2px solid var(--border-light);
+    }
+    .dash-context h3 {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.75rem;
+    }
+    .dash-context p {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      line-height: 1.6;
+      margin: 0 0 0.5rem;
+    }
+    .dash-context a { color: var(--accent); }
+
+    @media (max-width: 768px) {
+      .dash-overview { grid-template-columns: repeat(2, 1fr); }
+      .treasury-grid { grid-template-columns: 1fr; }
+      .funnel-container { grid-template-columns: 1fr; }
+      .funnel-explainer { max-width: 100%; }
+    }
+    @media (max-width: 480px) {
+      .dash-overview { grid-template-columns: 1fr; }
+      .dash-stat-value { font-size: 1.5rem; }
+    }
+  </style>
 </head>
 <body>
   <div class="site-container">
@@ -45,76 +302,107 @@
       </nav>
     </header>
 
-    <section class="hero">
-      <div class="hero-label">Network Dashboard</div>
-      <h1>SelfClaw Stats</h1>
-      <p class="hero-sub">Real-time metrics for the verification network. Track agents, tokens, pools, and treasury.</p>
+    <section class="hero" style="padding-bottom:1rem;">
+      <div class="hero-label">NETWORK DASHBOARD</div>
+      <h1>SelfClaw Network</h1>
+      <p class="hero-sub">Real-time metrics for the agent verification network. Track identity proofs, token deployments, liquidity pools, and treasury health.</p>
     </section>
 
-    <div class="dashboard-meta">
-      <span class="dashboard-meta-left" id="last-updated">Loading...</span>
-      <button class="refresh-btn" id="refresh-btn" onclick="loadDashboard()">REFRESH</button>
+    <div class="dash-refresh" style="margin-bottom:1.5rem;display:flex;justify-content:space-between;align-items:center;">
+      <span class="dash-updated" id="last-updated">Loading...</span>
+      <button class="refresh-btn" onclick="loadDashboard()">REFRESH</button>
     </div>
 
-    <section>
-      <h2 class="section-title">Overview</h2>
-      <div class="grid-4">
-        <div class="stat-card">
-          <span class="stat-value" id="s-verified">&mdash;</span>
-          <span class="stat-label">Verified Agents</span>
+    <div class="dash-overview">
+      <div class="dash-stat">
+        <div class="dash-stat-value" id="s-verified">&mdash;</div>
+        <div class="dash-stat-label">Verified Agents</div>
+        <div class="dash-stat-sub">Passport-backed identities</div>
+      </div>
+      <div class="dash-stat">
+        <div class="dash-stat-value" id="s-tokens">&mdash;</div>
+        <div class="dash-stat-label">Tokens Deployed</div>
+        <div class="dash-stat-sub">ERC-20 on Celo</div>
+      </div>
+      <div class="dash-stat">
+        <div class="dash-stat-value" id="s-pools">&mdash;</div>
+        <div class="dash-stat-label">Active Pools</div>
+        <div class="dash-stat-sub">Uniswap V4 liquidity</div>
+      </div>
+      <div class="dash-stat">
+        <div class="dash-stat-value" id="s-sponsored">&mdash;</div>
+        <div class="dash-stat-label">Sponsored</div>
+        <div class="dash-stat-sub">SELFCLAW-backed liquidity</div>
+      </div>
+    </div>
+
+    <section class="dash-section">
+      <div class="dash-section-header">
+        <span class="dash-section-title">Verification Funnel</span>
+        <span class="dash-section-meta">Identity proof pipeline</span>
+      </div>
+      <div class="funnel-container">
+        <div class="funnel-visual">
+          <div class="funnel-bar-wrap" id="funnel-bar"></div>
+          <div class="funnel-legend-row" id="funnel-legend"></div>
         </div>
-        <div class="stat-card">
-          <span class="stat-value" id="s-tokens">&mdash;</span>
-          <span class="stat-label">Tokens Deployed</span>
-        </div>
-        <div class="stat-card">
-          <span class="stat-value" id="s-pools">&mdash;</span>
-          <span class="stat-label">Active Pools</span>
-        </div>
-        <div class="stat-card">
-          <span class="stat-value" id="s-sponsored">&mdash;</span>
-          <span class="stat-label">Sponsored</span>
+        <div class="funnel-explainer">
+          <h4>How it works</h4>
+          <p>Agents initiate verification by scanning their passport's NFC chip, which creates a zero-knowledge proof of their identity.</p>
+          <p>Once verified, the proof is stored on-chain. Failed or expired proofs can be retried at any time.</p>
         </div>
       </div>
     </section>
 
-    <section class="funnel-section">
-      <h2 class="section-title">Verification Funnel</h2>
-      <div class="funnel-bar" id="funnel-bar"></div>
-      <div class="funnel-legend" id="funnel-legend"></div>
-    </section>
-
-    <section class="chart-section">
-      <h2 class="section-title">Activity Over Time</h2>
-      <div class="chart-wrap">
+    <section class="dash-section">
+      <div class="dash-section-header">
+        <span class="dash-section-title">Activity Over Time</span>
+        <span class="dash-section-meta">Last 30 days</span>
+      </div>
+      <div class="chart-container">
         <canvas id="activity-chart" height="200"></canvas>
       </div>
     </section>
 
-    <section class="wallet-section">
-      <h2 class="section-title">Treasury</h2>
-      <div class="wallet-grid">
-        <div class="wallet-card">
-          <span class="stat-value" id="w-total">&mdash;</span>
-          <span class="stat-label">Registered Wallets</span>
+    <section class="dash-section">
+      <div class="dash-section-header">
+        <span class="dash-section-title">Treasury</span>
+        <span class="dash-section-meta">Network resources</span>
+      </div>
+      <div class="treasury-grid">
+        <div class="treasury-card">
+          <div class="treasury-value" id="w-total">&mdash;</div>
+          <div class="treasury-label">Agent Wallets</div>
+          <div class="treasury-note">Self-custody EVM wallets created for verified agents</div>
         </div>
-        <div class="wallet-card">
-          <span class="stat-value" id="w-gas">&mdash;</span>
-          <span class="stat-label">Gas Subsidies</span>
+        <div class="treasury-card">
+          <div class="treasury-value" id="w-gas">&mdash;</div>
+          <div class="treasury-label">Gas Subsidies</div>
+          <div class="treasury-note">CELO distributed to fund agent on-chain operations</div>
         </div>
-        <div class="wallet-card">
-          <span class="stat-value" id="w-treasury">&mdash;</span>
-          <span class="stat-label">Treasury Balance</span>
+        <div class="treasury-card">
+          <div class="treasury-value" id="w-treasury">&mdash;</div>
+          <div class="treasury-label">Treasury Balance</div>
+          <div class="treasury-note">Platform funds available for sponsorship and operations</div>
         </div>
       </div>
     </section>
 
-    <section class="feed-section">
-      <h2 class="section-title">Recent Activity</h2>
-      <div class="feed-list" id="feed-list">
+    <section class="dash-section">
+      <div class="dash-section-header">
+        <span class="dash-section-title">Recent Activity</span>
+        <span class="dash-section-meta">Live network events</span>
+      </div>
+      <div class="feed-container" id="feed-list">
         <div class="feed-empty">Loading...</div>
       </div>
     </section>
+
+    <div class="dash-context">
+      <h3>About This Dashboard</h3>
+      <p>This dashboard shows real-time data from the SelfClaw verification network on Celo. All agent identities are verified through <a href="https://self.xyz" target="_blank">Self.xyz</a> passport proofs, ensuring every agent listed is backed by a real human.</p>
+      <p>Want to verify your own agent? <a href="/verify">Start here</a>. For technical details, see the <a href="/developers">documentation</a> or <a href="/whitepaper">whitepaper</a>.</p>
+    </div>
 
     <footer class="site-footer">
       <nav class="footer-nav">
@@ -123,6 +411,7 @@
         <a href="/registry" data-gate-footer style="display:none">Agents</a>
         <a href="/dashboard" data-gate-footer style="display:none">Dashboard</a>
         <a href="/economy">Economy</a>
+        <a href="/guide">Guide</a>
         <a href="/developers">Docs</a>
         <a href="/whitepaper">Whitepaper</a>
       </nav>
@@ -177,23 +466,18 @@
       bar.innerHTML = '';
       legend.innerHTML = '';
       if (total === 0) {
-        var empty = document.createElement('div');
-        empty.className = 'funnel-segment';
-        empty.style.flex = '1';
-        empty.style.background = '#ddd';
-        empty.style.color = '#999';
-        empty.textContent = 'No data';
-        bar.appendChild(empty);
+        bar.innerHTML = '<div class="funnel-seg" style="flex:1;background:#ddd;color:#999;">No data</div>';
         return;
       }
-      var keys = ['pending', 'verified', 'expired', 'failed'];
+      var keys = ['verified', 'pending', 'expired', 'failed'];
+      var labels = { verified: 'Verified', pending: 'Pending', expired: 'Expired', failed: 'Failed' };
       for (var i = 0; i < keys.length; i++) {
         var k = keys[i];
         var v = funnel[k] || 0;
         if (v === 0) continue;
         var pct = (v / total * 100);
         var seg = document.createElement('div');
-        seg.className = 'funnel-segment';
+        seg.className = 'funnel-seg';
         seg.style.flex = pct.toString();
         seg.style.background = FUNNEL_COLORS[k];
         seg.textContent = v;
@@ -205,7 +489,7 @@
         dot.className = 'funnel-dot';
         dot.style.background = FUNNEL_COLORS[k];
         li.appendChild(dot);
-        li.appendChild(document.createTextNode(k + ': ' + v));
+        li.appendChild(document.createTextNode(labels[k] + ': ' + v + ' (' + pct.toFixed(0) + '%)'));
         legend.appendChild(li);
       }
     }
@@ -214,7 +498,7 @@
       var ctx = document.getElementById('activity-chart').getContext('2d');
       var labels = timeline.map(function(d) { return d.date.slice(5); });
       var types = ['verification', 'wallet_creation', 'token_deployment', 'gas_request', 'sponsorship'];
-      var typeLabels = ['Verification', 'Wallet Creation', 'Token Deployment', 'Gas Request', 'Sponsorship'];
+      var typeLabels = ['Verification', 'Wallet', 'Token Deploy', 'Gas', 'Sponsorship'];
       var datasets = [];
       for (var i = 0; i < types.length; i++) {
         datasets.push({
@@ -247,13 +531,13 @@
             x: {
               stacked: true,
               ticks: { color: '#8a8a8a', font: { family: 'IBM Plex Mono', size: 9 }, maxRotation: 45 },
-              grid: { color: '#e8e8e8' }
+              grid: { color: 'rgba(0,0,0,0.05)' }
             },
             y: {
               stacked: true,
               beginAtZero: true,
               ticks: { color: '#8a8a8a', font: { family: 'IBM Plex Mono', size: 10 }, stepSize: 1 },
-              grid: { color: '#e8e8e8' }
+              grid: { color: 'rgba(0,0,0,0.05)' }
             }
           }
         }
@@ -263,7 +547,7 @@
     function renderFeed(items) {
       var list = document.getElementById('feed-list');
       if (!items || items.length === 0) {
-        list.innerHTML = '<div class="feed-empty">No recent activity</div>';
+        list.innerHTML = '<div class="feed-empty">No recent activity recorded yet.</div>';
         return;
       }
       var html = '';
@@ -273,7 +557,7 @@
         var name = item.agentName || 'Unknown';
         var time = item.createdAt ? timeAgo(item.createdAt) : '';
         var typeLabel = (item.eventType || '').replace(/_/g, ' ');
-        html += '<div class="feed-item">';
+        html += '<div class="feed-row">';
         html += '<span class="feed-dot" style="background:' + color + '"></span>';
         html += '<span class="feed-type">' + typeLabel + '</span>';
         html += '<span class="feed-agent">' + name + '</span>';

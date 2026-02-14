@@ -1184,4 +1184,70 @@ router.post("/uniswap/tracked-pools/register", async (req: Request, res: Respons
   }
 });
 
+router.get("/token-management", async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    const pools = await db.select().from(trackedPools).orderBy(trackedPools.createdAt);
+    
+    const agentKeys = pools.filter(p => p.agentPublicKey).map(p => p.agentPublicKey!);
+    const agentMap = new Map<string, string>();
+    if (agentKeys.length > 0) {
+      const agents = await db.select({ publicKey: verifiedBots.publicKey, deviceId: verifiedBots.deviceId })
+        .from(verifiedBots)
+        .where(inArray(verifiedBots.publicKey, agentKeys));
+      for (const a of agents) {
+        agentMap.set(a.publicKey, a.deviceId || '');
+      }
+    }
+
+    const result = pools.map(pool => ({
+      id: pool.id,
+      tokenAddress: pool.tokenAddress,
+      tokenSymbol: pool.tokenSymbol,
+      tokenName: pool.tokenName,
+      pairedWith: pool.pairedWith,
+      humanId: pool.humanId,
+      agentPublicKey: pool.agentPublicKey,
+      agentName: pool.agentPublicKey ? agentMap.get(pool.agentPublicKey) || null : null,
+      poolVersion: pool.poolVersion,
+      v4PoolId: pool.v4PoolId,
+      poolAddress: pool.poolAddress,
+      hiddenFromRegistry: pool.hiddenFromRegistry || false,
+      displayNameOverride: pool.displayNameOverride || null,
+      displaySymbolOverride: pool.displaySymbolOverride || null,
+      adminNotes: pool.adminNotes || null,
+      createdAt: pool.createdAt,
+    }));
+
+    res.json({ pools: result });
+  } catch (error: any) {
+    console.error("[admin] token-management error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.put("/token-management/:id", async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    const { id } = req.params;
+    const { hiddenFromRegistry, displayNameOverride, displaySymbolOverride, adminNotes } = req.body;
+
+    const updates: Record<string, any> = {};
+    if (typeof hiddenFromRegistry === 'boolean') updates.hiddenFromRegistry = hiddenFromRegistry;
+    if (displayNameOverride !== undefined) updates.displayNameOverride = displayNameOverride || null;
+    if (displaySymbolOverride !== undefined) updates.displaySymbolOverride = displaySymbolOverride || null;
+    if (adminNotes !== undefined) updates.adminNotes = adminNotes || null;
+
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ error: "No fields to update" });
+    }
+
+    await db.update(trackedPools).set(updates).where(sql`${trackedPools.id} = ${id}`);
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error("[admin] token-management update error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 export default router;

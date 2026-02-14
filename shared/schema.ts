@@ -151,6 +151,10 @@ export const trackedPools = pgTable("tracked_pools", {
   volume24h: varchar("volume_24h"),
   totalVolume: varchar("total_volume"),
   marketCapCelo: varchar("market_cap_celo"),
+  hiddenFromRegistry: boolean("hidden_from_registry").default(false),
+  displayNameOverride: varchar("display_name_override"),
+  displaySymbolOverride: varchar("display_symbol_override"),
+  adminNotes: text("admin_notes"),
   lastUpdated: timestamp("last_updated").defaultNow(),
   createdAt: timestamp("created_at").defaultNow(),
 });

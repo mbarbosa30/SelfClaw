@@ -485,6 +485,13 @@
       </section>
 
       <section class="admin-section">
+        <h2 class="admin-section-title">Token Management</h2>
+        <p style="color:var(--text-muted);font-size:0.75rem;margin-bottom:1rem;line-height:1.4;">Manage all tracked pools. Hide tokens from the public registry, override display names/symbols, and add notes.</p>
+        <div id="tokenmgmt-loading" style="text-align:center;padding:2rem;color:var(--text-muted);"><span class="spinner"></span> Loading tokens...</div>
+        <div id="tokenmgmt-content" style="display:none;overflow-x:auto;"></div>
+      </section>
+
+      <section class="admin-section">
         <h2 class="admin-section-title">Token Prices</h2>
         <div id="prices-loading" style="text-align:center;padding:2rem;color:var(--text-muted);"><span class="spinner"></span> Loading prices...</div>
         <div id="prices-content" style="display:none;">
@@ -845,6 +852,7 @@
 
     function refreshAll() {
       loadStats();
+      loadTokenManagement();
       loadTokenPrices();
       loadPoolInfo();
       loadWalletBalances();
@@ -1863,6 +1871,135 @@
           if (e.message === 'auth') return;
           el.innerHTML = '<div class="log-empty" style="color:#ef4444;">Failed to load activity log</div>';
         });
+    }
+
+    function loadTokenManagement() {
+      var loading = document.getElementById('tokenmgmt-loading');
+      var content = document.getElementById('tokenmgmt-content');
+      loading.style.display = 'block';
+      content.style.display = 'none';
+
+      fetch('/api/admin/token-management', { headers: authHeaders() })
+        .then(function(r) {
+          if (handleAuthError(r)) throw new Error('auth');
+          return r.json();
+        })
+        .then(function(data) {
+          loading.style.display = 'none';
+          content.style.display = 'block';
+          var pools = data.pools || [];
+          if (pools.length === 0) {
+            content.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text-muted);">No tracked pools</div>';
+            return;
+          }
+          var html = '<table style="width:100%;border-collapse:collapse;font-size:0.75rem;">';
+          html += '<thead><tr style="border-bottom:2px solid var(--border-heavy);">';
+          html += '<th style="text-align:left;padding:0.5rem;font-family:IBM Plex Mono,monospace;font-size:0.65rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-muted);">Token</th>';
+          html += '<th style="text-align:left;padding:0.5rem;font-family:IBM Plex Mono,monospace;font-size:0.65rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-muted);">Agent</th>';
+          html += '<th style="text-align:center;padding:0.5rem;font-family:IBM Plex Mono,monospace;font-size:0.65rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-muted);">Visible</th>';
+          html += '<th style="text-align:left;padding:0.5rem;font-family:IBM Plex Mono,monospace;font-size:0.65rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-muted);">Display Override</th>';
+          html += '<th style="text-align:left;padding:0.5rem;font-family:IBM Plex Mono,monospace;font-size:0.65rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-muted);">Notes</th>';
+          html += '<th style="text-align:center;padding:0.5rem;font-family:IBM Plex Mono,monospace;font-size:0.65rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-muted);"></th>';
+          html += '</tr></thead><tbody>';
+
+          pools.forEach(function(pool) {
+            var isPlatform = pool.humanId === 'platform';
+            var rowBg = pool.hiddenFromRegistry ? 'rgba(239,68,68,0.05)' : '';
+            html += '<tr data-pool-id="' + pool.id + '" style="border-bottom:1px solid var(--border-light, #d4d0ca);background:' + rowBg + ';">';
+            html += '<td style="padding:0.6rem 0.5rem;">';
+            html += '<div style="font-weight:600;">' + (pool.tokenName || pool.tokenSymbol) + '</div>';
+            html += '<div style="font-family:IBM Plex Mono,monospace;font-size:0.65rem;color:var(--text-muted);">$' + pool.tokenSymbol + (isPlatform ? ' (PLATFORM)' : '') + '</div>';
+            html += '<div style="font-family:IBM Plex Mono,monospace;font-size:0.55rem;color:var(--text-muted);">' + pool.tokenAddress.slice(0, 10) + '...' + pool.tokenAddress.slice(-6) + '</div>';
+            html += '</td>';
+            html += '<td style="padding:0.6rem 0.5rem;font-size:0.7rem;color:var(--text-muted);">' + (pool.agentName || pool.humanId || '-') + '</td>';
+            html += '<td style="padding:0.6rem 0.5rem;text-align:center;">';
+            html += '<button onclick="togglePoolVisibility(\'' + pool.id + '\', ' + (pool.hiddenFromRegistry ? 'false' : 'true') + ', this)" style="background:none;border:2px solid ' + (pool.hiddenFromRegistry ? '#ef4444' : 'var(--green-verify)') + ';padding:0.25rem 0.6rem;cursor:pointer;font-family:IBM Plex Mono,monospace;font-size:0.6rem;color:' + (pool.hiddenFromRegistry ? '#ef4444' : 'var(--green-verify)') + ';">' + (pool.hiddenFromRegistry ? 'HIDDEN' : 'VISIBLE') + '</button>';
+            html += '</td>';
+            html += '<td style="padding:0.6rem 0.5rem;">';
+            html += '<input type="text" data-field="name" placeholder="Name override" value="' + (pool.displayNameOverride || '') + '" style="width:100%;max-width:120px;padding:0.25rem 0.4rem;border:1px solid var(--border-light, #d4d0ca);font-size:0.7rem;font-family:inherit;background:var(--bg);margin-bottom:0.2rem;display:block;">';
+            html += '<input type="text" data-field="symbol" placeholder="Symbol override" value="' + (pool.displaySymbolOverride || '') + '" style="width:100%;max-width:120px;padding:0.25rem 0.4rem;border:1px solid var(--border-light, #d4d0ca);font-size:0.7rem;font-family:inherit;background:var(--bg);display:block;">';
+            html += '</td>';
+            html += '<td style="padding:0.6rem 0.5rem;">';
+            html += '<textarea data-field="notes" placeholder="Admin notes..." style="width:100%;max-width:180px;min-height:36px;padding:0.25rem 0.4rem;border:1px solid var(--border-light, #d4d0ca);font-size:0.65rem;font-family:IBM Plex Mono,monospace;background:var(--bg);resize:vertical;">' + (pool.adminNotes || '') + '</textarea>';
+            html += '</td>';
+            html += '<td style="padding:0.6rem 0.5rem;text-align:center;">';
+            html += '<button onclick="savePoolOverrides(\'' + pool.id + '\', this)" style="background:#FF6B4A;border:none;color:#000;padding:0.3rem 0.6rem;cursor:pointer;font-family:IBM Plex Mono,monospace;font-size:0.6rem;font-weight:600;text-transform:uppercase;">Save</button>';
+            html += '</td>';
+            html += '</tr>';
+          });
+
+          html += '</tbody></table>';
+          content.innerHTML = html;
+        })
+        .catch(function(e) {
+          if (e.message === 'auth') return;
+          loading.style.display = 'none';
+          content.style.display = 'block';
+          content.innerHTML = '<div style="text-align:center;color:#ef4444;padding:1rem;">Failed to load token management</div>';
+        });
+    }
+
+    function togglePoolVisibility(poolId, hide, btn) {
+      btn.disabled = true;
+      btn.textContent = '...';
+      fetch('/api/admin/token-management/' + poolId, {
+        method: 'PUT',
+        headers: authHeaders(),
+        body: JSON.stringify({ hiddenFromRegistry: hide })
+      })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (data.success) {
+          loadTokenManagement();
+        } else {
+          btn.disabled = false;
+          btn.textContent = hide ? 'VISIBLE' : 'HIDDEN';
+          alert('Failed: ' + (data.error || 'Unknown error'));
+        }
+      })
+      .catch(function(e) {
+        btn.disabled = false;
+        alert('Error: ' + e.message);
+      });
+    }
+
+    function savePoolOverrides(poolId, btn) {
+      var row = btn.closest('tr');
+      var nameInput = row.querySelector('input[data-field="name"]');
+      var symbolInput = row.querySelector('input[data-field="symbol"]');
+      var notesInput = row.querySelector('textarea[data-field="notes"]');
+
+      btn.disabled = true;
+      btn.textContent = '...';
+      fetch('/api/admin/token-management/' + poolId, {
+        method: 'PUT',
+        headers: authHeaders(),
+        body: JSON.stringify({
+          displayNameOverride: nameInput.value.trim(),
+          displaySymbolOverride: symbolInput.value.trim(),
+          adminNotes: notesInput.value.trim()
+        })
+      })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        btn.disabled = false;
+        if (data.success) {
+          btn.textContent = 'SAVED';
+          btn.style.background = 'var(--green-verify)';
+          setTimeout(function() {
+            btn.textContent = 'SAVE';
+            btn.style.background = '#FF6B4A';
+          }, 1500);
+        } else {
+          btn.textContent = 'SAVE';
+          alert('Failed: ' + (data.error || 'Unknown error'));
+        }
+      })
+      .catch(function(e) {
+        btn.disabled = false;
+        btn.textContent = 'SAVE';
+        alert('Error: ' + e.message);
+      });
     }
 
     (function() {
