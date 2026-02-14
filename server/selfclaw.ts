@@ -1777,12 +1777,22 @@ router.post("/v1/request-selfclaw-sponsorship", verificationLimiter, async (req:
       console.error(`[selfclaw] Failed to insert sponsored agent: ${dbErr.message}`);
     }
 
+    let resolvedTokenName = req.body.tokenName || tokenSymbol || 'TOKEN';
+    let resolvedTokenSymbol = tokenSymbol || 'TOKEN';
+    try {
+      const onChain = await readOnChainTokenInfo(tokenAddress);
+      if (onChain.name) resolvedTokenName = onChain.name;
+      if (onChain.symbol) resolvedTokenSymbol = onChain.symbol;
+    } catch (e: any) {
+      console.warn(`[selfclaw] Could not read on-chain token info: ${e.message}`);
+    }
+
     try {
       await db.insert(trackedPools).values({
         poolAddress: v4PoolId,
         tokenAddress,
-        tokenSymbol: tokenSymbol || 'TOKEN',
-        tokenName: req.body.tokenName || tokenSymbol || 'TOKEN',
+        tokenSymbol: resolvedTokenSymbol,
+        tokenName: resolvedTokenName,
         pairedWith: 'SELFCLAW',
         humanId,
         agentPublicKey: auth.publicKey,
@@ -1793,7 +1803,7 @@ router.post("/v1/request-selfclaw-sponsorship", verificationLimiter, async (req:
         initialCeloLiquidity: selfclawForPool,
         initialTokenLiquidity: tokenAmount,
       }).onConflictDoNothing();
-      console.log(`[selfclaw] V4 pool tracked: ${v4PoolId} for ${tokenSymbol || 'TOKEN'}/SELFCLAW (position ${positionTokenId || 'unknown'})`);
+      console.log(`[selfclaw] V4 pool tracked: ${v4PoolId} for ${resolvedTokenSymbol}/SELFCLAW (position ${positionTokenId || 'unknown'})`);
     } catch (poolTrackErr: any) {
       console.error(`[selfclaw] Failed to track pool: ${poolTrackErr.message}`);
     }
@@ -2703,6 +2713,19 @@ const viemPublicClient = createPublicClient({
   chain: celo,
   transport: http(undefined, { timeout: 15_000, retryCount: 1 })
 });
+
+async function readOnChainTokenInfo(tokenAddress: string): Promise<{ name: string; symbol: string }> {
+  const ERC20_ABI = [
+    { name: 'name', type: 'function', stateMutability: 'view', inputs: [], outputs: [{ name: '', type: 'string' }] },
+    { name: 'symbol', type: 'function', stateMutability: 'view', inputs: [], outputs: [{ name: '', type: 'string' }] },
+  ] as const;
+  const addr = tokenAddress as `0x${string}`;
+  const [n, s] = await Promise.all([
+    viemPublicClient.readContract({ address: addr, abi: ERC20_ABI, functionName: 'name' }).catch(() => null),
+    viemPublicClient.readContract({ address: addr, abi: ERC20_ABI, functionName: 'symbol' }).catch(() => null),
+  ]);
+  return { name: (n as string) || '', symbol: (s as string) || '' };
+}
 
 // ============================================================
 // PUBLIC API: Token Economy Endpoints
@@ -5344,10 +5367,20 @@ router.post("/v1/my-agents/:publicKey/request-sponsorship", verificationLimiter,
       console.error(`[selfclaw] Failed to update sponsorship request: ${dbErr.message}`);
     }
 
+    let resolvedTokenName = tokenSymbol || 'TOKEN';
+    let resolvedTokenSymbol = tokenSymbol || 'TOKEN';
+    try {
+      const onChain = await readOnChainTokenInfo(tokenAddress);
+      if (onChain.name) resolvedTokenName = onChain.name;
+      if (onChain.symbol) resolvedTokenSymbol = onChain.symbol;
+    } catch (e: any) {
+      console.warn(`[selfclaw] Could not read on-chain token info: ${e.message}`);
+    }
+
     try {
       await db.insert(sponsoredAgents).values({
         humanId: auth.humanId, publicKey: req.params.publicKey,
-        tokenAddress, tokenSymbol: tokenSymbol || 'TOKEN',
+        tokenAddress, tokenSymbol: resolvedTokenSymbol,
         poolAddress: v4PoolId,
         v4PositionTokenId: positionTokenId,
         poolVersion: 'v4',
@@ -5362,8 +5395,8 @@ router.post("/v1/my-agents/:publicKey/request-sponsorship", verificationLimiter,
     try {
       await db.insert(trackedPools).values({
         poolAddress: v4PoolId, tokenAddress,
-        tokenSymbol: tokenSymbol || 'TOKEN',
-        tokenName: req.body.tokenName || tokenSymbol || 'TOKEN',
+        tokenSymbol: resolvedTokenSymbol,
+        tokenName: resolvedTokenName,
         pairedWith: 'SELFCLAW', humanId: auth.humanId,
         agentPublicKey: req.params.publicKey, feeTier,
         v4PositionTokenId: positionTokenId,
@@ -6273,10 +6306,20 @@ router.post("/v1/miniclaws/:id/request-sponsorship", verificationLimiter, async 
       console.error(`[selfclaw] Failed to update sponsorship request: ${dbErr.message}`);
     }
 
+    let resolvedTokenName = tokenSymbol || 'TOKEN';
+    let resolvedTokenSymbol = tokenSymbol || 'TOKEN';
+    try {
+      const onChain = await readOnChainTokenInfo(tokenAddress);
+      if (onChain.name) resolvedTokenName = onChain.name;
+      if (onChain.symbol) resolvedTokenSymbol = onChain.symbol;
+    } catch (e: any) {
+      console.warn(`[selfclaw] Could not read on-chain token info: ${e.message}`);
+    }
+
     try {
       await db.insert(sponsoredAgents).values({
         humanId: auth.humanId, publicKey: mcPublicKey,
-        tokenAddress, tokenSymbol: tokenSymbol || 'TOKEN',
+        tokenAddress, tokenSymbol: resolvedTokenSymbol,
         poolAddress: v4PoolId,
         v4PositionTokenId: positionTokenId,
         poolVersion: 'v4',
@@ -6291,8 +6334,8 @@ router.post("/v1/miniclaws/:id/request-sponsorship", verificationLimiter, async 
     try {
       await db.insert(trackedPools).values({
         poolAddress: v4PoolId, tokenAddress,
-        tokenSymbol: tokenSymbol || 'TOKEN',
-        tokenName: req.body.tokenName || tokenSymbol || 'TOKEN',
+        tokenSymbol: resolvedTokenSymbol,
+        tokenName: resolvedTokenName,
         pairedWith: 'SELFCLAW', humanId: auth.humanId,
         agentPublicKey: mcPublicKey, feeTier,
         v4PositionTokenId: positionTokenId,

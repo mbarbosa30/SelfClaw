@@ -173,6 +173,24 @@ async function main() {
     console.error('[migration] Could not ensure human_id column:', err.message);
   }
 
+  try {
+    await pool.query(`
+      UPDATE tracked_pools SET token_name = 'Musketeer', token_symbol = 'MUSK'
+      WHERE token_address = '0x7d6fbD40eD0e34620AA0f89f049E50C1F673F6B6' AND (token_name = 'MUSK' OR token_symbol != 'MUSK');
+    `);
+    await pool.query(`
+      UPDATE tracked_pools SET token_name = 'Musketeer Token', token_symbol = 'MSKT'
+      WHERE token_address = '0x2bfc1DF3E826a97C14F3A1e40e582D0ba5552D0F' AND (token_name = 'TOKEN' OR token_symbol = 'TOKEN');
+    `);
+    await pool.query(`
+      UPDATE sponsored_agents SET token_symbol = 'MSKT'
+      WHERE token_address = '0x2bfc1DF3E826a97C14F3A1e40e582D0ba5552D0F' AND token_symbol = 'TOKEN';
+    `);
+    console.log('[migration] Token names/symbols corrected from on-chain data');
+  } catch (err: any) {
+    console.error('[migration] Token name correction failed:', err.message);
+  }
+
   const server = app.listen(PORT, "0.0.0.0", () => {
     console.log(`
 ╔════════════════════════════════════════════════════════════╗
