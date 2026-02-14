@@ -470,11 +470,14 @@ async function ensurePermit2Approval(
     args: [account.address, token, spender],
   });
 
-  const permit2Amount = permit2Result[0];
-  const permit2Expiry = permit2Result[1];
+  const permit2Amount = BigInt(permit2Result[0]);
+  const permit2Expiry = Number(permit2Result[1]);
   const now = Math.floor(Date.now() / 1000);
+  const safetyMargin = 300;
+  const needsRenewal = permit2Amount < amount || permit2Expiry < (now + safetyMargin);
 
-  if (permit2Amount < amount || permit2Expiry < now) {
+  if (needsRenewal) {
+    console.log(`[uniswap-v4] Permit2 renewal needed for ${token.substring(0, 10)}... → ${spender.substring(0, 10)}... (amount: ${permit2Amount < amount ? 'insufficient' : 'ok'}, expiry: ${permit2Expiry} vs now+margin: ${now + safetyMargin}, ${permit2Expiry < (now + safetyMargin) ? 'expired/expiring' : 'ok'})`);
     const maxUint160 = (2n ** 160n) - 1n;
     const expiration = now + 86400 * 30;
     const permit2ApproveTx = await walletClient.writeContract({
@@ -486,6 +489,9 @@ async function ensurePermit2Approval(
       account,
     });
     await publicClient.waitForTransactionReceipt({ hash: permit2ApproveTx });
+    console.log(`[uniswap-v4] Permit2 renewed: expiry=${expiration} (${new Date(expiration * 1000).toISOString()})`);
+  } else {
+    console.log(`[uniswap-v4] Permit2 allowance valid for ${token.substring(0, 10)}... (expiry=${permit2Expiry}, ${Math.floor((permit2Expiry - now) / 3600)}h remaining)`);
   }
 }
 
