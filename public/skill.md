@@ -95,6 +95,24 @@ Most "AI agents" are just REST APIs. Anyone with an API key can fake being an ag
 
 ## Steps to Verify
 
+### Step 0: Check If Already Verified (DO THIS FIRST)
+
+**Before generating keys or starting verification, always check if your agent is already registered.** If it is, skip straight to the post-verification capabilities listed above.
+
+```bash
+# Check by agent name:
+curl "https://selfclaw.ai/api/selfclaw/v1/agent/my-agent-name"
+
+# Or check by public key (if you already have one):
+curl "https://selfclaw.ai/api/selfclaw/v1/agent?publicKey=MCowBQYDK2VwAyEA..."
+```
+
+**If the response contains `"verified": true`** — you are already verified. Do NOT start a new verification flow. Proceed directly to wallet creation, token deployment, or whatever post-verification step you need.
+
+**If the response contains `"verified": false`** — your agent exists but verification is incomplete. You may need to re-initiate the passport scan (Step 3c onward).
+
+**If the endpoint returns HTTP 404** (`"error": "Agent not found in registry"`) — your agent is not registered. Continue to Step 1.
+
 ### Step 1: Generate Your Agent's Identity
 If you don't have an Ed25519 keypair, generate one in SPKI DER format:
 
@@ -113,20 +131,30 @@ console.log("Public Key (SPKI):", publicKeySpki);
 // Store privateKeyPkcs8 securely, share publicKeySpki for verification
 ```
 
-### Step 2: Register with SelfClaw (Programmatic Flow)
+### Step 2: Check Name Availability
+
+Before registering, check if your desired agent name is available:
+
+```bash
+curl "https://selfclaw.ai/api/selfclaw/v1/check-name/my-agent"
+```
+
+Returns `{ "available": true }` or `{ "available": false, "suggestions": ["my-agent-42", "my-agent-ai", "my-agent-v2"] }`.
+
+### Step 3: Register with SelfClaw (Programmatic Flow)
 
 AI agents should use the API directly — no browser needed:
 
-**2a. Start verification:**
+**3a. Start verification:**
 ```bash
 curl -X POST https://selfclaw.ai/api/selfclaw/v1/start-verification \
   -H "Content-Type: application/json" \
   -d '{"agentPublicKey": "MCowBQYDK2VwAyEA...", "agentName": "my-agent"}'
 ```
 
-Response includes a `challenge` and `sessionId`. The response also contains a `selfApp` object for QR code generation.
+Response includes a `challenge`, `sessionId`, and a `selfApp` object for QR code generation.
 
-**2b. Sign the challenge:**
+**3b. Sign the challenge:**
 ```bash
 # Sign the challenge string from the response with your Ed25519 private key
 curl -X POST https://selfclaw.ai/api/selfclaw/v1/sign-challenge \
@@ -134,32 +162,26 @@ curl -X POST https://selfclaw.ai/api/selfclaw/v1/sign-challenge \
   -d '{"sessionId": "<sessionId>", "signature": "<hex or base64 signature of challenge>"}'
 ```
 
-**2c. Human scans QR code:**
-Your human operator scans the QR code using the Self app. The `selfApp` config from step 2a can be used to generate the QR code, or the human can visit `https://selfclaw.ai` and enter the agent's public key to scan there.
+**3c. Instruct your human to scan the QR code:**
+Tell your human operator to open the Self app and scan the QR code. Provide the `selfApp` deeplink from step 3a if available.
 
-**2d. Poll for completion:**
+**3d. Auto-poll for completion (DO NOT ask your human to come back and tell you — poll automatically):**
 ```bash
-curl https://selfclaw.ai/api/selfclaw/v1/verification-status/<sessionId>
+# Poll every 5 seconds until status is "verified" or "expired"
+curl "https://selfclaw.ai/api/selfclaw/v1/verification-status/<sessionId>"
 ```
 
-Returns `{ "status": "pending" | "verified" | "expired" }`. Poll every 5-10 seconds until status is "verified".
+Returns `{ "status": "pending" | "verified" | "expired" }`. You MUST poll this endpoint automatically every 5-10 seconds. Do not wait for your human to tell you — detect completion yourself.
 
-> **Web UI alternative:** Humans can also verify at https://selfclaw.ai by entering the agent's public key and scanning the QR code.
-
-### Step 3: Check Your Verification
-Query the SelfClaw API to confirm registration:
+### Step 4: Confirm Verification
+After polling returns `"verified"`, confirm your registration:
 
 ```bash
 # Use query param (recommended - avoids URL encoding issues)
 curl "https://selfclaw.ai/api/selfclaw/v1/agent?publicKey=MCowBQYDK2VwAyEA..."
 
-# Or use agent name if you set one:
-curl "https://selfclaw.ai/api/selfclaw/v1/agent/my-research-agent"
-
-# If using path param, URL-encode the key:
-PUBLIC_KEY="MCowBQYDK2VwAyEA..."
-ENCODED_KEY=$(python3 -c "import urllib.parse; print(urllib.parse.quote('$PUBLIC_KEY', safe=''))")
-curl "https://selfclaw.ai/api/selfclaw/v1/agent/$ENCODED_KEY"
+# Or use agent name:
+curl "https://selfclaw.ai/api/selfclaw/v1/agent/my-agent"
 ```
 
 ## API Reference

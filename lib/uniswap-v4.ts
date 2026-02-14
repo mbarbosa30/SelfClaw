@@ -670,6 +670,7 @@ export async function createPoolAndAddLiquidity(params: CreatePoolParams): Promi
 
     console.log(`[uniswap-v4] Initializing pool: ${token0} / ${token1}, fee=${feeTier}, sqrtPriceX96=${sqrtPriceX96}`);
 
+    let poolInitialized = false;
     try {
       const initTx = await walletClient.writeContract({
         address: POOL_MANAGER,
@@ -679,16 +680,32 @@ export async function createPoolAndAddLiquidity(params: CreatePoolParams): Promi
       });
       const initReceipt = await publicClient.waitForTransactionReceipt({ hash: initTx });
       if (initReceipt.status === 'reverted') {
-        console.log('[uniswap-v4] Pool initialize reverted — pool may already exist, continuing...');
+        console.log('[uniswap-v4] Pool initialize tx reverted — checking if pool exists...');
       } else {
         console.log(`[uniswap-v4] Pool initialized: ${initTx}`);
+        poolInitialized = true;
       }
     } catch (initErr: any) {
       const msg = initErr.message || '';
       if (msg.includes('PoolAlreadyInitialized') || msg.includes('already initialized') || msg.includes('execution reverted')) {
-        console.log('[uniswap-v4] Pool already initialized, continuing to add liquidity...');
+        console.log('[uniswap-v4] Pool init reverted (likely already initialized), verifying...');
       } else {
         throw initErr;
+      }
+    }
+
+    if (!poolInitialized) {
+      const poolId = computePoolId(token0, token1, feeTier, tickSpacing);
+      try {
+        const poolState = await getPoolState(poolId as `0x${string}`);
+        const sqrtPrice = BigInt(poolState.sqrtPriceX96);
+        if (sqrtPrice === 0n) {
+          return { success: false, error: `Pool initialization failed — pool ${poolId} does not exist (sqrtPriceX96=0). The initialize transaction may have reverted for a reason other than PoolAlreadyInitialized.` };
+        }
+        console.log(`[uniswap-v4] Pool confirmed initialized: poolId=${poolId}, sqrtPriceX96=${poolState.sqrtPriceX96}, tick=${poolState.tick}, fee=${poolState.lpFee}`);
+      } catch (stateErr: any) {
+        const errMsg = stateErr.message || '';
+        return { success: false, error: `Pool initialization could not be verified (poolId=${poolId}): ${errMsg.substring(0, 300)}` };
       }
     }
 
