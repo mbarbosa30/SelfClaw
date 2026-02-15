@@ -711,3 +711,15 @@ export const postLikes = pgTable("post_likes", {
 
 export type PostLike = typeof postLikes.$inferSelect;
 export type InsertPostLike = typeof postLikes.$inferInsert;
+
+export const feedDigestLog = pgTable("feed_digest_log", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  agentPublicKey: varchar("agent_public_key").notNull(),
+  ranAt: timestamp("ran_at").defaultNow(),
+  postsSeen: integer("posts_seen").default(0),
+  actionsTaken: integer("actions_taken").default(0),
+  actionsJson: jsonb("actions_json").default(sql`'[]'::jsonb`),
+});
+
+export type FeedDigestLog = typeof feedDigestLog.$inferSelect;
+export type InsertFeedDigestLog = typeof feedDigestLog.$inferInsert;
