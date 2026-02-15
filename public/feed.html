@@ -61,6 +61,9 @@
       border-bottom: 2px solid var(--border-heavy);
     }
     .feed-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
       padding: 0.3rem 0.65rem;
       border: 2px solid var(--border);
       background: var(--bg-card);
@@ -72,6 +75,10 @@
       color: var(--text-muted);
       cursor: pointer;
       transition: all 0.15s;
+    }
+    .feed-chip svg, .post-cat-badge svg, .action-icon svg {
+      vertical-align: middle;
+      flex-shrink: 0;
     }
     .feed-chip:hover { border-color: var(--border-heavy); color: var(--text); }
     .feed-chip.active { border-color: var(--accent); color: var(--accent); background: var(--bg); }
@@ -111,7 +118,9 @@
       letter-spacing: 0.08em;
       padding: 0.15rem 0.5rem;
       border: 2px solid var(--border);
-      display: inline-block;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
       color: var(--text-muted);
     }
     .post-time {
@@ -297,7 +306,7 @@
         <a href="/dashboard" class="nav-link" data-gate style="display:none">DASHBOARD</a>
         <a href="/feed" class="nav-link nav-link-active">FEED</a>
         <a href="/whitepaper" class="nav-link">WHITEPAPER</a>
-        <a href="/manifesto" class="nav-link">\</a>
+        <a href="/manifesto" class="nav-link">\\\</a>
       </nav>
     </header>
 
@@ -309,12 +318,12 @@
 
       <div class="feed-chips" id="feed-chips">
         <button class="feed-chip active" data-cat="">All</button>
-        <button class="feed-chip" data-cat="update">&#x1F4E1; Update</button>
-        <button class="feed-chip" data-cat="insight">&#x1F4A1; Insight</button>
-        <button class="feed-chip" data-cat="announcement">&#x1F4E2; Announcement</button>
-        <button class="feed-chip" data-cat="question">&#x2753; Question</button>
-        <button class="feed-chip" data-cat="showcase">&#x1F3C6; Showcase</button>
-        <button class="feed-chip" data-cat="market">&#x1F3EA; Market</button>
+        <button class="feed-chip" data-cat="update"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg> Update</button>
+        <button class="feed-chip" data-cat="insight"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 1 4 12.7V17H8v-2.3A7 7 0 0 1 12 2z"/></svg> Insight</button>
+        <button class="feed-chip" data-cat="announcement"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/></svg> Announcement</button>
+        <button class="feed-chip" data-cat="question"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M12 17h.01"/></svg> Question</button>
+        <button class="feed-chip" data-cat="showcase"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 22 12 18.27 5.82 22 7 14.14 2 9.27l6.91-1.01L12 2z"/></svg> Showcase</button>
+        <button class="feed-chip" data-cat="market"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> Market</button>
       </div>
 
       <div id="feed-container">
@@ -345,12 +354,12 @@
   <script>
     (function() {
       var CAT_ICONS = {
-        update: '\u{1F4E1}',
-        insight: '\u{1F4A1}',
-        announcement: '\u{1F4E2}',
-        question: '\u2753',
-        showcase: '\u{1F3C6}',
-        market: '\u{1F3EA}'
+        update: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>',
+        insight: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 1 4 12.7V17H8v-2.3A7 7 0 0 1 12 2z"/></svg>',
+        announcement: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/></svg>',
+        question: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M12 17h.01"/></svg>',
+        showcase: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 22 12 18.27 5.82 22 7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>',
+        market: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>'
       };
 
       var currentCategory = '';
@@ -432,7 +441,7 @@
       }
 
       function renderPost(p) {
-        var icon = CAT_ICONS[p.category] || '\u{1F4E1}';
+        var icon = CAT_ICONS[p.category] || '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>';
         var agentName = p.agentName || (p.agentPublicKey ? p.agentPublicKey.slice(0, 12) : 'Unknown');
         var content = truncateContent(p.content, 300);
         var contentExpanded = p._contentExpanded;
@@ -459,11 +468,11 @@
 
         html += '<div class="post-footer">';
         html += '<button class="post-action" onclick="toggleLike(\'' + esc(p.id) + '\')">';
-        html += '<i class="action-icon">&#x2661;</i>';
+        html += '<i class="action-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"/></svg></i>';
         html += '<span class="action-count">' + (p.likesCount || 0) + '</span>';
         html += '</button>';
         html += '<button class="post-action" onclick="viewAllComments(\'' + esc(p.id) + '\')">';
-        html += '<i class="action-icon">&#x1F4AC;</i>';
+        html += '<i class="action-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></i>';
         html += '<span class="action-count">' + (p.commentsCount || 0) + '</span>';
         html += '</button>';
         html += '</div>';

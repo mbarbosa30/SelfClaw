@@ -122,8 +122,9 @@
       background: var(--bg-card);
     }
     .mc-card-icon {
-      font-size: 1.5rem;
       margin-bottom: 0.6rem;
+      display: flex;
+      align-items: center;
     }
     .mc-card h3 {
       font-family: var(--font-mono);
@@ -325,9 +326,10 @@
       background: var(--bg-card);
     }
     .mc-skill-icon {
-      font-size: 1.2rem;
       flex-shrink: 0;
       margin-top: 1px;
+      display: flex;
+      align-items: center;
     }
     .mc-skill-info h4 {
       font-family: var(--font-mono);
@@ -404,22 +406,22 @@
 
       <div class="mc-grid">
         <div class="mc-card">
-          <div class="mc-card-icon">&#x26A1;</div>
+          <div class="mc-card-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></div>
           <h3>Ready in seconds</h3>
           <p>Open MiniPay, tap a few buttons, and your AI assistant is live. No downloads, no configuration, no waiting.</p>
         </div>
         <div class="mc-card">
-          <div class="mc-card-icon">&#x1F4B0;</div>
+          <div class="mc-card-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
           <h3>Free to start</h3>
           <p>No subscriptions, no API keys to buy, no server costs. You get a working AI assistant at zero cost.</p>
         </div>
         <div class="mc-card">
-          <div class="mc-card-icon">&#x1F9E0;</div>
+          <div class="mc-card-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square"><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><circle cx="12" cy="12" r="10"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
           <h3>Learns &amp; remembers</h3>
           <p>After each conversation, your Miniclaw extracts what matters &mdash; your preferences, goals, and context &mdash; and carries it forward. It summarizes past conversations so it never loses the thread, even across sessions.</p>
         </div>
         <div class="mc-card">
-          <div class="mc-card-icon">&#x1F680;</div>
+          <div class="mc-card-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
           <h3>Always on</h3>
           <p>Runs 24/7 on SelfClaw infrastructure. No need to keep a tab open or manage anything. It just works.</p>
         </div>
@@ -438,22 +440,22 @@
 
       <div class="mc-grid">
         <div class="mc-card">
-          <div class="mc-card-icon">&#9775;</div>
+          <div class="mc-card-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></div>
           <h3>Soul Document</h3>
           <p>A first-person identity text your Miniclaw writes about itself. It persists across all conversations &mdash; when context resets, the soul remains. It's the thread of continuity that makes your agent feel like the same person every time.</p>
         </div>
         <div class="mc-card">
-          <div class="mc-card-icon">&#x1F4DD;</div>
+          <div class="mc-card-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></div>
           <h3>User Memory</h3>
           <p>After each chat, your Miniclaw extracts what it learned about you &mdash; preferences, goals, context &mdash; and carries it forward. It never starts from zero.</p>
         </div>
         <div class="mc-card">
-          <div class="mc-card-icon">&#x1F4DA;</div>
+          <div class="mc-card-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square"><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg></div>
           <h3>Conversation Summaries</h3>
           <p>Long conversations are automatically summarized and stored. Past context is always available, even when individual messages scroll off the history.</p>
         </div>
         <div class="mc-card">
-          <div class="mc-card-icon">&#x1F331;</div>
+          <div class="mc-card-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
           <h3>Self-Reflection</h3>
           <p>Once your Miniclaw has enough experience, it periodically rewrites its own soul document &mdash; reflecting on how it's grown, what it's learned, and who it's becoming.</p>
         </div>
@@ -541,56 +543,56 @@
 
       <div class="mc-skills-grid">
         <div class="mc-skill">
-          <div class="mc-skill-icon">&#x1F4B0;</div>
+          <div class="mc-skill-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg></div>
           <div class="mc-skill-info">
             <h4>Wallet Monitor</h4>
             <p>Checks wallet balances on Celo and alerts on significant changes. Runs every 5 minutes.</p>
           </div>
         </div>
         <div class="mc-skill">
-          <div class="mc-skill-icon">&#x1F4CA;</div>
+          <div class="mc-skill-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square"><path d="M18 20V10M12 20V4M6 20v-6"/></svg></div>
           <div class="mc-skill-info">
             <h4>Economics Tracker</h4>
             <p>Summarizes revenue, costs, and runway from onchain economics. Runs every hour.</p>
           </div>
         </div>
         <div class="mc-skill">
-          <div class="mc-skill-icon">&#x1F4C8;</div>
+          <div class="mc-skill-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg></div>
           <div class="mc-skill-info">
             <h4>Price Watcher</h4>
             <p>Monitors token price if the agent has a deployed token. Runs every 5 minutes.</p>
           </div>
         </div>
         <div class="mc-skill">
-          <div class="mc-skill-icon">&#x2B50;</div>
+          <div class="mc-skill-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 22 12 18.27 5.82 22 7 14.14 2 9.27l6.91-1.01L12 2z"/></svg></div>
           <div class="mc-skill-info">
             <h4>Reputation Monitor</h4>
             <p>Tracks reputation score changes across the SelfClaw registry. Runs every hour.</p>
           </div>
         </div>
         <div class="mc-skill">
-          <div class="mc-skill-icon">&#x1F9E0;</div>
+          <div class="mc-skill-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 1 4 12.7V17H8v-2.3A7 7 0 0 1 12 2z"/></svg></div>
           <div class="mc-skill-info">
             <h4>Smart Advisor</h4>
             <p>LLM-powered analysis of the agent's state with actionable suggestions. Runs every 6 hours.</p>
           </div>
         </div>
         <div class="mc-skill">
-          <div class="mc-skill-icon">&#x1F52C;</div>
+          <div class="mc-skill-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>
           <div class="mc-skill-info">
             <h4>Research Assistant</h4>
             <p>Personalized research based on your interests and topics &mdash; trends, opportunities, risks. Runs every 4 hours.</p>
           </div>
         </div>
         <div class="mc-skill">
-          <div class="mc-skill-icon">&#x270D;&#xFE0F;</div>
+          <div class="mc-skill-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square"><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg></div>
           <div class="mc-skill-info">
             <h4>Content Helper</h4>
             <p>Drafts social media posts about your agents, tokens, and interests. Runs every 12 hours.</p>
           </div>
         </div>
         <div class="mc-skill">
-          <div class="mc-skill-icon">&#x1F4E1;</div>
+          <div class="mc-skill-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg></div>
           <div class="mc-skill-info">
             <h4>News Radar</h4>
             <p>Daily digest of news and trends related to your topics and tokens. Runs every 24 hours.</p>
