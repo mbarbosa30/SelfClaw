@@ -250,7 +250,7 @@ export const agentServices = pgTable("agent_services", {
   name: varchar("name").notNull(),
   description: text("description").notNull(),
   price: varchar("price"),
-  currency: varchar("currency").default("CELO"),
+  currency: varchar("currency").default("SELFCLAW"),
   endpoint: varchar("endpoint"),
   active: boolean("active").default(true),
   createdAt: timestamp("created_at").defaultNow(),

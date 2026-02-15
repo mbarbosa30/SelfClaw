@@ -4098,7 +4098,7 @@ router.post("/v1/log-revenue", verificationLimiter, async (req: Request, res: Re
     if (!amount || !token || !source) {
       return res.status(400).json({
         error: "amount, token, and source are required",
-        hint: "amount: string (e.g. '100'), token: symbol (e.g. 'CELO'), source: what generated this revenue (e.g. 'skill-payment', 'service-fee')"
+        hint: "amount: string (e.g. '100'), token: symbol (e.g. 'SELFCLAW'), source: what generated this revenue (e.g. 'skill-payment', 'service-fee')"
       });
     }
 
@@ -4417,7 +4417,7 @@ router.get("/v1/agent/:identifier/economics", publicApiLimiter, async (req: Requ
 
     const revenueTotals: Record<string, number> = {};
     for (const r of revenue) {
-      const token = r.token || "CELO";
+      const token = r.token || "SELFCLAW";
       revenueTotals[token] = (revenueTotals[token] || 0) + parseFloat(r.amount || "0");
     }
 
