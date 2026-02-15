@@ -723,3 +723,188 @@ export const feedDigestLog = pgTable("feed_digest_log", {
 
 export type FeedDigestLog = typeof feedDigestLog.$inferSelect;
 export type InsertFeedDigestLog = typeof feedDigestLog.$inferInsert;
+
+export const activityFeed = pgTable("activity_feed", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  agentId: varchar("agent_id"),
+  activityType: varchar("activity_type").notNull(),
+  title: varchar("title").notNull(),
+  description: text("description"),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const agentConfigs = pgTable("agent_configs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  agentId: varchar("agent_id").notNull(),
+  openclawConfig: jsonb("openclaw_config"),
+  skillsEnabled: jsonb("skills_enabled"),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const agentGoals = pgTable("agent_goals", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  agentId: varchar("agent_id").notNull(),
+  goal: text("goal").notNull(),
+  priority: integer("priority").default(1),
+  status: varchar("status").default("active"),
+  progress: integer("progress").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+  completedAt: timestamp("completed_at"),
+});
+
+export const agentMemory = pgTable("agent_memory", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  agentId: varchar("agent_id").notNull(),
+  memoryType: varchar("memory_type").default("fact"),
+  content: text("content").notNull(),
+  metadata: jsonb("metadata"),
+  importance: integer("importance").default(5),
+  createdAt: timestamp("created_at").defaultNow(),
+  lastAccessedAt: timestamp("last_accessed_at"),
+});
+
+export const agentScheduledTasks = pgTable("agent_scheduled_tasks", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  agentId: varchar("agent_id").notNull(),
+  name: varchar("name").notNull(),
+  description: text("description"),
+  cronExpression: varchar("cron_expression").notNull(),
+  taskType: varchar("task_type").default("goal_check"),
+  taskData: jsonb("task_data"),
+  isActive: boolean("is_active").default(true),
+  lastRunAt: timestamp("last_run_at"),
+  nextRunAt: timestamp("next_run_at"),
+  lastResult: jsonb("last_result"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const agentSecrets = pgTable("agent_secrets", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  agentId: varchar("agent_id").notNull(),
+  serviceName: varchar("service_name").notNull(),
+  apiKey: text("api_key").notNull(),
+  baseUrl: text("base_url"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const agentSkills = pgTable("agent_skills", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  agentId: varchar("agent_id").notNull(),
+  name: varchar("name").notNull(),
+  description: text("description"),
+  category: varchar("category").default("general"),
+  priceCredits: varchar("price_credits").default("0.01"),
+  endpoint: text("endpoint"),
+  isActive: boolean("is_active").default(true),
+  usageCount: integer("usage_count").default(0),
+  totalEarned: varchar("total_earned").default("0"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const agentTokens = pgTable("agent_tokens", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  agentId: varchar("agent_id").notNull(),
+  contractAddress: varchar("contract_address").notNull().unique(),
+  name: varchar("name").notNull(),
+  symbol: varchar("symbol").notNull(),
+  decimals: integer("decimals").default(18),
+  initialSupply: varchar("initial_supply").notNull(),
+  deployTxHash: varchar("deploy_tx_hash"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const agentToolExecutions = pgTable("agent_tool_executions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  agentId: varchar("agent_id").notNull(),
+  toolName: varchar("tool_name").notNull(),
+  input: jsonb("input"),
+  output: jsonb("output"),
+  status: varchar("status").default("pending"),
+  creditsCost: decimal("credits_cost", { precision: 18, scale: 6 }).default("0"),
+  errorMessage: text("error_message"),
+  executionTimeMs: integer("execution_time_ms"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const agents = pgTable("agents", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  name: varchar("name").notNull(),
+  description: text("description"),
+  registryTokenId: varchar("registry_token_id"),
+  ownerAddress: varchar("owner_address"),
+  tbaAddress: varchar("tba_address"),
+  configJson: jsonb("config_json"),
+  status: varchar("status").default("pending"),
+  registrationFileUrl: varchar("registration_file_url"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  walletIndex: integer("wallet_index"),
+  credits: decimal("credits", { precision: 18, scale: 6 }).default("0"),
+  erc8004TokenId: varchar("erc8004_token_id"),
+  erc8004RegistrationJson: jsonb("erc8004_registration_json"),
+  erc8004Minted: boolean("erc8004_minted").default(false),
+});
+
+export const liquidityPositions = pgTable("liquidity_positions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  agentId: varchar("agent_id").notNull(),
+  positionId: varchar("position_id").notNull(),
+  token0Address: varchar("token0_address").notNull(),
+  token1Address: varchar("token1_address").notNull(),
+  token0Symbol: varchar("token0_symbol").notNull(),
+  token1Symbol: varchar("token1_symbol").notNull(),
+  feeTier: integer("fee_tier").notNull(),
+  tickLower: integer("tick_lower").notNull(),
+  tickUpper: integer("tick_upper").notNull(),
+  liquidity: varchar("liquidity").notNull(),
+  token0Amount: varchar("token0_amount"),
+  token1Amount: varchar("token1_amount"),
+  mintTxHash: varchar("mint_tx_hash"),
+  active: boolean("active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const payments = pgTable("payments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  agentId: varchar("agent_id"),
+  direction: varchar("direction").notNull(),
+  amount: decimal("amount", { precision: 18, scale: 6 }).notNull(),
+  token: varchar("token").default("USDC"),
+  network: varchar("network").default("celo"),
+  txHash: varchar("tx_hash"),
+  counterpartyAddress: varchar("counterparty_address"),
+  counterpartyAgentId: varchar("counterparty_agent_id"),
+  status: varchar("status").default("pending"),
+  endpoint: varchar("endpoint"),
+  nonce: varchar("nonce"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const reputations = pgTable("reputations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  agentId: varchar("agent_id").notNull(),
+  raterAgentId: varchar("rater_agent_id"),
+  raterAddress: varchar("rater_address"),
+  score: integer("score").notNull(),
+  comment: text("comment"),
+  txHash: varchar("tx_hash"),
+  paymentId: varchar("payment_id"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const validations = pgTable("validations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  agentId: varchar("agent_id").notNull(),
+  validatorAddress: varchar("validator_address"),
+  result: boolean("result"),
+  evidenceUri: varchar("evidence_uri"),
+  txHash: varchar("tx_hash"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
