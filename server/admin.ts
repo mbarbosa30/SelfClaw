@@ -1407,6 +1407,46 @@ router.patch("/agents/:publicKey/visibility", async (req: Request, res: Response
   }
 });
 
+router.patch("/agents/:publicKey/rename", async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    const { publicKey } = req.params;
+    const { name } = req.body;
+    if (typeof name !== 'string' || name.trim().length < 2 || name.trim().length > 40) {
+      return res.status(400).json({ error: "Name must be 2-40 characters" });
+    }
+    const cleanName = name.trim();
+    if (!/^[a-zA-Z0-9][a-zA-Z0-9_\- ]*$/.test(cleanName)) {
+      return res.status(400).json({ error: "Name must start with a letter or number and contain only letters, numbers, hyphens, underscores, and spaces" });
+    }
+
+    const agents = await db.select().from(verifiedBots)
+      .where(sql`${verifiedBots.publicKey} = ${publicKey}`).limit(1);
+    if (agents.length === 0) {
+      return res.status(404).json({ error: "Agent not found" });
+    }
+
+    const existing = await db.select({ id: verifiedBots.id })
+      .from(verifiedBots)
+      .where(sql`LOWER(${verifiedBots.deviceId}) = LOWER(${cleanName}) AND ${verifiedBots.publicKey} != ${publicKey}`)
+      .limit(1);
+    if (existing.length > 0) {
+      return res.status(409).json({ error: "Name already taken by another agent" });
+    }
+
+    const oldName = agents[0].deviceId;
+    await db.update(verifiedBots)
+      .set({ deviceId: cleanName })
+      .where(sql`${verifiedBots.publicKey} = ${publicKey}`);
+
+    console.log(`[admin] Agent renamed: "${oldName}" → "${cleanName}"`);
+    res.json({ success: true, oldName, newName: cleanName });
+  } catch (error: any) {
+    console.error("[admin] agent rename error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 router.delete("/agents/:publicKey", async (req: Request, res: Response) => {
   if (!requireAdmin(req, res)) return;
   try {

@@ -2138,6 +2138,8 @@
             var hideColor = agent.hidden ? 'var(--green-verify)' : '#b8860b';
             html += '<button data-toggle-visibility="' + encodeURIComponent(agent.publicKey) + '" data-currently-hidden="' + (agent.hidden ? '1' : '0') + '" data-agent-name="' + esc(agent.agentName || agent.publicKey.slice(0, 16)) + '" style="background:none;border:2px solid ' + hideBorder + ';color:' + hideColor + ';padding:0.25rem 0.6rem;cursor:pointer;font-family:IBM Plex Mono,monospace;font-size:0.55rem;font-weight:600;text-transform:uppercase;letter-spacing:0.03em;">' + hideLabel + '</button>';
 
+            html += '<button data-rename-agent="' + encodeURIComponent(agent.publicKey) + '" data-agent-name="' + esc(agent.agentName || '') + '" style="background:none;border:2px solid #3B82F6;color:#3B82F6;padding:0.25rem 0.6rem;cursor:pointer;font-family:IBM Plex Mono,monospace;font-size:0.55rem;font-weight:600;text-transform:uppercase;letter-spacing:0.03em;">Rename</button>';
+
             html += '<button data-remove-agent="' + encodeURIComponent(agent.publicKey) + '" data-agent-name="' + esc(agent.agentName || agent.publicKey.slice(0, 16)) + '" style="background:none;border:2px solid #ef4444;color:#ef4444;padding:0.25rem 0.6rem;cursor:pointer;font-family:IBM Plex Mono,monospace;font-size:0.55rem;font-weight:600;text-transform:uppercase;letter-spacing:0.03em;">Remove</button>';
 
             html += '</div></td>';
@@ -2189,6 +2191,37 @@
         .catch(function(err) {
           toggleBtn.disabled = false;
           toggleBtn.textContent = isHidden ? 'SHOW' : 'HIDE';
+          alert('Error: ' + err.message);
+        });
+        return;
+      }
+
+      var renameBtn = e.target.closest('[data-rename-agent]');
+      if (renameBtn) {
+        var pk = decodeURIComponent(renameBtn.getAttribute('data-rename-agent'));
+        var currentName = renameBtn.getAttribute('data-agent-name') || '';
+        var newName = prompt('Enter new name for agent (2-40 characters):', currentName);
+        if (newName === null || newName.trim() === '' || newName.trim() === currentName) return;
+        renameBtn.disabled = true;
+        renameBtn.textContent = '...';
+        fetch('/api/admin/agents/' + encodeURIComponent(pk) + '/rename', {
+          method: 'PATCH',
+          headers: Object.assign({ 'Content-Type': 'application/json' }, authHeaders()),
+          body: JSON.stringify({ name: newName.trim() })
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (data.success) {
+            loadAgentManagement();
+          } else {
+            renameBtn.disabled = false;
+            renameBtn.textContent = 'RENAME';
+            alert('Failed: ' + (data.error || 'Unknown error'));
+          }
+        })
+        .catch(function(err) {
+          renameBtn.disabled = false;
+          renameBtn.textContent = 'RENAME';
           alert('Error: ' + err.message);
         });
         return;
