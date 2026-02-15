@@ -73,7 +73,6 @@ server.headersTimeout = 66000;
 server.listen(PORT, "0.0.0.0", () => {
   console.log(`[boot] SelfClaw listening on port ${PORT}`);
   console.log("[boot] Health check ready — / and /health respond immediately");
-  console.log("[boot] Loading Express application in background...");
 
   setImmediate(() => {
     loadApp().catch(err => {
@@ -83,24 +82,39 @@ server.listen(PORT, "0.0.0.0", () => {
 });
 
 async function loadApp() {
-  try {
-    let appMod;
+  const distPath = path.join(__dirname, "..", "dist", "server.mjs");
+  const hasDistBuild = fs.existsSync(distPath);
+
+  if (hasDistBuild) {
+    console.log("[boot] Loading pre-compiled production build...");
     try {
-      const mod = await import("tsx/esm/api");
-      const tsImport = mod.tsImport || mod.default?.tsImport;
-      if (tsImport) {
-        appMod = await tsImport("./index.ts", import.meta.url);
-      }
-    } catch {}
-
-    if (!appMod) {
-      appMod = await import("./index.ts");
+      const appMod = await import(distPath);
+      expressApp = appMod.app;
+      await new Promise(resolve => setTimeout(resolve, 100));
+      appReady = true;
+      console.log("[boot] Express app mounted from dist/server.mjs");
+      return;
+    } catch (err) {
+      console.error("[boot] dist/server.mjs failed:", err.message);
+      console.log("[boot] Falling back to tsx...");
     }
+  } else {
+    console.log("[boot] No dist build found, using tsx...");
+  }
 
-    expressApp = appMod.app;
+  try {
+    const mod = await import("tsx/esm/api");
+    const tsImport = mod.tsImport || mod.default?.tsImport;
+    if (tsImport) {
+      const appMod = await tsImport("./index.ts", import.meta.url);
+      expressApp = appMod.app;
+    } else {
+      const appMod = await import("./index.ts");
+      expressApp = appMod.app;
+    }
     await new Promise(resolve => setTimeout(resolve, 100));
     appReady = true;
-    console.log("[boot] Express app mounted successfully");
+    console.log("[boot] Express app mounted via tsx");
   } catch (err) {
     console.error("[boot] Critical: Could not load app:", err.message);
     console.error("[boot] Server will continue serving static files only");

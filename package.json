@@ -8,7 +8,7 @@
     "start": "tsx server/index.ts",
     "start:prod": "node server/boot.mjs",
     "dev": "tsx watch server/index.ts",
-    "build": "echo 'No build step required - using tsx runtime'",
+    "build": "node build.mjs",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio"
   },
