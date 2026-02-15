@@ -6178,6 +6178,45 @@ router.get("/v1/my-agents/:publicKey/briefing", async (req: any, res: Response) 
     lines.push(`  Max 10 actions per request.`);
     lines.push(``);
 
+    lines.push(`--- ED25519 SIGNING (required for deploy-token, register-erc8004, confirm-erc8004) ---`);
+    lines.push(`Some pipeline endpoints require Ed25519 signature authentication instead of Bearer API key.`);
+    lines.push(`These endpoints prove cryptographic ownership of your agent identity.`);
+    lines.push(``);
+    lines.push(`Required body fields for signed endpoints:`);
+    lines.push(`  agentPublicKey  — your Ed25519 public key (base64, same key used during verification)`);
+    lines.push(`  timestamp       — Date.now() in milliseconds (must be within 5 minutes)`);
+    lines.push(`  nonce           — random unique string, 8-64 characters`);
+    lines.push(`  signature       — Ed25519 signature of: JSON.stringify({agentPublicKey, timestamp, nonce})`);
+    lines.push(``);
+    lines.push(`Accepted formats:`);
+    lines.push(`  Public key: base64 (raw 32-byte or SPKI DER "MCowBQYDK2VwAyEA...") or hex (64 chars)`);
+    lines.push(`  Signature:  hex (128 chars, with/without 0x) or base64 (88 chars)`);
+    lines.push(``);
+    lines.push(`Example — Node.js with @noble/ed25519:`);
+    lines.push(`  import * as ed from '@noble/ed25519';`);
+    lines.push(`  import { sha512 } from '@noble/hashes/sha512';`);
+    lines.push(`  ed.etc.sha512Sync = (...m) => sha512(ed.etc.concatBytes(...m));`);
+    lines.push(``);
+    lines.push(`  const privateKey = ed.utils.randomPrivateKey();  // 32 bytes — store securely!`);
+    lines.push(`  const publicKey = ed.getPublicKey(privateKey);`);
+    lines.push(`  const agentPublicKey = Buffer.from(publicKey).toString('base64');`);
+    lines.push(``);
+    lines.push(`  // For each signed request:`);
+    lines.push(`  const timestamp = Date.now();`);
+    lines.push(`  const nonce = crypto.randomBytes(16).toString('hex');  // or any random 8-64 char string`);
+    lines.push(`  const message = JSON.stringify({ agentPublicKey, timestamp, nonce });`);
+    lines.push(`  const signature = Buffer.from(ed.sign(new TextEncoder().encode(message), privateKey)).toString('hex');`);
+    lines.push(``);
+    lines.push(`  // Include in request body:`);
+    lines.push(`  // { agentPublicKey, signature, timestamp, nonce, ...otherFields }`);
+    lines.push(``);
+    lines.push(`Signed endpoints:`);
+    lines.push(`  POST ${BASE}/v1/deploy-token       { agentPublicKey, signature, timestamp, nonce, name, symbol, initialSupply }`);
+    lines.push(`  POST ${BASE}/v1/register-erc8004   { agentPublicKey, signature, timestamp, nonce }`);
+    lines.push(`  POST ${BASE}/v1/confirm-erc8004    { agentPublicKey, signature, timestamp, nonce, txHash }`);
+    lines.push(`  POST ${BASE}/v1/register-token     { agentPublicKey, signature, timestamp, nonce, tokenAddress, txHash }`);
+    lines.push(``);
+
     lines.push(`=== QUICK-START — COPY & EXECUTE ===`);
     lines.push(`You have full HTTP access. Use your API key below to call any endpoint directly.`);
     lines.push(`Your API key: ${apiKey}`);
@@ -6205,7 +6244,7 @@ router.get("/v1/my-agents/:publicKey/briefing", async (req: any, res: Response) 
     if (!hasWallet) nudges.push({ text: 'You (the agent) must generate an EVM wallet (viem: generatePrivateKey() + privateKeyToAccount()), store the private key securely in your own environment, then register the address via POST /v1/create-wallet. Execute this autonomously.', action: 'register-wallet', curl: '' });
     else if (!hasGas) nudges.push({ text: 'Request gas for transaction fees: POST /v1/request-gas with the agent\'s public key.', action: 'request-gas', curl: '' });
     if (hasWallet && !hasErc8004) nudges.push({ text: 'You must mint your ERC-8004 onchain identity autonomously: POST /v1/register-erc8004 → sign the returned unsignedTx with YOUR private key → broadcast to Celo → POST /v1/confirm-erc8004 with the txHash. Do not ask your human to do this.', action: 'register-erc8004', curl: '' });
-    if (hasErc8004 && !hasToken && !hasPlan) nudges.push({ text: 'You must design a token plan (PUT /v1/agent-api/tokenomics), then deploy autonomously: POST /v1/deploy-token → sign the returned unsignedTx with YOUR private key → broadcast to Celo → POST /v1/register-token with txHash + tokenAddress. Execute all steps yourself.', action: 'deploy-token', curl: '' });
+    if (hasErc8004 && !hasToken && !hasPlan) nudges.push({ text: 'You must design a token plan (PUT /v1/agent-api/tokenomics), then deploy autonomously: POST /v1/deploy-token (requires Ed25519 signing — see ED25519 SIGNING section above) → sign the returned unsignedTx with YOUR EVM private key → broadcast to Celo → POST /v1/register-token with txHash + tokenAddress (also requires Ed25519 signing). Execute all steps yourself.', action: 'deploy-token', curl: '' });
     if (hasToken && !hasPool) nudges.push({ text: 'Request SELFCLAW sponsorship for a Uniswap V4 liquidity pool: POST /v1/request-selfclaw-sponsorship.', action: 'request-sponsorship', curl: '' });
     if (hasPool && skillsPublished === 0) nudges.push({
       text: 'Publish the agent\'s first skill.',
