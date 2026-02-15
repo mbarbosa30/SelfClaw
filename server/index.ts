@@ -1,21 +1,6 @@
 import express, { type Request, type Response } from "express";
 import helmet from "helmet";
-import { setupSelfAuth, isAuthenticated, registerAuthRoutes } from "./self-auth.js";
-import { db, pool } from "./db.js";
-import { verifiedBots } from "../shared/schema.js";
-import { sql } from "drizzle-orm";
-import selfclawRouter from "./selfclaw.js";
-import adminRouter, { runAutoClaimPendingBridges } from "./admin.js";
-import hostingerRouter from "./hostinger-routes.js";
-import sandboxRouter, { initOpenClawGateway } from "./sandbox-agent.js";
-import { hostedAgentsRouter, startAgentWorker } from "./hosted-agents.js";
-import { skillMarketRouter } from "./skill-market.js";
-import agentCommerceRouter from "./agent-commerce.js";
-import reputationRouter from "./reputation.js";
-import agentApiRouter from "./agent-api.js";
-import agentFeedRouter from "./agent-feed.js";
-import { startFeedDigest } from "./feed-digest.js";
-import { erc8004Service } from "../lib/erc8004.js";
+import path from "path";
 
 process.on('unhandledRejection', (reason: any) => {
   console.error('[FATAL] Unhandled promise rejection:', reason?.message || reason);
@@ -36,15 +21,23 @@ app.use(helmet({
   crossOriginEmbedderPolicy: false,
 }));
 
-app.use((req, res, next) => {
-  const isStreaming = req.path.includes('/chat') || req.path.includes('/messages');
-  const timeout = isStreaming ? 120000 : 30000;
-  req.setTimeout(timeout);
-  res.setTimeout(timeout);
-  next();
-});
+function sendHtml(res: Response, file: string, extraHeaders?: Record<string, string>) {
+  res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+  res.setHeader("Pragma", "no-cache");
+  res.setHeader("Expires", "0");
+  if (extraHeaders) {
+    for (const [k, v] of Object.entries(extraHeaders)) {
+      res.setHeader(k, v);
+    }
+  }
+  res.sendFile(file, { root: "public" });
+}
 
 app.get("/", (_req: Request, res: Response) => sendHtml(res, "index.html"));
+
+app.get("/health", (_req: Request, res: Response) => {
+  res.json({ status: "ok", uptime: process.uptime(), timestamp: new Date().toISOString() });
+});
 
 app.use(express.static("public", {
   setHeaders: (res, filePath) => {
@@ -59,18 +52,6 @@ app.use(express.static("public", {
 app.get("/skill.md", (req: Request, res: Response) => {
   res.sendFile("skill.md", { root: "public" });
 });
-
-function sendHtml(res: Response, file: string, extraHeaders?: Record<string, string>) {
-  res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
-  res.setHeader("Pragma", "no-cache");
-  res.setHeader("Expires", "0");
-  if (extraHeaders) {
-    for (const [k, v] of Object.entries(extraHeaders)) {
-      res.setHeader(k, v);
-    }
-  }
-  res.sendFile(file, { root: "public" });
-}
 
 app.get("/verify", (_req: Request, res: Response) => sendHtml(res, "verify.html"));
 app.get("/economy", (_req: Request, res: Response) => sendHtml(res, "token.html"));
@@ -103,7 +84,37 @@ app.get("/technology", (_req: Request, res: Response) => res.redirect(301, "/"))
 app.get("/vision", (_req: Request, res: Response) => res.redirect(301, "/"));
 app.get("/docs", (_req: Request, res: Response) => res.redirect(301, "/developers"));
 
-async function main() {
+const server = app.listen(PORT, "0.0.0.0", () => {
+  console.log(`
+╔════════════════════════════════════════════════════════════╗
+║       SelfClaw Agent Verification Registry                ║
+║       Running on port ${PORT}                                 ║
+╚════════════════════════════════════════════════════════════╝
+`);
+  console.log(`Access at: http://0.0.0.0:${PORT}`);
+
+  initializeApp().catch(err => {
+    console.error('[startup] Initialization failed:', err.message);
+  });
+});
+
+server.keepAliveTimeout = 65000;
+server.headersTimeout = 66000;
+
+async function initializeApp() {
+  const { setupSelfAuth, registerAuthRoutes } = await import("./self-auth.js");
+  const { db, pool } = await import("./db.js");
+  const { verifiedBots } = await import("../shared/schema.js");
+  const { sql } = await import("drizzle-orm");
+
+  app.use((req, res, next) => {
+    const isStreaming = req.path.includes('/chat') || req.path.includes('/messages');
+    const timeout = isStreaming ? 120000 : 30000;
+    req.setTimeout(timeout);
+    res.setTimeout(timeout);
+    next();
+  });
+
   try {
     await setupSelfAuth(app);
     registerAuthRoutes(app);
@@ -114,6 +125,19 @@ async function main() {
       res.status(503).json({ error: "Authentication not available. Please try again later." });
     });
   }
+
+  const { default: selfclawRouter } = await import("./selfclaw.js");
+  const { default: adminRouter, runAutoClaimPendingBridges } = await import("./admin.js");
+  const { default: hostingerRouter } = await import("./hostinger-routes.js");
+  const { default: sandboxRouter, initOpenClawGateway } = await import("./sandbox-agent.js");
+  const { hostedAgentsRouter, startAgentWorker } = await import("./hosted-agents.js");
+  const { skillMarketRouter } = await import("./skill-market.js");
+  const { default: agentCommerceRouter } = await import("./agent-commerce.js");
+  const { default: reputationRouter } = await import("./reputation.js");
+  const { default: agentApiRouter } = await import("./agent-api.js");
+  const { default: agentFeedRouter } = await import("./agent-feed.js");
+  const { startFeedDigest } = await import("./feed-digest.js");
+  const { erc8004Service } = await import("../lib/erc8004.js");
 
   app.use("/api/selfclaw", selfclawRouter);
   app.use("/api/admin", adminRouter);
@@ -162,10 +186,6 @@ async function main() {
       resolver: config.resolver,
       explorer: config.explorer,
     });
-  });
-
-  app.get("/health", (_req: Request, res: Response) => {
-    res.json({ status: "ok", uptime: process.uptime(), timestamp: new Date().toISOString() });
   });
 
   try {
@@ -270,57 +290,40 @@ async function main() {
     console.error('[migration] API key backfill failed:', err.message);
   }
 
-  console.log('[startup] Core setup complete, starting server...');
-  return app;
+  console.log('[startup] Core setup complete');
+
+  setTimeout(() => {
+    runAutoClaimPendingBridges().catch(err =>
+      console.error('[auto-bridge] Startup auto-claim error:', err.message)
+    );
+  }, 5000);
+
+  setTimeout(() => {
+    initOpenClawGateway().catch(err =>
+      console.log('[sandbox] OpenClaw init deferred:', err.message)
+    );
+  }, 3000);
+
+  setTimeout(() => {
+    startAgentWorker();
+    console.log('[hosted-agents] Agent worker started');
+  }, 8000);
+
+  setTimeout(() => {
+    startFeedDigest().catch(err =>
+      console.error('[feed-digest] Start error:', err.message)
+    );
+  }, 12000);
+
+  console.log('[startup] Async initialization complete');
 }
-
-const server = app.listen(PORT, "0.0.0.0", () => {
-  console.log(`
-╔════════════════════════════════════════════════════════════╗
-║       SelfClaw Agent Verification Registry                ║
-║       Running on port ${PORT}                                 ║
-╚════════════════════════════════════════════════════════════╝
-`);
-  console.log(`Access at: http://0.0.0.0:${PORT}`);
-
-  main().then(() => {
-    console.log('[startup] Async initialization complete');
-
-    setTimeout(() => {
-      runAutoClaimPendingBridges().catch(err =>
-        console.error('[auto-bridge] Startup auto-claim error:', err.message)
-      );
-    }, 5000);
-
-    setTimeout(() => {
-      initOpenClawGateway().catch(err =>
-        console.log('[sandbox] OpenClaw init deferred:', err.message)
-      );
-    }, 3000);
-
-    setTimeout(() => {
-      startAgentWorker();
-      console.log('[hosted-agents] Agent worker started');
-    }, 8000);
-
-    setTimeout(() => {
-      startFeedDigest().catch(err =>
-        console.error('[feed-digest] Start error:', err.message)
-      );
-    }, 12000);
-  }).catch(err => {
-    console.error('[startup] Initialization failed:', err.message);
-  });
-});
-
-server.keepAliveTimeout = 65000;
-server.headersTimeout = 66000;
 
 function gracefulShutdown(signal: string) {
   console.log(`[server] ${signal} received, shutting down gracefully...`);
   server.close(async () => {
     console.log('[server] HTTP server closed');
     try {
+      const { pool } = await import("./db.js");
       await pool.end();
       console.log('[server] Database pool closed');
     } catch (e) {}
