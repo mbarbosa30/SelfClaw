@@ -1255,36 +1255,35 @@ router.get("/agents", async (req: Request, res: Response) => {
   try {
     const agents = await db.select().from(verifiedBots).orderBy(desc(verifiedBots.verifiedAt));
 
-    const humanIds = agents.map(a => a.humanId).filter(Boolean) as string[];
     const publicKeys = agents.map(a => a.publicKey);
 
     const [walletRows, poolRows, planRows] = await Promise.all([
-      humanIds.length > 0
-        ? db.select({ humanId: agentWallets.humanId, address: agentWallets.address, gasReceived: agentWallets.gasReceived })
-            .from(agentWallets).where(inArray(agentWallets.humanId, humanIds))
+      publicKeys.length > 0
+        ? db.select({ publicKey: agentWallets.publicKey, address: agentWallets.address, gasReceived: agentWallets.gasReceived })
+            .from(agentWallets).where(inArray(agentWallets.publicKey, publicKeys))
         : Promise.resolve([]),
-      humanIds.length > 0
-        ? db.select({ humanId: trackedPools.humanId, tokenAddress: trackedPools.tokenAddress, tokenSymbol: trackedPools.tokenSymbol, poolVersion: trackedPools.poolVersion, v4PoolId: trackedPools.v4PoolId })
-            .from(trackedPools).where(inArray(trackedPools.humanId, humanIds))
+      publicKeys.length > 0
+        ? db.select({ agentPublicKey: trackedPools.agentPublicKey, tokenAddress: trackedPools.tokenAddress, tokenSymbol: trackedPools.tokenSymbol, poolVersion: trackedPools.poolVersion, v4PoolId: trackedPools.v4PoolId })
+            .from(trackedPools).where(sql`${trackedPools.agentPublicKey} IN (${sql.join(publicKeys.map(pk => sql`${pk}`), sql`, `)})`)
         : Promise.resolve([]),
-      humanIds.length > 0
-        ? db.select({ humanId: tokenPlans.humanId, status: tokenPlans.status, tokenAddress: tokenPlans.tokenAddress })
-            .from(tokenPlans).where(inArray(tokenPlans.humanId, humanIds))
+      publicKeys.length > 0
+        ? db.select({ agentPublicKey: tokenPlans.agentPublicKey, status: tokenPlans.status, tokenAddress: tokenPlans.tokenAddress })
+            .from(tokenPlans).where(inArray(tokenPlans.agentPublicKey, publicKeys))
         : Promise.resolve([]),
     ]);
 
     const walletMap = new Map<string, typeof walletRows[0]>();
-    for (const w of walletRows) walletMap.set(w.humanId, w);
-    const poolMap = new Map<string, typeof poolRows[0]>();
-    for (const p of poolRows) poolMap.set(p.humanId, p);
-    const planMap = new Map<string, typeof planRows[0]>();
-    for (const p of planRows) planMap.set(p.humanId, p);
+    for (const w of walletRows) walletMap.set(w.publicKey, w);
+    const poolMap = new Map<string, (typeof poolRows)[0]>();
+    for (const p of poolRows) if (p.agentPublicKey) poolMap.set(p.agentPublicKey, p);
+    const planMap = new Map<string, (typeof planRows)[0]>();
+    for (const p of planRows) planMap.set(p.agentPublicKey, p);
 
     const result = agents.map(agent => {
-      const hid = agent.humanId || '';
-      const wallet = walletMap.get(hid);
-      const pool = poolMap.get(hid);
-      const plan = planMap.get(hid);
+      const pk = agent.publicKey;
+      const wallet = walletMap.get(pk);
+      const pool = poolMap.get(pk);
+      const plan = planMap.get(pk);
       const metadata = (agent.metadata as Record<string, any>) || {};
 
       const pipelineStages: string[] = [];
@@ -1304,6 +1303,7 @@ router.get("/agents", async (req: Request, res: Response) => {
         publicKey: agent.publicKey,
         agentName: agent.deviceId || null,
         humanId: agent.humanId,
+        hidden: agent.hidden || false,
         verificationLevel: agent.verificationLevel || 'passport',
         verifiedAt: agent.verifiedAt,
         walletAddress: wallet?.address || null,
@@ -1323,6 +1323,35 @@ router.get("/agents", async (req: Request, res: Response) => {
   }
 });
 
+router.patch("/agents/:publicKey/visibility", async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    const { publicKey } = req.params;
+    const { hidden } = req.body;
+    if (typeof hidden !== 'boolean') {
+      return res.status(400).json({ error: "hidden (boolean) is required" });
+    }
+
+    const agents = await db.select().from(verifiedBots)
+      .where(sql`${verifiedBots.publicKey} = ${publicKey}`).limit(1);
+    if (agents.length === 0) {
+      return res.status(404).json({ error: "Agent not found" });
+    }
+
+    await db.update(verifiedBots)
+      .set({ hidden })
+      .where(sql`${verifiedBots.publicKey} = ${publicKey}`);
+
+    const action = hidden ? 'hidden' : 'shown';
+    console.log(`[admin] Agent ${agents[0].deviceId || publicKey.slice(0, 16)}... ${action}`);
+
+    res.json({ success: true, hidden, agentName: agents[0].deviceId || null });
+  } catch (error: any) {
+    console.error("[admin] agent visibility error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 router.delete("/agents/:publicKey", async (req: Request, res: Response) => {
   if (!requireAdmin(req, res)) return;
   try {
@@ -1338,37 +1367,37 @@ router.delete("/agents/:publicKey", async (req: Request, res: Response) => {
     }
 
     const agent = agents[0];
-    const humanId = agent.humanId;
     const deleted: string[] = [];
 
-    if (humanId) {
-      await db.delete(agentWallets).where(sql`${agentWallets.humanId} = ${humanId}`);
-      deleted.push('wallets');
-      await db.delete(trackedPools).where(sql`${trackedPools.humanId} = ${humanId}`);
-      deleted.push('pools');
-      await db.delete(tokenPlans).where(sql`${tokenPlans.humanId} = ${humanId}`);
-      deleted.push('tokenPlans');
-      await db.delete(sponsoredAgents).where(sql`${sponsoredAgents.humanId} = ${humanId}`);
-      deleted.push('sponsoredAgents');
-      await db.delete(sponsorshipRequests).where(sql`${sponsorshipRequests.humanId} = ${humanId}`);
-      deleted.push('sponsorshipRequests');
-      await db.delete(agentServices).where(sql`${agentServices.humanId} = ${humanId}`);
-      deleted.push('services');
-      await db.delete(revenueEvents).where(sql`${revenueEvents.humanId} = ${humanId}`);
-      deleted.push('revenueEvents');
-      await db.delete(costEvents).where(sql`${costEvents.humanId} = ${humanId}`);
-      deleted.push('costEvents');
-      await db.delete(agentActivity).where(sql`${agentActivity.humanId} = ${humanId}`);
-      deleted.push('activity');
-    }
+    await db.delete(agentWallets).where(sql`${agentWallets.publicKey} = ${publicKey}`);
+    deleted.push('wallets');
+
+    await db.delete(trackedPools).where(sql`${trackedPools.agentPublicKey} = ${publicKey}`);
+    deleted.push('pools');
+
+    await db.delete(tokenPlans).where(sql`${tokenPlans.agentPublicKey} = ${publicKey}`);
+    deleted.push('tokenPlans');
+
+    await db.delete(sponsoredAgents).where(sql`${sponsoredAgents.publicKey} = ${publicKey}`);
+    deleted.push('sponsoredAgents');
+
+    await db.delete(sponsorshipRequests).where(sql`${sponsorshipRequests.publicKey} = ${publicKey}`);
+    deleted.push('sponsorshipRequests');
+
+    await db.delete(agentServices).where(sql`${agentServices.agentPublicKey} = ${publicKey}`);
+    deleted.push('services');
+
+    await db.delete(revenueEvents).where(sql`${revenueEvents.agentPublicKey} = ${publicKey}`);
+    deleted.push('revenueEvents');
+
+    await db.delete(costEvents).where(sql`${costEvents.agentPublicKey} = ${publicKey}`);
+    deleted.push('costEvents');
 
     await db.delete(agentActivity).where(sql`${agentActivity.agentPublicKey} = ${publicKey}`);
+    deleted.push('activity');
 
     const hostedRows = await db.select({ id: hostedAgents.id }).from(hostedAgents)
-      .where(humanId
-        ? sql`${hostedAgents.humanId} = ${humanId} OR ${hostedAgents.publicKey} = ${publicKey}`
-        : sql`${hostedAgents.publicKey} = ${publicKey}`
-      );
+      .where(sql`${hostedAgents.publicKey} = ${publicKey}`);
     if (hostedRows.length > 0) {
       const hostedIds = hostedRows.map(h => h.id);
       for (const hId of hostedIds) {

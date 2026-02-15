@@ -1380,16 +1380,17 @@ router.post("/v1/verify", async (_req: Request, res: Response) => {
 
 router.get("/v1/stats", publicApiLimiter, async (_req: Request, res: Response) => {
   try {
-    const [totalResult] = await db.select({ count: count() }).from(verifiedBots);
-    const [humanResult] = await db.select({ count: sql<number>`COUNT(DISTINCT ${verifiedBots.humanId})` }).from(verifiedBots);
+    const [totalResult] = await db.select({ count: count() }).from(verifiedBots).where(sql`${verifiedBots.hidden} IS NOT TRUE`);
+    const [humanResult] = await db.select({ count: sql<number>`COUNT(DISTINCT ${verifiedBots.humanId})` }).from(verifiedBots).where(sql`${verifiedBots.hidden} IS NOT TRUE`);
 
     const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
     const [last24hResult] = await db.select({ count: count() })
       .from(verifiedBots)
-      .where(gt(verifiedBots.verifiedAt, oneDayAgo));
+      .where(sql`${verifiedBots.hidden} IS NOT TRUE AND ${verifiedBots.verifiedAt} > ${oneDayAgo}`);
 
     const latestAgent = await db.select({ verifiedAt: verifiedBots.verifiedAt })
       .from(verifiedBots)
+      .where(sql`${verifiedBots.hidden} IS NOT TRUE`)
       .orderBy(desc(verifiedBots.verifiedAt))
       .limit(1);
 
@@ -2238,6 +2239,7 @@ router.get("/v1/agents", publicApiLimiter, async (req: Request, res: Response) =
     .leftJoin(agentWallets, sql`${verifiedBots.humanId} = ${agentWallets.humanId}`)
     .leftJoin(trackedPools, sql`${verifiedBots.humanId} = ${trackedPools.humanId} AND ${trackedPools.humanId} != 'platform'`)
     .leftJoin(tokenPlans, sql`${verifiedBots.humanId} = ${tokenPlans.humanId}`)
+    .where(sql`${verifiedBots.hidden} IS NOT TRUE`)
     .orderBy(desc(verifiedBots.verifiedAt))
     .limit(limitParam);
     

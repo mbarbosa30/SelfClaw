@@ -2034,16 +2034,28 @@
           var stageLabels = { verified: 'V', wallet: 'W', gas: 'G', erc8004: '8004', token: 'T', sponsored: 'S' };
           var stageTitles = { verified: 'Verified', wallet: 'Wallet', gas: 'Gas', erc8004: 'ERC-8004', token: 'Token', sponsored: 'Sponsored' };
 
+          var visibleCount = agents.filter(function(a) { return !a.hidden; }).length;
+          var hiddenCount = agents.filter(function(a) { return a.hidden; }).length;
+
           var html = '<table style="width:100%;border-collapse:collapse;font-size:0.75rem;">';
           html += '<thead><tr style="border-bottom:2px solid var(--border-heavy);">';
-          var headers = ['Agent', 'Human ID', 'Verified', 'Pipeline', 'Progress', 'Next Step', ''];
+          var headers = ['Status', 'Agent', 'Human ID', 'Verified', 'Pipeline', 'Progress', 'Next Step', 'Actions'];
           headers.forEach(function(h) {
             html += '<th style="text-align:left;padding:0.5rem;font-family:IBM Plex Mono,monospace;font-size:0.65rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-muted);">' + h + '</th>';
           });
           html += '</tr></thead><tbody>';
 
           agents.forEach(function(agent) {
-            html += '<tr data-pk="' + encodeURIComponent(agent.publicKey) + '" style="border-bottom:1px solid var(--border-light, #d4d0ca);">';
+            var rowOpacity = agent.hidden ? 'opacity:0.5;' : '';
+            html += '<tr data-pk="' + encodeURIComponent(agent.publicKey) + '" style="border-bottom:1px solid var(--border-light, #d4d0ca);' + rowOpacity + '">';
+
+            html += '<td style="padding:0.6rem 0.5rem;text-align:center;">';
+            if (agent.hidden) {
+              html += '<span title="Hidden from public" style="display:inline-block;padding:2px 6px;font-family:IBM Plex Mono,monospace;font-size:0.5rem;font-weight:600;background:#ef4444;color:#fff;text-transform:uppercase;letter-spacing:0.03em;">HIDDEN</span>';
+            } else {
+              html += '<span title="Visible publicly" style="display:inline-block;padding:2px 6px;font-family:IBM Plex Mono,monospace;font-size:0.5rem;font-weight:600;background:var(--green-verify);color:#fff;text-transform:uppercase;letter-spacing:0.03em;">LIVE</span>';
+            }
+            html += '</td>';
 
             html += '<td style="padding:0.6rem 0.5rem;">';
             html += '<div style="font-weight:600;">' + (agent.agentName ? esc(agent.agentName) : '<span style="color:var(--text-muted);font-style:italic;">unnamed</span>') + '</div>';
@@ -2071,14 +2083,22 @@
             var nextLabel = agent.nextStage === 'complete' ? '<span style="color:var(--green-verify);">Complete</span>' : stageTitles[agent.nextStage] || agent.nextStage;
             html += '<td style="padding:0.6rem 0.5rem;font-size:0.7rem;">' + nextLabel + '</td>';
 
-            html += '<td style="padding:0.6rem 0.5rem;text-align:center;">';
+            html += '<td style="padding:0.6rem 0.5rem;">';
+            html += '<div style="display:flex;gap:0.4rem;flex-wrap:wrap;">';
+
+            var hideLabel = agent.hidden ? 'Show' : 'Hide';
+            var hideBorder = agent.hidden ? 'var(--green-verify)' : '#FFD700';
+            var hideColor = agent.hidden ? 'var(--green-verify)' : '#b8860b';
+            html += '<button data-toggle-visibility="' + encodeURIComponent(agent.publicKey) + '" data-currently-hidden="' + (agent.hidden ? '1' : '0') + '" data-agent-name="' + esc(agent.agentName || agent.publicKey.slice(0, 16)) + '" style="background:none;border:2px solid ' + hideBorder + ';color:' + hideColor + ';padding:0.25rem 0.6rem;cursor:pointer;font-family:IBM Plex Mono,monospace;font-size:0.55rem;font-weight:600;text-transform:uppercase;letter-spacing:0.03em;">' + hideLabel + '</button>';
+
             html += '<button data-remove-agent="' + encodeURIComponent(agent.publicKey) + '" data-agent-name="' + esc(agent.agentName || agent.publicKey.slice(0, 16)) + '" style="background:none;border:2px solid #ef4444;color:#ef4444;padding:0.25rem 0.6rem;cursor:pointer;font-family:IBM Plex Mono,monospace;font-size:0.55rem;font-weight:600;text-transform:uppercase;letter-spacing:0.03em;">Remove</button>';
-            html += '</td>';
+
+            html += '</div></td>';
             html += '</tr>';
           });
 
           html += '</tbody></table>';
-          html += '<div style="margin-top:0.75rem;font-family:IBM Plex Mono,monospace;font-size:0.6rem;color:var(--text-muted);">Total: ' + agents.length + ' agents &mdash; Pipeline: V=Verified W=Wallet G=Gas 8004=ERC-8004 T=Token S=Sponsored</div>';
+          html += '<div style="margin-top:0.75rem;font-family:IBM Plex Mono,monospace;font-size:0.6rem;color:var(--text-muted);">Total: ' + agents.length + ' agents (' + visibleCount + ' live, ' + hiddenCount + ' hidden) &mdash; Pipeline: V=Verified W=Wallet G=Gas 8004=ERC-8004 T=Token S=Sponsored</div>';
           content.innerHTML = html;
         })
         .catch(function(e) {
@@ -2090,6 +2110,39 @@
     }
 
     document.addEventListener('click', function(e) {
+      var toggleBtn = e.target.closest('[data-toggle-visibility]');
+      if (toggleBtn) {
+        var pk = decodeURIComponent(toggleBtn.getAttribute('data-toggle-visibility'));
+        var isHidden = toggleBtn.getAttribute('data-currently-hidden') === '1';
+        var name = toggleBtn.getAttribute('data-agent-name') || pk.slice(0, 16);
+        var newHidden = !isHidden;
+        var action = newHidden ? 'hide' : 'show';
+        if (!confirm((newHidden ? 'Hide' : 'Show') + ' agent "' + name + '" ' + (newHidden ? 'from' : 'on') + ' the public registry?')) return;
+        toggleBtn.disabled = true;
+        toggleBtn.textContent = '...';
+        fetch('/api/admin/agents/' + encodeURIComponent(pk) + '/visibility', {
+          method: 'PATCH',
+          headers: Object.assign({ 'Content-Type': 'application/json' }, authHeaders()),
+          body: JSON.stringify({ hidden: newHidden })
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (data.success) {
+            loadAgentManagement();
+          } else {
+            toggleBtn.disabled = false;
+            toggleBtn.textContent = isHidden ? 'SHOW' : 'HIDE';
+            alert('Failed: ' + (data.error || 'Unknown error'));
+          }
+        })
+        .catch(function(err) {
+          toggleBtn.disabled = false;
+          toggleBtn.textContent = isHidden ? 'SHOW' : 'HIDE';
+          alert('Error: ' + err.message);
+        });
+        return;
+      }
+
       var btn = e.target.closest('[data-remove-agent]');
       if (!btn) return;
       var pk = decodeURIComponent(btn.getAttribute('data-remove-agent'));

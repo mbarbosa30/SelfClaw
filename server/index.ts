@@ -241,6 +241,13 @@ async function main() {
     console.error('[migration] tracked_pools admin columns failed:', err.message);
   }
 
+  try {
+    await pool.query(`ALTER TABLE verified_bots ADD COLUMN IF NOT EXISTS hidden BOOLEAN DEFAULT false;`);
+    console.log('[migration] verified_bots.hidden column ensured');
+  } catch (err: any) {
+    console.error('[migration] verified_bots.hidden column failed:', err.message);
+  }
+
   const server = app.listen(PORT, "0.0.0.0", () => {
     console.log(`
 ╔════════════════════════════════════════════════════════════╗

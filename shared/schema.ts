@@ -60,6 +60,7 @@ export const verifiedBots = pgTable("verified_bots", {
   humanId: varchar("human_id"),
   verificationLevel: varchar("verification_level"),
   metadata: jsonb("metadata"),
+  hidden: boolean("hidden").default(false),
   verifiedAt: timestamp("verified_at").defaultNow(),
   createdAt: timestamp("created_at").defaultNow(),
 });
