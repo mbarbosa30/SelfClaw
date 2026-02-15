@@ -9,7 +9,7 @@ import crypto from "crypto";
 import * as ed from "@noble/ed25519";
 import { createAgentWallet, getAgentWallet, getAgentWalletByHumanId, sendGasSubsidy, getGasWalletInfo, switchWallet } from "../lib/secure-wallet.js";
 import { erc8004Service } from "../lib/erc8004.js";
-import { getReferencePrices, getAgentTokenPrice, getAllAgentTokenPrices, formatPrice, formatMarketCap } from "../lib/price-oracle.js";
+import { getReferencePrices, getAgentTokenPrice, getAllAgentTokenPrices, formatPrice, formatMarketCap, getSelfclawCeloPrice, getCeloUsdPrice } from "../lib/price-oracle.js";
 import { generateRegistrationFile } from "../lib/erc8004-config.js";
 import { createPublicClient, http, parseUnits, formatUnits, encodeFunctionData, getContractAddress } from 'viem';
 import { celo } from 'viem/chains';
@@ -1451,7 +1451,6 @@ router.post("/v1/create-sponsored-lp", verificationLimiter, async (_req: Request
 router.get("/v1/selfclaw-sponsorship", publicApiLimiter, async (_req: Request, res: Response) => {
   try {
     const { getSelfclawBalance, getSponsorAddress } = await import("../lib/uniswap-v4.js");
-    const { getSelfclawCeloPrice, getCeloUsdPrice } = await import("../lib/price-oracle.js");
     const rawSponsorKey = process.env.SELFCLAW_SPONSOR_PRIVATE_KEY || process.env.CELO_PRIVATE_KEY;
     const sponsorKey = rawSponsorKey && !rawSponsorKey.startsWith('0x') ? `0x${rawSponsorKey}` : rawSponsorKey;
     const balance = await getSelfclawBalance(sponsorKey);
@@ -4031,6 +4030,23 @@ router.get("/v1/dashboard", publicApiLimiter, async (_req: Request, res: Respons
       }
     }
 
+    const selfclawInPools = Number(celoLiquidityResult[0]?.value ?? 0);
+
+    let selfclawPriceUsd: number | null = null;
+    let tvlUsd: number | null = null;
+    try {
+      const [selfclawCelo, celoUsd] = await Promise.all([
+        getSelfclawCeloPrice(),
+        getCeloUsdPrice(),
+      ]);
+      if (selfclawCelo > 0 && celoUsd > 0) {
+        selfclawPriceUsd = selfclawCelo * celoUsd;
+        tvlUsd = selfclawInPools * selfclawPriceUsd;
+      }
+    } catch (e) {
+      console.warn("[dashboard] price oracle unavailable for TVL:", (e as Error).message);
+    }
+
     res.json({
       registry: {
         totalVerifiedAgents: Number(totalVerifiedResult[0]?.value ?? 0),
@@ -4042,7 +4058,9 @@ router.get("/v1/dashboard", publicApiLimiter, async (_req: Request, res: Respons
         total: Number(totalWallets),
         selfCustody: Number(totalWallets),
         gasSubsidies: Number(gasSubsidiesResult[0]?.value ?? 0),
-        selfclawInPools: Number(celoLiquidityResult[0]?.value ?? 0),
+        selfclawInPools,
+        selfclawPriceUsd,
+        tvlUsd,
       },
       tokenEconomy: {
         tokensDeployed: Number(tokensDeployedResult[0]?.value ?? 0),

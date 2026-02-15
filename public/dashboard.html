@@ -579,7 +579,12 @@
           setText('w-total', data.wallets ? data.wallets.total : '\u2014');
           setText('w-gas', data.wallets ? data.wallets.gasSubsidies : '\u2014');
           var selfclawAmt = data.wallets ? data.wallets.selfclawInPools : 0;
-          setText('w-treasury', selfclawAmt ? Number(selfclawAmt).toLocaleString() + ' SC' : '\u2014');
+          var tvlUsd = data.wallets ? data.wallets.tvlUsd : null;
+          var treasuryText = selfclawAmt ? Number(selfclawAmt).toLocaleString() + ' SELFCLAW' : '\u2014';
+          if (tvlUsd && tvlUsd > 0) {
+            treasuryText += ' (~$' + Number(tvlUsd).toLocaleString(undefined, {maximumFractionDigits: 0}) + ')';
+          }
+          setText('w-treasury', treasuryText);
 
           if (data.verificationFunnel) renderFunnel(data.verificationFunnel);
           if (data.activityTimeline) renderChart(data.activityTimeline);
