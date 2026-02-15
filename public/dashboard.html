@@ -699,8 +699,13 @@
       for (var i = 0; i < entries.length; i++) {
         var e = entries[i];
         var bd = e.scoreBreakdown || {};
+        var oc = e.onchainReputation || {};
         var parts = [];
-        if (bd.erc8004 > 0) parts.push('ID:' + bd.erc8004);
+        if (bd.erc8004 > 0) {
+          var idLabel = 'ID:' + bd.erc8004;
+          if (oc.feedbackCount > 0) idLabel += ' (' + oc.feedbackCount + ' reviews, ' + oc.avgScore + '/100)';
+          parts.push(idLabel);
+        }
         if (bd.staking > 0) parts.push('STK:' + bd.staking);
         if (bd.commerce > 0) parts.push('COM:' + bd.commerce);
         if (bd.skills > 0) parts.push('SKL:' + bd.skills);

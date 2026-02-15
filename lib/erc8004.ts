@@ -16,11 +16,13 @@ const IDENTITY_REGISTRY_ABI = [
   "event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)"
 ];
 
-// Simplified ABI for ERC-8004 Reputation Registry
+// ABI for ERC-8004 Reputation Registry (matches official erc-8004-contracts repo)
 const REPUTATION_REGISTRY_ABI = [
-  "function giveFeedback(uint256 agentId, uint256 score, uint8 decimals, string tag1, string tag2, string endpoint, string feedbackURI, bytes32 feedbackHash) external",
-  "function readAllFeedback(uint256 agentId) external view returns (tuple(address rater, uint256 score, uint8 decimals, string tag1, string tag2, string endpoint, string feedbackURI, bytes32 feedbackHash, uint256 timestamp)[])",
-  "function getSummary(uint256 agentId) external view returns (tuple(uint256 totalFeedback, uint256 averageScore, uint256 lastUpdated))"
+  "function giveFeedback(uint256 agentId, int128 value, uint8 valueDecimals, string tag1, string tag2, string endpoint, string feedbackURI, bytes32 feedbackHash) external",
+  "function getClients(uint256 agentId) external view returns (address[])",
+  "function getSummary(uint256 agentId, address[] clientAddresses, string tag1, string tag2) external view returns (uint64 count, int128 summaryValue, uint8 summaryValueDecimals)",
+  "function readAllFeedback(uint256 agentId, address[] clientAddresses, string tag1, string tag2, bool includeRevoked) external view returns (address[] clients, uint64[] feedbackIndexes, int128[] values, uint8[] valueDecimals, string[] tag1s, string[] tag2s, bool[] revokedStatuses)",
+  "function readFeedback(uint256 agentId, address clientAddress, uint64 feedbackIndex) external view returns (int128 value, uint8 valueDecimals, string tag1, string tag2, bool isRevoked)"
 ];
 
 export class ERC8004Service {
@@ -267,8 +269,8 @@ export class ERC8004Service {
       
       const tx = await reputation.giveFeedback(
         agentTokenId,
-        100,                      // score: 100 (verified)
-        0,                        // decimals
+        BigInt(100),              // value: 100 (verified) as int128
+        0,                        // valueDecimals
         "selfclaw-verified",      // tag1: verification type
         "passport",               // tag2: verification method
         "https://selfclaw.ai",   // endpoint
@@ -293,11 +295,27 @@ export class ERC8004Service {
     const reputation = new ethers.Contract(config.resolver, REPUTATION_REGISTRY_ABI, this.provider);
     
     try {
-      const summary = await reputation.getSummary(agentTokenId);
+      const clients: string[] = await reputation.getClients(agentTokenId);
+      
+      if (!clients || clients.length === 0) {
+        return { totalFeedback: 0, averageScore: 0, lastUpdated: 0 };
+      }
+
+      const [count, summaryValue, summaryValueDecimals] = await reputation.getSummary(
+        agentTokenId,
+        clients,
+        "",
+        ""
+      );
+      
+      const feedbackCount = Number(count);
+      const divisor = Math.pow(10, Number(summaryValueDecimals));
+      const avgScore = feedbackCount > 0 ? Number(summaryValue) / divisor : 0;
+
       return {
-        totalFeedback: Number(summary.totalFeedback),
-        averageScore: Number(summary.averageScore),
-        lastUpdated: Number(summary.lastUpdated),
+        totalFeedback: feedbackCount,
+        averageScore: avgScore,
+        lastUpdated: Date.now(),
       };
     } catch (error: any) {
       console.error("[erc8004] Failed to get reputation:", error.message);
@@ -311,10 +329,6 @@ export class ERC8004Service {
     decimals: number;
     tag1: string;
     tag2: string;
-    endpoint: string;
-    feedbackURI: string;
-    feedbackHash: string;
-    timestamp: number;
   }> | null> {
     if (!this.isReady()) {
       return null;
@@ -324,18 +338,29 @@ export class ERC8004Service {
     const reputation = new ethers.Contract(config.resolver, REPUTATION_REGISTRY_ABI, this.provider);
     
     try {
-      const feedback = await reputation.readAllFeedback(agentTokenId);
-      return feedback.map((f: any) => ({
-        rater: f.rater,
-        score: Number(f.score),
-        decimals: Number(f.decimals),
-        tag1: f.tag1,
-        tag2: f.tag2,
-        endpoint: f.endpoint,
-        feedbackURI: f.feedbackURI,
-        feedbackHash: f.feedbackHash,
-        timestamp: Number(f.timestamp),
-      }));
+      const clients: string[] = await reputation.getClients(agentTokenId);
+      if (!clients || clients.length === 0) return [];
+
+      const result = await reputation.readAllFeedback(agentTokenId, clients, "", "", false);
+      const feedbackList: Array<{ rater: string; score: number; decimals: number; tag1: string; tag2: string }> = [];
+      
+      const clientAddrs = result.clients || result[0] || [];
+      const values = result.values || result[2] || [];
+      const decimals = result.valueDecimals || result[3] || [];
+      const tag1s = result.tag1s || result[4] || [];
+      const tag2s = result.tag2s || result[5] || [];
+
+      for (let i = 0; i < clientAddrs.length; i++) {
+        feedbackList.push({
+          rater: clientAddrs[i],
+          score: Number(values[i]),
+          decimals: Number(decimals[i]),
+          tag1: tag1s[i] || '',
+          tag2: tag2s[i] || '',
+        });
+      }
+
+      return feedbackList;
     } catch (error: any) {
       console.error("[erc8004] Failed to read feedback:", error.message);
       return null;

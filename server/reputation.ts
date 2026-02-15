@@ -256,7 +256,9 @@ router.get("/v1/reputation/leaderboard", async (req, res) => {
       SELECT
         vb.public_key,
         COALESCE(NULLIF(vb.device_id, ''), tp.token_symbol, vb.metadata->>'agentName', 'Unknown') as agent_name,
-        CASE WHEN vb.metadata->>'erc8004TokenId' IS NOT NULL THEN 20 ELSE 0 END as erc8004_score,
+        CASE WHEN vb.metadata->>'erc8004TokenId' IS NOT NULL THEN 1 ELSE 0 END as has_erc8004,
+        COALESCE((vb.metadata->>'onchainFeedbackCount')::int, 0) as onchain_feedback_count,
+        COALESCE((vb.metadata->>'onchainAvgScore')::numeric, 0) as onchain_avg_score,
         COALESCE(stk.validated_count, 0) as validated_count,
         COALESCE(stk.slashed_count, 0) as slashed_count,
         COALESCE(stk.total_stakes, 0) as total_stakes,
@@ -307,7 +309,11 @@ router.get("/v1/reputation/leaderboard", async (req, res) => {
       ) com ON com.provider_public_key = vb.public_key
       WHERE vb.hidden IS NOT TRUE
       ORDER BY (
-        CASE WHEN vb.metadata->>'erc8004TokenId' IS NOT NULL THEN 20 ELSE 0 END
+        CASE WHEN vb.metadata->>'erc8004TokenId' IS NOT NULL THEN 
+          LEAST(5 + LEAST(ROUND(COALESCE((vb.metadata->>'onchainFeedbackCount')::int, 0) * 0.5), 7) 
+            + CASE WHEN COALESCE((vb.metadata->>'onchainFeedbackCount')::int, 0) >= 3 
+              THEN ROUND(COALESCE((vb.metadata->>'onchainAvgScore')::numeric, 0) / 100 * 8) ELSE 0 END, 20)
+        ELSE 0 END
         + CASE WHEN (COALESCE(stk.validated_count, 0) + COALESCE(stk.slashed_count, 0)) >= 3
             THEN ROUND(COALESCE(stk.validated_count, 0)::float / NULLIF(COALESCE(stk.validated_count, 0) + COALESCE(stk.slashed_count, 0), 0) * 30)
             ELSE 0 END
@@ -317,7 +323,18 @@ router.get("/v1/reputation/leaderboard", async (req, res) => {
     `);
 
     const leaderboard = (rows.rows || []).map((r: any) => {
-      const erc8004Score = Number(r.erc8004_score) || 0;
+      const hasErc8004 = Number(r.has_erc8004) || 0;
+      const feedbackCount = Number(r.onchain_feedback_count) || 0;
+      const avgScore = Number(r.onchain_avg_score) || 0;
+
+      let erc8004Score = 0;
+      if (hasErc8004) {
+        const registrationPts = 5;
+        const feedbackPts = Math.min(Math.round(feedbackCount * 0.5), 7);
+        const qualityPts = feedbackCount >= 3 ? Math.round((avgScore / 100) * 8) : 0;
+        erc8004Score = Math.min(registrationPts + feedbackPts + qualityPts, 20);
+      }
+
       const validatedCount = Number(r.validated_count) || 0;
       const slashedCount = Number(r.slashed_count) || 0;
       const resolvedStakes = validatedCount + slashedCount;
@@ -354,6 +371,7 @@ router.get("/v1/reputation/leaderboard", async (req, res) => {
         agentName: r.agent_name || "Unknown",
         reputationScore,
         scoreBreakdown: { erc8004: erc8004Score, staking: stakingScore, commerce: commerceScore, skills: skillsScore, badges: badgesScore },
+        onchainReputation: { feedbackCount, avgScore: Math.round(avgScore * 10) / 10 },
         badges: (r.badge_names || []).filter(Boolean),
         totalStakes: Number(r.total_stakes) || 0,
         validatedCount,
