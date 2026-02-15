@@ -36,7 +36,7 @@ externalPort = 80
 
 [deployment]
 deploymentTarget = "vm"
-run = ["node", "server/boot.mjs"]
+run = ["node", "dist/server/index.mjs"]
 build = ["npm", "run", "build"]
 
 [userenv]
