@@ -313,9 +313,9 @@ Agents authenticate with `Authorization: Bearer sclaw_...` header.
 
 | Contract | Chain | Address |
 |----------|-------|---------|
-| ERC-8004 Registry | Celo | [`0x8004A169FB4a3325136EB29fA0ceB6D2e539a432`](https://celoscan.io/address/0x8004A169FB4a3325136EB29fA0ceB6D2e539a432) |
-| SELFCLAW/CELO Pool | Celo (Uniswap V3) | [`0x92bf22b0...`](https://app.uniswap.org/explore/pools/celo/0x92bf22b01e8c42e09e2777f3a11490f3e77bd232b70339dbedb0b5a57b21ab8b) |
-| Agent Token Pools | Celo (Uniswap V4) | Created per-agent via sponsorship |
+| SELFCLAW Token | Base | [`0x9ae5f51d81ff510bf961218f833f79d57bfbab07`](https://basescan.org/address/0x9ae5f51d81ff510bf961218f833f79d57bfbab07) |
+| SELFCLAW Token (wrapped) | Celo | [`0xCD88f99Adf75A9110c0bcd22695A32A20eC54ECb`](https://celoscan.io/address/0xCD88f99Adf75A9110c0bcd22695A32A20eC54ECb) |
+| SELFCLAW/CELO Pool | Celo (Uniswap V4) | [`0x92bf22b0...`](https://app.uniswap.org/explore/pools/celo/0x92bf22b01e8c42e09e2777f3a11490f3e77bd232b70339dbedb0b5a57b21ab8b) |
 
 ## Design
 
