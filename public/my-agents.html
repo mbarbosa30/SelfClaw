@@ -309,6 +309,41 @@
       margin-top: 0.1rem;
     }
 
+    .briefing-panel {
+      border: 2px solid var(--border); margin-top: 0.75rem;
+      background: rgba(26,26,26,0.02);
+    }
+    .briefing-header {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 0.6rem 0.75rem; cursor: pointer;
+      font-family: var(--font-mono); font-size: 0.65rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted);
+    }
+    .briefing-header:hover { color: var(--text); }
+    .briefing-body { padding: 0 0.75rem 0.75rem; }
+    .briefing-text {
+      font-family: var(--font-mono); font-size: 0.72rem; line-height: 1.6;
+      white-space: pre-wrap; word-break: break-word;
+      color: var(--text-secondary); background: var(--bg);
+      border: 1px solid var(--border-light); padding: 0.75rem;
+      max-height: 400px; overflow-y: auto;
+    }
+    .briefing-actions {
+      display: flex; gap: 0.4rem; margin-top: 0.5rem;
+    }
+    .briefing-btn {
+      font-family: var(--font-mono); font-size: 0.6rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.08em;
+      padding: 4px 10px; border: 2px solid var(--border);
+      background: transparent; color: var(--text); cursor: pointer;
+    }
+    .briefing-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .briefing-btn.copied { border-color: var(--green-verify); color: var(--green-verify); }
+    .briefing-loading {
+      font-family: var(--font-mono); font-size: 0.7rem; color: var(--text-muted);
+      padding: 1rem; text-align: center;
+    }
+
     .setup-guide {
       border: 2px solid var(--border); padding: 1rem; margin-top: 0.75rem;
       background: rgba(255,107,74,0.03);
@@ -1259,6 +1294,14 @@
         html += '<div class="meta-item"><div class="meta-dot ' + (agent.token ? 'active' : 'inactive') + '"></div>' + (agent.token ? '$' + esc(agent.token.symbol) : 'No token') + '</div>';
         html += '</div>';
 
+        html += '<div class="briefing-panel" id="briefing-panel-' + idx + '">';
+        html += '<div class="briefing-header" onclick="toggleBriefing(' + idx + ', \'' + esc(agent.publicKey) + '\')">';
+        html += '<span>Status Briefing</span>';
+        html += '<span id="briefing-arrow-' + idx + '">&#9660;</span>';
+        html += '</div>';
+        html += '<div class="briefing-body" id="briefing-body-' + idx + '" style="display:none;"></div>';
+        html += '</div>';
+
         html += '<div class="agent-card-actions">';
         html += '<a href="' + profileUrl + '" class="action-btn">View Profile</a>';
         if (agent.wallet) {
@@ -1372,6 +1415,107 @@
       html += '</div>';
       html += '</div>';
       return html;
+    }
+
+    var _briefingCache = {};
+    var _briefingOpen = {};
+
+    function toggleBriefing(idx, publicKey) {
+      var body = document.getElementById('briefing-body-' + idx);
+      var arrow = document.getElementById('briefing-arrow-' + idx);
+      if (!body) return;
+
+      if (_briefingOpen[idx]) {
+        body.style.display = 'none';
+        arrow.innerHTML = '&#9660;';
+        _briefingOpen[idx] = false;
+        return;
+      }
+
+      _briefingOpen[idx] = true;
+      arrow.innerHTML = '&#9650;';
+      body.style.display = '';
+
+      if (_briefingCache[publicKey]) {
+        renderBriefingContent(idx, _briefingCache[publicKey]);
+        return;
+      }
+
+      body.innerHTML = '<div class="briefing-loading">Loading briefing...</div>';
+      fetch('/api/selfclaw/v1/my-agents/' + encodeURIComponent(publicKey) + '/briefing', { credentials: 'include' })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (data.success && data.briefing) {
+            _briefingCache[publicKey] = data.briefing;
+            renderBriefingContent(idx, data.briefing);
+          } else {
+            body.innerHTML = '<div class="briefing-loading" style="color:var(--red);">Failed to load: ' + esc(data.error || 'Unknown error') + '</div>';
+          }
+        })
+        .catch(function(err) {
+          body.innerHTML = '<div class="briefing-loading" style="color:var(--red);">Error: ' + esc(err.message) + '</div>';
+        });
+    }
+
+    function renderBriefingContent(idx, briefingText) {
+      var body = document.getElementById('briefing-body-' + idx);
+      if (!body) return;
+      var html = '<div class="briefing-text">' + esc(briefingText) + '</div>';
+      html += '<div class="briefing-actions">';
+      html += '<button class="briefing-btn" id="briefing-copy-' + idx + '" onclick="copyBriefing(' + idx + ')">Copy to Clipboard</button>';
+      html += '<button class="briefing-btn" onclick="refreshBriefing(' + idx + ')">Refresh</button>';
+      html += '</div>';
+      body.innerHTML = html;
+    }
+
+    function copyBriefing(idx) {
+      var textEl = document.querySelector('#briefing-body-' + idx + ' .briefing-text');
+      if (!textEl) return;
+      var text = textEl.textContent || textEl.innerText;
+      navigator.clipboard.writeText(text).then(function() {
+        var btn = document.getElementById('briefing-copy-' + idx);
+        if (btn) {
+          btn.textContent = 'Copied!';
+          btn.classList.add('copied');
+          setTimeout(function() {
+            btn.textContent = 'Copy to Clipboard';
+            btn.classList.remove('copied');
+          }, 2000);
+        }
+      }).catch(function() {
+        var textArea = document.createElement('textarea');
+        textArea.value = text;
+        textArea.style.position = 'fixed';
+        textArea.style.opacity = '0';
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        var btn = document.getElementById('briefing-copy-' + idx);
+        if (btn) { btn.textContent = 'Copied!'; btn.classList.add('copied'); setTimeout(function() { btn.textContent = 'Copy to Clipboard'; btn.classList.remove('copied'); }, 2000); }
+      });
+    }
+
+    function refreshBriefing(idx) {
+      var agents = (_dashboardData && _dashboardData.agents) || [];
+      var agent = agents[idx];
+      if (!agent) return;
+      delete _briefingCache[agent.publicKey];
+      var body = document.getElementById('briefing-body-' + idx);
+      if (body) body.innerHTML = '<div class="briefing-loading">Refreshing...</div>';
+      fetch('/api/selfclaw/v1/my-agents/' + encodeURIComponent(agent.publicKey) + '/briefing', { credentials: 'include' })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (data.success && data.briefing) {
+            _briefingCache[agent.publicKey] = data.briefing;
+            renderBriefingContent(idx, data.briefing);
+          } else {
+            body.innerHTML = '<div class="briefing-loading" style="color:var(--red);">Failed: ' + esc(data.error || 'Unknown') + '</div>';
+          }
+        })
+        .catch(function(err) {
+          body.innerHTML = '<div class="briefing-loading" style="color:var(--red);">Error: ' + esc(err.message) + '</div>';
+        });
     }
 
     function actionRegisterErc8004(idx, btn) {

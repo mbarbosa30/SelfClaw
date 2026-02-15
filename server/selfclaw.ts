@@ -5982,6 +5982,184 @@ router.post("/v1/my-agents/:publicKey/confirm-erc8004", verificationLimiter, asy
   }
 });
 
+router.get("/v1/my-agents/:publicKey/briefing", async (req: any, res: Response) => {
+  try {
+    const auth = await authenticateHumanForAgent(req, res, req.params.publicKey);
+    if (!auth) return;
+    const { humanId, agent } = auth;
+    const pk = req.params.publicKey;
+    const agentName = agent.deviceId || pk.substring(0, 12) + '...';
+
+    const wallet = await db.select().from(agentWallets).where(sql`${agentWallets.publicKey} = ${pk}`).limit(1);
+    const pool = await db.select().from(trackedPools).where(sql`${trackedPools.agentPublicKey} = ${pk}`).limit(1);
+    const plan = await db.select().from(tokenPlans).where(sql`${tokenPlans.agentPublicKey} = ${pk}`).limit(1);
+    const sponsor = await db.select().from(sponsoredAgents).where(sql`${sponsoredAgents.publicKey} = ${pk}`).limit(1);
+    const revenue = await db.select().from(revenueEvents).where(sql`${revenueEvents.agentPublicKey} = ${pk}`);
+    const costs = await db.select().from(costEvents).where(sql`${costEvents.agentPublicKey} = ${pk}`);
+    const services = await db.select().from(agentServices).where(sql`${agentServices.agentPublicKey} = ${pk} AND ${agentServices.active} = true`);
+
+    const meta = (agent.metadata as Record<string, any>) || {};
+    const hasErc8004 = !!meta.erc8004TokenId;
+    const hasWallet = wallet.length > 0;
+    const hasGas = hasWallet && wallet[0].gasReceived;
+    const hasToken = !!(sponsor.length > 0 && sponsor[0].tokenAddress);
+    const hasPool = pool.length > 0 && !!pool[0].poolAddress;
+    const hasPlan = plan.length > 0;
+
+    let skillsPublished = 0, skillPurchaseCount = 0, skillAvgRating = 0;
+    let commerceRequested = 0, commerceProvided = 0, commercePending = 0;
+    let stakesActive = 0, stakesValidated = 0, stakesSlashed = 0, badges: string[] = [];
+
+    try {
+      const skillRows = await db.execute(sql`SELECT COUNT(*) as cnt, COALESCE(SUM(purchase_count),0) as purchases, COALESCE(AVG(CASE WHEN rating_count > 0 THEN rating_sum::float / rating_count ELSE NULL END),0) as avg_rating FROM market_skills WHERE agent_public_key = ${pk} AND active = true`);
+      if (skillRows.rows && skillRows.rows.length > 0) {
+        skillsPublished = parseInt(skillRows.rows[0].cnt as string) || 0;
+        skillPurchaseCount = parseInt(skillRows.rows[0].purchases as string) || 0;
+        skillAvgRating = parseFloat(skillRows.rows[0].avg_rating as string) || 0;
+      }
+    } catch(e) {}
+
+    try {
+      const reqRows = await db.execute(sql`SELECT status, COUNT(*) as cnt FROM agent_requests WHERE requester_public_key = ${pk} GROUP BY status`);
+      const provRows = await db.execute(sql`SELECT status, COUNT(*) as cnt FROM agent_requests WHERE provider_public_key = ${pk} GROUP BY status`);
+      for (const r of (reqRows.rows || [])) { commerceRequested += parseInt(r.cnt as string) || 0; }
+      for (const r of (provRows.rows || [])) {
+        commerceProvided += parseInt(r.cnt as string) || 0;
+        if (r.status === 'pending' || r.status === 'accepted') commercePending += parseInt(r.cnt as string) || 0;
+      }
+    } catch(e) {}
+
+    try {
+      const stakeRows = await db.execute(sql`SELECT status, resolution, COUNT(*) as cnt FROM reputation_stakes WHERE agent_public_key = ${pk} GROUP BY status, resolution`);
+      for (const r of (stakeRows.rows || [])) {
+        const c = parseInt(r.cnt as string) || 0;
+        if (r.status === 'active') stakesActive += c;
+        if (r.resolution === 'validated') stakesValidated += c;
+        if (r.resolution === 'slashed') stakesSlashed += c;
+      }
+      const badgeRows = await db.execute(sql`SELECT badge_name FROM reputation_badges WHERE agent_public_key = ${pk}`);
+      badges = (badgeRows.rows || []).map((b: any) => b.badge_name);
+    } catch(e) {}
+
+    let totalRev = 0, totalCost = 0;
+    const revByToken: Record<string, number> = {};
+    for (const r of revenue) { const a = parseFloat(r.amount || '0'); totalRev += a; revByToken[r.token] = (revByToken[r.token] || 0) + a; }
+    for (const c of costs) { totalCost += parseFloat(c.amount || '0'); }
+
+    let tokenPriceInfo = '';
+    if (hasPool && pool[0]) {
+      try {
+        const p = await getAgentTokenPrice({
+          tokenAddress: pool[0].tokenAddress,
+          v4PoolId: pool[0].v4PoolId,
+          poolAddress: pool[0].poolAddress,
+          tokenSymbol: pool[0].tokenSymbol,
+          poolVersion: pool[0].poolVersion,
+        });
+        if (p) {
+          tokenPriceInfo = `Price: ${p.priceInCelo ? p.priceInCelo.toFixed(6) + ' CELO' : 'N/A'}`;
+          if (p.priceInUsd) tokenPriceInfo += ` (~$${p.priceInUsd.toFixed(4)})`;
+          if (p.marketCapUsd) tokenPriceInfo += ` | Market Cap: $${p.marketCapUsd.toFixed(2)}`;
+          if (p.totalSupply) tokenPriceInfo += ` | Supply: ${Number(p.totalSupply).toLocaleString()}`;
+        }
+      } catch(e) {}
+    }
+
+    const pipelineDone = [hasWallet, hasGas, hasErc8004, hasToken, !!sponsor.length, hasPool].filter(Boolean).length;
+    const pipelineTotal = 6;
+
+    const lines: string[] = [];
+    lines.push(`=== AGENT STATUS BRIEFING ===`);
+    lines.push(`Agent: ${agentName}`);
+    lines.push(`Public Key: ${pk.substring(0, 16)}...`);
+    lines.push(`Verified: ${agent.verifiedAt ? new Date(agent.verifiedAt).toISOString().split('T')[0] : 'Unknown'}`);
+    lines.push('');
+
+    lines.push(`--- PIPELINE (${pipelineDone}/${pipelineTotal} complete) ---`);
+    lines.push(`${hasWallet ? '[x]' : '[ ]'} Wallet${hasWallet ? ': ' + wallet[0].address : ''}`);
+    lines.push(`${hasGas ? '[x]' : '[ ]'} Gas subsidy received`);
+    lines.push(`${hasErc8004 ? '[x]' : '[ ]'} ERC-8004 onchain identity${hasErc8004 ? ' (Token #' + meta.erc8004TokenId + ')' : ''}`);
+    lines.push(`${hasToken ? '[x]' : '[ ]'} Token deployed${hasToken ? ' ($' + (sponsor[0].tokenSymbol || '') + ' at ' + sponsor[0].tokenAddress?.substring(0, 10) + '...)' : ''}`);
+    lines.push(`${sponsor.length > 0 ? '[x]' : '[ ]'} SELFCLAW sponsorship${sponsor.length > 0 ? ' (' + sponsor[0].status + ')' : ''}`);
+    lines.push(`${hasPool ? '[x]' : '[ ]'} Liquidity pool${hasPool ? ' (' + (pool[0].poolVersion || 'v3') + ')' : ''}`);
+    lines.push('');
+
+    lines.push(`--- ECONOMY ---`);
+    lines.push(`Revenue: ${totalRev.toFixed(4)} (${revenue.length} events)`);
+    if (Object.keys(revByToken).length > 0) {
+      lines.push(`  Breakdown: ${Object.entries(revByToken).map(([t, a]) => `${(a as number).toFixed(4)} ${t}`).join(', ')}`);
+    }
+    lines.push(`Costs: ${totalCost.toFixed(4)} (${costs.length} events)`);
+    lines.push(`Net: ${(totalRev - totalCost).toFixed(4)}`);
+    if (tokenPriceInfo) lines.push(`Token: ${tokenPriceInfo}`);
+    lines.push(`Active services: ${services.length}`);
+    if (services.length > 0) {
+      for (const s of services.slice(0, 5)) {
+        lines.push(`  - ${s.name}: ${s.price || 'Free'} ${s.currency || ''}`);
+      }
+    }
+    lines.push('');
+
+    lines.push(`--- SKILLS MARKET ---`);
+    lines.push(`Published skills: ${skillsPublished}`);
+    lines.push(`Total purchases of your skills: ${skillPurchaseCount}`);
+    if (skillAvgRating > 0) lines.push(`Average rating: ${skillAvgRating.toFixed(1)}/5`);
+    lines.push('');
+
+    lines.push(`--- AGENT-TO-AGENT COMMERCE ---`);
+    lines.push(`Services requested from others: ${commerceRequested}`);
+    lines.push(`Services provided to others: ${commerceProvided}`);
+    if (commercePending > 0) lines.push(`Pending requests to fulfill: ${commercePending}`);
+    lines.push('');
+
+    lines.push(`--- REPUTATION ---`);
+    lines.push(`Active stakes: ${stakesActive}`);
+    lines.push(`Validated: ${stakesValidated} | Slashed: ${stakesSlashed}`);
+    if (badges.length > 0) lines.push(`Badges: ${badges.join(', ')}`);
+    lines.push('');
+
+    const nudges: string[] = [];
+    if (!hasWallet) nudges.push('Create a wallet to start your onchain journey.');
+    else if (!hasGas) nudges.push('Request gas to cover transaction fees.');
+    if (hasWallet && !hasErc8004) nudges.push('Register your onchain identity (ERC-8004) to establish credibility.');
+    if (hasErc8004 && !hasToken && !hasPlan) nudges.push('Plan and deploy a token to power your agent economy.');
+    if (hasToken && !hasPool) nudges.push('Request SELFCLAW sponsorship to get a liquidity pool and make your token tradeable.');
+    if (hasPool && skillsPublished === 0) nudges.push('Publish a skill on the market to start earning with your token.');
+    if (hasPool && services.length === 0) nudges.push('Register active services so other agents can hire you.');
+    if (commercePending > 0) nudges.push(`You have ${commercePending} pending service request(s) to fulfill.`);
+    if (stakesActive === 0 && hasToken) nudges.push('Stake on your output quality to build reputation.');
+    if (totalRev === 0 && hasToken) nudges.push('No revenue recorded yet. Offer services or publish skills to start earning.');
+
+    if (nudges.length > 0) {
+      lines.push(`--- SUGGESTED NEXT STEPS ---`);
+      nudges.forEach((n, i) => lines.push(`${i + 1}. ${n}`));
+    }
+
+    const briefing = lines.join('\n');
+
+    res.json({
+      success: true,
+      agentName,
+      publicKey: pk,
+      briefing,
+      summary: {
+        pipelineProgress: `${pipelineDone}/${pipelineTotal}`,
+        revenue: totalRev,
+        costs: totalCost,
+        net: totalRev - totalCost,
+        skillsPublished,
+        commerceProvided,
+        stakesActive,
+        badgeCount: badges.length,
+        nudgeCount: nudges.length,
+      },
+    });
+  } catch (error: any) {
+    console.error("[selfclaw] briefing error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 async function authenticateHumanForMiniclaw(req: any, res: Response, miniclawId: string): Promise<{ humanId: string; miniclaw: any } | null> {
   if (!req.session?.isAuthenticated || !req.session?.humanId) {
     res.status(401).json({ error: "Login required." });
