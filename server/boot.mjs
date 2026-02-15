@@ -82,7 +82,7 @@ server.listen(PORT, "0.0.0.0", () => {
 });
 
 async function loadApp() {
-  const distPath = path.join(__dirname, "..", "dist", "server.mjs");
+  const distPath = path.join(__dirname, "..", "dist", "server", "index.mjs");
   const hasDistBuild = fs.existsSync(distPath);
 
   if (hasDistBuild) {
@@ -92,10 +92,10 @@ async function loadApp() {
       expressApp = appMod.app;
       await new Promise(resolve => setTimeout(resolve, 100));
       appReady = true;
-      console.log("[boot] Express app mounted from dist/server.mjs");
+      console.log("[boot] Express app mounted from dist/");
       return;
     } catch (err) {
-      console.error("[boot] dist/server.mjs failed:", err.message);
+      console.error("[boot] dist build failed:", err.message);
       console.log("[boot] Falling back to tsx...");
     }
   } else {

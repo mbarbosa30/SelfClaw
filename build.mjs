@@ -1,33 +1,58 @@
-import { build } from "esbuild";
+import esbuild from "esbuild";
+const { transform } = esbuild;
 import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const startTime = Date.now();
 
-try {
-  fs.mkdirSync("dist", { recursive: true });
+const dirs = ["server", "lib", "shared"];
+const outBase = "dist";
 
-  await build({
-    entryPoints: ["server/index.ts"],
-    bundle: true,
-    platform: "node",
-    format: "esm",
-    target: "node22",
-    outfile: "dist/server.mjs",
-    packages: "external",
-    external: ["pg-native", "bufferutil", "utf-8-validate"],
-    sourcemap: false,
-    minify: false,
-    keepNames: true,
-    banner: {
-      js: '// SelfClaw production build\nimport { createRequire } from "module";\nconst require = createRequire(import.meta.url);\n',
-    },
-  });
+let fileCount = 0;
 
-  const stats = fs.statSync("dist/server.mjs");
-  const sizeKB = (stats.size / 1024).toFixed(1);
-  const elapsed = Date.now() - startTime;
-  console.log(`[build] dist/server.mjs (${sizeKB} KB) built in ${elapsed}ms`);
-} catch (err) {
-  console.error("[build] Build failed:", err.message);
-  process.exit(1);
+for (const dir of dirs) {
+  const srcDir = path.join(__dirname, dir);
+  const outDir = path.join(__dirname, outBase, dir);
+
+  if (!fs.existsSync(srcDir)) continue;
+  fs.mkdirSync(outDir, { recursive: true });
+
+  const files = fs.readdirSync(srcDir).filter(f => f.endsWith(".ts") && !f.endsWith(".d.ts"));
+
+  for (const file of files) {
+    const srcPath = path.join(srcDir, file);
+    const outPath = path.join(outDir, file.replace(/\.ts$/, ".mjs"));
+
+    let code = fs.readFileSync(srcPath, "utf-8");
+
+    code = code.replace(/from\s+["']\.\/([^"']+)\.js["']/g, 'from "./$1.mjs"');
+    code = code.replace(/from\s+["']\.\.\/([^"']+)\.js["']/g, 'from "../$1.mjs"');
+    code = code.replace(/import\(["']\.\/([^"']+)\.js["']\)/g, 'import("./$1.mjs")');
+    code = code.replace(/import\(["']\.\.\/([^"']+)\.js["']\)/g, 'import("../$1.mjs")');
+
+    const result = await transform(code, {
+      loader: "ts",
+      format: "esm",
+      target: "node22",
+      platform: "node",
+      keepNames: true,
+      sourcefile: srcPath,
+    }).catch(() => {
+      return { code };
+    });
+
+    let outCode = result.code;
+    outCode = outCode.replace(/from\s+["']\.\/([^"']+)\.js["']/g, 'from "./$1.mjs"');
+    outCode = outCode.replace(/from\s+["']\.\.\/([^"']+)\.js["']/g, 'from "../$1.mjs"');
+    outCode = outCode.replace(/import\(["']\.\/([^"']+)\.js["']\)/g, 'import("./$1.mjs")');
+    outCode = outCode.replace(/import\(["']\.\.\/([^"']+)\.js["']\)/g, 'import("../$1.mjs")');
+
+    fs.writeFileSync(outPath, outCode);
+    fileCount++;
+  }
 }
+
+const elapsed = Date.now() - startTime;
+console.log(`[build] Transpiled ${fileCount} files to dist/ in ${elapsed}ms`);
