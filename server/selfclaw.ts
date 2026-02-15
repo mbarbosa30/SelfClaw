@@ -2394,6 +2394,8 @@ router.get("/v1/agent-profile/:name", publicApiLimiter, async (req: Request, res
       }
     }
 
+    let feedbackEntries: Array<{ rater: string; score: number; decimals: number; tag1: string; tag2: string }> = [];
+
     if (metadata?.erc8004TokenId) {
       try {
         const [summary, feedback, identity] = await Promise.all([
@@ -2408,6 +2410,10 @@ router.get("/v1/agent-profile/:name", publicApiLimiter, async (req: Request, res
             averageScore: summary.averageScore,
             lastUpdated: summary.lastUpdated,
           };
+        }
+
+        if (feedback) {
+          feedbackEntries = feedback;
         }
 
         if (identity) {
@@ -2433,6 +2439,8 @@ router.get("/v1/agent-profile/:name", publicApiLimiter, async (req: Request, res
           scanUrl: `https://www.8004scan.io/agents/celo/${metadata.erc8004TokenId}`,
           identity: identityData,
           reputation: reputationData,
+          feedback: feedbackEntries,
+          lastOnchainSync: metadata.lastOnchainSync || null,
         } : null,
       },
       wallet: wallet ? {
@@ -7381,10 +7389,9 @@ router.get("/v1/agent/:identifier/reputation", publicApiLimiter, async (req: Req
       feedback: (feedback || []).map(f => ({
         rater: f.rater,
         score: f.score,
+        decimals: f.decimals,
         tag1: f.tag1,
         tag2: f.tag2,
-        endpoint: f.endpoint,
-        timestamp: f.timestamp,
       })),
       identity: identity ? {
         owner: identity.owner,

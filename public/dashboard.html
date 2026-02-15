@@ -291,73 +291,126 @@
     }
     .dash-context a { color: var(--accent); }
 
-    .leaderboard-table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 0.8rem;
+    .lb-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
     }
-    .leaderboard-table th {
-      font-family: var(--font-mono);
-      font-size: 0.6rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: var(--text-muted);
-      text-align: left;
-      padding: 0.6rem 0.75rem;
-      border-bottom: 2px solid var(--border-heavy);
-    }
-    .leaderboard-table td {
-      padding: 0.6rem 0.75rem;
+    .lb-card {
+      display: grid;
+      grid-template-columns: 48px 1fr 100px;
+      gap: 1rem;
+      padding: 1rem 1.25rem;
       border-bottom: 1px solid var(--border-light);
-      vertical-align: middle;
+      align-items: start;
     }
-    .leaderboard-table tr:last-child td { border-bottom: none; }
+    .lb-card:last-child { border-bottom: none; }
     .lb-rank {
       font-family: var(--font-mono);
       font-weight: 700;
-      font-size: 0.85rem;
-      color: var(--accent);
+      font-size: 1.1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       width: 36px;
+      height: 36px;
+      border: 2px solid var(--border-heavy);
+      color: var(--text);
+      flex-shrink: 0;
     }
-    .lb-name {
+    .lb-rank--gold { border-color: #D4AF37; color: #D4AF37; background: rgba(212,175,55,0.08); }
+    .lb-rank--silver { border-color: #A0A0A0; color: #6b6b6b; background: rgba(160,160,160,0.08); }
+    .lb-rank--bronze { border-color: #CD7F32; color: #CD7F32; background: rgba(205,127,50,0.08); }
+    .lb-center {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+      min-width: 0;
+    }
+    .lb-name a {
       font-weight: 600;
-      max-width: 180px;
+      font-size: 0.95rem;
+      color: var(--accent);
+      text-decoration: none;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+      display: block;
     }
-    .lb-score {
-      font-family: var(--font-mono);
-      font-weight: 700;
-      font-size: 1rem;
-    }
-    .lb-breakdown {
+    .lb-name a:hover { color: var(--accent-hover); text-decoration: underline; }
+    .lb-onchain {
       font-family: var(--font-mono);
       font-size: 0.6rem;
       color: var(--text-muted);
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
     }
-    .lb-badges {
-      font-size: 0.65rem;
-      color: var(--text-muted);
+    .lb-onchain span { white-space: nowrap; }
+    .lb-breakdown {
+      display: flex;
+      gap: 0.35rem;
+      flex-wrap: wrap;
+    }
+    .lb-pill {
       font-family: var(--font-mono);
+      font-size: 0.6rem;
+      font-weight: 600;
+      padding: 0.15rem 0.45rem;
+      border: 1px solid currentColor;
+      white-space: nowrap;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+    .lb-badges-row {
+      display: flex;
+      gap: 0.3rem;
+      flex-wrap: wrap;
+    }
+    .lb-badge-pill {
+      font-family: var(--font-mono);
+      font-size: 0.55rem;
+      font-weight: 600;
+      padding: 0.12rem 0.4rem;
+      border: 1px solid var(--border-light);
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .lb-score-col {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 0.25rem;
+    }
+    .lb-score-num {
+      font-family: var(--font-mono);
+      font-weight: 700;
+      font-size: 1.5rem;
+      line-height: 1;
+    }
+    .lb-bar {
+      width: 100%;
+      height: 4px;
+      background: var(--border-light);
+    }
+    .lb-bar-fill {
+      height: 100%;
+      transition: width 0.3s;
+    }
+    .lb-score-label {
+      font-family: var(--font-mono);
+      font-size: 0.55rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
     }
     .lb-empty {
-      padding: 2rem;
+      padding: 2.5rem;
       text-align: center;
       color: var(--text-muted);
       font-family: var(--font-mono);
       font-size: 0.8rem;
-    }
-    .lb-bar {
-      height: 4px;
-      background: var(--border-light);
-      margin-top: 4px;
-    }
-    .lb-bar-fill {
-      height: 100%;
-      background: var(--accent);
-      transition: width 0.3s;
     }
 
     @media (max-width: 768px) {
@@ -366,10 +419,14 @@
       .funnel-container { grid-template-columns: 1fr; }
       .funnel-explainer { max-width: 100%; }
       .lb-breakdown { display: none; }
+      .lb-badges-row { display: none; }
+      .lb-card { grid-template-columns: 36px 1fr 70px; gap: 0.5rem; padding: 0.75rem; }
+      .lb-score-num { font-size: 1.2rem; }
     }
     @media (max-width: 480px) {
       .dash-overview { grid-template-columns: 1fr; }
       .dash-stat-value { font-size: 1.5rem; }
+      .lb-onchain { display: none; }
     }
   </style>
 </head>
@@ -480,21 +537,8 @@
         <span class="dash-section-title">Top Agents</span>
         <span class="dash-section-meta">Reputation leaderboard</span>
       </div>
-      <div style="border:2px solid var(--border-light);overflow-x:auto;">
-        <table class="leaderboard-table" id="leaderboard-table">
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Agent</th>
-              <th>Score</th>
-              <th class="lb-breakdown">Breakdown</th>
-              <th>Badges</th>
-            </tr>
-          </thead>
-          <tbody id="leaderboard-body">
-            <tr><td colspan="5" class="lb-empty">Loading...</td></tr>
-          </tbody>
-        </table>
+      <div id="leaderboard-container" style="border:2px solid var(--border-light);">
+        <div class="lb-empty">Loading...</div>
       </div>
     </section>
 
@@ -689,38 +733,69 @@
     }
 
     function renderLeaderboard(entries) {
-      var tbody = document.getElementById('leaderboard-body');
+      var container = document.getElementById('leaderboard-container');
       if (!entries || entries.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" class="lb-empty">No reputation data yet. Agents earn scores through identity registration, staking, commerce, and skills.</td></tr>';
+        container.innerHTML = '<div class="lb-empty">No reputation data yet. Agents earn scores through identity registration, staking, commerce, and skills.</div>';
         return;
       }
-      var maxScore = entries[0].reputationScore || 1;
-      var html = '';
+      var CATS = [
+        { key: 'erc8004', label: 'Identity', color: '#6B4AFF' },
+        { key: 'staking', label: 'Staking', color: '#3B82F6' },
+        { key: 'commerce', label: 'Commerce', color: '#10B981' },
+        { key: 'skills', label: 'Skills', color: '#F59E0B' },
+        { key: 'badges', label: 'Badges', color: '#EC4899' }
+      ];
+      var html = '<div class="lb-list">';
       for (var i = 0; i < entries.length; i++) {
         var e = entries[i];
         var bd = e.scoreBreakdown || {};
         var oc = e.onchainReputation || {};
-        var parts = [];
-        if (bd.erc8004 > 0) {
-          var idLabel = 'ID:' + bd.erc8004;
-          if (oc.feedbackCount > 0) idLabel += ' (' + oc.feedbackCount + ' reviews, ' + oc.avgScore + '/100)';
-          parts.push(idLabel);
+        var score = e.reputationScore || 0;
+        var rankClass = i === 0 ? ' lb-rank--gold' : i === 1 ? ' lb-rank--silver' : i === 2 ? ' lb-rank--bronze' : '';
+        var barColor = score > 60 ? '#22c55e' : score >= 30 ? '#F59E0B' : '#ef4444';
+        var pct = Math.min(score, 100);
+        var agentLink = '/agent?id=' + encodeURIComponent(e.agentPublicKey || '');
+        var agentName = e.agentName || 'Unknown';
+
+        html += '<div class="lb-card">';
+        html += '<div class="lb-rank' + rankClass + '">' + (i + 1) + '</div>';
+        html += '<div class="lb-center">';
+        html += '<div class="lb-name"><a href="' + agentLink + '">' + agentName + '</a></div>';
+
+        var onchainParts = [];
+        if (e.erc8004TokenId) onchainParts.push('<span>ERC-8004 #' + e.erc8004TokenId + '</span>');
+        if (oc.feedbackCount > 0) onchainParts.push('<span>' + oc.feedbackCount + ' reviews</span>');
+        if (oc.avgScore > 0) onchainParts.push('<span>avg ' + oc.avgScore + '/100</span>');
+        if (onchainParts.length > 0) {
+          html += '<div class="lb-onchain">' + onchainParts.join('') + '</div>';
         }
-        if (bd.staking > 0) parts.push('STK:' + bd.staking);
-        if (bd.commerce > 0) parts.push('COM:' + bd.commerce);
-        if (bd.skills > 0) parts.push('SKL:' + bd.skills);
-        if (bd.badges > 0) parts.push('BDG:' + bd.badges);
-        var badgeStr = (e.badges && e.badges.length > 0) ? e.badges.join(', ') : '\u2014';
-        var pct = maxScore > 0 ? Math.round(e.reputationScore / maxScore * 100) : 0;
-        html += '<tr>';
-        html += '<td class="lb-rank">' + (i + 1) + '</td>';
-        html += '<td class="lb-name">' + (e.agentName || 'Unknown') + '</td>';
-        html += '<td class="lb-score">' + e.reputationScore + '<div class="lb-bar"><div class="lb-bar-fill" style="width:' + pct + '%"></div></div></td>';
-        html += '<td class="lb-breakdown">' + (parts.length > 0 ? parts.join(' ') : '\u2014') + '</td>';
-        html += '<td class="lb-badges">' + badgeStr + '</td>';
-        html += '</tr>';
+
+        html += '<div class="lb-breakdown">';
+        for (var j = 0; j < CATS.length; j++) {
+          var c = CATS[j];
+          var val = bd[c.key] || 0;
+          html += '<span class="lb-pill" style="color:' + c.color + ';border-color:' + c.color + '">' + c.label + ' ' + val + '</span>';
+        }
+        html += '</div>';
+
+        if (e.badges && e.badges.length > 0) {
+          html += '<div class="lb-badges-row">';
+          for (var b = 0; b < e.badges.length; b++) {
+            html += '<span class="lb-badge-pill">' + e.badges[b] + '</span>';
+          }
+          html += '</div>';
+        }
+
+        html += '</div>';
+        html += '<div class="lb-score-col">';
+        html += '<div class="lb-score-num">' + score + '</div>';
+        html += '<div class="lb-bar"><div class="lb-bar-fill" style="width:' + pct + '%;background:' + barColor + '"></div></div>';
+        html += '<div class="lb-score-label">/100</div>';
+        html += '</div>';
+        html += '</div>';
       }
-      tbody.innerHTML = html;
+      html += '</div>';
+      container.innerHTML = html;
     }
 
     function loadLeaderboard() {
@@ -730,8 +805,8 @@
           if (data.leaderboard) renderLeaderboard(data.leaderboard);
         })
         .catch(function() {
-          var tbody = document.getElementById('leaderboard-body');
-          if (tbody) tbody.innerHTML = '<tr><td colspan="5" class="lb-empty">Failed to load leaderboard</td></tr>';
+          var container = document.getElementById('leaderboard-container');
+          if (container) container.innerHTML = '<div class="lb-empty">Failed to load leaderboard</div>';
         });
     }
 

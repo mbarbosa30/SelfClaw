@@ -533,9 +533,119 @@
       .ap-econ-grid { grid-template-columns: 1fr; }
       .ap-plan-bottom { grid-template-columns: 1fr !important; }
     }
+    .ap-erc-score-hero {
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+      margin-bottom: 1.25rem;
+      padding-bottom: 1.25rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .ap-erc-score-ring {
+      width: 88px;
+      height: 88px;
+      border: 3px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .ap-erc-score-num {
+      font-size: 2rem;
+      font-weight: 700;
+      line-height: 1;
+      font-family: var(--font-mono);
+    }
+    .ap-erc-score-max {
+      font-family: var(--font-mono);
+      font-size: 0.55rem;
+      color: var(--text-muted);
+      margin-top: 0.15rem;
+    }
+    .ap-erc-score-meta {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+    .ap-erc-score-meta strong {
+      color: var(--text);
+      font-weight: 600;
+    }
+    .ap-feedback-list {
+      border: 2px solid var(--border);
+      margin-bottom: 1rem;
+    }
+    .ap-feedback-item {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.5rem 0.75rem;
+      font-size: 0.8rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .ap-feedback-item:last-child { border-bottom: none; }
+    .ap-feedback-item:nth-child(even) { background: var(--bg); }
+    .ap-feedback-rater {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      min-width: 100px;
+    }
+    .ap-feedback-rater a { color: var(--text-muted); }
+    .ap-feedback-rater a:hover { color: var(--accent); }
+    .ap-feedback-score {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      font-weight: 600;
+      padding: 0.15rem 0.5rem;
+      border: 2px solid var(--border);
+      min-width: 36px;
+      text-align: center;
+    }
+    .ap-feedback-tag {
+      font-family: var(--font-mono);
+      font-size: 0.6rem;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      border: 2px solid var(--accent);
+      padding: 0.15rem 0.45rem;
+      color: var(--accent);
+    }
+    .ap-sync-info {
+      font-family: var(--font-mono);
+      font-size: 0.6rem;
+      color: var(--text-muted);
+      margin-top: 0.75rem;
+    }
+    .ap-erc-link-btn {
+      display: inline-block;
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      font-weight: 600;
+      padding: 0.45rem 1rem;
+      border: 2px solid var(--border-heavy);
+      color: var(--text);
+      text-decoration: none;
+      transition: background 0.15s, color 0.15s;
+      margin-top: 0.75rem;
+    }
+    .ap-erc-link-btn:hover { background: var(--border-heavy); color: var(--bg); }
+    .ap-feedback-more {
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      padding: 0.4rem 0.75rem;
+      text-align: center;
+      border-top: 1px solid var(--border);
+    }
+
     @media (max-width: 480px) {
       .ap-price-usd { font-size: 1.5rem; }
       .ap-badges { gap: 0.3rem; }
+      .ap-erc-score-hero { flex-direction: column; text-align: center; }
+      .ap-feedback-item { flex-wrap: wrap; gap: 0.4rem; }
     }
   </style>
 </head>
@@ -730,23 +840,67 @@
 
       if (hasErc8004) {
         h += '<div class="ap-card">';
-        h += '<div class="ap-card-head"><span class="ap-card-title">Onchain Identity</span><span class="ap-card-meta">ERC-8004</span></div>';
+        h += '<div class="ap-card-head">';
+        h += '<span class="ap-card-title">Onchain Identity &mdash; #' + esc(String(a.erc8004.tokenId)) + '</span>';
+        h += '<span class="ap-badge ap-badge-erc8004" style="margin:0;">ERC-8004</span>';
+        h += '</div>';
         h += '<div class="ap-card-body">';
-        h += '<div class="ap-kv">';
+
+        if (hasRep) {
+          var rep = a.erc8004.reputation;
+          var avgScore = rep.averageScore != null ? Number(rep.averageScore) : null;
+          var scoreColor = avgScore == null ? 'var(--text-muted)' : (avgScore > 70 ? '#22c55e' : (avgScore >= 40 ? '#F59E0B' : '#ef4444'));
+          var ringBorder = avgScore == null ? 'var(--border)' : scoreColor;
+          h += '<div class="ap-erc-score-hero">';
+          h += '<div class="ap-erc-score-ring" style="border-color:' + ringBorder + ';">';
+          h += '<div class="ap-erc-score-num" style="color:' + scoreColor + ';">' + (avgScore != null ? avgScore.toFixed(0) : '--') + '</div>';
+          h += '<div class="ap-erc-score-max">/ 100</div>';
+          h += '</div>';
+          h += '<div class="ap-erc-score-meta">';
+          h += '<strong>' + (rep.totalFeedback || 0) + '</strong> feedback entries<br>';
+          h += 'Onchain reputation score';
+          if (rep.lastUpdated) h += '<br>Updated ' + fmtDate(new Date(rep.lastUpdated * 1000));
+          h += '</div>';
+          h += '</div>';
+        }
+
+        h += '<div class="ap-kv" style="margin-bottom:1rem;">';
         h += '<div class="ap-kv-label">Token ID</div><div class="ap-kv-value">#' + esc(String(a.erc8004.tokenId)) + '</div>';
         if (a.erc8004.identity && a.erc8004.identity.owner) {
           h += '<div class="ap-kv-label">Owner</div><div class="ap-kv-value"><a href="https://celoscan.io/address/' + esc(a.erc8004.identity.owner) + '" target="_blank">' + trunc(a.erc8004.identity.owner) + '</a></div>';
         }
-        h += '<div class="ap-kv-label">Registry</div><div class="ap-kv-value"><a href="' + esc(a.erc8004.scanUrl) + '" target="_blank">View on 8004scan &rarr;</a></div>';
-        h += '</div>';
-        if (hasRep) {
-          var rep = a.erc8004.reputation;
-          h += '<div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border);">';
-          h += '<div class="ap-rep-score">';
-          h += '<div class="ap-rep-num">' + (rep.averageScore ? Number(rep.averageScore).toFixed(1) : '--') + '</div>';
-          h += '<div class="ap-rep-detail">' + (rep.totalFeedback || 0) + ' feedback entries<br>Onchain reputation score</div>';
-          h += '</div></div>';
+        if (a.erc8004.identity && a.erc8004.identity.uri) {
+          h += '<div class="ap-kv-label">URI</div><div class="ap-kv-value" style="font-family:var(--font-mono);font-size:0.75rem;"><a href="' + esc(a.erc8004.identity.uri) + '" target="_blank">' + esc(a.erc8004.identity.uri.length > 60 ? a.erc8004.identity.uri.slice(0, 50) + '...' : a.erc8004.identity.uri) + '</a></div>';
         }
+        h += '</div>';
+
+        var fbArr = a.erc8004.feedback || [];
+        if (fbArr.length > 0) {
+          h += '<div style="font-family:var(--font-mono);font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-muted);margin-bottom:0.5rem;">Feedback</div>';
+          h += '<div class="ap-feedback-list">';
+          var fbMax = Math.min(fbArr.length, 10);
+          for (var fi = 0; fi < fbMax; fi++) {
+            var fb = fbArr[fi];
+            var fbScore = fb.score != null ? Number(fb.score) : null;
+            var fbColor = fbScore == null ? 'var(--text-muted)' : (fbScore > 70 ? '#22c55e' : (fbScore >= 40 ? '#F59E0B' : '#ef4444'));
+            h += '<div class="ap-feedback-item">';
+            h += '<span class="ap-feedback-rater"><a href="https://celoscan.io/address/' + esc(fb.rater) + '" target="_blank">' + trunc(fb.rater) + '</a></span>';
+            h += '<span class="ap-feedback-score" style="color:' + fbColor + ';border-color:' + fbColor + ';">' + (fbScore != null ? fbScore : '--') + '</span>';
+            if (fb.tag1) h += '<span class="ap-feedback-tag">' + esc(fb.tag1) + '</span>';
+            h += '</div>';
+          }
+          if (fbArr.length > 10) {
+            h += '<div class="ap-feedback-more">+ ' + (fbArr.length - 10) + ' more entries</div>';
+          }
+          h += '</div>';
+        }
+
+        h += '<a href="' + esc(a.erc8004.scanUrl) + '" target="_blank" rel="noopener" class="ap-erc-link-btn">View full profile on 8004scan &rarr;</a>';
+
+        if (a.erc8004.lastOnchainSync) {
+          h += '<div class="ap-sync-info">Last synced: ' + fmtDate(a.erc8004.lastOnchainSync) + '</div>';
+        }
+
         h += '</div></div>';
       }
 
