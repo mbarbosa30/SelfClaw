@@ -12,6 +12,7 @@ import { hostedAgentsRouter, startAgentWorker } from "./hosted-agents.js";
 import { skillMarketRouter } from "./skill-market.js";
 import agentCommerceRouter from "./agent-commerce.js";
 import reputationRouter from "./reputation.js";
+import agentApiRouter from "./agent-api.js";
 import { erc8004Service } from "../lib/erc8004.js";
 
 process.on('unhandledRejection', (reason: any) => {
@@ -116,6 +117,7 @@ async function main() {
   app.use("/api/selfclaw", skillMarketRouter);
   app.use("/api/selfclaw", agentCommerceRouter);
   app.use("/api/selfclaw", reputationRouter);
+  app.use("/api/selfclaw", agentApiRouter);
   app.use("/api/hostinger", hostingerRouter);
 
   app.get("/.well-known/agent-registration.json", async (req: Request, res: Response) => {
@@ -246,6 +248,13 @@ async function main() {
     console.log('[migration] verified_bots.hidden column ensured');
   } catch (err: any) {
     console.error('[migration] verified_bots.hidden column failed:', err.message);
+  }
+
+  try {
+    await pool.query(`ALTER TABLE verified_bots ADD COLUMN IF NOT EXISTS api_key VARCHAR UNIQUE;`);
+    console.log('[migration] verified_bots.api_key column ensured');
+  } catch (err: any) {
+    console.error('[migration] verified_bots.api_key column failed:', err.message);
   }
 
   const server = app.listen(PORT, "0.0.0.0", () => {
