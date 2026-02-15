@@ -461,14 +461,13 @@ router.get("/registry-stats", async (req: Request, res: Response) => {
     const [verified] = await db.select({ count: sql<number>`count(*)` }).from(verifiedBots);
     const [wallets] = await db.select({ count: sql<number>`count(*)` }).from(agentWallets);
     const [gasReceived] = await db.select({ count: sql<number>`count(*)` }).from(agentWallets).where(sql`gas_received = true`);
-    const tokensResult = await db.execute(sql`SELECT count(*)::int as count FROM agent_activity WHERE event_type = 'token_registered'`);
-    const tokensCount = (tokensResult as any).rows?.[0]?.count ?? 0;
+    const [tokens] = await db.select({ count: sql<number>`count(DISTINCT token_address)` }).from(sponsoredAgents).where(sql`token_address IS NOT NULL`);
     
     res.json({
       verifiedAgents: Number(verified.count),
       walletsCreated: Number(wallets.count),
       gasSent: Number(gasReceived.count),
-      tokensDeployed: Number(tokensCount),
+      tokensDeployed: Number(tokens.count),
     });
   } catch (error: any) {
     console.error("[admin] registry-stats error:", error);
