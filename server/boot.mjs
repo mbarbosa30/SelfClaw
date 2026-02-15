@@ -10,9 +10,10 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const publicDir = path.join(__dirname, "..", "public");
 
 let expressApp = null;
+let appReady = false;
 
 const server = http.createServer((req, res) => {
-  if (expressApp) {
+  if (appReady && expressApp) {
     return expressApp(req, res);
   }
 
@@ -35,6 +36,23 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  const ext = path.extname(req.url?.split("?")[0] || "");
+  if (ext && [".css", ".js", ".png", ".jpg", ".svg", ".ico", ".woff2", ".woff", ".ttf"].includes(ext)) {
+    const filePath = path.join(publicDir, req.url.split("?")[0]);
+    try {
+      if (fs.existsSync(filePath)) {
+        const mimeTypes = {
+          ".css": "text/css", ".js": "application/javascript", ".png": "image/png",
+          ".jpg": "image/jpeg", ".svg": "image/svg+xml", ".ico": "image/x-icon",
+          ".woff2": "font/woff2", ".woff": "font/woff", ".ttf": "font/ttf",
+        };
+        res.writeHead(200, { "Content-Type": mimeTypes[ext] || "application/octet-stream" });
+        fs.createReadStream(filePath).pipe(res);
+        return;
+      }
+    } catch {}
+  }
+
   res.writeHead(503, { "Content-Type": "application/json" });
   res.end(JSON.stringify({ status: "starting", message: "Server is initializing, please retry" }));
 });
@@ -52,7 +70,7 @@ server.listen(PORT, "0.0.0.0", () => {
   console.log(`Access at: http://0.0.0.0:${PORT}`);
   console.log("[boot] Health check ready, loading application...");
 
-  loadApp();
+  setTimeout(loadApp, 100);
 });
 
 async function loadApp() {
@@ -66,12 +84,15 @@ async function loadApp() {
       const appMod = await import("./index.ts");
       expressApp = appMod.app;
     }
+    await new Promise(resolve => setTimeout(resolve, 50));
+    appReady = true;
     console.log("[boot] Express app mounted successfully");
   } catch (err) {
     console.error("[boot] tsx/esm/api failed:", err.message);
     try {
       const appMod = await import("./index.ts");
       expressApp = appMod.app;
+      appReady = true;
       console.log("[boot] Express app mounted via direct import");
     } catch (err2) {
       console.error("[boot] Critical: Could not load app:", err2.message);

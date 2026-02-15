@@ -115,11 +115,14 @@ if (!isBootLoader) {
 export { app };
 
 async function initializeApp() {
+  const yieldToEventLoop = () => new Promise<void>(resolve => setImmediate(resolve));
+
   let db: any, pool: any, verifiedBots: any, sql: any;
   try {
     const dbMod = await import("./db.js");
     db = dbMod.db;
     pool = dbMod.pool;
+    await yieldToEventLoop();
     const schemaMod = await import("../shared/schema.js");
     verifiedBots = schemaMod.verifiedBots;
     const ormMod = await import("drizzle-orm");
@@ -128,6 +131,8 @@ async function initializeApp() {
     console.error('[startup] Database connection failed:', err.message);
     console.warn('[startup] Continuing without database — API routes will return 503');
   }
+
+  await yieldToEventLoop();
 
   let setupSelfAuth: any, registerAuthRoutes: any;
   try {
@@ -185,6 +190,7 @@ async function initializeApp() {
 
   for (const r of routers) {
     try {
+      await yieldToEventLoop();
       const mod = await r.importFn();
       const router = r.key ? mod[r.key] : mod.default;
       if (router) {
