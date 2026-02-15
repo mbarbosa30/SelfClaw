@@ -74,7 +74,8 @@ async function syncAllAgents(): Promise<SyncResult> {
 
           const updates: Record<string, any> = {};
           let changed = false;
-          const isFirstSync = !meta.lastOnchainSync;
+          const needsBackfill = meta.onchainFeedbackCount === undefined || meta.onchainFeedbackCount === null;
+          const isFirstSync = !meta.lastOnchainSync || needsBackfill;
 
           if (identity) {
             if (identity.owner && identity.owner !== meta.erc8004Owner) {
