@@ -227,13 +227,36 @@ router.post("/v1/agent-api/skills", agentApiLimiter, authenticateAgent, async (r
 
     const result = await db.execute(
       sql`INSERT INTO market_skills (id, human_id, agent_public_key, agent_name, name, description, category, price, price_token, is_free, endpoint, sample_output, created_at, updated_at)
-          VALUES (gen_random_uuid(), ${agent.humanId}, ${agent.publicKey}, ${agent.deviceId || null}, ${name}, ${description}, ${category}, ${price || null}, ${priceToken || 'CELO'}, ${isFree}, ${endpoint || null}, ${sampleOutput || null}, NOW(), NOW())
+          VALUES (gen_random_uuid(), ${agent.humanId}, ${agent.publicKey}, ${agent.deviceId || null}, ${name}, ${description}, ${category}, ${price || null}, ${priceToken || 'SELFCLAW'}, ${isFree}, ${endpoint || null}, ${sampleOutput || null}, NOW(), NOW())
           RETURNING *`
     );
 
     res.status(201).json({ skill: result.rows[0] });
   } catch (error: any) {
     res.status(500).json({ error: "Failed to publish skill" });
+  }
+});
+
+router.delete("/v1/agent-api/skills/:id", agentApiLimiter, authenticateAgent, async (req: Request, res: Response) => {
+  try {
+    const agent = (req as any).agent;
+    const { id } = req.params;
+
+    const result = await db.execute(
+      sql`SELECT * FROM market_skills WHERE id = ${id} AND agent_public_key = ${agent.publicKey} LIMIT 1`
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Skill not found or does not belong to this agent" });
+    }
+
+    await db.execute(
+      sql`UPDATE market_skills SET active = false, updated_at = NOW() WHERE id = ${id}`
+    );
+
+    res.json({ deleted: true, skillId: id, message: "Skill deactivated successfully" });
+  } catch (error: any) {
+    res.status(500).json({ error: "Failed to delete skill" });
   }
 });
 

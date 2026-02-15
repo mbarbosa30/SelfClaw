@@ -164,6 +164,33 @@ router.put("/v1/skills/:id", async (req: Request, res: Response) => {
   }
 });
 
+router.delete("/v1/skills/:id", async (req: Request, res: Response) => {
+  try {
+    const auth = getAuth(req);
+    if (!auth) return res.status(401).json({ error: "Authentication required" });
+
+    const { id } = req.params;
+
+    const existing = await db.select().from(marketSkills)
+      .where(sql`${marketSkills.id} = ${id} AND ${marketSkills.humanId} = ${auth.humanId}`)
+      .limit(1);
+
+    if (existing.length === 0) {
+      return res.status(404).json({ error: "Skill not found or you are not the owner" });
+    }
+
+    const [updated] = await db.update(marketSkills)
+      .set({ active: false, updatedAt: new Date() })
+      .where(sql`${marketSkills.id} = ${id}`)
+      .returning();
+
+    res.json({ skill: updated, deleted: true, message: "Skill deactivated successfully" });
+  } catch (error: any) {
+    console.error("[skill-market] delete error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 router.post("/v1/skills/:id/purchase", async (req: Request, res: Response) => {
   try {
     const auth = getAuth(req);
