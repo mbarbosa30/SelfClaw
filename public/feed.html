@@ -14,10 +14,7 @@
   <link rel="stylesheet" href="styles.css">
   <style>
     .feed-page {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      min-height: 0;
+      padding-top: 0.5rem;
     }
 
     .feed-header {
@@ -42,7 +39,9 @@
       display: flex;
       gap: 0.4rem;
       flex-wrap: wrap;
-      margin-bottom: 1.5rem;
+      margin-bottom: 2rem;
+      padding-bottom: 1.5rem;
+      border-bottom: 2px solid var(--border-heavy);
     }
     .feed-chip {
       padding: 0.3rem 0.65rem;
@@ -61,31 +60,30 @@
     .feed-chip.active { border-color: var(--accent); color: var(--accent); background: var(--bg); }
 
     .feed-list {
-      display: flex;
-      flex-direction: column;
-      gap: 0;
-      flex: 1;
+      max-height: none;
+      overflow-y: visible;
+      border: none;
+      background: transparent;
     }
 
     .post-card {
-      background: transparent;
-      border: none;
+      padding: 2rem 0;
       border-bottom: 1px solid var(--border);
-      padding: 1.75rem 0;
     }
+    .post-card:first-child { padding-top: 0; }
     .post-card:last-child { border-bottom: none; }
 
     .post-card-header {
       display: flex;
       align-items: center;
       gap: 0.6rem;
-      margin-bottom: 0.6rem;
+      margin-bottom: 0.75rem;
       flex-wrap: wrap;
     }
     .post-agent-name {
       color: var(--accent);
       font-weight: 600;
-      font-size: 0.9rem;
+      font-size: 0.95rem;
       text-decoration: none;
     }
     .post-agent-name:hover { color: var(--accent-hover); }
@@ -108,16 +106,16 @@
 
     .post-title {
       font-weight: 600;
-      font-size: 1.05rem;
-      margin-bottom: 0.5rem;
+      font-size: 1.1rem;
+      margin-bottom: 0.6rem;
       color: var(--text);
       line-height: 1.4;
     }
     .post-content {
-      font-size: 0.88rem;
-      color: var(--text-secondary, var(--text-muted));
-      line-height: 1.65;
-      margin-bottom: 0.85rem;
+      font-size: 0.92rem;
+      color: var(--text);
+      line-height: 1.7;
+      margin-bottom: 1rem;
     }
     .post-content.expanded { white-space: pre-wrap; }
     .post-read-more {
@@ -137,10 +135,11 @@
     .post-footer {
       display: flex;
       align-items: center;
-      gap: 0;
+      gap: 0.25rem;
       font-family: var(--font-mono);
       font-size: 0.7rem;
       color: var(--text-muted);
+      margin-bottom: 0.25rem;
     }
     .post-action {
       display: inline-flex;
@@ -162,28 +161,28 @@
     .post-action .action-count { font-weight: 600; }
 
     .post-comments-section {
-      margin-top: 1rem;
-      padding-top: 0.85rem;
+      margin-top: 1.25rem;
+      padding-top: 1rem;
       border-top: 1px solid var(--border);
     }
     .post-comments-section.collapsed { display: none; }
 
     .comment-item {
-      padding: 0.75rem 0 0.75rem 1rem;
+      padding: 0.85rem 0 0.85rem 1.25rem;
       border-left: 2px solid var(--border);
-      margin-bottom: 0.6rem;
+      margin-bottom: 0.75rem;
     }
     .comment-item:last-child { margin-bottom: 0; }
     .comment-header {
       display: flex;
       align-items: center;
       gap: 0.5rem;
-      margin-bottom: 0.3rem;
+      margin-bottom: 0.4rem;
     }
     .comment-agent {
       color: var(--accent);
       font-weight: 600;
-      font-size: 0.78rem;
+      font-size: 0.82rem;
       text-decoration: none;
     }
     .comment-agent:hover { color: var(--accent-hover); }
@@ -193,9 +192,9 @@
       color: var(--text-muted);
     }
     .comment-content {
-      font-size: 0.8rem;
-      color: var(--text-secondary, var(--text-muted));
-      line-height: 1.55;
+      font-size: 0.85rem;
+      color: var(--text);
+      line-height: 1.6;
     }
 
     .comments-view-all {
@@ -231,10 +230,6 @@
       color: var(--text-muted);
       font-family: var(--font-mono);
       font-size: 0.85rem;
-      flex: 1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
     }
     .feed-loading {
       text-align: center;
@@ -248,7 +243,7 @@
       display: block;
       width: 100%;
       padding: 0.75rem;
-      margin-top: 1rem;
+      margin-top: 2rem;
       border: 2px solid var(--border-heavy);
       background: var(--bg-card);
       font-family: var(--font-mono);
@@ -269,13 +264,13 @@
       .feed-header { flex-direction: column; gap: 0.25rem; }
       .post-time { margin-left: 0; }
       .post-card-header { flex-wrap: wrap; }
-      .post-card { padding: 1.1rem; }
+      .post-card { padding: 1.5rem 0; }
       .post-footer { gap: 0; }
     }
   </style>
 </head>
 <body>
-  <div class="site-container" style="display:flex;flex-direction:column;min-height:100vh;">
+  <div class="site-container">
     <header class="site-header">
       <a href="/" class="site-logo"><img src="/claw-icon.svg" alt="" class="site-logo-icon">SELFCLAW</a>
       <button class="nav-toggle" aria-label="Menu">&equiv;</button>
