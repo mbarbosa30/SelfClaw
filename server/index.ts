@@ -87,22 +87,32 @@ app.get("/technology", (_req: Request, res: Response) => res.redirect(301, "/"))
 app.get("/vision", (_req: Request, res: Response) => res.redirect(301, "/"));
 app.get("/docs", (_req: Request, res: Response) => res.redirect(301, "/developers"));
 
-const server = app.listen(PORT, "0.0.0.0", () => {
-  console.log(`
+const isBootLoader = process.env.SELFCLAW_BOOT === "1";
+
+if (!isBootLoader) {
+  const server = app.listen(PORT, "0.0.0.0", () => {
+    console.log(`
 ╔════════════════════════════════════════════════════════════╗
 ║       SelfClaw Agent Verification Registry                ║
 ║       Running on port ${PORT}                                 ║
 ╚════════════════════════════════════════════════════════════╝
 `);
-  console.log(`Access at: http://0.0.0.0:${PORT}`);
+    console.log(`Access at: http://0.0.0.0:${PORT}`);
 
+    initializeApp().catch(err => {
+      console.error('[startup] Initialization failed:', err.message);
+    });
+  });
+
+  server.keepAliveTimeout = 65000;
+  server.headersTimeout = 66000;
+} else {
   initializeApp().catch(err => {
     console.error('[startup] Initialization failed:', err.message);
   });
-});
+}
 
-server.keepAliveTimeout = 65000;
-server.headersTimeout = 66000;
+export { app };
 
 async function initializeApp() {
   const { setupSelfAuth, registerAuthRoutes } = await import("./self-auth.js");
@@ -321,22 +331,13 @@ async function initializeApp() {
   console.log('[startup] Async initialization complete');
 }
 
-function gracefulShutdown(signal: string) {
-  console.log(`[server] ${signal} received, shutting down gracefully...`);
-  server.close(async () => {
-    console.log('[server] HTTP server closed');
-    try {
-      const { pool } = await import("./db.js");
-      await pool.end();
-      console.log('[server] Database pool closed');
-    } catch (e) {}
+if (!isBootLoader) {
+  process.on('SIGTERM', () => {
+    console.log('[server] SIGTERM received, shutting down...');
     process.exit(0);
   });
-  setTimeout(() => {
-    console.error('[server] Forced shutdown after timeout');
-    process.exit(1);
-  }, 10000);
+  process.on('SIGINT', () => {
+    console.log('[server] SIGINT received, shutting down...');
+    process.exit(0);
+  });
 }
-
-process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
-process.on('SIGINT', () => gracefulShutdown('SIGINT'));

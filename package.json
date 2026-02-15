@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "start": "tsx server/index.ts",
+    "start:prod": "node server/boot.mjs",
     "dev": "tsx watch server/index.ts",
     "build": "echo 'No build step required - using tsx runtime'",
     "db:push": "drizzle-kit push",
