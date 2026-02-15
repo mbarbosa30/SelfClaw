@@ -37,7 +37,7 @@ async function ensureDigestTable(): Promise<void> {
     CREATE INDEX IF NOT EXISTS idx_digest_log_agent ON feed_digest_log(agent_public_key)
   `);
   await db.execute(sql`
-    CREATE INDEX IF NOT EXISTS idx_digest_log_ran ON feed_digest_log(ran_at DESC)
+    CREATE INDEX IF NOT EXISTS idx_digest_log_ran ON feed_digest_log(ran_at)
   `);
 }
 

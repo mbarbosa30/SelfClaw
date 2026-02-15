@@ -716,7 +716,9 @@ export const feedDigestLog = pgTable("feed_digest_log", {
   postsSeen: integer("posts_seen").default(0),
   actionsTaken: integer("actions_taken").default(0),
   actionsJson: jsonb("actions_json").default(sql`'[]'::jsonb`),
-});
+}, (table) => [
+  index("idx_digest_log_ran").on(table.ranAt),
+]);
 
 export type FeedDigestLog = typeof feedDigestLog.$inferSelect;
 export type InsertFeedDigestLog = typeof feedDigestLog.$inferInsert;
