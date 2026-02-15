@@ -115,10 +115,28 @@ if (!isBootLoader) {
 export { app };
 
 async function initializeApp() {
-  const { setupSelfAuth, registerAuthRoutes } = await import("./self-auth.js");
-  const { db, pool } = await import("./db.js");
-  const { verifiedBots } = await import("../shared/schema.js");
-  const { sql } = await import("drizzle-orm");
+  let db: any, pool: any, verifiedBots: any, sql: any;
+  try {
+    const dbMod = await import("./db.js");
+    db = dbMod.db;
+    pool = dbMod.pool;
+    const schemaMod = await import("../shared/schema.js");
+    verifiedBots = schemaMod.verifiedBots;
+    const ormMod = await import("drizzle-orm");
+    sql = ormMod.sql;
+  } catch (err: any) {
+    console.error('[startup] Database connection failed:', err.message);
+    console.warn('[startup] Continuing without database — API routes will return 503');
+  }
+
+  let setupSelfAuth: any, registerAuthRoutes: any;
+  try {
+    const authMod = await import("./self-auth.js");
+    setupSelfAuth = authMod.setupSelfAuth;
+    registerAuthRoutes = authMod.registerAuthRoutes;
+  } catch (err: any) {
+    console.error('[startup] Auth module import failed:', err.message);
+  }
 
   app.use((req, res, next) => {
     const isStreaming = req.path.includes('/chat') || req.path.includes('/messages');
@@ -128,43 +146,84 @@ async function initializeApp() {
     next();
   });
 
-  try {
-    await setupSelfAuth(app);
-    registerAuthRoutes(app);
-    console.log("[auth] Self.xyz authentication routes registered");
-  } catch (error) {
-    console.error("[auth] Failed to setup Self.xyz authentication:", error);
+  if (setupSelfAuth && registerAuthRoutes) {
+    try {
+      await setupSelfAuth(app);
+      registerAuthRoutes(app);
+      console.log("[auth] Self.xyz authentication routes registered");
+    } catch (error) {
+      console.error("[auth] Failed to setup Self.xyz authentication:", error);
+      app.get("/api/login", (req, res) => {
+        res.status(503).json({ error: "Authentication not available. Please try again later." });
+      });
+    }
+  } else {
+    console.warn("[auth] Auth module not available, skipping");
     app.get("/api/login", (req, res) => {
-      res.status(503).json({ error: "Authentication not available. Please try again later." });
+      res.status(503).json({ error: "Authentication not available." });
     });
   }
 
-  const { default: selfclawRouter } = await import("./selfclaw.js");
-  const { default: adminRouter, runAutoClaimPendingBridges } = await import("./admin.js");
-  const { default: hostingerRouter } = await import("./hostinger-routes.js");
-  const { default: sandboxRouter, initOpenClawGateway } = await import("./sandbox-agent.js");
-  const { hostedAgentsRouter, startAgentWorker } = await import("./hosted-agents.js");
-  const { skillMarketRouter } = await import("./skill-market.js");
-  const { default: agentCommerceRouter } = await import("./agent-commerce.js");
-  const { default: reputationRouter } = await import("./reputation.js");
-  const { default: agentApiRouter } = await import("./agent-api.js");
-  const { default: agentFeedRouter } = await import("./agent-feed.js");
-  const { startFeedDigest } = await import("./feed-digest.js");
-  const { erc8004Service } = await import("../lib/erc8004.js");
+  let runAutoClaimPendingBridges: any;
+  let initOpenClawGateway: any;
+  let startAgentWorker: any;
+  let startFeedDigest: any;
+  let erc8004Service: any;
 
-  app.use("/api/selfclaw", selfclawRouter);
-  app.use("/api/admin", adminRouter);
-  app.use("/api/admin/sandbox", sandboxRouter);
-  app.use("/api/selfclaw", hostedAgentsRouter);
-  app.use("/api/selfclaw", skillMarketRouter);
-  app.use("/api/selfclaw", agentCommerceRouter);
-  app.use("/api/selfclaw", reputationRouter);
-  app.use("/api/selfclaw", agentApiRouter);
-  app.use("/api/selfclaw", agentFeedRouter);
-  app.use("/api/hostinger", hostingerRouter);
+  const routers: Array<{ path: string; name: string; importFn: () => Promise<any>; key?: string }> = [
+    { path: "/api/selfclaw", name: "selfclaw", importFn: () => import("./selfclaw.js"), key: "default" },
+    { path: "/api/admin", name: "admin", importFn: () => import("./admin.js"), key: "default" },
+    { path: "/api/hostinger", name: "hostinger", importFn: () => import("./hostinger-routes.js"), key: "default" },
+    { path: "/api/admin/sandbox", name: "sandbox", importFn: () => import("./sandbox-agent.js"), key: "default" },
+    { path: "/api/selfclaw", name: "hosted-agents", importFn: () => import("./hosted-agents.js"), key: "hostedAgentsRouter" },
+    { path: "/api/selfclaw", name: "skill-market", importFn: () => import("./skill-market.js"), key: "skillMarketRouter" },
+    { path: "/api/selfclaw", name: "agent-commerce", importFn: () => import("./agent-commerce.js"), key: "default" },
+    { path: "/api/selfclaw", name: "reputation", importFn: () => import("./reputation.js"), key: "default" },
+    { path: "/api/selfclaw", name: "agent-api", importFn: () => import("./agent-api.js"), key: "default" },
+    { path: "/api/selfclaw", name: "agent-feed", importFn: () => import("./agent-feed.js"), key: "default" },
+  ];
+
+  for (const r of routers) {
+    try {
+      const mod = await r.importFn();
+      const router = r.key ? mod[r.key] : mod.default;
+      if (router) {
+        app.use(r.path, router);
+        console.log(`[router] ${r.name} mounted at ${r.path}`);
+      }
+      if (r.name === "admin" && mod.runAutoClaimPendingBridges) {
+        runAutoClaimPendingBridges = mod.runAutoClaimPendingBridges;
+      }
+      if (r.name === "sandbox" && mod.initOpenClawGateway) {
+        initOpenClawGateway = mod.initOpenClawGateway;
+      }
+      if (r.name === "hosted-agents" && mod.startAgentWorker) {
+        startAgentWorker = mod.startAgentWorker;
+      }
+    } catch (err: any) {
+      console.error(`[router] Failed to load ${r.name}:`, err.message);
+    }
+  }
+
+  try {
+    const feedDigestMod = await import("./feed-digest.js");
+    startFeedDigest = feedDigestMod.startFeedDigest;
+  } catch (err: any) {
+    console.error('[router] Failed to load feed-digest:', err.message);
+  }
+
+  try {
+    const erc8004Mod = await import("../lib/erc8004.js");
+    erc8004Service = erc8004Mod.erc8004Service;
+  } catch (err: any) {
+    console.error('[router] Failed to load erc8004:', err.message);
+  }
 
   app.get("/.well-known/agent-registration.json", async (req: Request, res: Response) => {
     try {
+      if (!erc8004Service) {
+        return res.json({ registrations: [] });
+      }
       const minted = await db.select()
         .from(verifiedBots)
         .where(sql`(${verifiedBots.metadata}->>'erc8004Minted')::boolean = true`);
@@ -191,6 +250,9 @@ async function initializeApp() {
   });
 
   app.get("/api/erc8004/config", (req: Request, res: Response) => {
+    if (!erc8004Service) {
+      return res.status(503).json({ error: "ERC-8004 service not available" });
+    }
     const config = erc8004Service.getConfig();
     res.json({
       isDeployed: config.isDeployed,
@@ -200,6 +262,12 @@ async function initializeApp() {
       explorer: config.explorer,
     });
   });
+
+  if (!pool) {
+    console.warn('[startup] No database pool — skipping migrations and background workers');
+    console.log('[startup] Async initialization complete (degraded mode)');
+    return;
+  }
 
   try {
     await pool.query(`
@@ -305,28 +373,52 @@ async function initializeApp() {
 
   console.log('[startup] Core setup complete');
 
-  setTimeout(() => {
-    runAutoClaimPendingBridges().catch(err =>
-      console.error('[auto-bridge] Startup auto-claim error:', err.message)
-    );
-  }, 5000);
+  if (runAutoClaimPendingBridges) {
+    setTimeout(() => {
+      try {
+        runAutoClaimPendingBridges().catch((err: any) =>
+          console.error('[auto-bridge] Startup auto-claim error:', err.message)
+        );
+      } catch (err: any) {
+        console.error('[auto-bridge] Failed to start:', err.message);
+      }
+    }, 5000);
+  }
 
-  setTimeout(() => {
-    initOpenClawGateway().catch(err =>
-      console.log('[sandbox] OpenClaw init deferred:', err.message)
-    );
-  }, 3000);
+  if (initOpenClawGateway) {
+    setTimeout(() => {
+      try {
+        initOpenClawGateway().catch((err: any) =>
+          console.log('[sandbox] OpenClaw init deferred:', err.message)
+        );
+      } catch (err: any) {
+        console.error('[sandbox] Failed to start:', err.message);
+      }
+    }, 3000);
+  }
 
-  setTimeout(() => {
-    startAgentWorker();
-    console.log('[hosted-agents] Agent worker started');
-  }, 8000);
+  if (startAgentWorker) {
+    setTimeout(() => {
+      try {
+        startAgentWorker();
+        console.log('[hosted-agents] Agent worker started');
+      } catch (err: any) {
+        console.error('[hosted-agents] Failed to start:', err.message);
+      }
+    }, 8000);
+  }
 
-  setTimeout(() => {
-    startFeedDigest().catch(err =>
-      console.error('[feed-digest] Start error:', err.message)
-    );
-  }, 12000);
+  if (startFeedDigest) {
+    setTimeout(() => {
+      try {
+        startFeedDigest().catch((err: any) =>
+          console.error('[feed-digest] Start error:', err.message)
+        );
+      } catch (err: any) {
+        console.error('[feed-digest] Failed to start:', err.message);
+      }
+    }, 12000);
+  }
 
   console.log('[startup] Async initialization complete');
 }
