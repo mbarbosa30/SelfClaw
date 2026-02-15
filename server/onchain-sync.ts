@@ -7,27 +7,36 @@ const SYNC_INTERVAL = 6 * 60 * 60 * 1000;
 let syncTimer: ReturnType<typeof setInterval> | null = null;
 let isSyncing = false;
 
-async function syncAllAgents(): Promise<{ synced: number; updated: number; errors: number }> {
+interface SyncResult {
+  synced: number;
+  updated: number;
+  errors: number;
+  details: Array<{ agent: string; tokenId: string; status: string; feedbackCount?: number; avgScore?: number; error?: string }>;
+}
+
+async function syncAllAgents(): Promise<SyncResult> {
   if (isSyncing) {
     console.log("[onchain-sync] Sync already running, skipping");
-    return { synced: 0, updated: 0, errors: 0 };
+    return { synced: 0, updated: 0, errors: 0, details: [] };
   }
 
   isSyncing = true;
   let synced = 0;
   let updated = 0;
   let errors = 0;
+  const details: SyncResult["details"] = [];
   const startTime = Date.now();
 
   try {
     if (!erc8004Service.isReady()) {
       console.log("[onchain-sync] ERC-8004 contracts not deployed, skipping sync");
-      return { synced, updated, errors };
+      return { synced, updated, errors, details };
     }
 
     const agents = await db.select({
       id: verifiedBots.id,
       publicKey: verifiedBots.publicKey,
+      deviceId: verifiedBots.deviceId,
       metadata: verifiedBots.metadata,
     })
       .from(verifiedBots)
@@ -40,18 +49,32 @@ async function syncAllAgents(): Promise<{ synced: number; updated: number; error
       const batch = agents.slice(i, i + BATCH_SIZE);
 
       await Promise.all(batch.map(async (agent) => {
+        const agentLabel = agent.deviceId || agent.publicKey.slice(0, 16) + "...";
         try {
           const meta = (agent.metadata || {}) as Record<string, any>;
-          const tokenId = meta.erc8004TokenId;
+          const tokenId = String(meta.erc8004TokenId);
           if (!tokenId) return;
 
-          const [identity, repSummary] = await Promise.all([
-            erc8004Service.getAgentIdentity(tokenId),
-            erc8004Service.getReputationSummary(tokenId),
-          ]);
+          console.log(`[onchain-sync] Syncing ${agentLabel} (token #${tokenId})...`);
+
+          let identity: { owner: string; uri: string } | null = null;
+          let repSummary: { totalFeedback: number; averageScore: number; lastUpdated: number } | null = null;
+
+          try {
+            identity = await erc8004Service.getAgentIdentity(tokenId);
+          } catch (identityErr: any) {
+            console.error(`[onchain-sync] ${agentLabel}: identity fetch failed: ${identityErr.message}`);
+          }
+
+          try {
+            repSummary = await erc8004Service.getReputationSummary(tokenId);
+          } catch (repErr: any) {
+            console.error(`[onchain-sync] ${agentLabel}: reputation fetch failed: ${repErr.message}`);
+          }
 
           const updates: Record<string, any> = {};
           let changed = false;
+          const isFirstSync = !meta.lastOnchainSync;
 
           if (identity) {
             if (identity.owner && identity.owner !== meta.erc8004Owner) {
@@ -65,9 +88,7 @@ async function syncAllAgents(): Promise<{ synced: number; updated: number; error
           }
 
           if (repSummary) {
-            const prevFeedback = meta.onchainFeedbackCount || 0;
-            const prevAvgScore = meta.onchainAvgScore || 0;
-            if (repSummary.totalFeedback !== prevFeedback || repSummary.averageScore !== prevAvgScore) {
+            if (isFirstSync || repSummary.totalFeedback !== (meta.onchainFeedbackCount ?? -1) || repSummary.averageScore !== (meta.onchainAvgScore ?? -1)) {
               updates.onchainFeedbackCount = repSummary.totalFeedback;
               updates.onchainAvgScore = repSummary.averageScore;
               updates.onchainLastUpdated = repSummary.lastUpdated;
@@ -75,20 +96,36 @@ async function syncAllAgents(): Promise<{ synced: number; updated: number; error
             }
           }
 
-          if (changed) {
+          if (changed || isFirstSync) {
             updates.lastOnchainSync = new Date().toISOString();
             const newMeta = { ...meta, ...updates };
             await db.update(verifiedBots)
               .set({ metadata: newMeta })
               .where(eq(verifiedBots.id, agent.id));
             updated++;
-            console.log(`[onchain-sync] Updated agent ${agent.publicKey.slice(0, 12)}... (token #${tokenId})`);
+            console.log(`[onchain-sync] Updated ${agentLabel} (token #${tokenId}): feedback=${repSummary?.totalFeedback ?? '?'}, avg=${repSummary?.averageScore ?? '?'}, owner=${identity?.owner?.slice(0, 10) ?? '?'}...`);
+          } else {
+            console.log(`[onchain-sync] ${agentLabel} (token #${tokenId}): no changes`);
           }
+
+          details.push({
+            agent: agentLabel,
+            tokenId,
+            status: changed || isFirstSync ? "updated" : "unchanged",
+            feedbackCount: repSummary?.totalFeedback,
+            avgScore: repSummary?.averageScore,
+          });
 
           synced++;
         } catch (err: any) {
           errors++;
-          console.error(`[onchain-sync] Error syncing agent ${agent.publicKey?.slice(0, 12)}:`, err.message);
+          console.error(`[onchain-sync] Error syncing ${agentLabel}:`, err.message);
+          details.push({
+            agent: agentLabel,
+            tokenId: (agent.metadata as any)?.erc8004TokenId || "?",
+            status: "error",
+            error: err.message,
+          });
         }
       }));
 
@@ -144,7 +181,7 @@ async function syncAllAgents(): Promise<{ synced: number; updated: number; error
 
     const duration = ((Date.now() - startTime) / 1000).toFixed(1);
     console.log(`[onchain-sync] Complete in ${duration}s: synced=${synced}, updated=${updated}, errors=${errors}`);
-    return { synced, updated, errors };
+    return { synced, updated, errors, details };
   } finally {
     isSyncing = false;
   }

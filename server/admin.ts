@@ -1669,6 +1669,11 @@ router.post("/refresh-all-agents", async (req: Request, res: Response) => {
     const { syncAllAgents } = await import("./onchain-sync.js");
     const result = await syncAllAgents();
     console.log(`[admin] Manual agent refresh: synced=${result.synced}, updated=${result.updated}, errors=${result.errors}`);
+    if (result.details?.length > 0) {
+      for (const d of result.details) {
+        console.log(`[admin]   ${d.agent} (#${d.tokenId}): ${d.status} feedback=${d.feedbackCount ?? '-'} avg=${d.avgScore ?? '-'}${d.error ? ' err=' + d.error : ''}`);
+      }
+    }
     res.json({
       success: true,
       ...result,
