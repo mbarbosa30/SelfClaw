@@ -261,6 +261,20 @@ async function main() {
     console.error('[migration] verified_bots.api_key column failed:', err.message);
   }
 
+  try {
+    const { rows } = await pool.query(`SELECT id FROM verified_bots WHERE api_key IS NULL AND human_id IS NOT NULL`);
+    if (rows.length > 0) {
+      const crypto = await import("crypto");
+      for (const row of rows) {
+        const key = "sclaw_" + crypto.randomBytes(32).toString("hex");
+        await pool.query(`UPDATE verified_bots SET api_key = $1 WHERE id = $2`, [key, row.id]);
+      }
+      console.log(`[migration] Backfilled API keys for ${rows.length} verified agents`);
+    }
+  } catch (err: any) {
+    console.error('[migration] API key backfill failed:', err.message);
+  }
+
   const server = app.listen(PORT, "0.0.0.0", () => {
     console.log(`
 ╔════════════════════════════════════════════════════════════╗

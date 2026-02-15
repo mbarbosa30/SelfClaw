@@ -488,40 +488,6 @@ router.get("/v1/agent-api/briefing", agentApiLimiter, authenticateAgent, async (
   }
 });
 
-router.post("/v1/agent-api/generate-key/:publicKey", async (req: Request, res: Response) => {
-  try {
-    const session = req.session as any;
-    if (!session?.isAuthenticated || !session?.humanId) {
-      return res.status(401).json({ error: "Session authentication required" });
-    }
-
-    const { publicKey } = req.params;
-
-    const [agent] = await db.select()
-      .from(verifiedBots)
-      .where(sql`${verifiedBots.publicKey} = ${publicKey} AND ${verifiedBots.humanId} = ${session.humanId}`)
-      .limit(1);
-
-    if (!agent) {
-      return res.status(404).json({ error: "Agent not found or does not belong to you" });
-    }
-
-    if (agent.apiKey) {
-      return res.status(409).json({ error: "Agent already has an API key. Use regenerate-key to replace it." });
-    }
-
-    const apiKey = "sclaw_" + crypto.randomBytes(32).toString("hex");
-
-    await db.update(verifiedBots)
-      .set({ apiKey })
-      .where(sql`${verifiedBots.id} = ${agent.id}`);
-
-    res.json({ apiKey, publicKey, message: "Store this key securely. It will not be shown again." });
-  } catch (error: any) {
-    res.status(500).json({ error: "Failed to generate API key" });
-  }
-});
-
 router.post("/v1/agent-api/regenerate-key/:publicKey", async (req: Request, res: Response) => {
   try {
     const session = req.session as any;

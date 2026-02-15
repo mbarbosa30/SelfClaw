@@ -868,6 +868,9 @@ async function handleCallback(req: Request, res: Response) {
         if (session.agentName) {
           updateData.deviceId = session.agentName;
         }
+        if (!existing[0].apiKey) {
+          updateData.apiKey = "sclaw_" + crypto.randomBytes(32).toString("hex");
+        }
         await db.update(verifiedBots)
           .set(updateData)
           .where(sql`${verifiedBots.publicKey} = ${session.agentPublicKey}`);
@@ -878,7 +881,8 @@ async function handleCallback(req: Request, res: Response) {
           selfId: null,
           humanId,
           verificationLevel: session.signatureVerified ? "passport+signature" : "passport",
-          metadata
+          metadata,
+          apiKey: "sclaw_" + crypto.randomBytes(32).toString("hex"),
         };
         await db.insert(verifiedBots).values(newBot);
       }
@@ -4624,7 +4628,7 @@ router.get("/v1/human/:humanId/economics", publicApiLimiter, async (req: Request
         name: a.deviceId,
         publicKey: a.publicKey,
         verifiedAt: a.verifiedAt,
-        hasApiKey: !!a.apiKey,
+        apiKey: a.apiKey || null,
         wallet: agentWallet ? { address: agentWallet.address, gasReceived: agentWallet.gasReceived } : null,
         token: tokenData,
         tokenPlan: agentPlan ? { status: agentPlan.status, purpose: agentPlan.purpose } : null,
@@ -6095,7 +6099,7 @@ router.get("/v1/my-agents/:publicKey/briefing", async (req: any, res: Response) 
     lines.push(`=== AGENT STATUS BRIEFING ===`);
     lines.push(`Agent: ${agentName}`);
     lines.push(`Public Key: ${pk.substring(0, 16)}...`);
-    lines.push(`API Key: ${agent.apiKey || 'Not generated — generate one from your dashboard'}`);
+    lines.push(`API Key: ${agent.apiKey || 'N/A'}`);
     lines.push(`Verified: ${agent.verifiedAt ? new Date(agent.verifiedAt).toISOString().split('T')[0] : 'Unknown'}`);
     lines.push('');
 

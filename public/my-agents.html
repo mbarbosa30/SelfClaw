@@ -1506,16 +1506,16 @@
       var html = '<div class="api-key-panel">';
       html += '<div class="api-key-label">Agent API Key</div>';
       html += '<div id="api-key-content-' + idx + '">';
-      if (agent.hasApiKey) {
-        html += '<div class="api-key-value">sclaw_****...****</div>';
+      if (agent.apiKey) {
+        html += '<div class="api-key-value">' + esc(agent.apiKey) + '</div>';
         html += '<div class="api-key-actions">';
-        html += '<button class="briefing-btn" onclick="regenerateApiKey(' + idx + ')">Regenerate Key</button>';
-        html += '<button class="briefing-btn" onclick="revokeApiKey(' + idx + ')" style="color:var(--red);border-color:var(--red);">Revoke Key</button>';
+        html += '<button class="briefing-btn" onclick="copyApiKey(\'' + esc(agent.apiKey) + '\',' + idx + ')">Copy Key</button>';
+        html += '<button class="briefing-btn" onclick="regenerateApiKey(' + idx + ')" style="color:var(--text-muted);">Regenerate</button>';
         html += '</div>';
       } else {
-        html += '<div style="font-family:var(--font-mono);font-size:0.7rem;color:var(--text-muted);margin-bottom:0.4rem;">No API key generated. Create one so your agent can call the SelfClaw API autonomously.</div>';
+        html += '<div style="font-family:var(--font-mono);font-size:0.7rem;color:var(--text-muted);margin-bottom:0.4rem;">Key missing — this shouldn\'t happen. Try regenerating.</div>';
         html += '<div class="api-key-actions">';
-        html += '<button class="briefing-btn" onclick="generateApiKey(' + idx + ')">Generate API Key</button>';
+        html += '<button class="briefing-btn" onclick="regenerateApiKey(' + idx + ')">Generate Key</button>';
         html += '</div>';
       }
       html += '</div>';
@@ -1528,8 +1528,6 @@
       var base = 'https://selfclaw.ai';
       var name = agent.deviceId || agent.publicKey.slice(0, 16);
       var pk = agent.publicKey;
-      var hasKey = agent.hasApiKey;
-
       var p = '';
       p += '# SelfClaw Agent Identity & API Access\n';
       p += '## Who You Are\n';
@@ -1540,12 +1538,13 @@
       p += '\n';
 
       p += '## Authentication\n';
-      if (hasKey) {
-        p += 'You have an API key (starts with sclaw_). Use it as a Bearer token:\n';
-        p += '  Authorization: Bearer sclaw_YOUR_KEY_HERE\n';
+      if (agent.apiKey) {
+        p += 'Your API key: ' + agent.apiKey + '\n';
+        p += 'Use it as a Bearer token in all requests:\n';
+        p += '  Authorization: Bearer ' + agent.apiKey + '\n';
         p += '\n';
       } else {
-        p += '** No API key generated yet. Ask your owner to generate one from the dashboard. **\n\n';
+        p += 'API key not available. Contact your owner.\n\n';
       }
 
       p += '## Base URL\n';
@@ -1670,34 +1669,8 @@
       }
     }
 
-    function generateApiKey(idx) {
-      var agents = (_dashboardData && _dashboardData.agents) || [];
-      var agent = agents[idx];
-      if (!agent) return;
-      var container = document.getElementById('api-key-content-' + idx);
-      var msgEl = document.getElementById('api-key-msg-' + idx);
-      if (container) container.innerHTML = '<div style="font-family:var(--font-mono);font-size:0.7rem;color:var(--text-muted);">Generating...</div>';
-      fetch('/api/selfclaw/v1/agent-api/generate-key/' + encodeURIComponent(agent.publicKey), { method: 'POST', credentials: 'include' })
-        .then(function(r) { return r.json(); })
-        .then(function(data) {
-          if (data.apiKey) {
-            agent.hasApiKey = true;
-            container.innerHTML = '<div class="api-key-value" style="color:var(--green-verify);border-color:var(--green-verify);">' + esc(data.apiKey) + '</div>' +
-              '<div style="font-family:var(--font-mono);font-size:0.6rem;color:var(--red);margin-bottom:0.4rem;">Save this key now. It will not be shown again.</div>' +
-              '<div class="api-key-actions">' +
-              '<button class="briefing-btn" onclick="copyApiKey(\'' + esc(data.apiKey) + '\',' + idx + ')">Copy Key</button>' +
-              '<button class="briefing-btn" onclick="regenerateApiKey(' + idx + ')">Regenerate</button>' +
-              '<button class="briefing-btn" onclick="revokeApiKey(' + idx + ')" style="color:var(--red);border-color:var(--red);">Revoke</button>' +
-              '</div>';
-          } else {
-            msgEl.innerHTML = '<div class="api-key-msg error">' + esc(data.error || 'Failed') + '</div>';
-          }
-        })
-        .catch(function(err) { msgEl.innerHTML = '<div class="api-key-msg error">' + esc(err.message) + '</div>'; });
-    }
-
     function regenerateApiKey(idx) {
-      if (!confirm('This will invalidate the current API key. Any agent using it will lose access. Continue?')) return;
+      if (!confirm('This will replace the current API key. Any agent using the old key will lose access. Continue?')) return;
       var agents = (_dashboardData && _dashboardData.agents) || [];
       var agent = agents[idx];
       if (!agent) return;
@@ -1708,40 +1681,18 @@
         .then(function(r) { return r.json(); })
         .then(function(data) {
           if (data.apiKey) {
-            agent.hasApiKey = true;
-            container.innerHTML = '<div class="api-key-value" style="color:var(--green-verify);border-color:var(--green-verify);">' + esc(data.apiKey) + '</div>' +
-              '<div style="font-family:var(--font-mono);font-size:0.6rem;color:var(--red);margin-bottom:0.4rem;">Save this key now. Previous key is invalidated.</div>' +
+            agent.apiKey = data.apiKey;
+            container.innerHTML = '<div class="api-key-value">' + esc(data.apiKey) + '</div>' +
               '<div class="api-key-actions">' +
               '<button class="briefing-btn" onclick="copyApiKey(\'' + esc(data.apiKey) + '\',' + idx + ')">Copy Key</button>' +
-              '<button class="briefing-btn" onclick="regenerateApiKey(' + idx + ')">Regenerate</button>' +
-              '<button class="briefing-btn" onclick="revokeApiKey(' + idx + ')" style="color:var(--red);border-color:var(--red);">Revoke</button>' +
+              '<button class="briefing-btn" onclick="regenerateApiKey(' + idx + ')" style="color:var(--text-muted);">Regenerate</button>' +
               '</div>';
+            if (msgEl) msgEl.innerHTML = '<div class="api-key-msg success">New key active. Old key is now invalid.</div>';
           } else {
-            msgEl.innerHTML = '<div class="api-key-msg error">' + esc(data.error || 'Failed') + '</div>';
+            if (msgEl) msgEl.innerHTML = '<div class="api-key-msg error">' + esc(data.error || 'Failed') + '</div>';
           }
         })
-        .catch(function(err) { msgEl.innerHTML = '<div class="api-key-msg error">' + esc(err.message) + '</div>'; });
-    }
-
-    function revokeApiKey(idx) {
-      if (!confirm('Revoke this API key? Your agent will no longer be able to authenticate.')) return;
-      var agents = (_dashboardData && _dashboardData.agents) || [];
-      var agent = agents[idx];
-      if (!agent) return;
-      var container = document.getElementById('api-key-content-' + idx);
-      var msgEl = document.getElementById('api-key-msg-' + idx);
-      fetch('/api/selfclaw/v1/agent-api/revoke-key/' + encodeURIComponent(agent.publicKey), { method: 'DELETE', credentials: 'include' })
-        .then(function(r) { return r.json(); })
-        .then(function(data) {
-          if (data.message) {
-            agent.hasApiKey = false;
-            container.innerHTML = '<div style="font-family:var(--font-mono);font-size:0.7rem;color:var(--text-muted);margin-bottom:0.4rem;">API key revoked.</div>' +
-              '<div class="api-key-actions"><button class="briefing-btn" onclick="generateApiKey(' + idx + ')">Generate New Key</button></div>';
-          } else {
-            msgEl.innerHTML = '<div class="api-key-msg error">' + esc(data.error || 'Failed') + '</div>';
-          }
-        })
-        .catch(function(err) { msgEl.innerHTML = '<div class="api-key-msg error">' + esc(err.message) + '</div>'; });
+        .catch(function(err) { if (msgEl) msgEl.innerHTML = '<div class="api-key-msg error">' + esc(err.message) + '</div>'; });
     }
 
     function copyApiKey(key, idx) {
