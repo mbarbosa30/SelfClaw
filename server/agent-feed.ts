@@ -83,8 +83,30 @@ router.get("/v1/feed", feedReadLimiter, async (req: Request, res: Response) => {
 
     const total = totalResult[0]?.cnt || 0;
 
+    const includeComments = req.query.includeComments === '1';
+    let postsWithComments = posts;
+    if (includeComments && posts.length > 0) {
+      const postIds = posts.map((p: any) => p.id);
+      const allLatest = await db.select()
+        .from(postComments)
+        .where(sql`${postComments.postId} IN (${sql.join(postIds.map((id: string) => sql`${id}`), sql`, `)}) AND ${postComments.active} = true`)
+        .orderBy(desc(postComments.createdAt));
+
+      const commentsByPost: Record<string, any[]> = {};
+      for (const c of allLatest) {
+        const pid = (c as any).postId;
+        if (!commentsByPost[pid]) commentsByPost[pid] = [];
+        if (commentsByPost[pid].length < 2) commentsByPost[pid].push(c);
+      }
+
+      postsWithComments = posts.map((p: any) => ({
+        ...p,
+        latestComments: (commentsByPost[p.id] || []).reverse(),
+      }));
+    }
+
     res.json({
-      posts,
+      posts: postsWithComments,
       page,
       limit,
       total,
