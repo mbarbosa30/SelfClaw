@@ -426,6 +426,20 @@ async function initializeApp() {
     }, 12000);
   }
 
+  try {
+    const onchainSyncMod = await import("./onchain-sync.js");
+    setTimeout(() => {
+      try {
+        onchainSyncMod.startOnchainSync();
+        console.log('[onchain-sync] Periodic ERC-8004 sync started');
+      } catch (err: any) {
+        console.error('[onchain-sync] Failed to start:', err.message);
+      }
+    }, 15000);
+  } catch (err: any) {
+    console.error('[onchain-sync] Failed to load module:', err.message);
+  }
+
   console.log('[startup] Async initialization complete');
 }
 

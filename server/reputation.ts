@@ -241,25 +241,123 @@ async function resolveIdentifier(identifier: string): Promise<string | null> {
   return identifier;
 }
 
+let leaderboardCache: { data: any; timestamp: number } | null = null;
+const LEADERBOARD_CACHE_TTL = 30_000;
+
 router.get("/v1/reputation/leaderboard", async (req, res) => {
   try {
-    const limit = Math.min(parseInt(req.query.limit as string) || 20, 100);
+    const limit = Math.min(parseInt(req.query.limit as string) || 10, 100);
 
-    const results = await db.select({
-      agentPublicKey: reputationStakes.agentPublicKey,
-      agentName: reputationStakes.agentName,
-      humanId: reputationStakes.humanId,
-      totalStakes: sql<number>`count(*)::int`,
-      validatedCount: sql<number>`count(*) filter (where ${reputationStakes.resolution} = 'validated')::int`,
-      slashedCount: sql<number>`count(*) filter (where ${reputationStakes.resolution} = 'slashed')::int`,
-      totalStaked: sql<string>`coalesce(sum(${reputationStakes.stakeAmount}::numeric), 0)::text`,
-    })
-      .from(reputationStakes)
-      .groupBy(reputationStakes.agentPublicKey, reputationStakes.agentName, reputationStakes.humanId)
-      .orderBy(sql`count(*) filter (where ${reputationStakes.resolution} = 'validated') desc`)
-      .limit(limit);
+    if (leaderboardCache && Date.now() - leaderboardCache.timestamp < LEADERBOARD_CACHE_TTL) {
+      return res.json({ leaderboard: leaderboardCache.data.slice(0, limit) });
+    }
 
-    return res.json({ leaderboard: results });
+    const rows = await db.execute(sql`
+      SELECT
+        vb.public_key,
+        COALESCE(vb.metadata->>'name', vb.metadata->>'agentName', 'Unknown') as agent_name,
+        CASE WHEN vb.metadata->>'erc8004TokenId' IS NOT NULL THEN 20 ELSE 0 END as erc8004_score,
+        COALESCE(stk.validated_count, 0) as validated_count,
+        COALESCE(stk.slashed_count, 0) as slashed_count,
+        COALESCE(stk.total_stakes, 0) as total_stakes,
+        COALESCE(bdg.badge_count, 0) as badge_count,
+        bdg.badge_names,
+        COALESCE(skl.skills_published, 0) as skills_published,
+        COALESCE(skl.total_purchases, 0) as total_purchases,
+        COALESCE(skl.avg_skill_rating, 0) as avg_skill_rating,
+        COALESCE(com.commerce_completed, 0) as commerce_completed,
+        COALESCE(com.avg_commerce_rating, 0) as avg_commerce_rating
+      FROM verified_bots vb
+      LEFT JOIN (
+        SELECT agent_public_key,
+          COUNT(*) FILTER (WHERE resolution = 'validated')::int as validated_count,
+          COUNT(*) FILTER (WHERE resolution = 'slashed')::int as slashed_count,
+          COUNT(*)::int as total_stakes
+        FROM reputation_stakes GROUP BY agent_public_key
+      ) stk ON stk.agent_public_key = vb.public_key
+      LEFT JOIN (
+        SELECT agent_public_key,
+          COUNT(*)::int as badge_count,
+          ARRAY_AGG(COALESCE(badge_name, badge_type)) as badge_names
+        FROM reputation_badges GROUP BY agent_public_key
+      ) bdg ON bdg.agent_public_key = vb.public_key
+      LEFT JOIN (
+        SELECT agent_public_key,
+          COUNT(*)::int as skills_published,
+          COALESCE(SUM(purchase_count), 0)::int as total_purchases,
+          CASE WHEN COUNT(*) FILTER (WHERE rating_count > 0) > 0
+            THEN AVG(CASE WHEN rating_count > 0 THEN rating_sum::float / rating_count END)
+            ELSE 0 END as avg_skill_rating
+        FROM market_skills WHERE active = true GROUP BY agent_public_key
+      ) skl ON skl.agent_public_key = vb.public_key
+      LEFT JOIN (
+        SELECT provider_public_key,
+          COUNT(*)::int as commerce_completed,
+          CASE WHEN COUNT(*) FILTER (WHERE rating IS NOT NULL) > 0
+            THEN AVG(rating) FILTER (WHERE rating IS NOT NULL)
+            ELSE 0 END as avg_commerce_rating
+        FROM agent_requests WHERE status = 'completed' GROUP BY provider_public_key
+      ) com ON com.provider_public_key = vb.public_key
+      WHERE vb.hidden IS NOT TRUE
+      ORDER BY (
+        CASE WHEN vb.metadata->>'erc8004TokenId' IS NOT NULL THEN 20 ELSE 0 END
+        + CASE WHEN (COALESCE(stk.validated_count, 0) + COALESCE(stk.slashed_count, 0)) >= 3
+            THEN ROUND(COALESCE(stk.validated_count, 0)::float / NULLIF(COALESCE(stk.validated_count, 0) + COALESCE(stk.slashed_count, 0), 0) * 30)
+            ELSE 0 END
+        + LEAST(COALESCE(bdg.badge_count, 0) * 5, 15)
+      ) DESC
+      LIMIT 100
+    `);
+
+    const leaderboard = (rows.rows || []).map((r: any) => {
+      const erc8004Score = Number(r.erc8004_score) || 0;
+      const validatedCount = Number(r.validated_count) || 0;
+      const slashedCount = Number(r.slashed_count) || 0;
+      const resolvedStakes = validatedCount + slashedCount;
+
+      let stakingScore = 0;
+      if (resolvedStakes >= 3) {
+        stakingScore = Math.round(validatedCount / resolvedStakes * 30);
+      }
+
+      const commerceCompleted = Number(r.commerce_completed) || 0;
+      const avgCommerceRating = Number(r.avg_commerce_rating) || 0;
+      let commerceScore = 0;
+      if (commerceCompleted > 0) {
+        const rf = avgCommerceRating > 0 ? Math.min(avgCommerceRating / 5, 1) : 0.5;
+        commerceScore = Math.min(Math.round(commerceCompleted * 4 * rf), 20);
+      }
+
+      const skillsPublished = Number(r.skills_published) || 0;
+      const totalPurchases = Number(r.total_purchases) || 0;
+      const avgSkillRating = Number(r.avg_skill_rating) || 0;
+      let skillsScore = 0;
+      if (skillsPublished > 0) {
+        const pf = Math.min(totalPurchases / 10, 1);
+        const rf = avgSkillRating > 0 ? Math.min(avgSkillRating / 5, 1) : 0.5;
+        skillsScore = Math.min(Math.round(skillsPublished * 5 * pf * rf), 15);
+      }
+
+      const badgeCount = Number(r.badge_count) || 0;
+      const badgesScore = Math.min(badgeCount * 5, 15);
+      const reputationScore = erc8004Score + stakingScore + commerceScore + skillsScore + badgesScore;
+
+      return {
+        agentPublicKey: r.public_key,
+        agentName: r.agent_name || "Unknown",
+        reputationScore,
+        scoreBreakdown: { erc8004: erc8004Score, staking: stakingScore, commerce: commerceScore, skills: skillsScore, badges: badgesScore },
+        badges: (r.badge_names || []).filter(Boolean),
+        totalStakes: Number(r.total_stakes) || 0,
+        validatedCount,
+      };
+    });
+
+    leaderboard.sort((a: any, b: any) => b.reputationScore - a.reputationScore);
+
+    leaderboardCache = { data: leaderboard, timestamp: Date.now() };
+
+    return res.json({ leaderboard: leaderboard.slice(0, limit) });
   } catch (err: any) {
     console.error("[reputation] Error fetching leaderboard:", err.message);
     return res.status(500).json({ error: "Failed to fetch leaderboard" });
