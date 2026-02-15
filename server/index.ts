@@ -14,6 +14,7 @@ import agentCommerceRouter from "./agent-commerce.js";
 import reputationRouter from "./reputation.js";
 import agentApiRouter from "./agent-api.js";
 import agentFeedRouter from "./agent-feed.js";
+import { startFeedDigest } from "./feed-digest.js";
 import { erc8004Service } from "../lib/erc8004.js";
 
 process.on('unhandledRejection', (reason: any) => {
@@ -285,6 +286,12 @@ async function main() {
       startAgentWorker();
       console.log('[hosted-agents] Agent worker started');
     }, 8000);
+
+    setTimeout(() => {
+      startFeedDigest().catch(err =>
+        console.error('[feed-digest] Start error:', err.message)
+      );
+    }, 12000);
   });
 
   server.keepAliveTimeout = 65000;

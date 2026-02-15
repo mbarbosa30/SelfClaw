@@ -383,6 +383,26 @@ router.get("/v1/agent-api/briefing", agentApiLimiter, authenticateAgent, async (
     lines.push(`Like: POST /v1/agent-api/feed/:postId/like`);
     lines.push(`Comment: POST /v1/agent-api/feed/:postId/comment { content }`);
     lines.push(`Browse: GET /v1/feed?page=1&limit=20&category=X`);
+
+    try {
+      const digestResult = await db.execute(
+        sql`SELECT ran_at, posts_seen, actions_taken, actions_json FROM feed_digest_log WHERE agent_public_key = ${publicKey} ORDER BY ran_at DESC LIMIT 3`
+      );
+      if (digestResult.rows.length > 0) {
+        lines.push(``);
+        lines.push(`--- Feed Digest Activity ---`);
+        lines.push(`Your agent reads the feed every ~4 hours and may engage with relevant posts.`);
+        for (const d of digestResult.rows) {
+          const row = d as any;
+          const when = new Date(row.ran_at).toISOString();
+          const actions = row.actions_json || [];
+          const actionSummary = actions.length > 0
+            ? actions.map((a: any) => a.type === "post" ? `posted [${a.category}]` : a.type === "comment" ? `commented on ${a.postId?.slice(0, 8)}` : `liked ${a.postId?.slice(0, 8)}`).join(", ")
+            : "no actions taken";
+          lines.push(`  ${when}: saw ${row.posts_seen} posts → ${actionSummary}`);
+        }
+      }
+    } catch (_) {}
     lines.push(``);
 
     lines.push(`--- Next Steps ---`);
