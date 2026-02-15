@@ -4688,7 +4688,7 @@ router.post("/v1/create-agent", verificationLimiter, async (req: any, res: Respo
     }
 
     const humanId = req.session.humanId;
-    const { agentName, description, deployToHostinger, hostingerVmId } = req.body;
+    const { agentName, description } = req.body;
 
     if (!agentName || typeof agentName !== "string" || agentName.trim().length < 2) {
       return res.status(400).json({ error: "agentName is required (minimum 2 characters)" });
@@ -4743,77 +4743,6 @@ router.post("/v1/create-agent", verificationLimiter, async (req: any, res: Respo
     await db.insert(verifiedBots).values(newBot);
     logActivity("create_agent", humanId, publicKeySpki, cleanName, { method: "one-click" });
 
-    let deployment: any = null;
-
-    if (deployToHostinger && hostingerVmId) {
-      const vmIdNum = parseInt(String(hostingerVmId), 10);
-      if (isNaN(vmIdNum) || vmIdNum <= 0) {
-        return res.status(400).json({ error: "Invalid hostingerVmId — must be a positive number" });
-      }
-
-      try {
-        const { callTool } = await import("./hostinger-mcp.js");
-
-        const agentDockerCompose = `
-version: '3.8'
-services:
-  ${cleanName}:
-    image: node:22-slim
-    container_name: ${cleanName}
-    restart: unless-stopped
-    working_dir: /app
-    environment:
-      - AGENT_NAME=${cleanName}
-      - AGENT_PUBLIC_KEY=${publicKeySpki}
-      - SELFCLAW_API=https://selfclaw.ai/api/selfclaw/v1
-    volumes:
-      - ./${cleanName}-data:/app/data
-    command: >
-      bash -c "
-        mkdir -p /app &&
-        cat > /app/agent.mjs << 'AGENTEOF'
-        import { readFileSync, writeFileSync, existsSync } from 'fs';
-        import { createPrivateKey, sign } from 'crypto';
-
-        const AGENT_NAME = process.env.AGENT_NAME || '${cleanName}';
-        const PUBLIC_KEY = process.env.AGENT_PUBLIC_KEY || '${publicKeySpki}';
-        const SELFCLAW_API = process.env.SELFCLAW_API || 'https://selfclaw.ai/api/selfclaw/v1';
-
-        console.log('[' + AGENT_NAME + '] Agent started');
-        console.log('[' + AGENT_NAME + '] Public Key: ' + PUBLIC_KEY);
-        console.log('[' + AGENT_NAME + '] SelfClaw API: ' + SELFCLAW_API);
-        console.log('[' + AGENT_NAME + '] Ready for commands. Set AGENT_PRIVATE_KEY env var to enable signing.');
-
-        setInterval(() => {
-          console.log('[' + AGENT_NAME + '] heartbeat ' + new Date().toISOString());
-        }, 60000);
-        AGENTEOF
-        node /app/agent.mjs
-      "
-`.trim();
-
-        const dockerProjectName = `sc-${cleanName}`;
-        const result = await callTool("vps_docker_compose_create_project", {
-          virtual_machine_id: vmIdNum,
-          project_name: dockerProjectName,
-          docker_compose_content: agentDockerCompose,
-        });
-
-        deployment = {
-          success: true,
-          vmId: hostingerVmId,
-          projectName: dockerProjectName,
-          result,
-        };
-      } catch (deployErr: any) {
-        deployment = {
-          success: false,
-          error: deployErr.message,
-          hint: "Agent was created successfully but VPS deployment failed. You can deploy manually later."
-        };
-      }
-    }
-
     // SECURITY: privateKeyPkcs8 is returned to the user exactly once and never stored, logged, or persisted anywhere
     console.log(`[selfclaw] === AGENT CREATED === name: ${cleanName}, humanId: ${humanId}`);
 
@@ -4838,14 +4767,12 @@ services:
         format: "SPKI DER (base64) / PKCS8 DER (base64)",
         warning: "SAVE YOUR PRIVATE KEY NOW. It will never be shown again. SelfClaw does not store private keys.",
       },
-      deployment,
       nextSteps: [
         "1. SAVE your private key securely — it cannot be recovered",
         "2. Read the full playbook: https://selfclaw.ai/agent-economy.md",
         "3. Check prices & sponsorship: GET /api/selfclaw/v1/selfclaw-sponsorship",
         "4. Simulate your token launch: GET /api/selfclaw/v1/sponsorship-simulator?totalSupply=1000000&liquidityTokens=100000",
         "5. Create wallet → Request gas → Deploy token → Get sponsored liquidity (see playbook for full details)",
-        deployToHostinger ? "6. Your agent is deploying to Hostinger VPS" : "6. (Optional) Deploy to Hostinger VPS from /create-agent",
       ],
     });
   } catch (error: any) {

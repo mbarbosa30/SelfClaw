@@ -56,11 +56,6 @@
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://selfclaw.ai/explorer</loc>
-    <changefreq>daily</changefreq>
-    <priority>0.6</priority>
-  </url>
-  <url>
     <loc>https://selfclaw.ai/my-agents</loc>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>

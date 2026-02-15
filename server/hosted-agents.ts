@@ -1135,7 +1135,7 @@ const SENSITIVE_PATTERNS = [
   /xox[bpras]-[a-zA-Z0-9\-]{10,}/g,
 ];
 
-const SENSITIVE_ENV_KEYS = ["CELO_PRIVATE_KEY", "SESSION_SECRET", "ADMIN_PASSWORD", "HOSTINGER_API_TOKEN", "DATABASE_URL"];
+const SENSITIVE_ENV_KEYS = ["CELO_PRIVATE_KEY", "SESSION_SECRET", "ADMIN_PASSWORD", "DATABASE_URL"];
 
 let _sensitiveValues: string[] | null = null;
 function getSensitiveValues(): string[] {

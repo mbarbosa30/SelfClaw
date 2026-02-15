@@ -69,7 +69,6 @@ app.get("/agent/:name", (_req: Request, res: Response) => sendHtml(res, "agent.h
 app.get("/human/:humanId", (_req: Request, res: Response) => sendHtml(res, "human.html"));
 app.get("/admin", (_req: Request, res: Response) => sendHtml(res, "admin.html", { "X-Robots-Tag": "noindex, nofollow" }));
 app.get("/sandbox", (_req: Request, res: Response) => sendHtml(res, "sandbox.html", { "X-Robots-Tag": "noindex, nofollow" }));
-app.get("/explorer", (_req: Request, res: Response) => sendHtml(res, "explorer.html"));
 app.get("/create-agent", (_req: Request, res: Response) => sendHtml(res, "create-agent.html"));
 app.get("/my-agents", (_req: Request, res: Response) => sendHtml(res, "my-agents.html"));
 app.get("/create-assistant", (_req: Request, res: Response) => sendHtml(res, "create-assistant.html"));
@@ -180,7 +179,6 @@ async function initializeApp() {
   const routers: Array<{ path: string; name: string; importFn: () => Promise<any>; key?: string }> = [
     { path: "/api/selfclaw", name: "selfclaw", importFn: () => import("./selfclaw.js"), key: "default" },
     { path: "/api/admin", name: "admin", importFn: () => import("./admin.js"), key: "default" },
-    { path: "/api/hostinger", name: "hostinger", importFn: () => import("./hostinger-routes.js"), key: "default" },
     { path: "/api/admin/sandbox", name: "sandbox", importFn: () => import("./sandbox-agent.js"), key: "default" },
     { path: "/api/selfclaw", name: "hosted-agents", importFn: () => import("./hosted-agents.js"), key: "hostedAgentsRouter" },
     { path: "/api/selfclaw", name: "skill-market", importFn: () => import("./skill-market.js"), key: "skillMarketRouter" },
