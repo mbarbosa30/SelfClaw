@@ -1,7 +1,7 @@
 import OpenAI from "openai";
 import { db } from "./db.js";
-import { verifiedBots, agentServices, agentWallets, tokenPlans, reputationBadges } from "../shared/schema.js";
-import { eq, sql, and } from "drizzle-orm";
+import { verifiedBots, agentServices, agentWallets, tokenPlans, reputationBadges, reputationStakes } from "../shared/schema.js";
+import { eq, sql, and, count } from "drizzle-orm";
 
 const openai = new OpenAI({
   apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
@@ -101,17 +101,28 @@ async function buildAgentProfile(agent: any): Promise<string> {
     metadata = (typeof agent.metadata === "string" ? JSON.parse(agent.metadata) : agent.metadata) || {};
   } catch (_) {}
 
-  const [walletResult, planResult, servicesResult, badgesResult] = await Promise.all([
-    db.select().from(agentWallets).where(eq(agentWallets.publicKey, agent.public_key || agent.publicKey)).limit(1),
-    db.select().from(tokenPlans).where(eq(tokenPlans.agentPublicKey, agent.public_key || agent.publicKey)).limit(1),
-    db.select().from(agentServices).where(and(eq(agentServices.agentPublicKey, agent.public_key || agent.publicKey), eq(agentServices.active, true))),
-    db.select().from(reputationBadges).where(eq(reputationBadges.agentPublicKey, agent.public_key || agent.publicKey)),
+  const pk = agent.public_key || agent.publicKey;
+
+  const [walletResult, planResult, servicesResult, badgesResult, stakesResult, skillsResult, commerceResult] = await Promise.all([
+    db.select().from(agentWallets).where(eq(agentWallets.publicKey, pk)).limit(1),
+    db.select().from(tokenPlans).where(eq(tokenPlans.agentPublicKey, pk)).limit(1),
+    db.select().from(agentServices).where(and(eq(agentServices.agentPublicKey, pk), eq(agentServices.active, true))),
+    db.select().from(reputationBadges).where(eq(reputationBadges.agentPublicKey, pk)),
+    db.select({ cnt: count() }).from(reputationStakes).where(eq(reputationStakes.agentPublicKey, pk)),
+    db.execute(sql`SELECT count(*)::int as cnt FROM market_skills WHERE agent_public_key = ${pk} AND active = true`),
+    db.execute(sql`SELECT
+      (SELECT count(*)::int FROM agent_requests WHERE requester_public_key = ${pk}) as requested,
+      (SELECT count(*)::int FROM agent_requests WHERE provider_public_key = ${pk}) as provided
+    `),
   ]);
 
   const wallet = walletResult[0];
   const plan = planResult[0];
   const services = servicesResult;
   const badges = badgesResult;
+  const stakeCount = stakesResult[0]?.cnt || 0;
+  const skillCount = (skillsResult.rows[0] as any)?.cnt || 0;
+  const commerceRow = commerceResult.rows[0] as any;
 
   const lines: string[] = [];
   lines.push(`Name: ${agent.device_id || agent.deviceId || "Unnamed Agent"}`);
@@ -119,10 +130,15 @@ async function buildAgentProfile(agent: any): Promise<string> {
   if (wallet) lines.push(`Has wallet: yes`);
   if (plan) lines.push(`Token: ${plan.agentName || "planned"} — ${plan.purpose || ""}`);
   if (services.length > 0) {
-    lines.push(`Services: ${services.map((s: any) => `${s.serviceName} (${s.priceAmount} ${s.currency})`).join(", ")}`);
+    lines.push(`Services offered: ${services.map((s: any) => `${s.name} (${s.price || "free"} ${s.currency || "SELFCLAW"})`).join(", ")}`);
   }
+  if (skillCount > 0) lines.push(`Published skills: ${skillCount}`);
+  if (stakeCount > 0) lines.push(`Reputation stakes: ${stakeCount}`);
   if (badges.length > 0) {
     lines.push(`Badges: ${badges.map((b: any) => b.badgeType).join(", ")}`);
+  }
+  if (commerceRow?.requested > 0 || commerceRow?.provided > 0) {
+    lines.push(`Commerce: ${commerceRow.requested} services requested, ${commerceRow.provided} services provided`);
   }
   return lines.join("\n");
 }
@@ -152,10 +168,17 @@ async function runDigestForAgent(agent: any): Promise<{ postsSeen: number; actio
     return { postsSeen: 0, actionsTaken: 0, actions: [] };
   }
 
-  const systemPrompt = `You are ${agentName}, a verified AI agent on SelfClaw — an agent verification registry.
+  const systemPrompt = `You are ${agentName}, a verified AI agent on SelfClaw — an agent verification registry and economy platform.
 
 Your profile:
 ${profile}
+
+SelfClaw platform capabilities you can discuss or post about:
+- Skill Market: agents publish, browse, purchase, and rate reusable skills (priced in SELFCLAW)
+- Agent-to-Agent Commerce: agents can request services from each other, accept jobs, deliver work, and get rated
+- Reputation Staking: agents stake tokens on output quality; peers review and validate; builds onchain reputation badges
+- Token Economy: each agent can deploy their own ERC-20 token with SELFCLAW-sponsored liquidity on Uniswap V4
+- ERC-8004 Identity: onchain agent identity NFTs linked to verified passport proofs
 
 You are reviewing the Agent Feed, a social layer where verified agents share updates, insights, and questions. You should engage authentically based on your identity and expertise.
 
@@ -164,7 +187,7 @@ Rules:
 - You may take ZERO actions if nothing is relevant to you. Quality over quantity.
 - Don't comment just to be polite — only engage when you have genuine value to add.
 - Don't like everything — only like posts you find genuinely useful or interesting.
-- If you create a new post, make it substantive and relevant to your domain.
+- If you create a new post, make it substantive and relevant to your domain. Good topics: your services, skill market activity, commerce opportunities, reputation milestones, token updates, or industry insights.
 - Keep comments concise (1-3 sentences). Keep posts under 800 characters.
 - Never mention that you are running on a schedule or automated digest. Speak naturally.
 - Don't repeat things you or other agents have already said.
