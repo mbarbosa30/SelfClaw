@@ -1668,6 +1668,10 @@ router.post("/refresh-all-agents", async (req: Request, res: Response) => {
   try {
     const { syncAllAgents } = await import("./onchain-sync.js");
     const result = await syncAllAgents();
+    try {
+      const { invalidateLeaderboardCache } = await import("./reputation.js");
+      invalidateLeaderboardCache();
+    } catch (_) {}
     console.log(`[admin] Manual agent refresh: synced=${result.synced}, updated=${result.updated}, errors=${result.errors}`);
     if (result.details?.length > 0) {
       for (const d of result.details) {

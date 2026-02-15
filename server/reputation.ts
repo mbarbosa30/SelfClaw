@@ -244,6 +244,10 @@ async function resolveIdentifier(identifier: string): Promise<string | null> {
 let leaderboardCache: { data: any; timestamp: number } | null = null;
 const LEADERBOARD_CACHE_TTL = 30_000;
 
+export function invalidateLeaderboardCache() {
+  leaderboardCache = null;
+}
+
 router.get("/v1/reputation/leaderboard", async (req, res) => {
   try {
     const limit = Math.min(parseInt(req.query.limit as string) || 10, 100);

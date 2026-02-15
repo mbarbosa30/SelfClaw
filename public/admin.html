@@ -942,7 +942,19 @@
           btn.disabled = false;
           btn.textContent = 'Sync Onchain Data';
           if (data.success) {
-            alert('Synced ' + data.synced + ' agents, updated ' + data.updated + ', ' + data.errors + ' errors');
+            var msg = 'Synced ' + data.synced + ' agents, updated ' + data.updated + ', ' + data.errors + ' errors\n';
+            if (data.details && data.details.length > 0) {
+              msg += '\nDetails:\n';
+              for (var di = 0; di < data.details.length; di++) {
+                var dd = data.details[di];
+                msg += dd.agent + ' (#' + dd.tokenId + '): ' + dd.status;
+                if (dd.feedbackCount !== undefined && dd.feedbackCount !== null) msg += ' | ' + dd.feedbackCount + ' reviews';
+                if (dd.avgScore !== undefined && dd.avgScore !== null) msg += ', avg ' + dd.avgScore + '/100';
+                if (dd.error) msg += ' | ERROR: ' + dd.error;
+                msg += '\n';
+              }
+            }
+            alert(msg);
             refreshAll();
           } else {
             alert('Error: ' + (data.error || 'Unknown'));
