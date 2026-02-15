@@ -1687,12 +1687,12 @@ router.get("/v1/sponsorship-simulator", publicApiLimiter, async (req: Request, r
 
 router.get("/v1/request-selfclaw-sponsorship/preflight", publicApiLimiter, async (req: Request, res: Response) => {
   try {
-    const { tokenAddress, tokenAmount } = req.query;
+    const { tokenAddress, tokenAmount, agentPublicKey } = req.query;
 
     if (!tokenAddress || !tokenAmount) {
       return res.status(400).json({
         error: "Missing required query parameters: tokenAddress, tokenAmount",
-        example: "/api/selfclaw/v1/request-selfclaw-sponsorship/preflight?tokenAddress=0x...&tokenAmount=400000000"
+        example: "/api/selfclaw/v1/request-selfclaw-sponsorship/preflight?tokenAddress=0x...&tokenAmount=400000000&agentPublicKey=MCow..."
       });
     }
 
@@ -1747,8 +1747,37 @@ router.get("/v1/request-selfclaw-sponsorship/preflight", publicApiLimiter, async
       parseUnits(selfclawForPool.toString(), 18),
     );
 
+    let hasErc8004 = false;
+    if (agentPublicKey) {
+      const agentRecord = await db.select().from(verifiedBots)
+        .where(sql`${verifiedBots.publicKey} = ${agentPublicKey}`)
+        .limit(1);
+      if (agentRecord.length > 0) {
+        const metadata = agentRecord[0].metadata as any || {};
+        hasErc8004 = !!metadata.erc8004TokenId;
+      }
+    }
+
     const steps: { step: number; action: string; status: string; detail?: string }[] = [];
     let stepNum = 1;
+
+    if (agentPublicKey) {
+      steps.push({
+        step: stepNum++,
+        action: 'ERC-8004 onchain identity registered',
+        status: hasErc8004 ? 'ready' : 'required',
+        detail: hasErc8004
+          ? 'Agent has a confirmed onchain identity.'
+          : 'ERC-8004 onchain identity is required before sponsorship. Call POST /api/selfclaw/v1/register-erc8004 then POST /api/selfclaw/v1/confirm-erc8004.',
+      });
+    } else {
+      steps.push({
+        step: stepNum++,
+        action: 'ERC-8004 onchain identity (unknown)',
+        status: 'auto',
+        detail: 'Add agentPublicKey query parameter to check ERC-8004 status. ERC-8004 is required before sponsorship.',
+      });
+    }
 
     if (heldAmount < requiredWithBuffer) {
       const shortfall = requiredWithBuffer - heldAmount;
@@ -1881,6 +1910,20 @@ router.post("/v1/request-selfclaw-sponsorship", verificationLimiter, async (req:
       return res.status(403).json({
         error: "Token must be deployed through SelfClaw before requesting sponsorship. External tokens are not eligible.",
         step: "Deploy your agent token first via the SelfClaw token economy flow.",
+      });
+    }
+
+    const agentRecord = await db.select().from(verifiedBots)
+      .where(sql`${verifiedBots.publicKey} = ${auth.publicKey}`)
+      .limit(1);
+    const agentMetadata = agentRecord.length > 0 ? (agentRecord[0].metadata as any || {}) : {};
+    if (!agentMetadata.erc8004TokenId) {
+      return res.status(403).json({
+        error: "ERC-8004 onchain identity is required before requesting sponsorship. Register your agent's identity first.",
+        step: "POST /api/selfclaw/v1/register-erc8004",
+        confirmStep: "POST /api/selfclaw/v1/confirm-erc8004",
+        preflightUrl: `/api/selfclaw/v1/request-selfclaw-sponsorship/preflight?tokenAddress=${tokenAddress}&tokenAmount=${tokenAmount}`,
+        pipeline: { completed: ['verification', 'wallet', 'gas', 'token'], missing: 'erc8004', next: 'sponsorship' },
       });
     }
 

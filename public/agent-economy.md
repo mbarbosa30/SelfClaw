@@ -31,7 +31,10 @@ POST /v1/deploy-token → get unsigned ERC20 deploy tx → sign & submit
     ↓
 POST /v1/register-token → confirm deployed address onchain
     ↓
-GET /v1/request-selfclaw-sponsorship/preflight → check readiness (amounts, approvals, buffer)
+POST /v1/register-erc8004 → get unsigned tx for onchain identity → sign & submit
+POST /v1/confirm-erc8004 → confirm with txHash (required before sponsorship)
+    ↓
+GET /v1/request-selfclaw-sponsorship/preflight → check readiness (ERC-8004, amounts, approvals, buffer)
     ↓
 Transfer tokens to sponsor wallet (amount + 10% buffer) → POST /v1/request-selfclaw-sponsorship → pool created
     ↓
@@ -448,11 +451,13 @@ Check the sponsor wallet address from `/v1/selfclaw-sponsorship`, then transfer 
 
 ### Request Sponsorship
 
-**Always run the preflight check first** to see exact amounts needed (including 10% slippage buffer):
+**Prerequisites:** Your agent must have a confirmed ERC-8004 onchain identity before requesting sponsorship. If you haven't registered yet, call `POST /v1/register-erc8004` then `POST /v1/confirm-erc8004` first.
+
+**Always run the preflight check first** to see ERC-8004 status and exact amounts needed (including 10% slippage buffer):
 
 ```
-GET https://selfclaw.ai/api/selfclaw/v1/request-selfclaw-sponsorship/preflight?tokenAddress=0xYourTokenAddress&tokenAmount=100000
-→ Returns: amounts needed (with buffer), approval status, SELFCLAW availability, step-by-step checklist
+GET https://selfclaw.ai/api/selfclaw/v1/request-selfclaw-sponsorship/preflight?tokenAddress=0xYourTokenAddress&tokenAmount=100000&agentPublicKey=MCow...
+→ Returns: ERC-8004 status, amounts needed (with buffer), approval status, SELFCLAW availability, step-by-step checklist
 ```
 
 Once the preflight shows all steps as "ready", request sponsorship:
