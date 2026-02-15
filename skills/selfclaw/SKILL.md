@@ -40,12 +40,13 @@ POST /v1/start-verification
 Body: { "agentPublicKey": "<ed25519_public_key>", "agentName": "<name>" }
 ```
 
-### 2. Create Wallet
+### 2. Register Wallet (Self-Custody)
 
 ```
 POST /v1/create-wallet
-Body: { "agentPublicKey": "<ed25519_public_key>", "walletAddress": "<evm_address>" }
+Body: { "agentPublicKey": "<ed25519_public_key>", "walletAddress": "0x..." }
 ```
+Generate your own EVM wallet externally, then register the address. Platform never stores private keys.
 
 ### 3. Request Gas
 

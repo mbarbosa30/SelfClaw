@@ -2824,7 +2824,7 @@ router.post("/v1/create-wallet", verificationLimiter, async (req: Request, res: 
       alreadyExists: result.alreadyExists || false,
       message: result.alreadyExists 
         ? "Wallet already registered for this humanId" 
-        : "Wallet registered successfully. You keep your own keys.",
+        : "Wallet address registered. The agent maintains full self-custody of its private key.",
       agentContext,
       nextSteps: [
         "1. Request gas for onchain transactions: POST /api/selfclaw/v1/request-gas",
@@ -2869,7 +2869,7 @@ router.post("/v1/switch-wallet", verificationLimiter, async (req: Request, res: 
       success: true,
       address: result.address,
       previousAddress: result.previousAddress,
-      message: "Wallet updated. You keep your own keys.",
+      message: "Wallet address updated. The agent maintains full self-custody.",
     });
   } catch (error: any) {
     console.error("[selfclaw] switch-wallet error:", error);
@@ -3205,7 +3205,7 @@ router.post("/v1/deploy-token", verificationLimiter, async (req: Request, res: R
         hasSufficientGas,
       },
       nextSteps: [
-        "1. Sign the unsignedTx with your wallet private key",
+        "1. The agent signs the unsignedTx with its private key",
         "2. Submit the signed transaction to Celo mainnet (chainId 42220)",
         "3. Wait for confirmation (typically 5 seconds on Celo)",
         "4. Call POST /api/selfclaw/v1/register-token with {tokenAddress: predictedTokenAddress, txHash: <your_tx_hash>}",
@@ -3617,7 +3617,7 @@ router.post("/v1/register-erc8004", verificationLimiter, async (req: Request, re
         hasSufficientGas,
       },
       nextSteps: [
-        "1. Sign the unsignedTx with your wallet private key",
+        "1. The agent signs the unsignedTx with its private key",
         "2. Submit the signed transaction to Celo mainnet (chainId 42220)",
         "3. Wait for confirmation (typically 5 seconds on Celo)",
         "4. Call POST /api/selfclaw/v1/confirm-erc8004 with {txHash: <your_tx_hash>} to record your token ID",
@@ -4764,10 +4764,10 @@ router.post("/v1/create-agent", verificationLimiter, async (req: any, res: Respo
         publicKey: publicKeySpki,
         privateKey: privateKeyPkcs8,
         format: "SPKI DER (base64) / PKCS8 DER (base64)",
-        warning: "SAVE YOUR PRIVATE KEY NOW. It will never be shown again. SelfClaw does not store private keys.",
+        warning: "The agent generates and controls its own wallet. SelfClaw never stores private keys.",
       },
       nextSteps: [
-        "1. SAVE your private key securely — it cannot be recovered",
+        "1. The agent securely stores its own private key — SelfClaw cannot recover it",
         "2. Read the full playbook: https://selfclaw.ai/agent-economy.md",
         "3. Check prices & sponsorship: GET /api/selfclaw/v1/selfclaw-sponsorship",
         "4. Simulate your token launch: GET /api/selfclaw/v1/sponsorship-simulator?totalSupply=1000000&liquidityTokens=100000",
@@ -5302,7 +5302,7 @@ router.post("/v1/my-agents/:publicKey/register-wallet", verificationLimiter, asy
     if (!address || typeof address !== 'string' || !/^0x[a-fA-F0-9]{40}$/.test(address)) {
       return res.status(400).json({
         error: "Valid EVM wallet address required (0x... format, 42 characters).",
-        hint: "Generate your own wallet using ethers.js, viem, MetaMask, or any EVM wallet tool. Then register the address here.",
+        hint: "The agent generates its own EVM wallet (ethers.js, viem, etc.) and registers the address here.",
       });
     }
 
@@ -5319,7 +5319,7 @@ router.post("/v1/my-agents/:publicKey/register-wallet", verificationLimiter, asy
     res.json({
       success: true,
       address,
-      message: "Wallet address registered. You maintain full custody of your private key — SelfClaw never stores or accesses it.",
+      message: "Wallet address registered. The agent maintains full self-custody — SelfClaw never stores or accesses private keys.",
       nextSteps: [
         "1. Request gas: POST /api/selfclaw/v1/my-agents/" + req.params.publicKey + "/request-gas",
         "2. Register onchain identity: POST /api/selfclaw/v1/my-agents/" + req.params.publicKey + "/register-erc8004",
@@ -5379,7 +5379,7 @@ router.post("/v1/my-agents/:publicKey/deploy-token", verificationLimiter, async 
 
     const walletInfo = await getAgentWallet(req.params.publicKey);
     if (!walletInfo?.address) {
-      return res.status(400).json({ error: "No wallet found. Register your wallet address first." });
+      return res.status(400).json({ error: "No wallet found. Register the agent's wallet address first." });
     }
 
     const decimals = 18;
@@ -5762,7 +5762,7 @@ router.post("/v1/my-agents/:publicKey/register-erc8004", verificationLimiter, as
 
     const walletInfo = await getAgentWallet(req.params.publicKey);
     if (!walletInfo || !walletInfo.address) {
-      return res.status(400).json({ error: "No wallet found. Register your wallet address first." });
+      return res.status(400).json({ error: "No wallet found. Register the agent's wallet address first." });
     }
 
     if (!erc8004Service.isReady()) {
@@ -5851,7 +5851,7 @@ router.post("/v1/my-agents/:publicKey/register-erc8004", verificationLimiter, as
         hasSufficientGas,
       },
       nextSteps: [
-        "1. Sign the unsignedTx with your wallet private key",
+        "1. The agent signs the unsignedTx with its private key",
         "2. Submit the signed transaction to Celo mainnet (chainId 42220)",
         "3. Call POST /api/selfclaw/v1/my-agents/" + req.params.publicKey + "/confirm-erc8004 with {txHash}",
       ],
@@ -5908,7 +5908,7 @@ router.post("/v1/my-agents/:publicKey/confirm-erc8004", verificationLimiter, asy
       explorerUrl: erc8004Service.getExplorerUrl(tokenId),
       scan8004Url: `https://www.8004scan.io/agents/celo/${tokenId}`,
       nextSteps: [
-        "1. Your onchain identity is live — set your wallet onchain: POST /api/selfclaw/v1/set-agent-wallet",
+        "1. The agent's onchain identity is live — set the agent's wallet onchain: POST /api/selfclaw/v1/set-agent-wallet",
         "2. Deploy your token: POST /api/selfclaw/v1/deploy-token",
       ],
     });
@@ -6145,13 +6145,13 @@ router.get("/v1/my-agents/:publicKey/briefing", async (req: any, res: Response) 
     lines.push(``);
 
     const nudges: { text: string; action: string; curl: string }[] = [];
-    if (!hasWallet) nudges.push({ text: 'Register your wallet address to start your onchain journey.', action: 'register-wallet', curl: '' });
+    if (!hasWallet) nudges.push({ text: 'Register the agent\'s wallet address to start its onchain journey.', action: 'register-wallet', curl: '' });
     else if (!hasGas) nudges.push({ text: 'Request gas to cover transaction fees.', action: 'request-gas', curl: '' });
-    if (hasWallet && !hasErc8004) nudges.push({ text: 'Register your ERC-8004 onchain identity for credibility.', action: 'register-erc8004', curl: '' });
-    if (hasErc8004 && !hasToken && !hasPlan) nudges.push({ text: 'Plan and deploy a token to power your economy.', action: 'deploy-token', curl: '' });
+    if (hasWallet && !hasErc8004) nudges.push({ text: 'Register the agent\'s ERC-8004 onchain identity for credibility.', action: 'register-erc8004', curl: '' });
+    if (hasErc8004 && !hasToken && !hasPlan) nudges.push({ text: 'Plan and deploy a token to power the agent\'s economy.', action: 'deploy-token', curl: '' });
     if (hasToken && !hasPool) nudges.push({ text: 'Request SELFCLAW sponsorship for a liquidity pool.', action: 'request-sponsorship', curl: '' });
     if (hasPool && skillsPublished === 0) nudges.push({
-      text: 'Publish your first skill.',
+      text: 'Publish the agent\'s first skill.',
       action: 'publish-skill',
       curl: `curl -X POST ${BASE}/v1/agent-api/skills -H "Authorization: Bearer ${apiKey}" -H "Content-Type: application/json" -d '{"name":"My Skill","description":"What this skill does","category":"research"}'`
     });
@@ -6238,7 +6238,7 @@ router.post("/v1/miniclaws/:id/register-wallet", verificationLimiter, async (req
     if (!address || typeof address !== 'string' || !/^0x[a-fA-F0-9]{40}$/.test(address)) {
       return res.status(400).json({
         error: "Valid EVM wallet address required (0x... format, 42 characters).",
-        hint: "Generate your own wallet using ethers.js, viem, MetaMask, or any EVM wallet tool. Then register the address here.",
+        hint: "The agent generates its own EVM wallet (ethers.js, viem, etc.) and registers the address here.",
       });
     }
 
@@ -6254,7 +6254,7 @@ router.post("/v1/miniclaws/:id/register-wallet", verificationLimiter, async (req
     res.json({
       success: true,
       address,
-      message: "Wallet address registered. You maintain full custody of your private key.",
+      message: "Wallet address registered. The agent maintains full self-custody of its private key.",
     });
   } catch (error: any) {
     console.error("[selfclaw] miniclaw register-wallet error:", error);
@@ -6311,7 +6311,7 @@ router.post("/v1/miniclaws/:id/deploy-token", verificationLimiter, async (req: a
 
     const walletInfo = await getAgentWallet(mcPublicKey);
     if (!walletInfo?.address) {
-      return res.status(400).json({ error: "No wallet found. Register your wallet address first." });
+      return res.status(400).json({ error: "No wallet found. Register the agent's wallet address first." });
     }
 
     const decimals = 18;
@@ -6466,7 +6466,7 @@ router.post("/v1/miniclaws/:id/register-erc8004", verificationLimiter, async (re
     const mc = auth.miniclaw;
     const walletInfo = await getAgentWallet(mcPublicKey);
     if (!walletInfo || !walletInfo.address) {
-      return res.status(400).json({ error: "No wallet found. Register your wallet address first via register-wallet." });
+      return res.status(400).json({ error: "No wallet found. Register the agent's wallet address first via register-wallet." });
     }
 
     if (!erc8004Service.isReady()) {
@@ -6577,7 +6577,7 @@ router.post("/v1/miniclaws/:id/register-erc8004", verificationLimiter, async (re
         hasSufficientGas,
       },
       nextSteps: [
-        "1. Sign the unsignedTx with your wallet private key",
+        "1. The agent signs the unsignedTx with its private key",
         "2. Submit the signed transaction to Celo mainnet (chainId 42220)",
         "3. Call POST /api/selfclaw/v1/miniclaws/" + req.params.id + "/confirm-erc8004 with {txHash}",
       ],
@@ -6649,7 +6649,7 @@ router.post("/v1/miniclaws/:id/confirm-erc8004", verificationLimiter, async (req
       explorerUrl: tokenId ? erc8004Service.getExplorerUrl(tokenId) : null,
       scan8004Url: tokenId ? `https://www.8004scan.io/agents/celo/${tokenId}` : null,
       nextSteps: [
-        "1. Your onchain identity is live — set your wallet onchain: POST /api/selfclaw/v1/set-agent-wallet",
+        "1. The agent's onchain identity is live — set the agent's wallet onchain: POST /api/selfclaw/v1/set-agent-wallet",
         "2. Deploy your token",
       ],
     });

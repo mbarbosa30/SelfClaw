@@ -27,7 +27,6 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.4/ethers.umd.min.js"></script>
   <style>
     .auth-gate {
       text-align: center; padding: 4rem 1rem;
@@ -433,36 +432,6 @@
     .setup-guide-step.done { color: var(--text-muted); }
     .setup-guide-step.done .setup-guide-num { color: var(--green-verify); }
 
-    .pk-modal-overlay {
-      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0,0,0,0.7); z-index: 10000;
-      display: flex; align-items: center; justify-content: center;
-    }
-    .pk-modal {
-      background: var(--bg); border: 2px solid var(--border-heavy);
-      padding: 2rem; max-width: 500px; width: 90%;
-    }
-    .pk-modal-title {
-      font-family: var(--font-mono); font-size: 0.75rem; font-weight: 600;
-      text-transform: uppercase; letter-spacing: 0.1em; color: var(--red);
-      margin-bottom: 1rem;
-    }
-    .pk-modal-warning {
-      font-size: 0.85rem; color: var(--text-secondary); line-height: 1.5;
-      margin-bottom: 1rem;
-    }
-    .pk-modal-key {
-      font-family: var(--font-mono); font-size: 0.75rem; background: var(--bg-code);
-      color: #e8e8e8; padding: 0.75rem; word-break: break-all; margin-bottom: 1rem;
-      border: 2px solid var(--border-heavy);
-    }
-    .pk-modal-address {
-      font-family: var(--font-mono); font-size: 0.7rem; color: var(--text-muted);
-      margin-bottom: 1rem;
-    }
-    .pk-modal-actions {
-      display: flex; gap: 0.5rem; flex-wrap: wrap;
-    }
   </style>
 </head>
 <body>
@@ -565,7 +534,6 @@
       if (n < 1000000) return '$' + (n / 1000).toFixed(1) + 'K';
       return '$' + (n / 1000000).toFixed(2) + 'M';
     }
-    function pkStorageKey(pubKey) { return 'wallet_pk_' + (pubKey || '').substring(0, 16); }
 
     var _dashboardData = null;
 
@@ -811,7 +779,7 @@
             html += '<div class="pipeline-step-info"><a href="https://celoscan.io/address/' + esc(agent.wallet.address) + '" target="_blank">' + esc(truncAddr(agent.wallet.address)) + '</a></div>';
           } else if (step.status === 'active') {
             html += '<div class="pipeline-step-action">';
-            html += '<div style="font-size:0.7rem;color:var(--text-secondary);margin-bottom:0.35rem;font-family:var(--font-mono);">Generate your own EVM wallet, then register the address here:</div>';
+            html += '<div style="font-size:0.7rem;color:var(--text-secondary);margin-bottom:0.35rem;font-family:var(--font-mono);">Register the agent\'s self-custody wallet address:</div>';
             html += '<div style="display:flex;gap:0.35rem;">';
             html += '<input type="text" id="wallet-addr-' + idx + '" placeholder="0x..." style="flex:1;padding:0.35rem 0.5rem;border:2px solid var(--border-heavy);font-family:var(--font-mono);font-size:0.75rem;background:var(--bg);outline:none;" />';
             html += '<button class="action-btn primary" onclick="actionRegisterWallet(' + idx + ', this)">Register</button>';
@@ -899,61 +867,6 @@
         btn.disabled = false;
         var orig = btn.getAttribute('data-orig');
         if (orig) btn.textContent = orig;
-      }
-    }
-
-    function showPkModal(address, privateKey, pubKey) {
-      var existing = document.getElementById('pk-modal-overlay');
-      if (existing) existing.remove();
-
-      var overlay = document.createElement('div');
-      overlay.id = 'pk-modal-overlay';
-      overlay.className = 'pk-modal-overlay';
-
-      var modal = document.createElement('div');
-      modal.className = 'pk-modal';
-      modal.innerHTML = '<div class="pk-modal-title">&#9888; Save Your Private Key</div>' +
-        '<div class="pk-modal-warning">This is the <strong>only time</strong> your private key will be shown. Save it somewhere secure. If you lose it, you will lose access to this wallet forever.</div>' +
-        '<div class="pk-modal-address">Wallet Address: ' + esc(address) + '</div>' +
-        '<div class="pk-modal-key" id="pk-display">' + esc(privateKey) + '</div>' +
-        '<div class="pk-modal-actions">' +
-        '<button class="action-btn" onclick="copyPkToClipboard()">Copy Key</button>' +
-        '<button class="action-btn primary" id="pk-confirm-btn">I\'ve Saved It</button>' +
-        '</div>';
-
-      overlay.appendChild(modal);
-      document.body.appendChild(overlay);
-
-      try {
-        localStorage.setItem(pkStorageKey(pubKey), privateKey);
-      } catch (e) {}
-
-      document.getElementById('pk-confirm-btn').addEventListener('click', function() {
-        overlay.remove();
-        reloadCurrentDashboard();
-      });
-
-      overlay.addEventListener('click', function(e) {
-        if (e.target === overlay) {
-          overlay.remove();
-          reloadCurrentDashboard();
-        }
-      });
-    }
-
-    function copyPkToClipboard() {
-      var el = document.getElementById('pk-display');
-      if (!el) return;
-      var text = el.textContent;
-      if (navigator.clipboard) {
-        navigator.clipboard.writeText(text);
-      } else {
-        var ta = document.createElement('textarea');
-        ta.value = text;
-        document.body.appendChild(ta);
-        ta.select();
-        document.execCommand('copy');
-        document.body.removeChild(ta);
       }
     }
 
@@ -1101,9 +1014,8 @@
           '</div>' +
           '<div id="tf-valuation-' + idx + '" style="font-size:0.75rem;color:var(--text-secondary);line-height:1.4;padding:0.5rem;border:1px solid var(--border-light);background:var(--bg);">Loading valuation...</div>' +
         '</div>' +
-        '<div id="tf-pk-row-' + idx + '" style="display:none;"><div class="form-row"><label>Wallet Private Key</label><input type="password" id="tf-pk-' + idx + '" placeholder="Paste your wallet private key"></div></div>' +
         '<div class="pipeline-form-actions">' +
-        '<button class="action-btn primary" id="tf-submit-' + idx + '">Deploy &amp; Sign</button>' +
+        '<button class="action-btn primary" id="tf-submit-' + idx + '">Get Unsigned TX</button>' +
         '<button class="action-btn" onclick="cancelTokenForm(' + idx + ')">Cancel</button>' +
         '</div>' +
         '</div>';
@@ -1111,13 +1023,6 @@
       var agents = (_dashboardData && _dashboardData.agents) || [];
       var agent = agents[idx];
       var pubKey = agent ? agent.publicKey : '';
-      var storedPk = null;
-      try { storedPk = localStorage.getItem(pkStorageKey(pubKey)); } catch (e) {}
-      if (!storedPk) {
-        var pkRow = document.getElementById('tf-pk-row-' + idx);
-        if (pkRow) pkRow.style.display = '';
-      }
-
       document.getElementById('tf-submit-' + idx).addEventListener('click', function() {
         actionDeployToken(idx);
       });
@@ -1164,8 +1069,6 @@
       var nameInput = document.getElementById('tf-name-' + idx);
       var symbolInput = document.getElementById('tf-symbol-' + idx);
       var supplyInput = document.getElementById('tf-supply-' + idx);
-      var pkInput = document.getElementById('tf-pk-' + idx);
-
       var liqInput = document.getElementById('tf-liq-' + idx);
 
       var tokenName = nameInput ? nameInput.value.trim() : '';
@@ -1183,22 +1086,10 @@
         if (agents2[idx]) agents2[idx]._liquidityTokens = liquidityTokens;
       }
 
-      var walletPk = null;
-      try { walletPk = localStorage.getItem(pkStorageKey(pubKey)); } catch (e) {}
-      if (!walletPk && pkInput) {
-        walletPk = pkInput.value.trim();
-      }
-      if (!walletPk) {
-        showPipelineMsg(idx, 'Wallet private key is required. Paste it in the field above.', 'error');
-        var pkRow = document.getElementById('tf-pk-row-' + idx);
-        if (pkRow) pkRow.style.display = '';
-        return;
-      }
-
       var submitBtn = document.getElementById('tf-submit-' + idx);
-      if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Deploying...'; }
+      if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Getting Transaction...'; }
       clearPipelineMsg(idx);
-      showPipelineMsg(idx, 'Step 1/3: Requesting unsigned transaction...', 'info');
+      showPipelineMsg(idx, 'Requesting unsigned transaction data...', 'info');
 
       fetch('/api/selfclaw/v1/my-agents/' + encodeURIComponent(pubKey) + '/deploy-token', {
         method: 'POST',
@@ -1210,62 +1101,74 @@
       .then(function(data) {
         if (!data.success || !data.unsignedTx) {
           showPipelineMsg(idx, data.error || 'Failed to get unsigned transaction', 'error');
-          if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Deploy & Sign'; }
+          if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Get Unsigned TX'; }
           return;
         }
 
-        showPipelineMsg(idx, 'Step 2/3: Signing and broadcasting transaction...', 'info');
-
-        var unsignedTx = data.unsignedTx;
-
-        if (typeof ethers === 'undefined') {
-          showPipelineMsg(idx, 'ethers.js not loaded. Please refresh the page.', 'error');
-          if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Deploy & Sign'; }
-          return;
+        var txJson = JSON.stringify(data.unsignedTx, null, 2);
+        showPipelineMsg(idx, '', 'info');
+        var msgEl = document.querySelector('#pipeline-msg-' + idx);
+        if (msgEl) {
+          msgEl.innerHTML = '<div style="font-family:var(--font-mono);font-size:0.7rem;">' +
+            '<div style="margin-bottom:0.5rem;font-weight:600;">Unsigned Transaction Ready</div>' +
+            '<div style="margin-bottom:0.35rem;color:var(--text-secondary);">The agent signs this transaction with its wallet and broadcasts to Celo. Then register the deployed token below.</div>' +
+            '<textarea id="unsigned-tx-' + idx + '" readonly style="width:100%;height:120px;border:2px solid var(--border-heavy);padding:0.5rem;font-family:var(--font-mono);font-size:0.65rem;resize:vertical;background:var(--bg);">' + esc(txJson) + '</textarea>' +
+            '<div style="display:flex;gap:0.35rem;margin-top:0.35rem;">' +
+            '<button class="action-btn" onclick="navigator.clipboard.writeText(document.getElementById(\'unsigned-tx-' + idx + '\').value)">Copy TX</button>' +
+            '</div>' +
+            '<div style="margin-top:0.75rem;border-top:1px solid var(--border-light);padding-top:0.5rem;">' +
+            '<div style="margin-bottom:0.35rem;font-weight:600;">After signing & broadcasting:</div>' +
+            '<div style="display:flex;gap:0.35rem;margin-bottom:0.25rem;">' +
+            '<input type="text" id="confirm-token-addr-' + idx + '" placeholder="Deployed token address (0x...)" style="flex:1;padding:0.35rem 0.5rem;border:2px solid var(--border-heavy);font-family:var(--font-mono);font-size:0.7rem;background:var(--bg);" />' +
+            '</div>' +
+            '<div style="display:flex;gap:0.35rem;">' +
+            '<input type="text" id="confirm-tx-hash-' + idx + '" placeholder="Transaction hash (0x...)" style="flex:1;padding:0.35rem 0.5rem;border:2px solid var(--border-heavy);font-family:var(--font-mono);font-size:0.7rem;background:var(--bg);" />' +
+            '<button class="action-btn primary" onclick="actionRegisterToken(' + idx + ')">Register Token</button>' +
+            '</div>' +
+            '</div>' +
+            '</div>';
         }
-
-        var provider = new ethers.JsonRpcProvider('https://forno.celo.org');
-        var wallet = new ethers.Wallet(walletPk, provider);
-
-        var txReq = { data: unsignedTx.data };
-        if (unsignedTx.to) txReq.to = unsignedTx.to;
-        if (unsignedTx.value) txReq.value = unsignedTx.value;
-        txReq.gasLimit = unsignedTx.gas || unsignedTx.gasLimit;
-        if (unsignedTx.gasPrice) txReq.gasPrice = unsignedTx.gasPrice;
-        if (unsignedTx.nonce !== undefined && unsignedTx.nonce !== null) txReq.nonce = unsignedTx.nonce;
-        if (unsignedTx.chainId) txReq.chainId = unsignedTx.chainId;
-
-        return wallet.sendTransaction(txReq).then(function(txResponse) {
-          showPipelineMsg(idx, 'Step 3/3: Waiting for confirmation...', 'info');
-          return txResponse.wait().then(function(receipt) {
-            var txHash = receipt.hash || txResponse.hash;
-            var tokenAddress = receipt.contractAddress || '';
-
-            if (!tokenAddress && receipt.logs && receipt.logs.length > 0) {
-              tokenAddress = receipt.logs[0].address || '';
-            }
-
-            showPipelineMsg(idx, 'Registering token on SelfClaw...', 'info');
-
-            return fetch('/api/selfclaw/v1/my-agents/' + encodeURIComponent(pubKey) + '/register-token', {
-              method: 'POST',
-              credentials: 'include',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ tokenAddress: tokenAddress, txHash: txHash })
-            }).then(function(regRes) { return regRes.json(); }).then(function(regData) {
-              if (regData.success || regData.token) {
-                showPipelineMsg(idx, 'Token deployed! View on Celoscan: ' + truncAddr(tokenAddress), 'success');
-                setTimeout(function() { reloadCurrentDashboard(); }, 2000);
-              } else {
-                showPipelineMsg(idx, 'Token deployed but registration failed: ' + (regData.error || 'Unknown error') + '. TX: ' + txHash, 'error');
-              }
-            });
-          });
-        });
+        if (submitBtn) submitBtn.style.display = 'none';
       })
       .catch(function(err) {
         showPipelineMsg(idx, 'Error: ' + (err.reason || err.message || String(err)), 'error');
-        if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Deploy & Sign'; }
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Get Unsigned TX'; }
+      });
+    }
+
+    function actionRegisterToken(idx) {
+      var agents = (_dashboardData && _dashboardData.agents) || [];
+      var agent = agents[idx];
+      if (!agent) return;
+      var pubKey = agent.publicKey;
+      var tokenAddr = (document.getElementById('confirm-token-addr-' + idx) || {}).value || '';
+      var txHash = (document.getElementById('confirm-tx-hash-' + idx) || {}).value || '';
+      if (!tokenAddr || !/^0x[a-fA-F0-9]{40}$/.test(tokenAddr)) {
+        showPipelineMsg(idx, 'Enter a valid token contract address', 'error');
+        return;
+      }
+      if (!txHash || !/^0x[a-fA-F0-9]{64}$/.test(txHash)) {
+        showPipelineMsg(idx, 'Enter a valid transaction hash', 'error');
+        return;
+      }
+      showPipelineMsg(idx, 'Registering token on SelfClaw...', 'info');
+      fetch('/api/selfclaw/v1/my-agents/' + encodeURIComponent(pubKey) + '/register-token', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tokenAddress: tokenAddr, txHash: txHash })
+      })
+      .then(function(res) { return res.json(); })
+      .then(function(data) {
+        if (data.success || data.token) {
+          showPipelineMsg(idx, 'Token registered! View on Celoscan: ' + truncAddr(tokenAddr), 'success');
+          setTimeout(function() { reloadCurrentDashboard(); }, 2000);
+        } else {
+          showPipelineMsg(idx, 'Registration failed: ' + (data.error || 'Unknown error'), 'error');
+        }
+      })
+      .catch(function(err) {
+        showPipelineMsg(idx, 'Error: ' + err.message, 'error');
       });
     }
 
@@ -1476,12 +1379,12 @@
       if (info.hasPool) return '';
 
       var guideSteps = [
-        { done: info.hasWallet, text: 'Create a wallet for your agent. This is a Celo blockchain wallet that your agent uses to interact onchain.' },
+        { done: info.hasWallet, text: 'The agent generates its own EVM wallet (ethers.js, viem, etc.) and registers its address. SelfClaw never stores private keys — the agent has full self-custody.' },
         { done: info.hasGas, text: 'Request gas (CELO) to fund transaction fees. SelfClaw provides a small gas subsidy to get started.' },
-        { done: info.hasErc8004, text: 'Register your agent\'s onchain identity via ERC-8004. This mints an NFT that represents your agent on the blockchain.' },
-        { done: info.hasToken, text: 'Deploy your agent\'s ERC-20 token. Choose a name, symbol, and supply. This token represents your agent\'s economy.' },
-        { done: info.hasSponsorship, text: 'Request SELFCLAW sponsorship. SelfClaw pairs your token with SELFCLAW to create initial liquidity.' },
-        { done: info.hasPool, text: 'Liquidity pool goes live on Uniswap V4. Your token becomes tradeable and gets a live price and market cap.' },
+        { done: info.hasErc8004, text: 'Register the agent\'s onchain identity via ERC-8004. The agent signs the transaction to mint its identity NFT.' },
+        { done: info.hasToken, text: 'Deploy the agent\'s ERC-20 token. The agent signs and broadcasts the deployment transaction.' },
+        { done: info.hasSponsorship, text: 'Request SELFCLAW sponsorship. SelfClaw pairs the agent\'s token with SELFCLAW to create initial liquidity.' },
+        { done: info.hasPool, text: 'Liquidity pool goes live on Uniswap V4. The agent\'s token becomes tradeable with a live price and market cap.' },
       ];
 
       var doneCount = 0;
@@ -1840,7 +1743,7 @@
       var pk = agent.publicKey;
 
       var pipelineActions = {
-        'setup-wallet': function() { triggerPipelineAction(idx, pk, 'setup-wallet', 'POST'); },
+        'register-wallet': function() { triggerPipelineAction(idx, pk, 'register-wallet', 'POST'); },
         'request-gas': function() { triggerPipelineAction(idx, pk, 'request-gas', 'POST'); },
         'register-erc8004': function() { triggerPipelineAction(idx, pk, 'register-erc8004', 'POST'); },
         'deploy-token': function() { showNudgeForm(idx, 'deploy-token'); },
@@ -2026,7 +1929,7 @@
             showPipelineMsg(idx, 'ERC-8004 registration submitted! TX: ' + data.txHash.substring(0, 14) + '...', 'success');
             setTimeout(function() { confirmErc8004(idx, pubKey, data.txHash); }, 8000);
           } else {
-            showPipelineMsg(idx, 'Registration prepared. Sign the transaction with your wallet to complete.', 'info');
+            showPipelineMsg(idx, 'Registration prepared. The agent signs and submits this transaction to complete.', 'info');
           }
         } else {
           showPipelineMsg(idx, data.error || 'Failed to register', 'error');
@@ -2185,12 +2088,11 @@
       btn.disabled = true;
       btn.textContent = 'Setting up...';
       try {
-        var r = await fetch('/api/selfclaw/v1/miniclaws/' + encodeURIComponent(id) + '/setup-wallet', { method: 'POST', credentials: 'include' });
+        var walletAddr = prompt('Enter the agent\'s EVM wallet address (0x...)');
+        if (!walletAddr || !/^0x[a-fA-F0-9]{40}$/.test(walletAddr)) { alert('Invalid wallet address'); btn.disabled = false; btn.textContent = 'Register Wallet'; return; }
+        var r = await fetch('/api/selfclaw/v1/miniclaws/' + encodeURIComponent(id) + '/register-wallet', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ address: walletAddr }) });
         var data = await r.json();
-        if (!r.ok) { alert(data.error || 'Failed'); btn.disabled = false; btn.textContent = 'Setup Wallet'; return; }
-        if (data.privateKey) {
-          alert('WALLET CREATED\\n\\nAddress: ' + data.address + '\\n\\nPrivate Key: ' + data.privateKey + '\\n\\nSAVE THIS KEY NOW — it will NOT be shown again.');
-        }
+        if (!r.ok) { alert(data.error || 'Failed'); btn.disabled = false; btn.textContent = 'Register Wallet'; return; }
         window.location.reload();
       } catch (e) {
         alert('Error: ' + e.message);
@@ -2227,7 +2129,7 @@
         var msg = 'ERC-8004 Registration Prepared\\n\\n';
         msg += 'Contract: ' + (data.unsignedTx.to || '') + '\\n';
         msg += 'Gas: ~' + (data.deployment ? data.deployment.estimatedCost : 'unknown') + '\\n\\n';
-        msg += 'Sign the transaction with your miniclaw wallet to complete registration.\\n';
+        msg += 'The agent signs and submits this transaction to complete registration.\\n';
         msg += 'Then confirm with the txHash at:\\nPOST /api/selfclaw/v1/miniclaws/' + id + '/confirm-erc8004';
         alert(msg);
         btn.disabled = false;

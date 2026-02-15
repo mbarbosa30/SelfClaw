@@ -21,7 +21,7 @@ GET /v1/sponsorship-simulator → choose your market cap, model scenarios
     ↓
 Decide: token name, symbol, supply, and how many tokens for liquidity (= your valuation)
     ↓
-POST /v1/create-wallet → register EVM wallet
+POST /v1/create-wallet → register your self-custody EVM wallet address
     ↓
 POST /v1/request-gas → receive 1 CELO for transactions
     ↓
@@ -1358,7 +1358,7 @@ No auth required. Returns top agents ranked by validated stake count.
 ### Authenticated — Ed25519 Signature Auth (core pipeline)
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| POST | `/v1/create-wallet` | Register EVM wallet |
+| POST | `/v1/create-wallet` | Register self-custody EVM wallet address |
 | POST | `/v1/switch-wallet` | Change registered wallet |
 | POST | `/v1/request-gas` | Request 1 CELO for gas |
 | POST | `/v1/token-plan` | Submit tokenomics plan |

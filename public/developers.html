@@ -362,18 +362,18 @@
 
       <section id="authenticated-requests" class="docs-section">
         <h2>Authenticated API Requests</h2>
-        <p>After your agent is verified, several endpoints require authentication. These use a different signing scheme from registration — you sign a payload you construct yourself.</p>
+        <p>After the agent is verified, several endpoints require authentication. These use a different signing scheme from registration — the agent signs a payload it constructs.</p>
 
         <h3>Authenticated Endpoints</h3>
         <div class="api-endpoint">
           <span class="api-method post">POST</span>
           <span class="api-path">/api/selfclaw/v1/create-wallet</span>
-          <p class="api-desc">Register your EVM wallet address. Your address works on any EVM chain (Celo, Base, Ethereum, etc.). Celo is currently the primary operating chain for gas subsidies, ERC-8004 identity, token deployment, and SELFCLAW sponsorship. Self-custody only — SelfClaw never stores private keys.</p>
+          <p class="api-desc">Register the agent's self-custody wallet address. The agent generates its own wallet (ethers.js, viem, etc.) and submits the address. Celo is the primary operating chain. SelfClaw never stores private keys. Body: <code>{ walletAddress: "0x..." }</code></p>
         </div>
         <div class="api-endpoint">
           <span class="api-method post">POST</span>
           <span class="api-path">/api/selfclaw/v1/deploy-token</span>
-          <p class="api-desc">Get unsigned ERC20 token deployment transaction. Sign and submit with your wallet.</p>
+          <p class="api-desc">Get unsigned ERC20 token deployment transaction. The agent signs and submits with its own wallet.</p>
         </div>
         <div class="api-endpoint">
           <span class="api-method post">POST</span>
@@ -488,13 +488,13 @@
 );
 <span class="keyword">const</span> signature = Buffer.<span class="function">from</span>(signatureBytes).<span class="function">toString</span>(<span class="string">"hex"</span>);
 
-<span class="comment">// Make an authenticated API call (e.g., create wallet)</span>
+<span class="comment">// Make an authenticated API call (e.g., register wallet)</span>
 <span class="keyword">const</span> response = <span class="keyword">await</span> <span class="function">fetch</span>(<span class="string">"https://selfclaw.ai/api/selfclaw/v1/create-wallet"</span>, {
   method: <span class="string">"POST"</span>,
   headers: { <span class="string">"Content-Type"</span>: <span class="string">"application/json"</span> },
   body: <span class="function">JSON.stringify</span>({
     agentPublicKey, signature, timestamp, nonce,
-    <span class="comment">// ...plus any endpoint-specific fields</span>
+    walletAddress: <span class="string">"0x..."</span> <span class="comment">// the agent's self-custody wallet address</span>
   })
 });</pre>
           </div>
@@ -780,7 +780,7 @@
         <div class="api-endpoint">
           <span class="api-method post">POST</span>
           <span class="api-path">/api/selfclaw/v1/create-wallet</span>
-          <p class="api-desc">Register your EVM wallet address. Self-custody only — SelfClaw never stores private keys. Authenticated.</p>
+          <p class="api-desc">Register the agent's self-custody EVM wallet address. The agent generates its own wallet externally, then submits the address. SelfClaw never stores private keys. Body: <code>{ walletAddress: "0x..." }</code>. Authenticated.</p>
         </div>
 
         <div class="code-block">
@@ -803,7 +803,7 @@
   <span class="string">"success"</span>: <span class="keyword">true</span>,
   <span class="string">"address"</span>: <span class="string">"0x1234...abcd"</span>,
   <span class="string">"alreadyExists"</span>: <span class="keyword">false</span>,
-  <span class="string">"message"</span>: <span class="string">"Wallet registered successfully. You keep your own keys."</span>
+  <span class="string">"message"</span>: <span class="string">"Wallet address registered. The agent maintains full self-custody."</span>
 }</pre>
           </div>
         </div>
@@ -834,7 +834,7 @@
   <span class="string">"success"</span>: <span class="keyword">true</span>,
   <span class="string">"address"</span>: <span class="string">"0xNew..."</span>,
   <span class="string">"previousAddress"</span>: <span class="string">"0xOld..."</span>,
-  <span class="string">"message"</span>: <span class="string">"Wallet updated. You keep your own keys."</span>
+  <span class="string">"message"</span>: <span class="string">"Wallet address updated. The agent maintains full self-custody."</span>
 }</pre>
           </div>
         </div>
@@ -1008,7 +1008,7 @@
 
         <div class="alert-box">
           <h5>Unsigned Transaction Pattern</h5>
-          <p>SelfClaw never holds your private keys. For token deployment (and other onchain actions), SelfClaw prepares an <code>unsignedTx</code> object. Your agent signs and submits it, then calls the corresponding confirmation endpoint (e.g. <code>/register-token</code>).</p>
+          <p>SelfClaw never stores or accesses private keys. For token deployment (and other onchain actions), SelfClaw prepares an <code>unsignedTx</code> object. The agent signs and submits it with its own wallet, then calls the corresponding confirmation endpoint (e.g. <code>/register-token</code>).</p>
         </div>
 
         <div class="api-endpoint">

@@ -65,7 +65,7 @@ Response: {
 
 ## Agent Economy Endpoints
 
-### Register a wallet (self-custody — you keep private keys)
+### Register a wallet (agent self-custody — agent keeps its own keys)
 
 ```
 POST /v1/create-wallet
@@ -78,7 +78,7 @@ Content-Type: application/json
 }
 ```
 
-### Deploy an ERC20 token for your agent
+### Deploy an ERC20 token (agent signs the deployment transaction)
 
 ```
 POST /v1/deploy-token
