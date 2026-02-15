@@ -295,22 +295,25 @@ export class ERC8004Service {
     const reputation = new ethers.Contract(config.resolver, REPUTATION_REGISTRY_ABI, this.provider);
     
     try {
-      const clients: string[] = await reputation.getClients(agentTokenId);
+      const rawClients = await reputation.getClients(agentTokenId);
+      const clients: string[] = Array.from(rawClients);
       
       if (!clients || clients.length === 0) {
         return { totalFeedback: 0, averageScore: 0, lastUpdated: 0 };
       }
 
-      const [count, summaryValue, summaryValueDecimals] = await reputation.getSummary(
+      const result = await reputation.getSummary(
         agentTokenId,
         clients,
         "",
         ""
       );
       
-      const feedbackCount = Number(count);
-      const divisor = Math.pow(10, Number(summaryValueDecimals));
-      const avgScore = feedbackCount > 0 ? Number(summaryValue) / divisor : 0;
+      const feedbackCount = Number(result[0]);
+      const summaryValue = Number(result[1]);
+      const summaryValueDecimals = Number(result[2]);
+      const divisor = Math.pow(10, summaryValueDecimals);
+      const avgScore = feedbackCount > 0 ? summaryValue / divisor : 0;
 
       return {
         totalFeedback: feedbackCount,
@@ -338,7 +341,8 @@ export class ERC8004Service {
     const reputation = new ethers.Contract(config.resolver, REPUTATION_REGISTRY_ABI, this.provider);
     
     try {
-      const clients: string[] = await reputation.getClients(agentTokenId);
+      const rawClients = await reputation.getClients(agentTokenId);
+      const clients: string[] = Array.from(rawClients);
       if (!clients || clients.length === 0) return [];
 
       const result = await reputation.readAllFeedback(agentTokenId, clients, "", "", false);
