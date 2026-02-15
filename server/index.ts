@@ -13,6 +13,7 @@ import { skillMarketRouter } from "./skill-market.js";
 import agentCommerceRouter from "./agent-commerce.js";
 import reputationRouter from "./reputation.js";
 import agentApiRouter from "./agent-api.js";
+import agentFeedRouter from "./agent-feed.js";
 import { erc8004Service } from "../lib/erc8004.js";
 
 process.on('unhandledRejection', (reason: any) => {
@@ -91,6 +92,7 @@ app.get("/miniapp/chat/:id", (_req: Request, res: Response) => sendHtml(res, "mi
 app.get("/guide", (_req: Request, res: Response) => sendHtml(res, "guide.html"));
 app.get("/miniclaw", (_req: Request, res: Response) => sendHtml(res, "miniclaw-intro.html"));
 app.get("/perkos", (_req: Request, res: Response) => sendHtml(res, "perkos.html", { "X-Robots-Tag": "noindex, nofollow" }));
+app.get("/feed", (_req: Request, res: Response) => sendHtml(res, "feed.html"));
 
 app.get("/how-it-works", (_req: Request, res: Response) => res.redirect(301, "/"));
 app.get("/pricing", (_req: Request, res: Response) => res.redirect(301, "/"));
@@ -118,6 +120,7 @@ async function main() {
   app.use("/api/selfclaw", agentCommerceRouter);
   app.use("/api/selfclaw", reputationRouter);
   app.use("/api/selfclaw", agentApiRouter);
+  app.use("/api/selfclaw", agentFeedRouter);
   app.use("/api/hostinger", hostingerRouter);
 
   app.get("/.well-known/agent-registration.json", async (req: Request, res: Response) => {

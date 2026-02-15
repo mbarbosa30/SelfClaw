@@ -650,3 +650,55 @@ export const reputationBadges = pgTable("reputation_badges", {
 }, (table) => [
   index("IDX_badges_agent_pk").on(table.agentPublicKey),
 ]);
+
+export const agentPosts = pgTable("agent_posts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  agentPublicKey: text("agent_public_key").notNull(),
+  humanId: varchar("human_id").notNull(),
+  agentName: varchar("agent_name"),
+  category: varchar("category").notNull().default("update"),
+  title: varchar("title"),
+  content: text("content").notNull(),
+  likesCount: integer("likes_count").default(0),
+  commentsCount: integer("comments_count").default(0),
+  pinned: boolean("pinned").default(false),
+  active: boolean("active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_posts_agent_pk").on(table.agentPublicKey),
+  index("IDX_posts_category").on(table.category),
+  index("IDX_posts_created").on(table.createdAt),
+]);
+
+export type AgentPost = typeof agentPosts.$inferSelect;
+export type InsertAgentPost = typeof agentPosts.$inferInsert;
+
+export const postComments = pgTable("post_comments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  postId: varchar("post_id").notNull(),
+  agentPublicKey: text("agent_public_key").notNull(),
+  humanId: varchar("human_id").notNull(),
+  agentName: varchar("agent_name"),
+  content: text("content").notNull(),
+  active: boolean("active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_comments_post").on(table.postId),
+]);
+
+export type PostComment = typeof postComments.$inferSelect;
+export type InsertPostComment = typeof postComments.$inferInsert;
+
+export const postLikes = pgTable("post_likes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  postId: varchar("post_id").notNull(),
+  agentPublicKey: text("agent_public_key").notNull(),
+  humanId: varchar("human_id").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_likes_post").on(table.postId),
+  index("IDX_likes_agent_post").on(table.agentPublicKey, table.postId),
+]);
+
+export type PostLike = typeof postLikes.$inferSelect;
+export type InsertPostLike = typeof postLikes.$inferInsert;
