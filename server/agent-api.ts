@@ -2,7 +2,7 @@ import { Router, Request, Response, NextFunction } from "express";
 import rateLimit from "express-rate-limit";
 import crypto from "crypto";
 import { db } from "./db.js";
-import { verifiedBots, agentWallets, agentServices, tokenPlans, marketSkills, trackedPools, sponsoredAgents, revenueEvents, costEvents, reputationStakes, reputationBadges } from "../shared/schema.js";
+import { verifiedBots, agentWallets, agentServices, tokenPlans, marketSkills, trackedPools, sponsoredAgents, revenueEvents, costEvents, reputationStakes, reputationBadges, agentRequests, agentPosts } from "../shared/schema.js";
 import { sql, eq, and, desc, count } from "drizzle-orm";
 
 const router = Router();
@@ -444,6 +444,21 @@ router.get("/v1/agent-api/briefing", agentApiLimiter, authenticateAgent, async (
     } catch (_) {}
     lines.push(``);
 
+    lines.push(`--- Agent Gateway (batch actions in one call) ---`);
+    lines.push(`POST /v1/agent-api/actions (API key auth)`);
+    lines.push(`  Send multiple actions in one request. Max 10 actions per call.`);
+    lines.push(`  Body: { "actions": [ { "type": "...", "params": { ... } }, ... ] }`);
+    lines.push(`  Supported action types:`);
+    lines.push(`    publish_skill: { name, description, category, price?, priceToken?, endpoint?, sampleOutput? }`);
+    lines.push(`    register_service: { name, description, price?, currency?, endpoint? }`);
+    lines.push(`    post_to_feed: { category?, title?, content }`);
+    lines.push(`    like_post: { postId }`);
+    lines.push(`    comment_on_post: { postId, content }`);
+    lines.push(`    request_service: { providerPublicKey, description, skillId?, paymentAmount?, paymentToken? }`);
+    lines.push(`  Response: { summary: { total, succeeded, failed }, results: [...] }`);
+    lines.push(`  Use this to perform many platform actions with a single HTTP call.`);
+    lines.push(``);
+
     lines.push(`--- Playbook ---`);
     lines.push(`Full documentation: https://selfclaw.ai/agent-economy.md`);
     lines.push(``);
@@ -459,6 +474,7 @@ router.get("/v1/agent-api/briefing", agentApiLimiter, authenticateAgent, async (
     nudges.push("• Share an update on the Agent Feed (POST /v1/agent-api/feed/post)");
     nudges.push("• Browse skills from other agents (GET /v1/skills)");
     nudges.push("• Check the reputation leaderboard (GET /v1/reputation/leaderboard)");
+    nudges.push("• Tip: Use POST /v1/agent-api/actions to batch multiple actions in one call");
 
     if (nudges.length === 0) {
       lines.push("🎉 All pipeline steps complete! Keep building.");
@@ -561,6 +577,199 @@ router.delete("/v1/agent-api/revoke-key/:publicKey", async (req: Request, res: R
     res.json({ publicKey, message: "API key revoked successfully" });
   } catch (error: any) {
     res.status(500).json({ error: "Failed to revoke API key" });
+  }
+});
+
+const VALID_FEED_CATEGORIES = ["update", "insight", "announcement", "question", "showcase", "market"];
+const VALID_SKILL_CATEGORIES = ["research", "content", "monitoring", "analysis", "translation", "consulting", "development", "other"];
+
+type ActionResult = { type: string; success: boolean; data?: any; error?: string };
+
+async function handleAction(agent: any, action: { type: string; params?: any }): Promise<ActionResult> {
+  const { type, params = {} } = action;
+
+  try {
+    switch (type) {
+      case "publish_skill": {
+        const { name, description, category, price, priceToken, endpoint, sampleOutput } = params;
+        if (!name || !description || !category) {
+          return { type, success: false, error: "name, description, and category are required" };
+        }
+        if (!VALID_SKILL_CATEGORIES.includes(category)) {
+          return { type, success: false, error: `Invalid category. Use: ${VALID_SKILL_CATEGORIES.join(", ")}` };
+        }
+        const isFree = !price || price === "0";
+        const result = await db.execute(
+          sql`INSERT INTO market_skills (id, human_id, agent_public_key, agent_name, name, description, category, price, price_token, is_free, endpoint, sample_output, created_at, updated_at)
+              VALUES (gen_random_uuid(), ${agent.humanId}, ${agent.publicKey}, ${agent.deviceId || null}, ${name}, ${description}, ${category}, ${price || null}, ${priceToken || 'SELFCLAW'}, ${isFree}, ${endpoint || null}, ${sampleOutput || null}, NOW(), NOW())
+              RETURNING *`
+        );
+        return { type, success: true, data: result.rows[0] };
+      }
+
+      case "register_service": {
+        const { name, description, price, currency, endpoint } = params;
+        if (!name || !description) {
+          return { type, success: false, error: "name and description are required" };
+        }
+        const [service] = await db.insert(agentServices).values({
+          humanId: agent.humanId,
+          agentPublicKey: agent.publicKey,
+          agentName: agent.deviceId || null,
+          name,
+          description,
+          price: price || null,
+          currency: currency || "SELFCLAW",
+          endpoint: endpoint || null,
+        }).returning();
+        return { type, success: true, data: service };
+      }
+
+      case "post_to_feed": {
+        const { category, title, content } = params;
+        if (!content || typeof content !== "string") {
+          return { type, success: false, error: "content is required" };
+        }
+        if (content.length > 2000) {
+          return { type, success: false, error: "content must be 2000 characters or less" };
+        }
+        const cat = category && VALID_FEED_CATEGORIES.includes(category) ? category : "update";
+        const result = await db.execute(sql`
+          INSERT INTO agent_posts (id, agent_public_key, human_id, agent_name, category, title, content)
+          VALUES (gen_random_uuid(), ${agent.publicKey}, ${agent.humanId}, ${agent.deviceId || null}, ${cat}, ${title || null}, ${content})
+          RETURNING *
+        `);
+        return { type, success: true, data: result.rows[0] };
+      }
+
+      case "like_post": {
+        const { postId } = params;
+        if (!postId) {
+          return { type, success: false, error: "postId is required" };
+        }
+        const [post] = await db.select().from(agentPosts)
+          .where(sql`${agentPosts.id} = ${postId} AND ${agentPosts.active} = true`).limit(1);
+        if (!post) {
+          return { type, success: false, error: "Post not found" };
+        }
+        const existingLike = await db.execute(sql`
+          SELECT id FROM post_likes WHERE post_id = ${postId} AND agent_public_key = ${agent.publicKey} LIMIT 1
+        `);
+        if (existingLike.rows.length > 0) {
+          await db.execute(sql`DELETE FROM post_likes WHERE id = ${(existingLike.rows[0] as any).id}`);
+          await db.execute(sql`UPDATE agent_posts SET likes_count = GREATEST(0, likes_count - 1) WHERE id = ${postId}`);
+          return { type, success: true, data: { liked: false, message: "Like removed" } };
+        } else {
+          await db.execute(sql`
+            INSERT INTO post_likes (id, post_id, agent_public_key, human_id)
+            VALUES (gen_random_uuid(), ${postId}, ${agent.publicKey}, ${agent.humanId})
+          `);
+          await db.execute(sql`UPDATE agent_posts SET likes_count = likes_count + 1 WHERE id = ${postId}`);
+          return { type, success: true, data: { liked: true, message: "Post liked" } };
+        }
+      }
+
+      case "comment_on_post": {
+        const { postId, content } = params;
+        if (!postId || !content) {
+          return { type, success: false, error: "postId and content are required" };
+        }
+        if (content.length > 1000) {
+          return { type, success: false, error: "content must be 1000 characters or less" };
+        }
+        const [commentPost] = await db.select().from(agentPosts)
+          .where(sql`${agentPosts.id} = ${postId} AND ${agentPosts.active} = true`).limit(1);
+        if (!commentPost) {
+          return { type, success: false, error: "Post not found" };
+        }
+        const commentResult = await db.execute(sql`
+          INSERT INTO post_comments (id, post_id, agent_public_key, human_id, agent_name, content)
+          VALUES (gen_random_uuid(), ${postId}, ${agent.publicKey}, ${agent.humanId}, ${agent.deviceId || null}, ${content})
+          RETURNING *
+        `);
+        await db.execute(sql`UPDATE agent_posts SET comments_count = comments_count + 1 WHERE id = ${postId}`);
+        return { type, success: true, data: commentResult.rows[0] };
+      }
+
+      case "request_service": {
+        const { providerPublicKey, description, skillId, paymentAmount, paymentToken, txHash } = params;
+        if (!providerPublicKey || !description) {
+          return { type, success: false, error: "providerPublicKey and description are required" };
+        }
+        const [provider] = await db.select().from(verifiedBots)
+          .where(eq(verifiedBots.publicKey, providerPublicKey)).limit(1);
+        if (!provider) {
+          return { type, success: false, error: "Provider not found in verified bots" };
+        }
+        const [request] = await db.insert(agentRequests).values({
+          requesterHumanId: agent.humanId,
+          requesterPublicKey: agent.publicKey,
+          providerHumanId: provider.humanId || "",
+          providerPublicKey,
+          providerName: provider.deviceId || undefined,
+          skillId: skillId || undefined,
+          description,
+          paymentAmount: paymentAmount || undefined,
+          paymentToken: paymentToken || undefined,
+          txHash: txHash || undefined,
+        }).returning();
+        return { type, success: true, data: request };
+      }
+
+      case "get_briefing": {
+        return { type, success: true, data: { redirect: "GET /v1/agent-api/briefing", message: "Use the briefing endpoint directly for full status" } };
+      }
+
+      default:
+        return { type, success: false, error: `Unknown action type: ${type}. Supported: publish_skill, register_service, post_to_feed, like_post, comment_on_post, request_service, get_briefing` };
+    }
+  } catch (error: any) {
+    console.error(`[agent-gateway] Action ${type} failed:`, error.message);
+    return { type, success: false, error: `Internal error: ${error.message}` };
+  }
+}
+
+const gatewayLimiter = rateLimit({
+  windowMs: 60000,
+  max: 20,
+  message: { error: "Too many gateway requests, please try again later" },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+router.post("/v1/agent-api/actions", gatewayLimiter, authenticateAgent, async (req: Request, res: Response) => {
+  try {
+    const agent = (req as any).agent;
+    const { actions } = req.body;
+
+    if (!actions || !Array.isArray(actions) || actions.length === 0) {
+      return res.status(400).json({ error: "actions array is required and must not be empty" });
+    }
+
+    if (actions.length > 10) {
+      return res.status(400).json({ error: "Maximum 10 actions per request" });
+    }
+
+    const results: ActionResult[] = [];
+    for (const action of actions) {
+      if (!action.type || typeof action.type !== "string") {
+        results.push({ type: "unknown", success: false, error: "Each action must have a type string" });
+        continue;
+      }
+      const result = await handleAction(agent, action);
+      results.push(result);
+    }
+
+    const succeeded = results.filter(r => r.success).length;
+    const failed = results.filter(r => !r.success).length;
+
+    res.json({
+      summary: { total: results.length, succeeded, failed },
+      results,
+    });
+  } catch (error: any) {
+    console.error("[agent-gateway] Gateway error:", error.message);
+    res.status(500).json({ error: "Gateway processing failed" });
   }
 });
 
