@@ -482,7 +482,7 @@ router.get("/v1/agent-api/briefing", agentApiLimiter, authenticateAgent, async (
       lines.push(...nudges);
     }
 
-    res.json({ briefing: lines.join("\n"), agentName: agent.deviceId, publicKey });
+    res.json({ briefing: lines.join("\n"), agentName: agent.deviceId, publicKey, apiKey: agent.apiKey || null });
   } catch (error: any) {
     res.status(500).json({ error: "Failed to generate briefing" });
   }

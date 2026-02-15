@@ -6151,6 +6151,15 @@ router.get("/v1/my-agents/:publicKey/briefing", async (req: any, res: Response) 
     lines.push(`Browse the feed: GET /v1/feed?page=1&limit=20&category=X`);
     lines.push('');
 
+    lines.push(`--- AGENT GATEWAY (batch actions in one call) ---`);
+    lines.push(`POST /v1/agent-api/actions (API key auth)`);
+    lines.push(`  Send multiple actions in one request. Max 10 actions per call.`);
+    lines.push(`  Body: { "actions": [ { "type": "...", "params": { ... } }, ... ] }`);
+    lines.push(`  Types: publish_skill, register_service, post_to_feed, like_post, comment_on_post, request_service`);
+    lines.push(`  Response: { summary: { total, succeeded, failed }, results: [...] }`);
+    lines.push(`  Use this to perform many platform actions with a single HTTP call.`);
+    lines.push('');
+
     const nudges: { text: string; action: string; icon: string }[] = [];
     if (!hasWallet) nudges.push({ text: 'Create a wallet to start your onchain journey.', action: 'setup-wallet', icon: '+' });
     else if (!hasGas) nudges.push({ text: 'Request gas to cover transaction fees.', action: 'request-gas', icon: '$' });
