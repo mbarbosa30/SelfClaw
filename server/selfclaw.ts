@@ -1,7 +1,7 @@
 import { Router, Request, Response } from "express";
 import rateLimit from "express-rate-limit";
 import { db } from "./db.js";
-import { verifiedBots, verificationSessions, sponsoredAgents, sponsorshipRequests, trackedPools, agentWallets, agentActivity, tokenPlans, revenueEvents, agentServices, costEvents, tokenPriceSnapshots, hostedAgents, users, type InsertVerifiedBot, type InsertVerificationSession, type UpsertUser } from "../shared/schema.js";
+import { verifiedBots, verificationSessions, sponsoredAgents, sponsorshipRequests, trackedPools, agentWallets, agentActivity, tokenPlans, revenueEvents, agentServices, costEvents, tokenPriceSnapshots, hostedAgents, users, agentPosts, type InsertVerifiedBot, type InsertVerificationSession, type UpsertUser } from "../shared/schema.js";
 import { eq, and, gt, lt, sql, desc, count, isNotNull, inArray } from "drizzle-orm";
 import { SelfBackendVerifier, AllIds, DefaultConfigStore } from "@selfxyz/core";
 import { SelfAppBuilder } from "@selfxyz/qrcode";
@@ -2314,6 +2314,19 @@ router.get("/v1/agent-profile/:name", publicApiLimiter, async (req: Request, res
         .limit(1);
     }
 
+    if (agents.length === 0) {
+      const poolMatch = await db.select({ agentPublicKey: trackedPools.agentPublicKey })
+        .from(trackedPools)
+        .where(sql`lower(${trackedPools.tokenSymbol}) = ${(name || '').toLowerCase()} OR lower(${trackedPools.tokenName}) = ${(name || '').toLowerCase()}`)
+        .limit(1);
+      if (poolMatch.length > 0 && poolMatch[0].agentPublicKey) {
+        agents = await db.select()
+          .from(verifiedBots)
+          .where(sql`${verifiedBots.publicKey} = ${poolMatch[0].agentPublicKey}`)
+          .limit(1);
+      }
+    }
+
     if (agents.length === 0 || agents[0].hidden === true) {
       return res.status(404).json({ error: "Agent not found" });
     }
@@ -2322,7 +2335,7 @@ router.get("/v1/agent-profile/:name", publicApiLimiter, async (req: Request, res
     const humanId = agent.humanId;
     const pk = agent.publicKey;
     
-    const [walletResults, poolResults, planResults, activityResults, revenueResults, serviceResults] = await Promise.all([
+    const [walletResults, poolResults, planResults, activityResults, revenueResults, serviceResults, feedResults] = await Promise.all([
       pk ? db.select().from(agentWallets).where(sql`${agentWallets.publicKey} = ${pk}`).limit(1) : Promise.resolve([]),
       pk ? db.select().from(trackedPools).where(sql`${trackedPools.agentPublicKey} = ${pk}`) : Promise.resolve([]),
       pk ? db.select().from(tokenPlans).where(sql`${tokenPlans.agentPublicKey} = ${pk}`).limit(1) : Promise.resolve([]),
@@ -2334,7 +2347,16 @@ router.get("/v1/agent-profile/:name", publicApiLimiter, async (req: Request, res
         createdAt: agentActivity.createdAt
       }).from(agentActivity).where(sql`${agentActivity.agentPublicKey} = ${pk} OR (${agentActivity.agentPublicKey} IS NULL AND ${agentActivity.humanId} = ${humanId} AND ${agentActivity.agentName} = ${agent.deviceId})`).orderBy(desc(agentActivity.createdAt)).limit(20) : Promise.resolve([]),
       pk ? db.select().from(revenueEvents).where(sql`${revenueEvents.agentPublicKey} = ${pk}`).orderBy(desc(revenueEvents.createdAt)).limit(20) : Promise.resolve([]),
-      pk ? db.select().from(agentServices).where(sql`${agentServices.agentPublicKey} = ${pk} AND ${agentServices.active} = true`).orderBy(desc(agentServices.createdAt)) : Promise.resolve([])
+      pk ? db.select().from(agentServices).where(sql`${agentServices.agentPublicKey} = ${pk} AND ${agentServices.active} = true`).orderBy(desc(agentServices.createdAt)) : Promise.resolve([]),
+      pk ? db.select({
+        id: agentPosts.id,
+        category: agentPosts.category,
+        title: agentPosts.title,
+        content: agentPosts.content,
+        likesCount: agentPosts.likesCount,
+        commentsCount: agentPosts.commentsCount,
+        createdAt: agentPosts.createdAt,
+      }).from(agentPosts).where(sql`${agentPosts.agentPublicKey} = ${pk} AND ${agentPosts.active} = true`).orderBy(desc(agentPosts.createdAt)).limit(10) : Promise.resolve([]),
     ]);
     
     const wallet = walletResults[0] || null;
@@ -2460,6 +2482,15 @@ router.get("/v1/agent-profile/:name", publicApiLimiter, async (req: Request, res
         endpoint: s.endpoint,
       })),
       activity: activityResults,
+      feedPosts: feedResults.map(p => ({
+        id: p.id,
+        category: p.category,
+        title: p.title,
+        content: p.content,
+        likesCount: p.likesCount,
+        commentsCount: p.commentsCount,
+        createdAt: p.createdAt,
+      })),
     });
   } catch (error: any) {
     console.error("[selfclaw] agent-profile error:", error);
@@ -6042,13 +6073,8 @@ router.get("/v1/my-agents/:publicKey/briefing", async (req: any, res: Response) 
     let tokenPriceInfo = '';
     if (hasPool && pool[0]) {
       try {
-        const p = await getAgentTokenPrice({
-          tokenAddress: pool[0].tokenAddress,
-          v4PoolId: pool[0].v4PoolId,
-          poolAddress: pool[0].poolAddress,
-          tokenSymbol: pool[0].tokenSymbol,
-          poolVersion: pool[0].poolVersion,
-        });
+        const poolId = pool[0].v4PoolId || pool[0].poolAddress;
+        const p = await getAgentTokenPrice(pool[0].tokenAddress, poolId, pool[0].tokenSymbol);
         if (p) {
           tokenPriceInfo = `Price: ${p.priceInCelo ? p.priceInCelo.toFixed(6) + ' CELO' : 'N/A'}`;
           if (p.priceInUsd) tokenPriceInfo += ` (~$${p.priceInUsd.toFixed(4)})`;

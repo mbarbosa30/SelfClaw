@@ -1661,4 +1661,21 @@ router.post("/hide-agent", async (req: Request, res: Response) => {
   }
 });
 
+router.post("/refresh-all-agents", async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    const { syncAllAgents } = await import("./onchain-sync.js");
+    const result = await syncAllAgents();
+    console.log(`[admin] Manual agent refresh: synced=${result.synced}, updated=${result.updated}, errors=${result.errors}`);
+    res.json({
+      success: true,
+      ...result,
+      message: `Refreshed ${result.synced} agents, updated ${result.updated}, ${result.errors} errors`,
+    });
+  } catch (error: any) {
+    console.error("[admin] refresh-all-agents error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 export default router;

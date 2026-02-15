@@ -460,6 +460,7 @@
       <div class="refresh-info">
         <span id="last-refresh">Loading...</span>
         <button class="refresh-btn" onclick="refreshAll()">Refresh</button>
+        <button class="refresh-btn" onclick="refreshAllAgents()" id="btn-refresh-agents" style="margin-left:0.5rem;background:#3B82F6;color:#fff;border-color:#3B82F6;">Sync Onchain Data</button>
       </div>
 
       <section class="admin-section">
@@ -929,6 +930,29 @@
       document.getElementById('dashboard-view').style.display = 'none';
       document.getElementById('login-view').style.display = 'flex';
       document.getElementById('login-password').value = '';
+    }
+
+    function refreshAllAgents() {
+      var btn = document.getElementById('btn-refresh-agents');
+      btn.disabled = true;
+      btn.textContent = 'Syncing...';
+      fetch('/api/admin/refresh-all-agents', { method: 'POST', headers: authHeaders() })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          btn.disabled = false;
+          btn.textContent = 'Sync Onchain Data';
+          if (data.success) {
+            alert('Synced ' + data.synced + ' agents, updated ' + data.updated + ', ' + data.errors + ' errors');
+            refreshAll();
+          } else {
+            alert('Error: ' + (data.error || 'Unknown'));
+          }
+        })
+        .catch(function(e) {
+          btn.disabled = false;
+          btn.textContent = 'Sync Onchain Data';
+          alert('Failed: ' + e.message);
+        });
     }
 
     function refreshAll() {

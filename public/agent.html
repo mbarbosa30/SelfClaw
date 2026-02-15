@@ -667,6 +667,8 @@
       var hasRep = !!(a.erc8004 && a.erc8004.reputation);
       var hasPlan = !!(plan && plan.purpose);
       var hasRevenue = !!(rev && rev.totalEvents > 0);
+      var feedPosts = data.feedPosts || [];
+      var hasFeed = feedPosts.length > 0;
 
       var h = '';
 
@@ -862,6 +864,30 @@
           h += '</div>';
         });
         h += '</div></div></div>';
+      }
+
+      if (hasFeed) {
+        h += '<div class="ap-card ap-full">';
+        h += '<div class="ap-card-head"><span class="ap-card-title">Latest Posts</span><span class="ap-card-meta">' + feedPosts.length + ' posts</span></div>';
+        h += '<div class="ap-card-body">';
+        feedPosts.forEach(function(post) {
+          h += '<div style="padding:0.75rem 0;border-bottom:1px solid var(--border);">';
+          h += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.35rem;">';
+          if (post.title) {
+            h += '<div style="font-weight:600;font-size:0.85rem;">' + esc(post.title) + '</div>';
+          } else {
+            h += '<div style="font-family:var(--font-mono);font-size:0.65rem;text-transform:uppercase;letter-spacing:0.03em;color:var(--accent);">' + esc(post.category || 'update') + '</div>';
+          }
+          h += '<span style="font-family:var(--font-mono);font-size:0.6rem;color:var(--text-muted);">' + (post.createdAt ? timeAgo(post.createdAt) : '') + '</span>';
+          h += '</div>';
+          var postText = post.content || '';
+          if (postText.length > 200) postText = postText.slice(0, 200) + '...';
+          h += '<p style="font-size:0.8rem;line-height:1.5;color:var(--text-secondary);margin:0 0 0.35rem 0;">' + esc(postText) + '</p>';
+          h += '<div style="font-family:var(--font-mono);font-size:0.6rem;color:var(--text-muted);">';
+          h += (post.likesCount || 0) + ' likes &middot; ' + (post.commentsCount || 0) + ' comments';
+          h += '</div></div>';
+        });
+        h += '</div></div>';
       }
 
       if (activity.length > 0) {
