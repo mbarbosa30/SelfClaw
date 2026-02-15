@@ -379,6 +379,39 @@
     .nudge-btn:hover { background: var(--accent); color: #fff; }
     .nudge-btn .nudge-icon { font-size: 0.8rem; flex-shrink: 0; }
 
+    .agent-prompt-panel {
+      border: 2px solid var(--accent); padding: 0; margin-top: 0.75rem;
+      background: rgba(255,107,74,0.03); display: none;
+    }
+    .agent-prompt-panel.open { display: block; }
+    .agent-prompt-header {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 0.6rem 0.75rem; cursor: pointer;
+      font-family: var(--font-mono); font-size: 0.65rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent);
+    }
+    .agent-prompt-header:hover { background: rgba(255,107,74,0.06); }
+    .agent-prompt-body {
+      padding: 0 0.75rem 0.75rem;
+    }
+    .agent-prompt-textarea {
+      width: 100%; min-height: 280px; padding: 0.6rem;
+      font-family: var(--font-mono); font-size: 0.68rem; line-height: 1.5;
+      background: var(--bg); border: 1px solid var(--border);
+      color: var(--text); resize: vertical; white-space: pre-wrap;
+    }
+    .agent-prompt-actions {
+      display: flex; gap: 0.4rem; margin-top: 0.4rem;
+    }
+    .prompt-copy-btn {
+      font-family: var(--font-mono); font-size: 0.6rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.08em;
+      padding: 5px 12px; border: 2px solid var(--accent);
+      background: var(--accent); color: #fff; cursor: pointer;
+    }
+    .prompt-copy-btn:hover { background: transparent; color: var(--accent); }
+    .prompt-copy-btn.copied { background: var(--green-verify); border-color: var(--green-verify); color: #fff; }
+
     .setup-guide {
       border: 2px solid var(--border); padding: 1rem; margin-top: 0.75rem;
       background: rgba(255,107,74,0.03);
@@ -1339,7 +1372,21 @@
 
         html += renderApiKeyPanel(agent, idx);
 
+        html += '<div class="agent-prompt-panel" id="agent-prompt-panel-' + idx + '">';
+        html += '<div class="agent-prompt-header" onclick="toggleAgentPrompt(' + idx + ')">';
+        html += '<span>Agent Prompt — Copy & Share</span>';
+        html += '<span id="prompt-arrow-' + idx + '">&#9660;</span>';
+        html += '</div>';
+        html += '<div class="agent-prompt-body" id="agent-prompt-body-' + idx + '" style="display:none;">';
+        html += '<textarea class="agent-prompt-textarea" id="agent-prompt-text-' + idx + '" readonly></textarea>';
+        html += '<div class="agent-prompt-actions">';
+        html += '<button class="prompt-copy-btn" id="prompt-copy-btn-' + idx + '" onclick="copyAgentPrompt(' + idx + ')">Copy Prompt</button>';
+        html += '</div>';
+        html += '</div>';
+        html += '</div>';
+
         html += '<div class="agent-card-actions">';
+        html += '<button class="action-btn" onclick="showAgentPromptPanel(' + idx + ')" style="background:var(--accent);color:#fff;border-color:var(--accent);">Share with Agent</button>';
         html += '<a href="' + profileUrl + '" class="action-btn">View Profile</a>';
         if (agent.wallet) {
           html += '<a href="https://celoscan.io/address/' + encodeURIComponent(agent.wallet.address) + '" target="_blank" class="action-btn">View Wallet</a>';
@@ -1474,6 +1521,134 @@
       html += '<div id="api-key-msg-' + idx + '"></div>';
       html += '</div>';
       return html;
+    }
+
+    function buildAgentPrompt(agent) {
+      var base = 'https://selfclaw.ai';
+      var name = agent.deviceId || agent.publicKey.slice(0, 16);
+      var pk = agent.publicKey;
+      var hasKey = agent.hasApiKey;
+
+      var p = '';
+      p += '# SelfClaw Agent Identity & API Access\n';
+      p += '## Who You Are\n';
+      p += 'You are "' + name + '", a verified AI agent registered on the SelfClaw Agent Verification Registry.\n';
+      p += 'Your public key: ' + pk + '\n';
+      if (agent.wallet) p += 'Your wallet: ' + agent.wallet.address + ' (Celo network)\n';
+      if (agent.token) p += 'Your token: $' + agent.token.symbol + ' (' + agent.token.address + ')\n';
+      p += '\n';
+
+      p += '## Authentication\n';
+      if (hasKey) {
+        p += 'You have an API key (starts with sclaw_). Use it as a Bearer token:\n';
+        p += '  Authorization: Bearer sclaw_YOUR_KEY_HERE\n';
+        p += '\n';
+      } else {
+        p += '** No API key generated yet. Ask your owner to generate one from the dashboard. **\n\n';
+      }
+
+      p += '## Base URL\n';
+      p += base + '/api/selfclaw\n\n';
+
+      p += '## Your API Endpoints\n\n';
+
+      p += '### 1. Check Your Status & Performance\n';
+      p += 'GET /v1/agent-api/briefing\n';
+      p += 'Returns: Full diagnostic — pipeline progress, economy stats, reputation, and next steps.\n';
+      p += 'This is your most important endpoint. Call it to understand where you stand.\n\n';
+
+      p += '### 2. View Your Identity\n';
+      p += 'GET /v1/agent-api/me\n';
+      p += 'Returns: Your profile, verification status, metadata, wallet, and token info.\n\n';
+
+      p += '### 3. Update Your Profile\n';
+      p += 'PUT /v1/agent-api/profile\n';
+      p += 'Body: { "name": "YourAgentName" (2-40 chars), "description": "What you do" }\n';
+      p += 'Both fields optional but at least one required.\n\n';
+
+      p += '### 4. Manage Your Services\n';
+      p += 'GET  /v1/agent-api/services          — List your active services\n';
+      p += 'POST /v1/agent-api/services          — Register a new service\n';
+      p += '  Body: { "name": "...", "description": "...", "price": "100", "currency": "CELO" }\n';
+      p += 'DELETE /v1/agent-api/services/:id     — Remove a service\n\n';
+
+      p += '### 5. Manage Your Skills (Marketplace)\n';
+      p += 'GET  /v1/agent-api/skills             — List your published skills\n';
+      p += 'POST /v1/agent-api/skills             — Publish a new skill\n';
+      p += '  Body: { "name": "...", "description": "...", "category": "research|content|analysis|development|other", "price": "50" }\n\n';
+
+      p += '### 6. Set Your Tokenomics Plan\n';
+      p += 'PUT /v1/agent-api/tokenomics\n';
+      p += 'Body: { "tokenName": "...", "tokenSymbol": "...", "totalSupply": "1000000", "rationale": "..." }\n\n';
+
+      p += '## Example: Check Your Status\n';
+      p += 'curl -H "Authorization: Bearer sclaw_YOUR_KEY" ' + base + '/api/selfclaw/v1/agent-api/briefing\n\n';
+
+      p += '## Pipeline (Your Progress)\n';
+      p += '1. Identity — Verified ✓\n';
+      p += '2. Wallet — ' + (agent.wallet ? 'Created ✓' : 'Not created yet → call owner') + '\n';
+      p += '3. ERC-8004 Identity NFT — ' + (agent.erc8004 ? 'Minted ✓' : 'Not minted → call owner') + '\n';
+      p += '4. Token — ' + (agent.token ? 'Deployed ✓ ($' + agent.token.symbol + ')' : 'Not deployed → set tokenomics first') + '\n';
+      p += '5. Liquidity Pool — ' + (agent.token && agent.token.poolAddress ? 'Active ✓' : 'Not active → deploy token first') + '\n';
+      p += '6. Revenue — Start offering services and publishing skills\n\n';
+
+      p += '## Rate Limits\n';
+      p += '60 requests per minute per IP. Plan your calls accordingly.\n';
+
+      return p;
+    }
+
+    function showAgentPromptPanel(idx) {
+      var panel = document.getElementById('agent-prompt-panel-' + idx);
+      if (!panel) return;
+      panel.classList.add('open');
+      var body = document.getElementById('agent-prompt-body-' + idx);
+      if (body) body.style.display = '';
+      var arrow = document.getElementById('prompt-arrow-' + idx);
+      if (arrow) arrow.innerHTML = '&#9650;';
+      var textarea = document.getElementById('agent-prompt-text-' + idx);
+      if (textarea) {
+        var agents = (_dashboardData && _dashboardData.agents) || [];
+        var agent = agents[idx];
+        if (agent) textarea.value = buildAgentPrompt(agent);
+      }
+      panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    function toggleAgentPrompt(idx) {
+      var body = document.getElementById('agent-prompt-body-' + idx);
+      var arrow = document.getElementById('prompt-arrow-' + idx);
+      if (!body) return;
+      if (body.style.display === 'none') {
+        body.style.display = '';
+        if (arrow) arrow.innerHTML = '&#9650;';
+        var textarea = document.getElementById('agent-prompt-text-' + idx);
+        if (textarea && !textarea.value) {
+          var agents = (_dashboardData && _dashboardData.agents) || [];
+          var agent = agents[idx];
+          if (agent) textarea.value = buildAgentPrompt(agent);
+        }
+      } else {
+        body.style.display = 'none';
+        if (arrow) arrow.innerHTML = '&#9660;';
+      }
+    }
+
+    function copyAgentPrompt(idx) {
+      var textarea = document.getElementById('agent-prompt-text-' + idx);
+      if (!textarea) return;
+      var text = textarea.value;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(function() {
+          var btn = document.getElementById('prompt-copy-btn-' + idx);
+          if (btn) { btn.textContent = 'Copied!'; btn.classList.add('copied'); setTimeout(function() { btn.textContent = 'Copy Prompt'; btn.classList.remove('copied'); }, 2000); }
+        });
+      } else {
+        textarea.select();
+        document.execCommand('copy');
+        var btn = document.getElementById('prompt-copy-btn-' + idx);
+        if (btn) { btn.textContent = 'Copied!'; btn.classList.add('copied'); setTimeout(function() { btn.textContent = 'Copy Prompt'; btn.classList.remove('copied'); }, 2000); }
+      }
     }
 
     function generateApiKey(idx) {

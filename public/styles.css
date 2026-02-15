@@ -1652,6 +1652,23 @@ h4 {
 }
 
 /* ── HIGHLIGHT BOX ── */
+.endpoint-card {
+  border: 2px solid var(--border);
+  padding: 1rem 1.25rem;
+  margin: 0.75rem 0;
+}
+.endpoint-card h4 {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--accent);
+  margin-bottom: 0.4rem;
+}
+.endpoint-card p {
+  font-size: 0.88rem;
+  margin: 0 0 0.5rem;
+}
+
 .highlight-box {
   background: var(--accent-light);
   border: 2px solid var(--accent);
