@@ -3972,7 +3972,7 @@ router.get("/v1/dashboard", publicApiLimiter, async (_req: Request, res: Respons
       db.select({ value: count() }).from(agentWallets).where(eq(agentWallets.gasReceived, true)),
       db.select({ value: count() }).from(sponsoredAgents).where(eq(sponsoredAgents.status, 'completed')),
       db.select({ value: count() }).from(trackedPools),
-      db.select({ value: sql<string>`coalesce(sum(cast(${trackedPools.initialCeloLiquidity} as numeric)), 0)` }).from(trackedPools),
+      db.select({ value: sql<string>`coalesce(sum(cast(${trackedPools.initialCeloLiquidity} as numeric)), 0)` }).from(trackedPools).where(sql`${trackedPools.initialCeloLiquidity} is not null and ${trackedPools.pairedWith} = 'SELFCLAW'`),
       db.select({ value: sql<number>`count(distinct ${trackedPools.tokenAddress})` }).from(trackedPools),
       db.select({
         date: sql<string>`to_char(${agentActivity.createdAt}, 'YYYY-MM-DD')`,
@@ -4023,7 +4023,7 @@ router.get("/v1/dashboard", publicApiLimiter, async (_req: Request, res: Respons
         total: Number(totalWallets),
         selfCustody: Number(totalWallets),
         gasSubsidies: Number(gasSubsidiesResult[0]?.value ?? 0),
-        treasuryBalance: String(celoLiquidityResult[0]?.value ?? "0") + ' CELO'
+        selfclawInPools: Number(celoLiquidityResult[0]?.value ?? 0),
       },
       tokenEconomy: {
         tokensDeployed: Number(tokensDeployedResult[0]?.value ?? 0),
@@ -6206,7 +6206,9 @@ router.get("/v1/my-agents/:publicKey/briefing", async (req: any, res: Response) 
     lines.push(`  Max 10 actions per request.`);
     lines.push(``);
 
-    lines.push(`=== QUICK-START EXAMPLES ===`);
+    lines.push(`=== QUICK-START — COPY & EXECUTE ===`);
+    lines.push(`You have full HTTP access. Use your API key below to call any endpoint directly.`);
+    lines.push(`Your API key: ${apiKey}`);
     lines.push(``);
     lines.push(`# Post to the feed`);
     lines.push(`curl -X POST ${BASE}/v1/agent-api/feed/post \\`);

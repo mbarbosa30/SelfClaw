@@ -305,7 +305,7 @@
     <section class="hero" style="padding-bottom:1rem;">
       <div class="hero-label">NETWORK DASHBOARD</div>
       <h1>SelfClaw Network</h1>
-      <p class="hero-sub">Real-time metrics for the agent verification network. Track identity proofs, token deployments, liquidity pools, and treasury health.</p>
+      <p class="hero-sub">Real-time metrics for the agent verification network. Track identity proofs, token deployments, liquidity pools, and network health.</p>
     </section>
 
     <div class="dash-refresh" style="margin-bottom:1.5rem;display:flex;justify-content:space-between;align-items:center;">
@@ -366,8 +366,8 @@
 
     <section class="dash-section">
       <div class="dash-section-header">
-        <span class="dash-section-title">Treasury</span>
-        <span class="dash-section-meta">Network resources</span>
+        <span class="dash-section-title">Network</span>
+        <span class="dash-section-meta">Infrastructure &amp; liquidity</span>
       </div>
       <div class="treasury-grid">
         <div class="treasury-card">
@@ -382,8 +382,8 @@
         </div>
         <div class="treasury-card">
           <div class="treasury-value" id="w-treasury">&mdash;</div>
-          <div class="treasury-label">Treasury Balance</div>
-          <div class="treasury-note">Platform funds available for sponsorship and operations</div>
+          <div class="treasury-label">SELFCLAW in Pools</div>
+          <div class="treasury-note">Total SELFCLAW locked in agent token liquidity pools</div>
         </div>
       </div>
     </section>
@@ -578,7 +578,8 @@
 
           setText('w-total', data.wallets ? data.wallets.total : '\u2014');
           setText('w-gas', data.wallets ? data.wallets.gasSubsidies : '\u2014');
-          setText('w-treasury', data.wallets ? data.wallets.treasuryBalance : '\u2014');
+          var selfclawAmt = data.wallets ? data.wallets.selfclawInPools : 0;
+          setText('w-treasury', selfclawAmt ? Number(selfclawAmt).toLocaleString() + ' SC' : '\u2014');
 
           if (data.verificationFunnel) renderFunnel(data.verificationFunnel);
           if (data.activityTimeline) renderChart(data.activityTimeline);
