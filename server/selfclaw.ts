@@ -4616,6 +4616,7 @@ router.get("/v1/human/:humanId/economics", publicApiLimiter, async (req: Request
         name: a.deviceId,
         publicKey: a.publicKey,
         verifiedAt: a.verifiedAt,
+        hasApiKey: !!a.apiKey,
         wallet: agentWallet ? { address: agentWallet.address, gasReceived: agentWallet.gasReceived } : null,
         token: tokenData,
         tokenPlan: agentPlan ? { status: agentPlan.status, purpose: agentPlan.purpose } : null,
@@ -6118,21 +6119,21 @@ router.get("/v1/my-agents/:publicKey/briefing", async (req: any, res: Response) 
     if (badges.length > 0) lines.push(`Badges: ${badges.join(', ')}`);
     lines.push('');
 
-    const nudges: string[] = [];
-    if (!hasWallet) nudges.push('Create a wallet to start your onchain journey.');
-    else if (!hasGas) nudges.push('Request gas to cover transaction fees.');
-    if (hasWallet && !hasErc8004) nudges.push('Register your onchain identity (ERC-8004) to establish credibility.');
-    if (hasErc8004 && !hasToken && !hasPlan) nudges.push('Plan and deploy a token to power your agent economy.');
-    if (hasToken && !hasPool) nudges.push('Request SELFCLAW sponsorship to get a liquidity pool and make your token tradeable.');
-    if (hasPool && skillsPublished === 0) nudges.push('Publish a skill on the market to start earning with your token.');
-    if (hasPool && services.length === 0) nudges.push('Register active services so other agents can hire you.');
-    if (commercePending > 0) nudges.push(`You have ${commercePending} pending service request(s) to fulfill.`);
-    if (stakesActive === 0 && hasToken) nudges.push('Stake on your output quality to build reputation.');
-    if (totalRev === 0 && hasToken) nudges.push('No revenue recorded yet. Offer services or publish skills to start earning.');
+    const nudges: { text: string; action: string; icon: string }[] = [];
+    if (!hasWallet) nudges.push({ text: 'Create a wallet to start your onchain journey.', action: 'setup-wallet', icon: '+' });
+    else if (!hasGas) nudges.push({ text: 'Request gas to cover transaction fees.', action: 'request-gas', icon: '$' });
+    if (hasWallet && !hasErc8004) nudges.push({ text: 'Register your onchain identity (ERC-8004) to establish credibility.', action: 'register-erc8004', icon: '#' });
+    if (hasErc8004 && !hasToken && !hasPlan) nudges.push({ text: 'Plan and deploy a token to power your agent economy.', action: 'deploy-token', icon: '*' });
+    if (hasToken && !hasPool) nudges.push({ text: 'Request SELFCLAW sponsorship to get a liquidity pool.', action: 'request-sponsorship', icon: '~' });
+    if (hasPool && skillsPublished === 0) nudges.push({ text: 'Publish a skill on the market to start earning.', action: 'publish-skill', icon: '>' });
+    if (hasPool && services.length === 0) nudges.push({ text: 'Register active services so other agents can hire you.', action: 'register-service', icon: '>' });
+    if (commercePending > 0) nudges.push({ text: `You have ${commercePending} pending service request(s) to fulfill.`, action: 'view-commerce', icon: '!' });
+    if (stakesActive === 0 && hasToken) nudges.push({ text: 'Stake on your output quality to build reputation.', action: 'stake-reputation', icon: '^' });
+    if (totalRev === 0 && hasToken) nudges.push({ text: 'No revenue recorded yet. Offer services or publish skills.', action: 'publish-skill', icon: '>' });
 
     if (nudges.length > 0) {
       lines.push(`--- SUGGESTED NEXT STEPS ---`);
-      nudges.forEach((n, i) => lines.push(`${i + 1}. ${n}`));
+      nudges.forEach((n, i) => lines.push(`${i + 1}. ${n.text}`));
     }
 
     const briefing = lines.join('\n');
@@ -6142,6 +6143,7 @@ router.get("/v1/my-agents/:publicKey/briefing", async (req: any, res: Response) 
       agentName,
       publicKey: pk,
       briefing,
+      nudges,
       summary: {
         pipelineProgress: `${pipelineDone}/${pipelineTotal}`,
         revenue: totalRev,

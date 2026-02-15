@@ -344,6 +344,41 @@
       padding: 1rem; text-align: center;
     }
 
+    .api-key-panel {
+      border: 2px solid var(--border); padding: 0.75rem; margin-top: 0.75rem;
+      background: rgba(26,26,26,0.02);
+    }
+    .api-key-label {
+      font-family: var(--font-mono); font-size: 0.6rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted);
+      margin-bottom: 0.4rem;
+    }
+    .api-key-value {
+      font-family: var(--font-mono); font-size: 0.72rem;
+      background: var(--bg); border: 1px solid var(--border-light);
+      padding: 0.4rem 0.6rem; word-break: break-all; color: var(--text);
+      margin-bottom: 0.4rem;
+    }
+    .api-key-actions { display: flex; gap: 0.35rem; flex-wrap: wrap; }
+    .api-key-msg {
+      font-family: var(--font-mono); font-size: 0.65rem; margin-top: 0.3rem;
+      padding: 0.3rem 0.5rem;
+    }
+    .api-key-msg.success { color: var(--green-verify); background: rgba(40,167,69,0.06); border: 1px solid var(--green-verify); }
+    .api-key-msg.error { color: var(--red); background: rgba(220,53,69,0.06); border: 1px solid var(--red); }
+
+    .nudge-actions {
+      display: flex; flex-direction: column; gap: 0.35rem; margin-top: 0.5rem;
+    }
+    .nudge-btn {
+      font-family: var(--font-mono); font-size: 0.65rem; font-weight: 600;
+      padding: 6px 10px; border: 2px solid var(--accent);
+      background: transparent; color: var(--accent); cursor: pointer;
+      text-align: left; display: flex; align-items: center; gap: 0.5rem;
+    }
+    .nudge-btn:hover { background: var(--accent); color: #fff; }
+    .nudge-btn .nudge-icon { font-size: 0.8rem; flex-shrink: 0; }
+
     .setup-guide {
       border: 2px solid var(--border); padding: 1rem; margin-top: 0.75rem;
       background: rgba(255,107,74,0.03);
@@ -1302,6 +1337,8 @@
         html += '<div class="briefing-body" id="briefing-body-' + idx + '" style="display:none;"></div>';
         html += '</div>';
 
+        html += renderApiKeyPanel(agent, idx);
+
         html += '<div class="agent-card-actions">';
         html += '<a href="' + profileUrl + '" class="action-btn">View Profile</a>';
         if (agent.wallet) {
@@ -1417,6 +1454,113 @@
       return html;
     }
 
+    function renderApiKeyPanel(agent, idx) {
+      var html = '<div class="api-key-panel">';
+      html += '<div class="api-key-label">Agent API Key</div>';
+      html += '<div id="api-key-content-' + idx + '">';
+      if (agent.hasApiKey) {
+        html += '<div class="api-key-value">sclaw_****...****</div>';
+        html += '<div class="api-key-actions">';
+        html += '<button class="briefing-btn" onclick="regenerateApiKey(' + idx + ')">Regenerate Key</button>';
+        html += '<button class="briefing-btn" onclick="revokeApiKey(' + idx + ')" style="color:var(--red);border-color:var(--red);">Revoke Key</button>';
+        html += '</div>';
+      } else {
+        html += '<div style="font-family:var(--font-mono);font-size:0.7rem;color:var(--text-muted);margin-bottom:0.4rem;">No API key generated. Create one so your agent can call the SelfClaw API autonomously.</div>';
+        html += '<div class="api-key-actions">';
+        html += '<button class="briefing-btn" onclick="generateApiKey(' + idx + ')">Generate API Key</button>';
+        html += '</div>';
+      }
+      html += '</div>';
+      html += '<div id="api-key-msg-' + idx + '"></div>';
+      html += '</div>';
+      return html;
+    }
+
+    function generateApiKey(idx) {
+      var agents = (_dashboardData && _dashboardData.agents) || [];
+      var agent = agents[idx];
+      if (!agent) return;
+      var container = document.getElementById('api-key-content-' + idx);
+      var msgEl = document.getElementById('api-key-msg-' + idx);
+      if (container) container.innerHTML = '<div style="font-family:var(--font-mono);font-size:0.7rem;color:var(--text-muted);">Generating...</div>';
+      fetch('/api/selfclaw/v1/agent-api/generate-key/' + encodeURIComponent(agent.publicKey), { method: 'POST', credentials: 'include' })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (data.apiKey) {
+            agent.hasApiKey = true;
+            container.innerHTML = '<div class="api-key-value" style="color:var(--green-verify);border-color:var(--green-verify);">' + esc(data.apiKey) + '</div>' +
+              '<div style="font-family:var(--font-mono);font-size:0.6rem;color:var(--red);margin-bottom:0.4rem;">Save this key now. It will not be shown again.</div>' +
+              '<div class="api-key-actions">' +
+              '<button class="briefing-btn" onclick="copyApiKey(\'' + esc(data.apiKey) + '\',' + idx + ')">Copy Key</button>' +
+              '<button class="briefing-btn" onclick="regenerateApiKey(' + idx + ')">Regenerate</button>' +
+              '<button class="briefing-btn" onclick="revokeApiKey(' + idx + ')" style="color:var(--red);border-color:var(--red);">Revoke</button>' +
+              '</div>';
+          } else {
+            msgEl.innerHTML = '<div class="api-key-msg error">' + esc(data.error || 'Failed') + '</div>';
+          }
+        })
+        .catch(function(err) { msgEl.innerHTML = '<div class="api-key-msg error">' + esc(err.message) + '</div>'; });
+    }
+
+    function regenerateApiKey(idx) {
+      if (!confirm('This will invalidate the current API key. Any agent using it will lose access. Continue?')) return;
+      var agents = (_dashboardData && _dashboardData.agents) || [];
+      var agent = agents[idx];
+      if (!agent) return;
+      var container = document.getElementById('api-key-content-' + idx);
+      var msgEl = document.getElementById('api-key-msg-' + idx);
+      if (container) container.innerHTML = '<div style="font-family:var(--font-mono);font-size:0.7rem;color:var(--text-muted);">Regenerating...</div>';
+      fetch('/api/selfclaw/v1/agent-api/regenerate-key/' + encodeURIComponent(agent.publicKey), { method: 'POST', credentials: 'include' })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (data.apiKey) {
+            agent.hasApiKey = true;
+            container.innerHTML = '<div class="api-key-value" style="color:var(--green-verify);border-color:var(--green-verify);">' + esc(data.apiKey) + '</div>' +
+              '<div style="font-family:var(--font-mono);font-size:0.6rem;color:var(--red);margin-bottom:0.4rem;">Save this key now. Previous key is invalidated.</div>' +
+              '<div class="api-key-actions">' +
+              '<button class="briefing-btn" onclick="copyApiKey(\'' + esc(data.apiKey) + '\',' + idx + ')">Copy Key</button>' +
+              '<button class="briefing-btn" onclick="regenerateApiKey(' + idx + ')">Regenerate</button>' +
+              '<button class="briefing-btn" onclick="revokeApiKey(' + idx + ')" style="color:var(--red);border-color:var(--red);">Revoke</button>' +
+              '</div>';
+          } else {
+            msgEl.innerHTML = '<div class="api-key-msg error">' + esc(data.error || 'Failed') + '</div>';
+          }
+        })
+        .catch(function(err) { msgEl.innerHTML = '<div class="api-key-msg error">' + esc(err.message) + '</div>'; });
+    }
+
+    function revokeApiKey(idx) {
+      if (!confirm('Revoke this API key? Your agent will no longer be able to authenticate.')) return;
+      var agents = (_dashboardData && _dashboardData.agents) || [];
+      var agent = agents[idx];
+      if (!agent) return;
+      var container = document.getElementById('api-key-content-' + idx);
+      var msgEl = document.getElementById('api-key-msg-' + idx);
+      fetch('/api/selfclaw/v1/agent-api/revoke-key/' + encodeURIComponent(agent.publicKey), { method: 'DELETE', credentials: 'include' })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (data.message) {
+            agent.hasApiKey = false;
+            container.innerHTML = '<div style="font-family:var(--font-mono);font-size:0.7rem;color:var(--text-muted);margin-bottom:0.4rem;">API key revoked.</div>' +
+              '<div class="api-key-actions"><button class="briefing-btn" onclick="generateApiKey(' + idx + ')">Generate New Key</button></div>';
+          } else {
+            msgEl.innerHTML = '<div class="api-key-msg error">' + esc(data.error || 'Failed') + '</div>';
+          }
+        })
+        .catch(function(err) { msgEl.innerHTML = '<div class="api-key-msg error">' + esc(err.message) + '</div>'; });
+    }
+
+    function copyApiKey(key, idx) {
+      navigator.clipboard.writeText(key).then(function() {
+        var msgEl = document.getElementById('api-key-msg-' + idx);
+        if (msgEl) { msgEl.innerHTML = '<div class="api-key-msg success">Copied to clipboard</div>'; setTimeout(function() { msgEl.innerHTML = ''; }, 2000); }
+      }).catch(function() {
+        var ta = document.createElement('textarea'); ta.value = key; ta.style.position = 'fixed'; ta.style.opacity = '0'; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+        var msgEl = document.getElementById('api-key-msg-' + idx);
+        if (msgEl) { msgEl.innerHTML = '<div class="api-key-msg success">Copied</div>'; setTimeout(function() { msgEl.innerHTML = ''; }, 2000); }
+      });
+    }
+
     var _briefingCache = {};
     var _briefingOpen = {};
 
@@ -1441,13 +1585,14 @@
         return;
       }
 
+
       body.innerHTML = '<div class="briefing-loading">Loading briefing...</div>';
       fetch('/api/selfclaw/v1/my-agents/' + encodeURIComponent(publicKey) + '/briefing', { credentials: 'include' })
         .then(function(r) { return r.json(); })
         .then(function(data) {
           if (data.success && data.briefing) {
-            _briefingCache[publicKey] = data.briefing;
-            renderBriefingContent(idx, data.briefing);
+            _briefingCache[publicKey] = { text: data.briefing, nudges: data.nudges || [] };
+            renderBriefingContent(idx, _briefingCache[publicKey]);
           } else {
             body.innerHTML = '<div class="briefing-loading" style="color:var(--red);">Failed to load: ' + esc(data.error || 'Unknown error') + '</div>';
           }
@@ -1457,14 +1602,26 @@
         });
     }
 
-    function renderBriefingContent(idx, briefingText) {
+    function renderBriefingContent(idx, briefingData) {
       var body = document.getElementById('briefing-body-' + idx);
       if (!body) return;
-      var html = '<div class="briefing-text">' + esc(briefingText) + '</div>';
+      var text = typeof briefingData === 'string' ? briefingData : briefingData.text;
+      var nudges = (typeof briefingData === 'object' && briefingData.nudges) ? briefingData.nudges : [];
+      var html = '<div class="briefing-text">' + esc(text) + '</div>';
       html += '<div class="briefing-actions">';
       html += '<button class="briefing-btn" id="briefing-copy-' + idx + '" onclick="copyBriefing(' + idx + ')">Copy to Clipboard</button>';
       html += '<button class="briefing-btn" onclick="refreshBriefing(' + idx + ')">Refresh</button>';
       html += '</div>';
+      if (nudges.length > 0) {
+        html += '<div class="nudge-actions">';
+        for (var i = 0; i < nudges.length; i++) {
+          var n = nudges[i];
+          html += '<button class="nudge-btn" onclick="executeNudge(' + idx + ',\'' + esc(n.action) + '\')">';
+          html += '<span class="nudge-icon">' + esc(n.icon) + '</span> ' + esc(n.text);
+          html += '</button>';
+        }
+        html += '</div>';
+      }
       body.innerHTML = html;
     }
 
@@ -1507,8 +1664,8 @@
         .then(function(r) { return r.json(); })
         .then(function(data) {
           if (data.success && data.briefing) {
-            _briefingCache[agent.publicKey] = data.briefing;
-            renderBriefingContent(idx, data.briefing);
+            _briefingCache[agent.publicKey] = { text: data.briefing, nudges: data.nudges || [] };
+            renderBriefingContent(idx, _briefingCache[agent.publicKey]);
           } else {
             body.innerHTML = '<div class="briefing-loading" style="color:var(--red);">Failed: ' + esc(data.error || 'Unknown') + '</div>';
           }
@@ -1516,6 +1673,176 @@
         .catch(function(err) {
           body.innerHTML = '<div class="briefing-loading" style="color:var(--red);">Error: ' + esc(err.message) + '</div>';
         });
+    }
+
+    function executeNudge(idx, action) {
+      var agents = (_dashboardData && _dashboardData.agents) || [];
+      var agent = agents[idx];
+      if (!agent) return;
+      var pk = agent.publicKey;
+
+      var pipelineActions = {
+        'setup-wallet': function() { triggerPipelineAction(idx, pk, 'setup-wallet', 'POST'); },
+        'request-gas': function() { triggerPipelineAction(idx, pk, 'request-gas', 'POST'); },
+        'register-erc8004': function() { triggerPipelineAction(idx, pk, 'register-erc8004', 'POST'); },
+        'deploy-token': function() { showNudgeForm(idx, 'deploy-token'); },
+        'request-sponsorship': function() { triggerPipelineAction(idx, pk, 'request-sponsorship', 'POST'); },
+        'publish-skill': function() { showNudgeForm(idx, 'publish-skill'); },
+        'register-service': function() { showNudgeForm(idx, 'register-service'); },
+        'view-commerce': function() { window.open('/skill-market', '_blank'); },
+        'stake-reputation': function() { window.open('/skill-market', '_blank'); },
+      };
+
+      if (pipelineActions[action]) {
+        pipelineActions[action]();
+      }
+    }
+
+    function triggerPipelineAction(idx, publicKey, action, method) {
+      var body = document.getElementById('briefing-body-' + idx);
+      var msgDiv = document.createElement('div');
+      msgDiv.className = 'api-key-msg success';
+      msgDiv.textContent = 'Executing ' + action + '...';
+      body.appendChild(msgDiv);
+
+      fetch('/api/selfclaw/v1/my-agents/' + encodeURIComponent(publicKey) + '/' + action, {
+        method: method, credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
+      })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (data.success || data.wallet || data.txHash) {
+          msgDiv.textContent = action + ' completed successfully. Refreshing briefing...';
+          setTimeout(function() { refreshBriefing(idx); }, 2000);
+        } else {
+          msgDiv.className = 'api-key-msg error';
+          msgDiv.textContent = data.error || 'Action failed';
+        }
+      })
+      .catch(function(err) {
+        msgDiv.className = 'api-key-msg error';
+        msgDiv.textContent = 'Error: ' + err.message;
+      });
+    }
+
+    function showNudgeForm(idx, formType) {
+      var body = document.getElementById('briefing-body-' + idx);
+      if (!body) return;
+      var agents = (_dashboardData && _dashboardData.agents) || [];
+      var agent = agents[idx];
+      if (!agent) return;
+
+      var formHtml = '';
+      if (formType === 'publish-skill') {
+        formHtml = '<div style="border:2px solid var(--accent);padding:0.75rem;margin-top:0.5rem;">';
+        formHtml += '<div class="api-key-label" style="color:var(--accent);">Publish a Skill</div>';
+        formHtml += '<input id="nudge-skill-name-' + idx + '" placeholder="Skill name" style="width:100%;padding:4px 8px;margin-bottom:0.3rem;font-family:var(--font-mono);font-size:0.75rem;border:1px solid var(--border);background:var(--bg);">';
+        formHtml += '<textarea id="nudge-skill-desc-' + idx + '" placeholder="Description" rows="2" style="width:100%;padding:4px 8px;margin-bottom:0.3rem;font-family:var(--font-mono);font-size:0.75rem;border:1px solid var(--border);background:var(--bg);resize:vertical;"></textarea>';
+        formHtml += '<select id="nudge-skill-cat-' + idx + '" style="width:100%;padding:4px 8px;margin-bottom:0.3rem;font-family:var(--font-mono);font-size:0.75rem;border:1px solid var(--border);background:var(--bg);">';
+        formHtml += '<option value="research">Research</option><option value="content">Content</option><option value="monitoring">Monitoring</option><option value="analysis">Analysis</option><option value="translation">Translation</option><option value="consulting">Consulting</option><option value="development">Development</option><option value="other">Other</option>';
+        formHtml += '</select>';
+        formHtml += '<input id="nudge-skill-price-' + idx + '" placeholder="Price (optional, e.g. 100)" style="width:100%;padding:4px 8px;margin-bottom:0.3rem;font-family:var(--font-mono);font-size:0.75rem;border:1px solid var(--border);background:var(--bg);">';
+        formHtml += '<div style="display:flex;gap:0.3rem;">';
+        formHtml += '<button class="nudge-btn" onclick="submitNudgeSkill(' + idx + ')">Publish</button>';
+        formHtml += '<button class="briefing-btn" onclick="this.closest(\'div[style]\').remove()">Cancel</button>';
+        formHtml += '</div></div>';
+      } else if (formType === 'register-service') {
+        formHtml = '<div style="border:2px solid var(--accent);padding:0.75rem;margin-top:0.5rem;">';
+        formHtml += '<div class="api-key-label" style="color:var(--accent);">Register a Service</div>';
+        formHtml += '<input id="nudge-svc-name-' + idx + '" placeholder="Service name" style="width:100%;padding:4px 8px;margin-bottom:0.3rem;font-family:var(--font-mono);font-size:0.75rem;border:1px solid var(--border);background:var(--bg);">';
+        formHtml += '<textarea id="nudge-svc-desc-' + idx + '" placeholder="Description" rows="2" style="width:100%;padding:4px 8px;margin-bottom:0.3rem;font-family:var(--font-mono);font-size:0.75rem;border:1px solid var(--border);background:var(--bg);resize:vertical;"></textarea>';
+        formHtml += '<input id="nudge-svc-price-' + idx + '" placeholder="Price (e.g. 50)" style="width:100%;padding:4px 8px;margin-bottom:0.3rem;font-family:var(--font-mono);font-size:0.75rem;border:1px solid var(--border);background:var(--bg);">';
+        formHtml += '<div style="display:flex;gap:0.3rem;">';
+        formHtml += '<button class="nudge-btn" onclick="submitNudgeService(' + idx + ')">Register</button>';
+        formHtml += '<button class="briefing-btn" onclick="this.closest(\'div[style]\').remove()">Cancel</button>';
+        formHtml += '</div></div>';
+      } else if (formType === 'deploy-token') {
+        formHtml = '<div style="border:2px solid var(--accent);padding:0.75rem;margin-top:0.5rem;">';
+        formHtml += '<div class="api-key-label" style="color:var(--accent);">Deploy Token</div>';
+        formHtml += '<input id="nudge-tok-name-' + idx + '" placeholder="Token name" style="width:100%;padding:4px 8px;margin-bottom:0.3rem;font-family:var(--font-mono);font-size:0.75rem;border:1px solid var(--border);background:var(--bg);">';
+        formHtml += '<input id="nudge-tok-sym-' + idx + '" placeholder="Symbol (e.g. MYTKN)" style="width:100%;padding:4px 8px;margin-bottom:0.3rem;font-family:var(--font-mono);font-size:0.75rem;border:1px solid var(--border);background:var(--bg);">';
+        formHtml += '<input id="nudge-tok-supply-' + idx + '" placeholder="Total supply (e.g. 1000000)" style="width:100%;padding:4px 8px;margin-bottom:0.3rem;font-family:var(--font-mono);font-size:0.75rem;border:1px solid var(--border);background:var(--bg);">';
+        formHtml += '<div style="display:flex;gap:0.3rem;">';
+        formHtml += '<button class="nudge-btn" onclick="submitNudgeToken(' + idx + ')">Deploy</button>';
+        formHtml += '<button class="briefing-btn" onclick="this.closest(\'div[style]\').remove()">Cancel</button>';
+        formHtml += '</div></div>';
+      }
+
+      body.insertAdjacentHTML('beforeend', formHtml);
+    }
+
+    function submitNudgeSkill(idx) {
+      var agents = (_dashboardData && _dashboardData.agents) || [];
+      var agent = agents[idx];
+      if (!agent) return;
+      var name = document.getElementById('nudge-skill-name-' + idx).value.trim();
+      var desc = document.getElementById('nudge-skill-desc-' + idx).value.trim();
+      var cat = document.getElementById('nudge-skill-cat-' + idx).value;
+      var price = document.getElementById('nudge-skill-price-' + idx).value.trim();
+      if (!name || !desc) { alert('Name and description are required.'); return; }
+
+      fetch('/api/selfclaw/v1/skills', {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: name, description: desc, category: cat, price: price || undefined })
+      })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (data.skill || data.id) {
+          alert('Skill published successfully!');
+          refreshBriefing(idx);
+        } else { alert(data.error || 'Failed to publish skill'); }
+      })
+      .catch(function(err) { alert('Error: ' + err.message); });
+    }
+
+    function submitNudgeService(idx) {
+      var agents = (_dashboardData && _dashboardData.agents) || [];
+      var agent = agents[idx];
+      if (!agent) return;
+      var name = document.getElementById('nudge-svc-name-' + idx).value.trim();
+      var desc = document.getElementById('nudge-svc-desc-' + idx).value.trim();
+      var price = document.getElementById('nudge-svc-price-' + idx).value.trim();
+      if (!name || !desc) { alert('Name and description are required.'); return; }
+
+      fetch('/api/selfclaw/v1/services', {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: name, description: desc, price: price || undefined })
+      })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (data.service) {
+          alert('Service registered successfully!');
+          refreshBriefing(idx);
+        } else { alert(data.error || 'Failed to register service'); }
+      })
+      .catch(function(err) { alert('Error: ' + err.message); });
+    }
+
+    function submitNudgeToken(idx) {
+      var agents = (_dashboardData && _dashboardData.agents) || [];
+      var agent = agents[idx];
+      if (!agent) return;
+      var name = document.getElementById('nudge-tok-name-' + idx).value.trim();
+      var sym = document.getElementById('nudge-tok-sym-' + idx).value.trim();
+      var supply = document.getElementById('nudge-tok-supply-' + idx).value.trim();
+      if (!name || !sym || !supply) { alert('All fields are required.'); return; }
+
+      fetch('/api/selfclaw/v1/my-agents/' + encodeURIComponent(agent.publicKey) + '/deploy-token', {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tokenName: name, tokenSymbol: sym, totalSupply: supply })
+      })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (data.success || data.txHash) {
+          alert('Token deployment initiated! TX: ' + (data.txHash || 'pending'));
+          refreshBriefing(idx);
+        } else { alert(data.error || 'Failed to deploy token'); }
+      })
+      .catch(function(err) { alert('Error: ' + err.message); });
     }
 
     function actionRegisterErc8004(idx, btn) {
