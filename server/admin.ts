@@ -1572,4 +1572,93 @@ router.post("/relink-agent", async (req: Request, res: Response) => {
   }
 });
 
+router.post("/update-erc8004", async (req: Request, res: Response) => {
+  try {
+    if (!requireAdmin(req, res)) return;
+
+    const { publicKey, newTokenId } = req.body;
+    if (!publicKey || newTokenId === undefined || newTokenId === null) {
+      return res.status(400).json({ error: "publicKey and newTokenId are required" });
+    }
+
+    const tokenId = parseInt(newTokenId, 10);
+    if (isNaN(tokenId) || tokenId < 0) {
+      return res.status(400).json({ error: "newTokenId must be a valid non-negative integer" });
+    }
+
+    const agents = await db.select().from(verifiedBots)
+      .where(sql`${verifiedBots.publicKey} = ${publicKey}`)
+      .limit(1);
+
+    if (!agents.length) {
+      return res.status(404).json({ error: `No agent found with publicKey ${publicKey.slice(0, 16)}...` });
+    }
+
+    const agent = agents[0];
+    const metadata = (agent.metadata as Record<string, any>) || {};
+    const oldTokenId = metadata.erc8004TokenId || "(none)";
+
+    metadata.erc8004TokenId = tokenId;
+
+    await db.update(verifiedBots)
+      .set({ metadata })
+      .where(sql`${verifiedBots.publicKey} = ${publicKey}`);
+
+    console.log(`[admin] Updated ERC-8004 tokenId for ${agent.deviceId || publicKey.slice(0, 16)}... from ${oldTokenId} to ${tokenId}`);
+
+    res.json({
+      success: true,
+      agentName: agent.deviceId || null,
+      publicKey: publicKey.slice(0, 16) + "...",
+      oldTokenId,
+      newTokenId: tokenId,
+      scanUrl: `https://www.8004scan.io/agents/celo/${tokenId}`,
+      message: `ERC-8004 token ID updated from #${oldTokenId} to #${tokenId}`,
+    });
+  } catch (error: any) {
+    console.error("[admin] update-erc8004 error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post("/hide-agent", async (req: Request, res: Response) => {
+  try {
+    if (!requireAdmin(req, res)) return;
+
+    const { publicKey, hidden } = req.body;
+    if (!publicKey) {
+      return res.status(400).json({ error: "publicKey is required" });
+    }
+
+    const hideFlag = hidden !== false;
+
+    const agents = await db.select().from(verifiedBots)
+      .where(sql`${verifiedBots.publicKey} = ${publicKey}`)
+      .limit(1);
+
+    if (!agents.length) {
+      return res.status(404).json({ error: `No agent found with publicKey ${publicKey.slice(0, 16)}...` });
+    }
+
+    const agent = agents[0];
+
+    await db.update(verifiedBots)
+      .set({ hidden: hideFlag })
+      .where(sql`${verifiedBots.publicKey} = ${publicKey}`);
+
+    console.log(`[admin] ${hideFlag ? 'Hid' : 'Unhid'} agent ${agent.deviceId || publicKey.slice(0, 16)}...`);
+
+    res.json({
+      success: true,
+      agentName: agent.deviceId || null,
+      publicKey: publicKey.slice(0, 16) + "...",
+      hidden: hideFlag,
+      message: `Agent ${hideFlag ? 'hidden from' : 'restored to'} public listings`,
+    });
+  } catch (error: any) {
+    console.error("[admin] hide-agent error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 export default router;
