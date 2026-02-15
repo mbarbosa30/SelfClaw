@@ -427,6 +427,83 @@
       letter-spacing: 0.04em;
     }
 
+    .ap-rep-circle {
+      width: 80px;
+      height: 80px;
+      border: 3px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 1rem;
+    }
+    .ap-rep-circle.rep-good { border-color: #22c55e; }
+    .ap-rep-circle.rep-mid { border-color: #eab308; }
+    .ap-rep-circle.rep-low { border-color: #dc2626; }
+    .ap-rep-circle-num {
+      font-size: 1.4rem;
+      font-weight: 700;
+      line-height: 1;
+    }
+    .ap-rep-circle-max {
+      font-family: var(--font-mono);
+      font-size: 0.55rem;
+      color: var(--text-muted);
+    }
+    .ap-breakdown {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+    .ap-breakdown-row {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .ap-breakdown-label {
+      font-family: var(--font-mono);
+      font-size: 0.6rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--text-muted);
+      width: 70px;
+      flex-shrink: 0;
+    }
+    .ap-breakdown-bar {
+      flex: 1;
+      height: 8px;
+      background: var(--border);
+      position: relative;
+    }
+    .ap-breakdown-fill {
+      height: 100%;
+      background: var(--accent);
+    }
+    .ap-breakdown-pts {
+      font-family: var(--font-mono);
+      font-size: 0.6rem;
+      color: var(--text-secondary);
+      width: 30px;
+      text-align: right;
+      flex-shrink: 0;
+    }
+    .ap-rep-badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      margin-bottom: 1rem;
+    }
+    .ap-rep-badge-tag {
+      font-family: var(--font-mono);
+      font-size: 0.6rem;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      border: 2px solid var(--accent);
+      padding: 0.2rem 0.5rem;
+      color: var(--accent);
+    }
+
     @media (max-width: 768px) {
       .ap-grid { grid-template-columns: 1fr; }
       .ap-header { flex-direction: column; gap: 1rem; }
@@ -654,6 +731,8 @@
         h += '</div></div>';
       }
 
+      h += '<div id="rep-profile-card"></div>';
+
       h += '<div class="ap-card">';
       h += '<div class="ap-card-head"><span class="ap-card-title">Verification</span><span class="ap-card-meta">Identity Proof</span></div>';
       h += '<div class="ap-card-body">';
@@ -812,6 +891,82 @@
       h += '</div>';
 
       document.getElementById('profile-root').innerHTML = h;
+
+      if (a.publicKey) {
+        fetchReputationProfile(a.publicKey);
+      }
+    }
+
+    function fetchReputationProfile(publicKey) {
+      fetch('/api/selfclaw/v1/reputation/' + encodeURIComponent(publicKey) + '/full-profile', { credentials: 'include' })
+        .then(function(res) { return res.ok ? res.json() : null; })
+        .then(function(rp) {
+          if (!rp) return;
+          var el = document.getElementById('rep-profile-card');
+          if (!el) return;
+          var score = rp.reputationScore || 0;
+          var bd = rp.scoreBreakdown || {};
+          var st = rp.staking || {};
+          var sk = rp.skills || {};
+          var cm = rp.commerce || {};
+          var badges = rp.badges || [];
+
+          var cls = score > 70 ? 'rep-good' : score >= 40 ? 'rep-mid' : 'rep-low';
+
+          var h = '<div class="ap-card ap-full">';
+          h += '<div class="ap-card-head"><span class="ap-card-title">Reputation Profile</span><span class="ap-card-meta">ERC-8004 Linked</span></div>';
+          h += '<div class="ap-card-body">';
+
+          h += '<div class="ap-rep-circle ' + cls + '">';
+          h += '<div class="ap-rep-circle-num">' + score + '</div>';
+          h += '<div class="ap-rep-circle-max">/100</div>';
+          h += '</div>';
+
+          h += '<div class="ap-breakdown">';
+          var cats = [
+            { label: 'ERC-8004', pts: bd.erc8004 || 0, max: 20 },
+            { label: 'Staking', pts: bd.staking || 0, max: 30 },
+            { label: 'Commerce', pts: bd.commerce || 0, max: 20 },
+            { label: 'Skills', pts: bd.skills || 0, max: 15 },
+            { label: 'Badges', pts: bd.badges || 0, max: 15 }
+          ];
+          cats.forEach(function(c) {
+            var pct = c.max > 0 ? (c.pts / c.max * 100) : 0;
+            h += '<div class="ap-breakdown-row">';
+            h += '<div class="ap-breakdown-label">' + c.label + '</div>';
+            h += '<div class="ap-breakdown-bar"><div class="ap-breakdown-fill" style="width:' + pct + '%;"></div></div>';
+            h += '<div class="ap-breakdown-pts">' + c.pts + '/' + c.max + '</div>';
+            h += '</div>';
+          });
+          h += '</div>';
+
+          if (badges.length > 0) {
+            h += '<div class="ap-rep-badges">';
+            badges.forEach(function(b) {
+              h += '<span class="ap-rep-badge-tag">' + esc(b.badgeName) + '</span>';
+            });
+            h += '</div>';
+          }
+
+          h += '<div class="ap-econ-grid">';
+          h += '<div class="ap-econ-stat"><div class="ap-econ-val">' + (st.validated || 0) + '</div><div class="ap-econ-lbl">Validated</div></div>';
+          h += '<div class="ap-econ-stat"><div class="ap-econ-val">' + (st.slashed || 0) + '</div><div class="ap-econ-lbl">Slashed</div></div>';
+          h += '<div class="ap-econ-stat"><div class="ap-econ-val">' + (st.currentStreak || 0) + '</div><div class="ap-econ-lbl">Streak</div></div>';
+          h += '</div>';
+
+          h += '<div class="ap-kv" style="margin-top:1rem;">';
+          h += '<div class="ap-kv-label">Total Staked</div><div class="ap-kv-value">' + esc(st.totalStaked || '0') + '</div>';
+          h += '<div class="ap-kv-label">Skills Published</div><div class="ap-kv-value">' + (sk.published || 0) + ' (avg: ' + (sk.avgRating || '--') + ')</div>';
+          h += '<div class="ap-kv-label">Commerce Done</div><div class="ap-kv-value">' + (cm.completed || 0) + ' (avg: ' + (cm.avgRating || '--') + ')</div>';
+          if (rp.lastActivity) {
+            h += '<div class="ap-kv-label">Last Activity</div><div class="ap-kv-value">' + fmtDate(rp.lastActivity) + '</div>';
+          }
+          h += '</div>';
+
+          h += '</div></div>';
+          el.innerHTML = h;
+        })
+        .catch(function(e) { console.error('Reputation fetch error:', e); });
     }
 
     function renderAlloc(alloc) {

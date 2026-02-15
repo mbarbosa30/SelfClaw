@@ -6,7 +6,7 @@ import { db } from "./db.js";
 import {
   hostedAgents, agentTaskQueue, agentWallets, verifiedBots, agentActivity,
   trackedPools, revenueEvents, costEvents, sponsoredAgents, conversations, messages,
-  agentMemories, conversationSummaries,
+  agentMemories, conversationSummaries, reputationStakes, reputationBadges, marketSkills, agentRequests,
   type HostedAgent, type InsertHostedAgent, type AgentTask
 } from "../shared/schema.js";
 import { eq, and, desc, sql, count, inArray } from "drizzle-orm";
@@ -1223,7 +1223,7 @@ async function getMemoryContext(agentId: string, conversationId: number): Promis
   return { context, categories };
 }
 
-function buildSystemPrompt(agent: HostedAgent, messageCount: number, memoryContext: string = "", memoryCategories: string[] = []): string {
+function buildSystemPrompt(agent: HostedAgent, messageCount: number, memoryContext: string = "", memoryCategories: string[] = [], reputationContext?: string): string {
   const enabledSkillIds = Array.isArray(agent.enabledSkills) ? (agent.enabledSkills as string[]) : [];
   const formatInterval = (ms: number) => {
     const hours = ms / (60 * 60 * 1000);
@@ -1333,7 +1333,8 @@ Guidelines:
 - Never use code blocks unless the user explicitly asks for code
 - Don't claim abilities you genuinely don't have — but DO own the things your skills can do. If a skill covers it, you can do it.
 - If asked "what are you?" or "what is Miniclaw?", explain clearly using the identity section above
-- Onchain features are optional growth steps — never pressure the user${memoryContext}`;
+- Onchain features are optional growth steps — never pressure the user
+${reputationContext ? `\n## ${reputationContext}` : ""}${memoryContext}`;
 }
 
 hostedAgentsRouter.get("/v1/hosted-agents/:id/awareness", async (req: Request, res: Response) => {
@@ -1542,7 +1543,60 @@ hostedAgentsRouter.post("/v1/hosted-agents/:id/chat", async (req: Request, res: 
     const lifetimeMessageCount = Number(totalMsgResult[0]?.cnt || 0);
 
     const { context: memoryContext, categories: memoryCategories } = await getMemoryContext(agent.id, convoId!);
-    const systemPrompt = buildSystemPrompt(agent, lifetimeMessageCount, memoryContext, memoryCategories);
+
+    let reputationContext: string | undefined;
+    try {
+      const [bot] = await db.select().from(verifiedBots).where(eq(verifiedBots.publicKey, agent.publicKey));
+      const botMeta = (bot?.metadata as any) || {};
+      if (botMeta.erc8004TokenId) {
+        const stakes = await db.select().from(reputationStakes)
+          .where(eq(reputationStakes.agentPublicKey, agent.publicKey))
+          .orderBy(desc(reputationStakes.createdAt));
+        const validatedCount = stakes.filter(s => s.resolution === "validated").length;
+        const slashedCount = stakes.filter(s => s.resolution === "slashed").length;
+        let currentStreak = 0;
+        for (const s of stakes) {
+          if (s.resolution === "validated") currentStreak++;
+          else if (s.status !== "active") break;
+        }
+        const badges = await db.select().from(reputationBadges)
+          .where(eq(reputationBadges.agentPublicKey, agent.publicKey));
+        const skills = await db.select().from(marketSkills)
+          .where(and(eq(marketSkills.agentPublicKey, agent.publicKey), eq(marketSkills.active, true)));
+        const commerceResults = await db.select().from(agentRequests)
+          .where(and(eq(agentRequests.providerPublicKey, agent.publicKey), eq(agentRequests.status, "completed")));
+
+        const resolvedTotal = validatedCount + slashedCount;
+        const ratio = resolvedTotal >= 3 ? validatedCount / resolvedTotal : 0;
+        const erc8004Pts = 20;
+        const stakingPts = resolvedTotal >= 3 ? Math.round(ratio * 30) : 0;
+        const commercePts = Math.min(commerceResults.length * 4, 20);
+        const skillsPts = Math.min(skills.length * 5, 15);
+        const badgesPts = Math.min(badges.length * 5, 15);
+        const score = erc8004Pts + stakingPts + commercePts + skillsPts + badgesPts;
+
+        const skillsWithRatings = skills.filter(s => (s.ratingCount || 0) > 0);
+        const avgSkillRating = skillsWithRatings.length > 0
+          ? (skillsWithRatings.reduce((a, s) => a + ((s.ratingSum || 0) / (s.ratingCount || 1)), 0) / skillsWithRatings.length).toFixed(1)
+          : "N/A";
+
+        const lines = [
+          `Your ERC-8004 Reputation:`,
+          `- Onchain Identity: ERC-8004 Token #${botMeta.erc8004TokenId} (registered on Celo)`,
+          `- Reputation Score: ${score}/100`,
+          `- Validated Stakes: ${validatedCount} (streak: ${currentStreak})`,
+        ];
+        if (badges.length > 0) lines.push(`- Badges: ${badges.map(b => b.badgeName).join(", ")}`);
+        if (skills.length > 0) lines.push(`- Skills Published: ${skills.length} (avg rating: ${avgSkillRating})`);
+        if (commerceResults.length > 0) lines.push(`- Commerce Completed: ${commerceResults.length}`);
+        lines.push(`This reputation is publicly verifiable. Other agents can query your profile to assess your trustworthiness.`);
+        reputationContext = lines.join("\n");
+      }
+    } catch (e: any) {
+      console.error("[miniclaw-chat] Error fetching reputation context:", e.message);
+    }
+
+    const systemPrompt = buildSystemPrompt(agent, lifetimeMessageCount, memoryContext, memoryCategories, reputationContext);
 
     const chatMessages: Array<{role: "system" | "user" | "assistant", content: string}> = [
       { role: "system", content: systemPrompt },

@@ -621,6 +621,23 @@ export const stakeReviews = pgTable("stake_reviews", {
 export type StakeReview = typeof stakeReviews.$inferSelect;
 export type InsertStakeReview = typeof stakeReviews.$inferInsert;
 
+export const reputationEvents = pgTable("reputation_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  agentPublicKey: varchar("agent_public_key").notNull(),
+  humanId: varchar("human_id").notNull(),
+  erc8004TokenId: varchar("erc8004_token_id"),
+  eventType: varchar("event_type").notNull(),
+  eventData: jsonb("event_data").default({}),
+  reputationScoreAfter: integer("reputation_score_after"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_rep_events_agent_pk").on(table.agentPublicKey),
+  index("IDX_rep_events_type").on(table.eventType),
+]);
+
+export type ReputationEvent = typeof reputationEvents.$inferSelect;
+export type InsertReputationEvent = typeof reputationEvents.$inferInsert;
+
 export const reputationBadges = pgTable("reputation_badges", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   humanId: varchar("human_id").notNull(),

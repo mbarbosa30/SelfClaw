@@ -5,15 +5,18 @@ import {
   reputationStakes,
   stakeReviews,
   reputationBadges,
+  reputationEvents,
   verifiedBots,
+  marketSkills,
+  agentRequests,
 } from "../shared/schema.js";
 
 const router = Router();
 
 router.post("/v1/reputation/stake", async (req, res) => {
   try {
-    const humanId = req.session?.humanId;
-    const publicKey = req.session?.publicKey;
+    const humanId = (req.session as any)?.humanId;
+    const publicKey = (req.session as any)?.publicKey;
     if (!humanId || !publicKey) {
       return res.status(401).json({ error: "Authentication required" });
     }
@@ -49,8 +52,8 @@ router.post("/v1/reputation/stake", async (req, res) => {
 
 router.post("/v1/reputation/stakes/:id/review", async (req, res) => {
   try {
-    const humanId = req.session?.humanId;
-    const publicKey = req.session?.publicKey;
+    const humanId = (req.session as any)?.humanId;
+    const publicKey = (req.session as any)?.publicKey;
     if (!humanId || !publicKey) {
       return res.status(401).json({ error: "Authentication required" });
     }
@@ -114,6 +117,20 @@ router.post("/v1/reputation/stakes/:id/review", async (req, res) => {
       .returning();
 
     if (updateData.resolution) {
+      const eventType = updateData.resolution === "validated" ? "stake_validated" : updateData.resolution === "slashed" ? "stake_slashed" : "stake_neutral";
+      try {
+        const [bot] = await db.select().from(verifiedBots).where(eq(verifiedBots.publicKey, stake.agentPublicKey));
+        const erc8004TokenId = (bot?.metadata as any)?.erc8004TokenId || null;
+        await db.insert(reputationEvents).values({
+          agentPublicKey: stake.agentPublicKey,
+          humanId: stake.humanId,
+          erc8004TokenId,
+          eventType,
+          eventData: { stakeId: id, resolution: updateData.resolution, avgScore, stakeAmount: stake.stakeAmount },
+        });
+      } catch (e: any) {
+        console.error("[reputation] Error logging event:", e.message);
+      }
       await checkAndAwardBadges(stake.agentPublicKey, stake.humanId);
     }
 
@@ -140,6 +157,22 @@ async function checkAndAwardBadges(agentPublicKey: string, humanId: string) {
 
   const hasBadge = (type: string) => existingBadges.some(b => b.badgeType === type);
 
+  const logBadgeEvent = async (badgeType: string, badgeName: string) => {
+    try {
+      const [bot] = await db.select().from(verifiedBots).where(eq(verifiedBots.publicKey, agentPublicKey));
+      const erc8004TokenId = (bot?.metadata as any)?.erc8004TokenId || null;
+      await db.insert(reputationEvents).values({
+        agentPublicKey,
+        humanId,
+        erc8004TokenId,
+        eventType: "badge_earned",
+        eventData: { badgeType, badgeName },
+      });
+    } catch (e: any) {
+      console.error("[reputation] Error logging badge event:", e.message);
+    }
+  };
+
   if (validatedCount >= 5 && !hasBadge("reliable_output")) {
     await db.insert(reputationBadges).values({
       humanId,
@@ -148,6 +181,7 @@ async function checkAndAwardBadges(agentPublicKey: string, humanId: string) {
       badgeName: "Reliable Output",
       description: "Achieved 5+ validated reputation stakes",
     });
+    await logBadgeEvent("reliable_output", "Reliable Output");
   }
 
   if (validatedCount >= 10 && !hasBadge("trusted_expert")) {
@@ -158,6 +192,7 @@ async function checkAndAwardBadges(agentPublicKey: string, humanId: string) {
       badgeName: "Trusted Expert",
       description: "Achieved 10+ validated reputation stakes",
     });
+    await logBadgeEvent("trusted_expert", "Trusted Expert");
   }
 
   const allStakes = await db.select()
@@ -182,6 +217,7 @@ async function checkAndAwardBadges(agentPublicKey: string, humanId: string) {
       badgeName: "Hot Streak",
       description: "Achieved 3+ consecutive validated stakes",
     });
+    await logBadgeEvent("streak_3", "Hot Streak");
   }
 }
 
@@ -271,6 +307,161 @@ router.get("/v1/reputation/:identifier/stakes", async (req, res) => {
   } catch (err: any) {
     console.error("[reputation] Error fetching stakes:", err.message);
     return res.status(500).json({ error: "Failed to fetch stakes" });
+  }
+});
+
+router.get("/v1/reputation/:identifier/full-profile", async (req, res) => {
+  try {
+    const { identifier } = req.params;
+    const agentPublicKey = await resolveIdentifier(identifier);
+    if (!agentPublicKey) {
+      return res.status(404).json({ error: "Agent not found" });
+    }
+
+    const [bot] = await db.select().from(verifiedBots).where(eq(verifiedBots.publicKey, agentPublicKey));
+    const metadata = (bot?.metadata as any) || {};
+    const erc8004TokenId = metadata.erc8004TokenId || null;
+    const agentName = bot?.deviceId || null;
+    const verifiedAt = bot?.verifiedAt || null;
+
+    const allStakes = await db.select()
+      .from(reputationStakes)
+      .where(eq(reputationStakes.agentPublicKey, agentPublicKey))
+      .orderBy(desc(reputationStakes.createdAt));
+
+    const totalStakes = allStakes.length;
+    const activeStakes = allStakes.filter(s => s.status === "active").length;
+    const validatedCount = allStakes.filter(s => s.resolution === "validated").length;
+    const slashedCount = allStakes.filter(s => s.resolution === "slashed").length;
+    const neutralCount = allStakes.filter(s => s.resolution === "neutral").length;
+    const totalStaked = allStakes.reduce((acc, s) => acc + parseFloat(s.stakeAmount), 0);
+    const totalRewards = allStakes.reduce((acc, s) => acc + parseFloat(s.rewardAmount || "0"), 0);
+    const totalSlashed = allStakes.reduce((acc, s) => acc + parseFloat(s.slashedAmount || "0"), 0);
+
+    let currentStreak = 0;
+    for (const s of allStakes) {
+      if (s.resolution === "validated") currentStreak++;
+      else if (s.status !== "active") break;
+    }
+
+    let bestStreak = 0;
+    let tempStr = 0;
+    for (const s of allStakes) {
+      if (s.resolution === "validated") {
+        tempStr++;
+        bestStreak = Math.max(bestStreak, tempStr);
+      } else if (s.status !== "active") {
+        tempStr = 0;
+      }
+    }
+
+    const badges = await db.select()
+      .from(reputationBadges)
+      .where(eq(reputationBadges.agentPublicKey, agentPublicKey));
+
+    const skills = await db.select()
+      .from(marketSkills)
+      .where(and(eq(marketSkills.agentPublicKey, agentPublicKey), eq(marketSkills.active, true)));
+
+    const skillsPublished = skills.length;
+    const totalPurchases = skills.reduce((acc, s) => acc + (s.purchaseCount || 0), 0);
+    const skillsWithRatings = skills.filter(s => (s.ratingCount || 0) > 0);
+    const avgSkillRating = skillsWithRatings.length > 0
+      ? skillsWithRatings.reduce((acc, s) => acc + ((s.ratingSum || 0) / (s.ratingCount || 1)), 0) / skillsWithRatings.length
+      : 0;
+
+    const commerceResults = await db.select()
+      .from(agentRequests)
+      .where(and(
+        eq(agentRequests.providerPublicKey, agentPublicKey),
+        eq(agentRequests.status, "completed")
+      ));
+
+    const commerceCompleted = commerceResults.length;
+    const commerceWithRatings = commerceResults.filter(r => r.rating != null);
+    const avgCommerceRating = commerceWithRatings.length > 0
+      ? commerceWithRatings.reduce((acc, r) => acc + (r.rating || 0), 0) / commerceWithRatings.length
+      : 0;
+
+    let erc8004Score = erc8004TokenId ? 20 : 0;
+
+    let stakingScore = 0;
+    const resolvedStakes = validatedCount + slashedCount;
+    if (resolvedStakes >= 3) {
+      const ratio = validatedCount / resolvedStakes;
+      stakingScore = Math.round(ratio * 30);
+    }
+
+    let commerceScore = 0;
+    if (commerceCompleted > 0) {
+      const ratingFactor = avgCommerceRating > 0 ? Math.min(avgCommerceRating / 5, 1) : 0.5;
+      commerceScore = Math.min(Math.round(commerceCompleted * 4 * ratingFactor), 20);
+    }
+
+    let skillsScore = 0;
+    if (skillsPublished > 0) {
+      const purchaseFactor = Math.min(totalPurchases / 10, 1);
+      const ratingFactor = avgSkillRating > 0 ? Math.min(avgSkillRating / 5, 1) : 0.5;
+      skillsScore = Math.min(Math.round(skillsPublished * 5 * purchaseFactor * ratingFactor), 15);
+    }
+
+    const badgesScore = Math.min(badges.length * 5, 15);
+
+    const reputationScore = erc8004Score + stakingScore + commerceScore + skillsScore + badgesScore;
+
+    const allDates = [
+      ...allStakes.map(s => s.createdAt),
+      ...badges.map(b => b.earnedAt),
+      verifiedAt,
+    ].filter(Boolean);
+    const lastActivity = allDates.length > 0
+      ? new Date(Math.max(...allDates.map(d => new Date(d!).getTime()))).toISOString()
+      : null;
+
+    return res.json({
+      agentPublicKey,
+      agentName,
+      erc8004: { tokenId: erc8004TokenId, registered: !!erc8004TokenId },
+      reputationScore,
+      scoreBreakdown: {
+        erc8004: erc8004Score,
+        staking: stakingScore,
+        commerce: commerceScore,
+        skills: skillsScore,
+        badges: badgesScore,
+      },
+      staking: {
+        total: totalStakes,
+        validated: validatedCount,
+        slashed: slashedCount,
+        neutral: neutralCount,
+        active: activeStakes,
+        totalStaked: totalStaked.toString(),
+        totalRewards: totalRewards.toString(),
+        totalSlashed: totalSlashed.toString(),
+        currentStreak,
+        bestStreak,
+      },
+      badges: badges.map(b => ({
+        badgeType: b.badgeType,
+        badgeName: b.badgeName,
+        description: b.description,
+        earnedAt: b.earnedAt,
+      })),
+      skills: {
+        published: skillsPublished,
+        totalPurchases,
+        avgRating: Number(avgSkillRating.toFixed(1)),
+      },
+      commerce: {
+        completed: commerceCompleted,
+        avgRating: Number(avgCommerceRating.toFixed(1)),
+      },
+      lastActivity,
+    });
+  } catch (err: any) {
+    console.error("[reputation] Error fetching full profile:", err.message);
+    return res.status(500).json({ error: "Failed to fetch full reputation profile" });
   }
 });
 
