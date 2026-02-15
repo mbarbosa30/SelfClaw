@@ -2017,12 +2017,20 @@ router.post("/v1/request-selfclaw-sponsorship", verificationLimiter, async (req:
 
     const nextTokenIdBefore = await getNextPositionTokenId();
 
+    let resolvedSymbol = tokenSymbol || 'TOKEN';
+    if (resolvedSymbol === 'TOKEN') {
+      const poolLookup = await db.select().from(trackedPools)
+        .where(sql`LOWER(${trackedPools.tokenAddress}) = LOWER(${tokenAddress})`)
+        .limit(1);
+      if (poolLookup.length > 0) resolvedSymbol = poolLookup[0].tokenSymbol;
+    }
+
     [sponsorshipReq] = await db.insert(sponsorshipRequests).values({
       humanId,
       publicKey: auth.publicKey,
       miniclawId: null,
       tokenAddress,
-      tokenSymbol: tokenSymbol || 'TOKEN',
+      tokenSymbol: resolvedSymbol,
       tokenAmount,
       selfclawAmount: selfclawForPool,
       v4PoolId,
@@ -5668,12 +5676,20 @@ router.post("/v1/my-agents/:publicKey/request-sponsorship", verificationLimiter,
 
     const nextTokenIdBefore = await getNextPositionTokenId();
 
+    let resolvedSymbol = tokenSymbol || 'TOKEN';
+    if (resolvedSymbol === 'TOKEN') {
+      const poolLookup = await db.select().from(trackedPools)
+        .where(sql`LOWER(${trackedPools.tokenAddress}) = LOWER(${tokenAddress})`)
+        .limit(1);
+      if (poolLookup.length > 0) resolvedSymbol = poolLookup[0].tokenSymbol;
+    }
+
     [sponsorshipReq] = await db.insert(sponsorshipRequests).values({
       humanId: auth.humanId,
       publicKey: req.params.publicKey,
       miniclawId: null,
       tokenAddress,
-      tokenSymbol: tokenSymbol || 'TOKEN',
+      tokenSymbol: resolvedSymbol,
       tokenAmount,
       selfclawAmount: selfclawForPool,
       v4PoolId,
@@ -6788,12 +6804,20 @@ router.post("/v1/miniclaws/:id/request-sponsorship", verificationLimiter, async 
 
     const nextTokenIdBefore = await getNextPositionTokenId();
 
+    let resolvedSymbol = tokenSymbol || 'TOKEN';
+    if (resolvedSymbol === 'TOKEN') {
+      const poolLookup = await db.select().from(trackedPools)
+        .where(sql`LOWER(${trackedPools.tokenAddress}) = LOWER(${tokenAddress})`)
+        .limit(1);
+      if (poolLookup.length > 0) resolvedSymbol = poolLookup[0].tokenSymbol;
+    }
+
     [sponsorshipReq] = await db.insert(sponsorshipRequests).values({
       humanId: auth.humanId,
       publicKey: mcPublicKey,
       miniclawId: req.params.id,
       tokenAddress,
-      tokenSymbol: tokenSymbol || 'TOKEN',
+      tokenSymbol: resolvedSymbol,
       tokenAmount,
       selfclawAmount: selfclawForPool,
       v4PoolId,

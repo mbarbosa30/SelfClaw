@@ -911,7 +911,23 @@ router.get("/sponsorship-requests", async (req: Request, res: Response) => {
   if (!requireAdmin(req, res)) return;
   try {
     const requests = await db.select().from(sponsorshipRequests).orderBy(desc(sponsorshipRequests.createdAt));
-    res.json(requests);
+
+    const pools = await db.select().from(trackedPools);
+    const poolByToken: Record<string, any> = {};
+    for (const p of pools) {
+      poolByToken[p.tokenAddress.toLowerCase()] = p;
+    }
+
+    const enriched = requests.map(r => {
+      const pool = r.tokenAddress ? poolByToken[r.tokenAddress.toLowerCase()] : null;
+      return {
+        ...r,
+        tokenSymbol: (r.tokenSymbol && r.tokenSymbol !== 'TOKEN') ? r.tokenSymbol : (pool?.tokenSymbol || r.tokenSymbol || 'TOKEN'),
+        agentName: pool?.tokenName || null,
+      };
+    });
+
+    res.json(enriched);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }

@@ -1782,6 +1782,12 @@
             d.appendChild(document.createTextNode(str));
             return d.innerHTML;
           }
+          function fmtAmt(val) {
+            if (!val || val === '--') return '--';
+            var n = parseFloat(val);
+            if (isNaN(n)) return esc(val);
+            return n.toLocaleString('en-US', { maximumFractionDigits: 0 });
+          }
           items.forEach(function(req) {
             var sc = statusColors[req.status] || '#d4d0ca';
             var humanRaw = req.humanId || '';
@@ -1789,12 +1795,13 @@
             var errRaw = req.errorMessage || '';
             var errShort = errRaw.length > 30 ? errRaw.slice(0, 30) + '...' : errRaw;
             var created = req.createdAt ? getTimeAgo(new Date(req.createdAt)) : '--';
+            var sym = req.tokenSymbol && req.tokenSymbol !== 'TOKEN' ? '$' + req.tokenSymbol : (req.tokenSymbol || '--');
             html += '<tr style="border-bottom:1px solid var(--border-light, #d4d0ca);">';
             html += '<td style="padding:0.5rem;"><span style="display:inline-block;padding:0.15rem 0.5rem;font-family:\'IBM Plex Mono\',monospace;font-size:0.6rem;font-weight:600;text-transform:uppercase;color:#fff;background:' + sc + ';">' + esc(req.status || 'unknown') + '</span></td>';
             html += '<td style="padding:0.5rem;font-family:\'IBM Plex Mono\',monospace;font-size:0.65rem;" title="' + esc(humanRaw) + '">' + esc(humanShort || '--') + '</td>';
-            html += '<td style="padding:0.5rem;font-family:\'IBM Plex Mono\',monospace;font-size:0.65rem;">' + esc(req.tokenSymbol || '--') + '</td>';
-            html += '<td style="padding:0.5rem;font-size:0.75rem;">' + esc(req.tokenAmount || '--') + '</td>';
-            html += '<td style="padding:0.5rem;font-size:0.75rem;">' + esc(req.selfclawAmount || '--') + '</td>';
+            html += '<td style="padding:0.5rem;font-family:\'IBM Plex Mono\',monospace;font-size:0.65rem;font-weight:600;">' + esc(sym) + '</td>';
+            html += '<td style="padding:0.5rem;font-size:0.75rem;">' + fmtAmt(req.tokenAmount) + '</td>';
+            html += '<td style="padding:0.5rem;font-size:0.75rem;">' + fmtAmt(req.selfclawAmount) + '</td>';
             html += '<td style="padding:0.5rem;font-family:\'IBM Plex Mono\',monospace;font-size:0.65rem;">' + esc(req.source || '--') + '</td>';
             html += '<td style="padding:0.5rem;font-size:0.75rem;text-align:center;">' + (req.retryCount || 0) + '/' + (req.maxRetries || 3) + '</td>';
             html += '<td style="padding:0.5rem;font-size:0.65rem;color:#FF4A4A;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + esc(errRaw) + '">' + esc(errShort || '--') + '</td>';
