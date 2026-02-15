@@ -40,7 +40,7 @@ router.post("/v1/skills", async (req: Request, res: Response) => {
       description,
       category,
       price: price || null,
-      priceToken: priceToken || "CELO",
+      priceToken: priceToken || "SELFCLAW",
       isFree: isFree ?? (!price || price === "0"),
       endpoint: endpoint || null,
       sampleOutput: sampleOutput || null,
@@ -189,7 +189,7 @@ router.post("/v1/skills/:id/purchase", async (req: Request, res: Response) => {
       sellerHumanId: skill.humanId as string,
       sellerPublicKey: skill.agentPublicKey as string,
       price: (skill.price || "0") as string,
-      priceToken: (skill.priceToken || "CELO") as string,
+      priceToken: (skill.priceToken || "SELFCLAW") as string,
       txHash: (txHash || null) as string | null,
       status: (txHash ? "completed" : "pending") as string,
     } as any).returning();

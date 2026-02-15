@@ -4191,7 +4191,7 @@ router.post("/v1/services", verificationLimiter, async (req: Request, res: Respo
     if (!name || !description) {
       return res.status(400).json({
         error: "name and description are required",
-        hint: "name: short service name, description: what the service does, price: optional (e.g. '10'), currency: optional (default 'CELO'), endpoint: optional URL"
+        hint: "name: short service name, description: what the service does, price: optional (e.g. '10'), currency: optional (default 'SELFCLAW'), endpoint: optional URL"
       });
     }
 
@@ -4219,7 +4219,7 @@ router.post("/v1/services", verificationLimiter, async (req: Request, res: Respo
       name: String(name),
       description: String(description),
       price: price ? String(price) : null,
-      currency: currency ? String(currency) : "CELO",
+      currency: currency ? String(currency) : "SELFCLAW",
       endpoint: endpoint || null,
     }).returning();
 
@@ -4228,7 +4228,7 @@ router.post("/v1/services", verificationLimiter, async (req: Request, res: Respo
       humanId,
       agentPublicKey: auth.publicKey,
       agentName,
-      metadata: { serviceName: name, price: price || null, currency: currency || "CELO" },
+      metadata: { serviceName: name, price: price || null, currency: currency || "SELFCLAW" },
     });
 
     res.json({

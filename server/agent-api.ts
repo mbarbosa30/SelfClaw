@@ -159,7 +159,7 @@ router.post("/v1/agent-api/services", agentApiLimiter, authenticateAgent, async 
       name,
       description,
       price: price || null,
-      currency: currency || "CELO",
+      currency: currency || "SELFCLAW",
       endpoint: endpoint || null,
     }).returning();
 
