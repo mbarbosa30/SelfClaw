@@ -2,7 +2,7 @@ import { Router, Request, Response, NextFunction } from "express";
 import rateLimit from "express-rate-limit";
 import { db } from "./db.js";
 import { agentPosts, postComments, postLikes, verifiedBots } from "../shared/schema.js";
-import { eq, and, desc, sql, count } from "drizzle-orm";
+import { eq, and, desc, sql } from "drizzle-orm";
 
 const router = Router();
 
@@ -60,17 +60,15 @@ router.get("/v1/feed", feedReadLimiter, async (req: Request, res: Response) => {
     const agentPk = req.query.agent as string;
     const offset = (page - 1) * limit;
 
-    const conditions: any[] = [eq(agentPosts.active, true)];
-
+    const conditions: any[] = [sql`${agentPosts.active} = true`];
     if (category && VALID_CATEGORIES.includes(category)) {
-      conditions.push(eq(agentPosts.category, category));
+      conditions.push(sql`${agentPosts.category} = ${category}`);
     }
-
     if (agentPk) {
-      conditions.push(eq(agentPosts.agentPublicKey, agentPk));
+      conditions.push(sql`${agentPosts.agentPublicKey} = ${agentPk}`);
     }
 
-    const whereClause = conditions.length === 1 ? conditions[0] : and(...conditions);
+    const whereClause = and(...conditions);
 
     const posts = await db.select()
       .from(agentPosts)
@@ -79,11 +77,11 @@ router.get("/v1/feed", feedReadLimiter, async (req: Request, res: Response) => {
       .limit(limit)
       .offset(offset);
 
-    const [totalResult] = await db.select({ cnt: count() })
+    const totalResult = await db.select({ cnt: sql<number>`count(*)::int` })
       .from(agentPosts)
       .where(whereClause);
 
-    const total = totalResult?.cnt || 0;
+    const total = totalResult[0]?.cnt || 0;
 
     res.json({
       posts,
@@ -99,11 +97,11 @@ router.get("/v1/feed", feedReadLimiter, async (req: Request, res: Response) => {
 
 router.get("/v1/feed/:postId", feedReadLimiter, async (req: Request, res: Response) => {
   try {
-    const { postId } = req.params;
+    const postId = req.params.postId;
 
     const [post] = await db.select()
       .from(agentPosts)
-      .where(and(eq(agentPosts.id, postId), eq(agentPosts.active, true)))
+      .where(sql`${agentPosts.id} = ${postId} AND ${agentPosts.active} = true`)
       .limit(1);
 
     if (!post) {
@@ -112,7 +110,7 @@ router.get("/v1/feed/:postId", feedReadLimiter, async (req: Request, res: Respon
 
     const comments = await db.select()
       .from(postComments)
-      .where(and(eq(postComments.postId, postId), eq(postComments.active, true)))
+      .where(sql`${postComments.postId} = ${postId} AND ${postComments.active} = true`)
       .orderBy(desc(postComments.createdAt));
 
     res.json({ post, comments });
@@ -140,16 +138,13 @@ router.post("/v1/agent-api/feed/post", feedWriteLimiter, authenticateAgent, asyn
 
     const cat = category && VALID_CATEGORIES.includes(category) ? category : "update";
 
-    const [post] = await db.insert(agentPosts).values({
-      agentPublicKey: agent.publicKey,
-      humanId: agent.humanId!,
-      agentName: agent.deviceId || null,
-      category: cat,
-      title: title || null,
-      content,
-    }).returning();
+    const result = await db.execute(sql`
+      INSERT INTO agent_posts (id, agent_public_key, human_id, agent_name, category, title, content)
+      VALUES (gen_random_uuid(), ${agent.publicKey}, ${agent.humanId}, ${agent.deviceId || null}, ${cat}, ${title || null}, ${content})
+      RETURNING *
+    `);
 
-    res.status(201).json({ post });
+    res.status(201).json({ post: result.rows[0] });
   } catch (error: any) {
     res.status(500).json({ error: "Failed to create post" });
   }
@@ -158,39 +153,31 @@ router.post("/v1/agent-api/feed/post", feedWriteLimiter, authenticateAgent, asyn
 router.post("/v1/agent-api/feed/:postId/like", feedWriteLimiter, authenticateAgent, async (req: Request, res: Response) => {
   try {
     const agent = (req as any).agent;
-    const { postId } = req.params;
+    const postId = req.params.postId;
 
     const [post] = await db.select()
       .from(agentPosts)
-      .where(and(eq(agentPosts.id, postId), eq(agentPosts.active, true)))
+      .where(sql`${agentPosts.id} = ${postId} AND ${agentPosts.active} = true`)
       .limit(1);
 
     if (!post) {
       return res.status(404).json({ error: "Post not found" });
     }
 
-    const [existingLike] = await db.select()
-      .from(postLikes)
-      .where(and(eq(postLikes.postId, postId), eq(postLikes.agentPublicKey, agent.publicKey)))
-      .limit(1);
+    const existingLike = await db.execute(sql`
+      SELECT id FROM post_likes WHERE post_id = ${postId} AND agent_public_key = ${agent.publicKey} LIMIT 1
+    `);
 
-    if (existingLike) {
-      await db.delete(postLikes).where(eq(postLikes.id, existingLike.id));
-      await db.update(agentPosts)
-        .set({ likesCount: sql`GREATEST(0, ${agentPosts.likesCount} - 1)` })
-        .where(eq(agentPosts.id, postId));
-
+    if (existingLike.rows.length > 0) {
+      await db.execute(sql`DELETE FROM post_likes WHERE id = ${(existingLike.rows[0] as any).id}`);
+      await db.execute(sql`UPDATE agent_posts SET likes_count = GREATEST(0, likes_count - 1) WHERE id = ${postId}`);
       res.json({ liked: false, message: "Like removed" });
     } else {
-      await db.insert(postLikes).values({
-        postId,
-        agentPublicKey: agent.publicKey,
-        humanId: agent.humanId!,
-      });
-      await db.update(agentPosts)
-        .set({ likesCount: sql`${agentPosts.likesCount} + 1` })
-        .where(eq(agentPosts.id, postId));
-
+      await db.execute(sql`
+        INSERT INTO post_likes (id, post_id, agent_public_key, human_id)
+        VALUES (gen_random_uuid(), ${postId}, ${agent.publicKey}, ${agent.humanId})
+      `);
+      await db.execute(sql`UPDATE agent_posts SET likes_count = likes_count + 1 WHERE id = ${postId}`);
       res.json({ liked: true, message: "Post liked" });
     }
   } catch (error: any) {
@@ -201,7 +188,7 @@ router.post("/v1/agent-api/feed/:postId/like", feedWriteLimiter, authenticateAge
 router.post("/v1/agent-api/feed/:postId/comment", feedWriteLimiter, authenticateAgent, async (req: Request, res: Response) => {
   try {
     const agent = (req as any).agent;
-    const { postId } = req.params;
+    const postId = req.params.postId;
     const { content } = req.body;
 
     if (!content || typeof content !== "string") {
@@ -214,26 +201,22 @@ router.post("/v1/agent-api/feed/:postId/comment", feedWriteLimiter, authenticate
 
     const [post] = await db.select()
       .from(agentPosts)
-      .where(and(eq(agentPosts.id, postId), eq(agentPosts.active, true)))
+      .where(sql`${agentPosts.id} = ${postId} AND ${agentPosts.active} = true`)
       .limit(1);
 
     if (!post) {
       return res.status(404).json({ error: "Post not found" });
     }
 
-    const [comment] = await db.insert(postComments).values({
-      postId,
-      agentPublicKey: agent.publicKey,
-      humanId: agent.humanId!,
-      agentName: agent.deviceId || null,
-      content,
-    }).returning();
+    const result = await db.execute(sql`
+      INSERT INTO post_comments (id, post_id, agent_public_key, human_id, agent_name, content)
+      VALUES (gen_random_uuid(), ${postId}, ${agent.publicKey}, ${agent.humanId}, ${agent.deviceId || null}, ${content})
+      RETURNING *
+    `);
 
-    await db.update(agentPosts)
-      .set({ commentsCount: sql`${agentPosts.commentsCount} + 1` })
-      .where(eq(agentPosts.id, postId));
+    await db.execute(sql`UPDATE agent_posts SET comments_count = comments_count + 1 WHERE id = ${postId}`);
 
-    res.status(201).json({ comment });
+    res.status(201).json({ comment: result.rows[0] });
   } catch (error: any) {
     res.status(500).json({ error: "Failed to add comment" });
   }
@@ -242,20 +225,18 @@ router.post("/v1/agent-api/feed/:postId/comment", feedWriteLimiter, authenticate
 router.delete("/v1/agent-api/feed/:postId", feedWriteLimiter, authenticateAgent, async (req: Request, res: Response) => {
   try {
     const agent = (req as any).agent;
-    const { postId } = req.params;
+    const postId = req.params.postId;
 
     const [post] = await db.select()
       .from(agentPosts)
-      .where(and(eq(agentPosts.id, postId), eq(agentPosts.agentPublicKey, agent.publicKey)))
+      .where(sql`${agentPosts.id} = ${postId} AND ${agentPosts.agentPublicKey} = ${agent.publicKey}`)
       .limit(1);
 
     if (!post) {
       return res.status(404).json({ error: "Post not found or does not belong to this agent" });
     }
 
-    await db.update(agentPosts)
-      .set({ active: false })
-      .where(eq(agentPosts.id, postId));
+    await db.execute(sql`UPDATE agent_posts SET active = false WHERE id = ${postId}`);
 
     res.json({ deleted: true, postId });
   } catch (error: any) {

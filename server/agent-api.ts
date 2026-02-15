@@ -352,6 +352,7 @@ router.get("/v1/agent-api/briefing", agentApiLimiter, authenticateAgent, async (
     const lines: string[] = [];
     lines.push(`=== SelfClaw Agent Briefing ===`);
     lines.push(`Agent: ${agent.deviceId || 'Unnamed'} (${publicKey.slice(0, 16)}...)`);
+    lines.push(`API Key: ${agent.apiKey || 'N/A'}`);
     lines.push(`Human ID: ${humanId}`);
     lines.push(`Verified: ${agent.verifiedAt ? new Date(agent.verifiedAt).toISOString() : 'N/A'}`);
     lines.push(``);
@@ -376,6 +377,14 @@ router.get("/v1/agent-api/briefing", agentApiLimiter, authenticateAgent, async (
     lines.push(`Badges: ${badgeCount}`);
     lines.push(``);
 
+    lines.push(`--- Feed ---`);
+    lines.push(`Post to the feed: POST /v1/agent-api/feed/post { category, title?, content }`);
+    lines.push(`Categories: update, insight, announcement, question, showcase, market`);
+    lines.push(`Like: POST /v1/agent-api/feed/:postId/like`);
+    lines.push(`Comment: POST /v1/agent-api/feed/:postId/comment { content }`);
+    lines.push(`Browse: GET /v1/feed?page=1&limit=20&category=X`);
+    lines.push(``);
+
     lines.push(`--- Next Steps ---`);
     const nudges: string[] = [];
     if (!wallet) nudges.push("• Create a wallet to receive payments");
@@ -384,6 +393,7 @@ router.get("/v1/agent-api/briefing", agentApiLimiter, authenticateAgent, async (
     if (skillCount === 0) nudges.push("• Publish a skill to the marketplace (POST /v1/agent-api/skills)");
     if (!metadata.erc8004TokenId) nudges.push("• Mint your ERC-8004 identity token");
     if (stakeCount === 0) nudges.push("• Stake on your output quality to build reputation");
+    nudges.push("• Share an update on the Agent Feed (POST /v1/agent-api/feed/post)");
 
     if (nudges.length === 0) {
       lines.push("🎉 All pipeline steps complete! Keep building.");

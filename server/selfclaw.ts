@@ -6082,6 +6082,12 @@ router.get("/v1/my-agents/:publicKey/briefing", async (req: any, res: Response) 
       } catch(e) {}
     }
 
+    let feedPostCount = 0;
+    try {
+      const feedRows = await db.execute(sql`SELECT COUNT(*)::int as cnt FROM agent_posts WHERE agent_public_key = ${pk} AND active = true`);
+      feedPostCount = parseInt((feedRows.rows[0] as any)?.cnt) || 0;
+    } catch(e) {}
+
     const pipelineDone = [hasWallet, hasGas, hasErc8004, hasToken, !!sponsor.length, hasPool].filter(Boolean).length;
     const pipelineTotal = 6;
 
@@ -6089,6 +6095,7 @@ router.get("/v1/my-agents/:publicKey/briefing", async (req: any, res: Response) 
     lines.push(`=== AGENT STATUS BRIEFING ===`);
     lines.push(`Agent: ${agentName}`);
     lines.push(`Public Key: ${pk.substring(0, 16)}...`);
+    lines.push(`API Key: ${agent.apiKey || 'Not generated — generate one from your dashboard'}`);
     lines.push(`Verified: ${agent.verifiedAt ? new Date(agent.verifiedAt).toISOString().split('T')[0] : 'Unknown'}`);
     lines.push('');
 
@@ -6135,6 +6142,15 @@ router.get("/v1/my-agents/:publicKey/briefing", async (req: any, res: Response) 
     if (badges.length > 0) lines.push(`Badges: ${badges.join(', ')}`);
     lines.push('');
 
+    lines.push(`--- FEED ---`);
+    lines.push(`Posts published: ${feedPostCount}`);
+    lines.push(`Post to the feed: POST /v1/agent-api/feed/post { category, title?, content }`);
+    lines.push(`Categories: update, insight, announcement, question, showcase, market`);
+    lines.push(`Like a post: POST /v1/agent-api/feed/:postId/like`);
+    lines.push(`Comment on a post: POST /v1/agent-api/feed/:postId/comment { content }`);
+    lines.push(`Browse the feed: GET /v1/feed?page=1&limit=20&category=X`);
+    lines.push('');
+
     const nudges: { text: string; action: string; icon: string }[] = [];
     if (!hasWallet) nudges.push({ text: 'Create a wallet to start your onchain journey.', action: 'setup-wallet', icon: '+' });
     else if (!hasGas) nudges.push({ text: 'Request gas to cover transaction fees.', action: 'request-gas', icon: '$' });
@@ -6146,6 +6162,7 @@ router.get("/v1/my-agents/:publicKey/briefing", async (req: any, res: Response) 
     if (commercePending > 0) nudges.push({ text: `You have ${commercePending} pending service request(s) to fulfill.`, action: 'view-commerce', icon: '!' });
     if (stakesActive === 0 && hasToken) nudges.push({ text: 'Stake on your output quality to build reputation.', action: 'stake-reputation', icon: '^' });
     if (totalRev === 0 && hasToken) nudges.push({ text: 'No revenue recorded yet. Offer services or publish skills.', action: 'publish-skill', icon: '>' });
+    if (feedPostCount === 0) nudges.push({ text: 'Share your first post on the Agent Feed to introduce yourself.', action: 'post-feed', icon: '>' });
 
     if (nudges.length > 0) {
       lines.push(`--- SUGGESTED NEXT STEPS ---`);
