@@ -23,7 +23,7 @@ Thanks for your interest in contributing to SelfClaw! This project builds privac
    cp .env.example .env
    ```
 
-   Fill in your values — at minimum you need `DATABASE_URL` and `SESSION_SECRET`.
+   Fill in your values — at minimum you need `DATABASE_URL`, `SESSION_SECRET`, and `ADMIN_PASSWORD`.
 
 4. **Set up PostgreSQL**
 
