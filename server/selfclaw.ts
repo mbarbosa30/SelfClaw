@@ -3306,6 +3306,24 @@ router.post("/v1/register-token", verificationLimiter, async (req: Request, res:
         .where(eq(tokenPlans.id, existingPlan[0].id));
     }
 
+    const existingSponsor = await db.select().from(sponsoredAgents)
+      .where(sql`${sponsoredAgents.publicKey} = ${auth.publicKey} AND ${sponsoredAgents.humanId} = ${humanId}`)
+      .limit(1);
+    if (existingSponsor.length === 0) {
+      await db.insert(sponsoredAgents).values({
+        humanId,
+        publicKey: auth.publicKey,
+        tokenAddress,
+        tokenSymbol: onChainSymbol || onChainName || 'UNKNOWN',
+        sponsoredAmountCelo: "0",
+        status: "token_registered",
+      });
+    } else if (!existingSponsor[0].tokenAddress) {
+      await db.update(sponsoredAgents)
+        .set({ tokenAddress, tokenSymbol: onChainSymbol || onChainName || existingSponsor[0].tokenSymbol })
+        .where(eq(sponsoredAgents.id, existingSponsor[0].id));
+    }
+
     logActivity("token_registered", humanId, auth.publicKey, undefined, {
       tokenAddress, txHash, name: onChainName, symbol: onChainSymbol, supply: onChainSupply
     });
@@ -5502,6 +5520,24 @@ router.post("/v1/my-agents/:publicKey/register-token", verificationLimiter, asyn
         .where(eq(tokenPlans.id, existingPlan[0].id));
     }
 
+    const existingSponsor = await db.select().from(sponsoredAgents)
+      .where(sql`${sponsoredAgents.publicKey} = ${req.params.publicKey} AND ${sponsoredAgents.humanId} = ${auth.humanId}`)
+      .limit(1);
+    if (existingSponsor.length === 0) {
+      await db.insert(sponsoredAgents).values({
+        humanId: auth.humanId,
+        publicKey: req.params.publicKey,
+        tokenAddress,
+        tokenSymbol: onChainSymbol || onChainName || 'UNKNOWN',
+        sponsoredAmountCelo: "0",
+        status: "token_registered",
+      });
+    } else if (!existingSponsor[0].tokenAddress) {
+      await db.update(sponsoredAgents)
+        .set({ tokenAddress, tokenSymbol: onChainSymbol || onChainName || existingSponsor[0].tokenSymbol })
+        .where(eq(sponsoredAgents.id, existingSponsor[0].id));
+    }
+
     logActivity("token_registered", auth.humanId, req.params.publicKey, auth.agent.deviceId, {
       tokenAddress, txHash, name: onChainName, symbol: onChainSymbol, method: "dashboard"
     });
@@ -6434,6 +6470,24 @@ router.post("/v1/miniclaws/:id/register-token", verificationLimiter, async (req:
       await db.update(tokenPlans)
         .set({ tokenAddress, status: "deployed", updatedAt: new Date() })
         .where(eq(tokenPlans.id, existingPlan[0].id));
+    }
+
+    const existingSponsor = await db.select().from(sponsoredAgents)
+      .where(sql`${sponsoredAgents.publicKey} = ${mcPublicKey} AND ${sponsoredAgents.humanId} = ${auth.humanId}`)
+      .limit(1);
+    if (existingSponsor.length === 0) {
+      await db.insert(sponsoredAgents).values({
+        humanId: auth.humanId,
+        publicKey: mcPublicKey,
+        tokenAddress,
+        tokenSymbol: onChainSymbol || onChainName || 'UNKNOWN',
+        sponsoredAmountCelo: "0",
+        status: "token_registered",
+      });
+    } else if (!existingSponsor[0].tokenAddress) {
+      await db.update(sponsoredAgents)
+        .set({ tokenAddress, tokenSymbol: onChainSymbol || onChainName || existingSponsor[0].tokenSymbol })
+        .where(eq(sponsoredAgents.id, existingSponsor[0].id));
     }
 
     logActivity("token_registered", auth.humanId, mcPublicKey, "miniclaw", {
