@@ -2062,10 +2062,17 @@
             } else {
               html += '<span title="Visible publicly" style="display:inline-block;padding:2px 6px;font-family:IBM Plex Mono,monospace;font-size:0.5rem;font-weight:600;background:var(--green-verify);color:#fff;text-transform:uppercase;letter-spacing:0.03em;">LIVE</span>';
             }
+            var typeColors = { miniclaw: '#8B5CF6', sandbox: '#F59E0B', verified: '#3B82F6' };
+            var typeLabels = { miniclaw: 'MC', sandbox: 'SB', verified: 'VR' };
+            var typeTitles = { miniclaw: 'Miniclaw (hosted)', sandbox: 'Sandbox (test)', verified: 'Verified (passport)' };
+            var tColor = typeColors[agent.agentType] || '#3B82F6';
+            html += '<div style="margin-top:3px;"><span title="' + (typeTitles[agent.agentType] || agent.agentType) + '" style="display:inline-block;padding:1px 5px;font-family:IBM Plex Mono,monospace;font-size:0.45rem;font-weight:600;border:1px solid ' + tColor + ';color:' + tColor + ';text-transform:uppercase;letter-spacing:0.03em;">' + (typeLabels[agent.agentType] || 'VR') + '</span></div>';
             html += '</td>';
 
             html += '<td style="padding:0.6rem 0.5rem;">';
-            html += '<div style="font-weight:600;">' + (agent.agentName ? esc(agent.agentName) : '<span style="color:var(--text-muted);font-style:italic;">unnamed</span>') + '</div>';
+            var displayName = agent.hostedName || agent.agentName;
+            html += '<div style="font-weight:600;">' + (displayName ? esc(displayName) : '<span style="color:var(--text-muted);font-style:italic;">unnamed</span>') + '</div>';
+            if (agent.hostedName && agent.agentName) html += '<div style="font-family:IBM Plex Mono,monospace;font-size:0.55rem;color:var(--text-muted);">id: ' + esc(agent.agentName) + '</div>';
             html += '<div style="font-family:IBM Plex Mono,monospace;font-size:0.55rem;color:var(--text-muted);">' + esc(agent.publicKey.slice(0, 20)) + '...</div>';
             if (agent.tokenSymbol) html += '<div style="font-family:IBM Plex Mono,monospace;font-size:0.6rem;color:#FF6B4A;">$' + esc(agent.tokenSymbol) + '</div>';
             html += '</td>';
@@ -2105,7 +2112,10 @@
           });
 
           html += '</tbody></table>';
-          html += '<div style="margin-top:0.75rem;font-family:IBM Plex Mono,monospace;font-size:0.6rem;color:var(--text-muted);">Total: ' + agents.length + ' agents (' + visibleCount + ' live, ' + hiddenCount + ' hidden) &mdash; Pipeline: V=Verified W=Wallet G=Gas 8004=ERC-8004 T=Token S=Sponsored</div>';
+          var mcCount = agents.filter(function(a) { return a.agentType === 'miniclaw'; }).length;
+          var sbCount = agents.filter(function(a) { return a.agentType === 'sandbox'; }).length;
+          var vrCount = agents.length - mcCount - sbCount;
+          html += '<div style="margin-top:0.75rem;font-family:IBM Plex Mono,monospace;font-size:0.6rem;color:var(--text-muted);">Total: ' + agents.length + ' agents (' + visibleCount + ' live, ' + hiddenCount + ' hidden) &mdash; Types: ' + vrCount + ' verified, ' + mcCount + ' miniclaw, ' + sbCount + ' sandbox &mdash; Pipeline: V=Verified W=Wallet G=Gas 8004=ERC-8004 T=Token S=Sponsored</div>';
           content.innerHTML = html;
         })
         .catch(function(e) {

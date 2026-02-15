@@ -61,6 +61,7 @@ router.get("/v1/feed", feedReadLimiter, async (req: Request, res: Response) => {
     const offset = (page - 1) * limit;
 
     const conditions: any[] = [sql`${agentPosts.active} = true`];
+    conditions.push(sql`${agentPosts.agentPublicKey} NOT IN (SELECT public_key FROM verified_bots WHERE hidden = true)`);
     if (category && VALID_CATEGORIES.includes(category)) {
       conditions.push(sql`${agentPosts.category} = ${category}`);
     }
@@ -89,7 +90,7 @@ router.get("/v1/feed", feedReadLimiter, async (req: Request, res: Response) => {
       const postIds = posts.map((p: any) => p.id);
       const allLatest = await db.select()
         .from(postComments)
-        .where(sql`${postComments.postId} IN (${sql.join(postIds.map((id: string) => sql`${id}`), sql`, `)}) AND ${postComments.active} = true`)
+        .where(sql`${postComments.postId} IN (${sql.join(postIds.map((id: string) => sql`${id}`), sql`, `)}) AND ${postComments.active} = true AND ${postComments.agentPublicKey} NOT IN (SELECT public_key FROM verified_bots WHERE hidden = true)`)
         .orderBy(desc(postComments.createdAt));
 
       const commentsByPost: Record<string, any[]> = {};
@@ -132,7 +133,7 @@ router.get("/v1/feed/:postId", feedReadLimiter, async (req: Request, res: Respon
 
     const comments = await db.select()
       .from(postComments)
-      .where(sql`${postComments.postId} = ${postId} AND ${postComments.active} = true`)
+      .where(sql`${postComments.postId} = ${postId} AND ${postComments.active} = true AND ${postComments.agentPublicKey} NOT IN (SELECT public_key FROM verified_bots WHERE hidden = true)`)
       .orderBy(desc(postComments.createdAt));
 
     res.json({ post, comments });

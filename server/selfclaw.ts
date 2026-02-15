@@ -1118,7 +1118,7 @@ router.get("/v1/agent/:identifier/proof", publicApiLimiter, async (req: Request,
     }
 
     const foundAgent = agents[0];
-    if (!foundAgent) {
+    if (!foundAgent || foundAgent.hidden === true) {
       return res.status(404).json({ error: "Agent not found in registry" });
     }
 
@@ -1183,7 +1183,7 @@ router.get("/v1/agent/:identifier/reputation", publicApiLimiter, async (req: Req
     }
 
     const agent = agentRecords[0];
-    if (!agent) {
+    if (!agent || agent.hidden === true) {
       return res.status(404).json({ error: "Agent not found in registry" });
     }
 
@@ -1233,7 +1233,7 @@ router.get("/v1/agent/:identifier/registration.json", publicApiLimiter, async (r
       )
       .limit(1);
     
-    if (!regAgents.length) {
+    if (!regAgents.length || regAgents[0].hidden === true) {
       return res.status(404).json({ error: "Agent not found" });
     }
     
@@ -1289,7 +1289,7 @@ router.get("/v1/agent/:identifier", publicApiLimiter, async (req: Request, res: 
     
     const foundAgent = agents[0];
 
-    if (!foundAgent) {
+    if (!foundAgent || foundAgent.hidden === true) {
       return res.json({
         verified: false,
         publicKey: identifier,
@@ -2316,7 +2316,7 @@ router.get("/v1/agent-profile/:name", publicApiLimiter, async (req: Request, res
         .limit(1);
     }
 
-    if (agents.length === 0) {
+    if (agents.length === 0 || agents[0].hidden === true) {
       return res.status(404).json({ error: "Agent not found" });
     }
     
@@ -4409,7 +4409,7 @@ router.get("/v1/agent/:identifier/economics", publicApiLimiter, async (req: Requ
       if (byKey.length > 0) agent = byKey[0];
     }
 
-    if (!agent) {
+    if (!agent || agent.hidden === true) {
       return res.status(404).json({ error: "Agent not found" });
     }
 

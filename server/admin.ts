@@ -1297,6 +1297,13 @@ router.get("/agents", async (req: Request, res: Response) => {
 
     const publicKeys = agents.map(a => a.publicKey);
 
+    const hostedRows = publicKeys.length > 0
+      ? await db.select({ publicKey: hostedAgents.publicKey, name: hostedAgents.name, status: hostedAgents.status })
+          .from(hostedAgents).where(inArray(hostedAgents.publicKey, publicKeys))
+      : [];
+    const hostedMap = new Map<string, typeof hostedRows[0]>();
+    for (const h of hostedRows) hostedMap.set(h.publicKey, h);
+
     const [walletRows, poolRows, planRows] = await Promise.all([
       publicKeys.length > 0
         ? db.select({ publicKey: agentWallets.publicKey, address: agentWallets.address, gasReceived: agentWallets.gasReceived })
@@ -1324,6 +1331,7 @@ router.get("/agents", async (req: Request, res: Response) => {
       const wallet = walletMap.get(pk);
       const pool = poolMap.get(pk);
       const plan = planMap.get(pk);
+      const hosted = hostedMap.get(pk);
       const metadata = (agent.metadata as Record<string, any>) || {};
 
       const pipelineStages: string[] = [];
@@ -1339,9 +1347,16 @@ router.get("/agents", async (req: Request, res: Response) => {
       const allStages = ['verified', 'wallet', 'gas', 'erc8004', 'token', 'sponsored'];
       const nextStage = allStages.find(s => !pipelineStages.includes(s)) || 'complete';
 
+      let agentType = 'verified';
+      if (hosted) agentType = 'miniclaw';
+      else if ((agent.deviceId || '').startsWith('sandbox-')) agentType = 'sandbox';
+
       return {
         publicKey: agent.publicKey,
         agentName: agent.deviceId || null,
+        hostedName: hosted?.name || null,
+        hostedStatus: hosted?.status || null,
+        agentType,
         humanId: agent.humanId,
         hidden: agent.hidden || false,
         verificationLevel: agent.verificationLevel || 'passport',
