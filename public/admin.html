@@ -824,6 +824,30 @@
       return false;
     }
 
+    function esc(str) {
+      if (!str) return '';
+      var d = document.createElement('div');
+      d.appendChild(document.createTextNode(str));
+      return d.innerHTML;
+    }
+
+    function filterAgentType(type, btn) {
+      var table = document.getElementById('agentTable');
+      if (!table) return;
+      var rows = table.querySelectorAll('tbody tr');
+      rows.forEach(function(row) {
+        var rType = row.getAttribute('data-agenttype');
+        var rHidden = row.getAttribute('data-hidden');
+        if (type === 'all') { row.style.display = ''; }
+        else if (type === 'hidden') { row.style.display = rHidden === '1' ? '' : 'none'; }
+        else { row.style.display = rType === type ? '' : 'none'; }
+      });
+      var btns = document.querySelectorAll('.agent-type-filter');
+      btns.forEach(function(b) { b.style.background = ''; b.style.color = ''; });
+      btn.style.background = 'var(--text-primary)';
+      btn.style.color = 'var(--bg-page)';
+    }
+
     function doLogin() {
       var pw = document.getElementById('login-password').value.trim();
       if (!pw) return;
@@ -1776,28 +1800,6 @@
           var tbody = document.getElementById('sponsorship-tbody');
           var html = '';
           var statusColors = { pending: '#d4d0ca', processing: '#6B4AFF', completed: '#00C853', failed: '#FF4A4A' };
-          function esc(str) {
-            if (!str) return '';
-            var d = document.createElement('div');
-            d.appendChild(document.createTextNode(str));
-            return d.innerHTML;
-          }
-          function filterAgentType(type, btn) {
-            var table = document.getElementById('agentTable');
-            if (!table) return;
-            var rows = table.querySelectorAll('tbody tr');
-            rows.forEach(function(row) {
-              var rType = row.getAttribute('data-agenttype');
-              var rHidden = row.getAttribute('data-hidden');
-              if (type === 'all') { row.style.display = ''; }
-              else if (type === 'hidden') { row.style.display = rHidden === '1' ? '' : 'none'; }
-              else { row.style.display = rType === type ? '' : 'none'; }
-            });
-            var btns = document.querySelectorAll('.agent-type-filter');
-            btns.forEach(function(b) { b.style.background = ''; b.style.color = ''; });
-            btn.style.background = 'var(--text-primary)';
-            btn.style.color = 'var(--bg-page)';
-          }
           function fmtAmt(val) {
             if (!val || val === '--') return '--';
             var n = parseFloat(val);
@@ -2151,9 +2153,10 @@
         })
         .catch(function(e) {
           if (e.message === 'auth') return;
+          console.error('[admin] Failed to load agents:', e);
           loading.style.display = 'none';
           content.style.display = 'block';
-          content.innerHTML = '<div style="text-align:center;color:#ef4444;padding:1rem;">Failed to load agents</div>';
+          content.innerHTML = '<div style="text-align:center;color:#ef4444;padding:1rem;">Failed to load agents: ' + esc(e.message || 'Unknown error') + '</div>';
         });
     }
 
