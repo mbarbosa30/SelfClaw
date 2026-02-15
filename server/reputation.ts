@@ -255,7 +255,7 @@ router.get("/v1/reputation/leaderboard", async (req, res) => {
     const rows = await db.execute(sql`
       SELECT
         vb.public_key,
-        COALESCE(vb.metadata->>'name', vb.metadata->>'agentName', 'Unknown') as agent_name,
+        COALESCE(NULLIF(vb.device_id, ''), tp.token_symbol, vb.metadata->>'agentName', 'Unknown') as agent_name,
         CASE WHEN vb.metadata->>'erc8004TokenId' IS NOT NULL THEN 20 ELSE 0 END as erc8004_score,
         COALESCE(stk.validated_count, 0) as validated_count,
         COALESCE(stk.slashed_count, 0) as slashed_count,
@@ -268,6 +268,13 @@ router.get("/v1/reputation/leaderboard", async (req, res) => {
         COALESCE(com.commerce_completed, 0) as commerce_completed,
         COALESCE(com.avg_commerce_rating, 0) as avg_commerce_rating
       FROM verified_bots vb
+      LEFT JOIN (
+        SELECT DISTINCT ON (agent_public_key)
+          agent_public_key, token_symbol
+        FROM tracked_pools
+        WHERE agent_public_key IS NOT NULL
+        ORDER BY agent_public_key, created_at DESC
+      ) tp ON tp.agent_public_key = vb.public_key
       LEFT JOIN (
         SELECT agent_public_key,
           COUNT(*) FILTER (WHERE resolution = 'validated')::int as validated_count,

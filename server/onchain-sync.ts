@@ -1,5 +1,5 @@
 import { db } from "./db.js";
-import { verifiedBots } from "../shared/schema.js";
+import { verifiedBots, trackedPools } from "../shared/schema.js";
 import { sql, eq } from "drizzle-orm";
 import { erc8004Service } from "../lib/erc8004.js";
 
@@ -95,6 +95,51 @@ async function syncAllAgents(): Promise<{ synced: number; updated: number; error
       if (i + BATCH_SIZE < agents.length) {
         await new Promise(r => setTimeout(r, 1000));
       }
+    }
+
+    try {
+      const nameless = await db.select({
+        id: verifiedBots.id,
+        publicKey: verifiedBots.publicKey,
+        deviceId: verifiedBots.deviceId,
+      })
+        .from(verifiedBots)
+        .where(sql`(${verifiedBots.deviceId} IS NULL OR ${verifiedBots.deviceId} = '') AND ${verifiedBots.hidden} IS NOT TRUE`);
+
+      if (nameless.length > 0) {
+        const pools = await db.select({
+          agentPublicKey: trackedPools.agentPublicKey,
+          tokenSymbol: trackedPools.tokenSymbol,
+          tokenName: trackedPools.tokenName,
+        })
+          .from(trackedPools)
+          .where(sql`${trackedPools.agentPublicKey} IS NOT NULL`);
+
+        const poolMap = new Map<string, string>();
+        for (const p of pools) {
+          if (p.agentPublicKey && p.tokenSymbol && !poolMap.has(p.agentPublicKey)) {
+            poolMap.set(p.agentPublicKey, p.tokenSymbol);
+          }
+        }
+
+        let named = 0;
+        for (const agent of nameless) {
+          const fallbackName = poolMap.get(agent.publicKey);
+          if (fallbackName) {
+            await db.update(verifiedBots)
+              .set({ deviceId: fallbackName })
+              .where(eq(verifiedBots.id, agent.id));
+            named++;
+            console.log(`[onchain-sync] Auto-named agent ${agent.publicKey.slice(0, 12)}... → "${fallbackName}"`);
+          }
+        }
+        if (named > 0) {
+          console.log(`[onchain-sync] Auto-named ${named} agents from token symbols`);
+          updated += named;
+        }
+      }
+    } catch (nameErr: any) {
+      console.error("[onchain-sync] Name backfill error:", nameErr.message);
     }
 
     const duration = ((Date.now() - startTime) / 1000).toFixed(1);
