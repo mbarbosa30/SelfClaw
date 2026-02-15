@@ -810,7 +810,13 @@
           if (step.done) {
             html += '<div class="pipeline-step-info"><a href="https://celoscan.io/address/' + esc(agent.wallet.address) + '" target="_blank">' + esc(truncAddr(agent.wallet.address)) + '</a></div>';
           } else if (step.status === 'active') {
-            html += '<div class="pipeline-step-action"><button class="action-btn primary" onclick="actionCreateWallet(' + idx + ', this)">Create Wallet</button></div>';
+            html += '<div class="pipeline-step-action">';
+            html += '<div style="font-size:0.7rem;color:var(--text-secondary);margin-bottom:0.35rem;font-family:var(--font-mono);">Generate your own EVM wallet, then register the address here:</div>';
+            html += '<div style="display:flex;gap:0.35rem;">';
+            html += '<input type="text" id="wallet-addr-' + idx + '" placeholder="0x..." style="flex:1;padding:0.35rem 0.5rem;border:2px solid var(--border-heavy);font-family:var(--font-mono);font-size:0.75rem;background:var(--bg);outline:none;" />';
+            html += '<button class="action-btn primary" onclick="actionRegisterWallet(' + idx + ', this)">Register</button>';
+            html += '</div>';
+            html += '</div>';
           }
         } else if (step.key === 'gas') {
           if (step.done) {
@@ -963,28 +969,36 @@
       window.location.reload();
     }
 
-    function actionCreateWallet(idx, btn) {
+    function actionRegisterWallet(idx, btn) {
       var agents = (_dashboardData && _dashboardData.agents) || [];
       var agent = agents[idx];
       if (!agent) return;
       var pubKey = agent.publicKey;
+      var addrInput = document.getElementById('wallet-addr-' + idx);
+      var address = addrInput ? addrInput.value.trim() : '';
+
+      if (!address || !/^0x[a-fA-F0-9]{40}$/.test(address)) {
+        showPipelineMsg(idx, 'Enter a valid EVM wallet address (0x... format, 42 characters)', 'error');
+        return;
+      }
 
       setBtnLoading(btn, true);
       clearPipelineMsg(idx);
 
-      fetch('/api/selfclaw/v1/my-agents/' + encodeURIComponent(pubKey) + '/setup-wallet', {
+      fetch('/api/selfclaw/v1/my-agents/' + encodeURIComponent(pubKey) + '/register-wallet', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({})
+        body: JSON.stringify({ address: address })
       })
       .then(function(res) { return res.json(); })
       .then(function(data) {
         setBtnLoading(btn, false);
         if (data.success && data.address) {
-          showPkModal(data.address, data.privateKey || '', pubKey);
+          showPipelineMsg(idx, 'Wallet registered: ' + data.address, 'success');
+          setTimeout(function() { reloadCurrentDashboard(); }, 1500);
         } else {
-          showPipelineMsg(idx, data.error || 'Failed to create wallet', 'error');
+          showPipelineMsg(idx, data.error || 'Failed to register wallet', 'error');
         }
       })
       .catch(function(err) {

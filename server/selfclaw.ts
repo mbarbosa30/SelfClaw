@@ -8,7 +8,6 @@ import { SelfAppBuilder } from "@selfxyz/qrcode";
 import crypto from "crypto";
 import * as ed from "@noble/ed25519";
 import { createAgentWallet, getAgentWallet, getAgentWalletByHumanId, sendGasSubsidy, getGasWalletInfo, switchWallet } from "../lib/secure-wallet.js";
-import { encryptPrivateKey, getDecryptedWalletKey } from "./wallet-crypto.js";
 import { erc8004Service } from "../lib/erc8004.js";
 import { getReferencePrices, getAgentTokenPrice, getAllAgentTokenPrices, formatPrice, formatMarketCap } from "../lib/price-oracle.js";
 import { generateRegistrationFile } from "../lib/erc8004-config.js";
@@ -1904,7 +1903,7 @@ router.post("/v1/request-selfclaw-sponsorship", verificationLimiter, async (req:
     if (wallet.length === 0) {
       return res.status(403).json({
         error: "Agent must have a wallet created through SelfClaw before requesting sponsorship.",
-        step: "Create a wallet first via POST /api/selfclaw/v1/my-agents/:publicKey/create-wallet",
+        step: "Register a wallet first via POST /api/selfclaw/v1/my-agents/:publicKey/register-wallet with { address: '0x...' }",
       });
     }
 
@@ -3508,7 +3507,7 @@ router.post("/v1/register-erc8004", verificationLimiter, async (req: Request, re
     
     const walletInfo = await getAgentWallet(auth.publicKey);
     if (!walletInfo || !walletInfo.address) {
-      return res.status(400).json({ error: "No wallet found. Create a wallet first via POST /v1/create-wallet." });
+      return res.status(400).json({ error: "No wallet found. Register a wallet first via POST /v1/create-wallet with { walletAddress: '0x...' }." });
     }
     
     if (!erc8004Service.isReady()) {
@@ -5284,7 +5283,7 @@ router.get("/v1/my-agents", async (req: any, res: Response) => {
   }
 });
 
-router.post("/v1/my-agents/:publicKey/setup-wallet", verificationLimiter, async (req: any, res: Response) => {
+router.post("/v1/my-agents/:publicKey/register-wallet", verificationLimiter, async (req: any, res: Response) => {
   try {
     const auth = await authenticateHumanForAgent(req, res, req.params.publicKey);
     if (!auth) return;
@@ -5299,33 +5298,45 @@ router.post("/v1/my-agents/:publicKey/setup-wallet", verificationLimiter, async 
       });
     }
 
-    const { Wallet } = await import('ethers');
-    const wallet = Wallet.createRandom();
+    const { address } = req.body;
+    if (!address || typeof address !== 'string' || !/^0x[a-fA-F0-9]{40}$/.test(address)) {
+      return res.status(400).json({
+        error: "Valid EVM wallet address required (0x... format, 42 characters).",
+        hint: "Generate your own wallet using ethers.js, viem, MetaMask, or any EVM wallet tool. Then register the address here.",
+      });
+    }
 
-    const result = await createAgentWallet(auth.humanId, req.params.publicKey, wallet.address);
+    const result = await createAgentWallet(auth.humanId, req.params.publicKey, address);
     if (!result.success) {
       return res.status(400).json({ error: result.error });
     }
 
-    logActivity("wallet_creation", auth.humanId, req.params.publicKey, auth.agent.deviceId, {
-      address: wallet.address,
-      method: "dashboard"
+    logActivity("wallet_registration", auth.humanId, req.params.publicKey, auth.agent.deviceId, {
+      address,
+      method: "dashboard-self-custody"
     });
-
-    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
-    res.setHeader("Pragma", "no-cache");
-    res.setHeader("Expires", "0");
 
     res.json({
       success: true,
-      address: wallet.address,
-      privateKey: wallet.privateKey,
-      warning: "SAVE THIS PRIVATE KEY NOW. It will NOT be shown again. SelfClaw never stores private keys.",
+      address,
+      message: "Wallet address registered. You maintain full custody of your private key — SelfClaw never stores or accesses it.",
+      nextSteps: [
+        "1. Request gas: POST /api/selfclaw/v1/my-agents/" + req.params.publicKey + "/request-gas",
+        "2. Register onchain identity: POST /api/selfclaw/v1/my-agents/" + req.params.publicKey + "/register-erc8004",
+      ],
     });
   } catch (error: any) {
-    console.error("[selfclaw] my-agents setup-wallet error:", error);
+    console.error("[selfclaw] my-agents register-wallet error:", error);
     res.status(500).json({ error: error.message });
   }
+});
+
+router.post("/v1/my-agents/:publicKey/setup-wallet", verificationLimiter, async (req: any, res: Response) => {
+  res.status(301).json({
+    error: "This endpoint has been removed. Use POST /api/selfclaw/v1/my-agents/:publicKey/register-wallet with { address: '0x...' } instead.",
+    hint: "SelfClaw no longer generates wallets. Create your own wallet and register its address.",
+    newEndpoint: "/api/selfclaw/v1/my-agents/" + req.params.publicKey + "/register-wallet",
+  });
 });
 
 router.post("/v1/my-agents/:publicKey/request-gas", verificationLimiter, async (req: any, res: Response) => {
@@ -5368,7 +5379,7 @@ router.post("/v1/my-agents/:publicKey/deploy-token", verificationLimiter, async 
 
     const walletInfo = await getAgentWallet(req.params.publicKey);
     if (!walletInfo?.address) {
-      return res.status(400).json({ error: "No wallet found. Create a wallet first." });
+      return res.status(400).json({ error: "No wallet found. Register your wallet address first." });
     }
 
     const decimals = 18;
@@ -5529,7 +5540,7 @@ router.post("/v1/my-agents/:publicKey/request-sponsorship", verificationLimiter,
     if (wallet.length === 0) {
       return res.status(403).json({
         error: "Agent must have a wallet created through SelfClaw before requesting sponsorship.",
-        step: "Create a wallet first via POST /api/selfclaw/v1/my-agents/:publicKey/create-wallet",
+        step: "Register a wallet first via POST /api/selfclaw/v1/my-agents/:publicKey/register-wallet with { address: '0x...' }",
       });
     }
 
@@ -5751,7 +5762,7 @@ router.post("/v1/my-agents/:publicKey/register-erc8004", verificationLimiter, as
 
     const walletInfo = await getAgentWallet(req.params.publicKey);
     if (!walletInfo || !walletInfo.address) {
-      return res.status(400).json({ error: "No wallet found. Create a wallet first." });
+      return res.status(400).json({ error: "No wallet found. Register your wallet address first." });
     }
 
     if (!erc8004Service.isReady()) {
@@ -5816,31 +5827,8 @@ router.post("/v1/my-agents/:publicKey/register-erc8004", verificationLimiter, as
     const txCost = estimatedGas * gasPrice;
     const hasSufficientGas = balance >= txCost;
 
-    const privateKey = await getDecryptedWalletKey(walletInfo, auth.humanId);
-    if (privateKey && hasSufficientGas) {
-      const { Wallet, JsonRpcProvider } = await import('ethers');
-      const provider = new JsonRpcProvider('https://forno.celo.org');
-      const signer = new Wallet(privateKey, provider);
-      const tx = await signer.sendTransaction({
-        to: config.identityRegistry, data: callData,
-        gasLimit: estimatedGas, gasPrice, chainId: 42220, value: 0, nonce,
-      });
-
-      logActivity("erc8004_registration", auth.humanId, req.params.publicKey, auth.agent.deviceId, {
-        walletAddress: walletInfo.address, method: "dashboard-signed",
-        registryAddress: config.identityRegistry, txHash: tx.hash,
-      });
-
-      return res.json({
-        success: true, mode: "signed", txHash: tx.hash,
-        agentURI: registrationURL, walletAddress: walletInfo.address,
-        celoscanUrl: `https://celoscan.io/tx/${tx.hash}`,
-        nextStep: `Call POST /api/selfclaw/v1/my-agents/${req.params.publicKey}/confirm-erc8004 with {txHash: "${tx.hash}"} after confirmation.`,
-      });
-    }
-
     logActivity("erc8004_registration", auth.humanId, req.params.publicKey, auth.agent.deviceId, {
-      walletAddress: walletInfo.address, method: "dashboard-unsigned",
+      walletAddress: walletInfo.address, method: "self-custody-unsigned",
       registryAddress: config.identityRegistry,
     });
 
@@ -6157,7 +6145,7 @@ router.get("/v1/my-agents/:publicKey/briefing", async (req: any, res: Response) 
     lines.push(``);
 
     const nudges: { text: string; action: string; curl: string }[] = [];
-    if (!hasWallet) nudges.push({ text: 'Create a wallet to start your onchain journey.', action: 'setup-wallet', curl: '' });
+    if (!hasWallet) nudges.push({ text: 'Register your wallet address to start your onchain journey.', action: 'register-wallet', curl: '' });
     else if (!hasGas) nudges.push({ text: 'Request gas to cover transaction fees.', action: 'request-gas', curl: '' });
     if (hasWallet && !hasErc8004) nudges.push({ text: 'Register your ERC-8004 onchain identity for credibility.', action: 'register-erc8004', curl: '' });
     if (hasErc8004 && !hasToken && !hasPlan) nudges.push({ text: 'Plan and deploy a token to power your economy.', action: 'deploy-token', curl: '' });
@@ -6230,7 +6218,7 @@ async function authenticateHumanForMiniclaw(req: any, res: Response, miniclawId:
   return { humanId, miniclaw: results[0] };
 }
 
-router.post("/v1/miniclaws/:id/setup-wallet", verificationLimiter, async (req: any, res: Response) => {
+router.post("/v1/miniclaws/:id/register-wallet", verificationLimiter, async (req: any, res: Response) => {
   try {
     const auth = await authenticateHumanForMiniclaw(req, res, req.params.id);
     if (!auth) return;
@@ -6243,47 +6231,42 @@ router.post("/v1/miniclaws/:id/setup-wallet", verificationLimiter, async (req: a
         alreadyExists: true,
         address: existingWallet.address,
         gasReceived: existingWallet.gasReceived,
-        keyStored: !!existingWallet.encryptedPrivateKey,
       });
     }
 
-    const { Wallet } = await import('ethers');
-    const wallet = Wallet.createRandom();
+    const { address } = req.body;
+    if (!address || typeof address !== 'string' || !/^0x[a-fA-F0-9]{40}$/.test(address)) {
+      return res.status(400).json({
+        error: "Valid EVM wallet address required (0x... format, 42 characters).",
+        hint: "Generate your own wallet using ethers.js, viem, MetaMask, or any EVM wallet tool. Then register the address here.",
+      });
+    }
 
-    const result = await createAgentWallet(auth.humanId, mcPublicKey, wallet.address);
+    const result = await createAgentWallet(auth.humanId, mcPublicKey, address);
     if (!result.success) {
       return res.status(400).json({ error: result.error });
     }
 
-    const { encrypted, iv, tag } = encryptPrivateKey(wallet.privateKey, auth.humanId);
-    await db.update(agentWallets)
-      .set({
-        encryptedPrivateKey: encrypted,
-        encryptionIv: iv,
-        encryptionTag: tag,
-        updatedAt: new Date(),
-      })
-      .where(eq(agentWallets.publicKey, mcPublicKey));
-
-    logActivity("wallet_creation", auth.humanId, mcPublicKey, "miniclaw", {
-      address: wallet.address, method: "miniclaw-dashboard", miniclawId: req.params.id, keyStored: true
+    logActivity("wallet_registration", auth.humanId, mcPublicKey, "miniclaw", {
+      address, method: "miniclaw-self-custody", miniclawId: req.params.id
     });
-
-    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
-    res.setHeader("Pragma", "no-cache");
-    res.setHeader("Expires", "0");
 
     res.json({
       success: true,
-      address: wallet.address,
-      privateKey: wallet.privateKey,
-      keyStored: true,
-      warning: "Your private key is securely encrypted and stored. You can also save a backup copy above.",
+      address,
+      message: "Wallet address registered. You maintain full custody of your private key.",
     });
   } catch (error: any) {
-    console.error("[selfclaw] miniclaw setup-wallet error:", error);
+    console.error("[selfclaw] miniclaw register-wallet error:", error);
     res.status(500).json({ error: error.message });
   }
+});
+
+router.post("/v1/miniclaws/:id/setup-wallet", verificationLimiter, async (req: any, res: Response) => {
+  res.status(301).json({
+    error: "This endpoint has been removed. Use POST /api/selfclaw/v1/miniclaws/:id/register-wallet with { address: '0x...' } instead.",
+    hint: "SelfClaw no longer generates wallets. Create your own wallet and register its address.",
+  });
 });
 
 router.post("/v1/miniclaws/:id/request-gas", verificationLimiter, async (req: any, res: Response) => {
@@ -6328,7 +6311,7 @@ router.post("/v1/miniclaws/:id/deploy-token", verificationLimiter, async (req: a
 
     const walletInfo = await getAgentWallet(mcPublicKey);
     if (!walletInfo?.address) {
-      return res.status(400).json({ error: "No wallet found. Create a wallet first." });
+      return res.status(400).json({ error: "No wallet found. Register your wallet address first." });
     }
 
     const decimals = 18;
@@ -6359,38 +6342,8 @@ router.post("/v1/miniclaws/:id/deploy-token", verificationLimiter, async (req: a
     const balance = await viemPublicClient.getBalance({ address: fromAddr });
     const txCost = estimatedGas * gasPrice;
 
-    const privateKey = await getDecryptedWalletKey(walletInfo, auth.humanId);
-    if (privateKey && balance >= txCost) {
-      const { Wallet, JsonRpcProvider } = await import('ethers');
-      const provider = new JsonRpcProvider('https://forno.celo.org');
-      const signer = new Wallet(privateKey, provider);
-      const tx = await signer.sendTransaction({
-        data: deployData,
-        gasLimit: estimatedGas,
-        gasPrice,
-        chainId: 42220,
-        value: 0,
-        nonce,
-      });
-
-      logActivity("token_deployment", auth.humanId, mcPublicKey, "miniclaw", {
-        predictedTokenAddress: predictedAddress, symbol, name, supply: initialSupply,
-        method: "server-signed", miniclawId: req.params.id, txHash: tx.hash,
-      });
-
-      return res.json({
-        success: true,
-        mode: "signed",
-        txHash: tx.hash,
-        predictedTokenAddress: predictedAddress,
-        name, symbol, supply: initialSupply,
-        celoscanUrl: `https://celoscan.io/tx/${tx.hash}`,
-        nextStep: `Token deployment submitted. Call POST /api/selfclaw/v1/miniclaws/${req.params.id}/register-token with {tokenAddress: "${predictedAddress}", txHash: "${tx.hash}"} after confirmation.`,
-      });
-    }
-
     logActivity("token_deployment", auth.humanId, mcPublicKey, "miniclaw", {
-      predictedTokenAddress: predictedAddress, symbol, name, supply: initialSupply, method: "miniclaw-dashboard", miniclawId: req.params.id
+      predictedTokenAddress: predictedAddress, symbol, name, supply: initialSupply, method: "self-custody-unsigned", miniclawId: req.params.id
     });
 
     res.json({
@@ -6513,7 +6466,7 @@ router.post("/v1/miniclaws/:id/register-erc8004", verificationLimiter, async (re
     const mc = auth.miniclaw;
     const walletInfo = await getAgentWallet(mcPublicKey);
     if (!walletInfo || !walletInfo.address) {
-      return res.status(400).json({ error: "No wallet found. Create a wallet first via setup-wallet." });
+      return res.status(400).json({ error: "No wallet found. Register your wallet address first via register-wallet." });
     }
 
     if (!erc8004Service.isReady()) {
@@ -6589,41 +6542,8 @@ router.post("/v1/miniclaws/:id/register-erc8004", verificationLimiter, async (re
     const txCost = estimatedGas * gasPrice;
     const hasSufficientGas = balance >= txCost;
 
-    const privateKey = await getDecryptedWalletKey(walletInfo, auth.humanId);
-    if (privateKey && hasSufficientGas) {
-      const { Wallet, JsonRpcProvider } = await import('ethers');
-      const provider = new JsonRpcProvider('https://forno.celo.org');
-      const signer = new Wallet(privateKey, provider);
-      const tx = await signer.sendTransaction({
-        to: config.identityRegistry,
-        data: callData,
-        gasLimit: estimatedGas,
-        gasPrice,
-        chainId: 42220,
-        value: 0,
-        nonce,
-      });
-
-      logActivity("erc8004_registration", auth.humanId, mcPublicKey, "miniclaw", {
-        walletAddress: walletInfo.address, method: "server-signed", miniclawId: req.params.id,
-        registryAddress: config.identityRegistry, txHash: tx.hash,
-      });
-
-      return res.json({
-        success: true,
-        mode: "signed",
-        txHash: tx.hash,
-        agentURI: registrationURL,
-        agentName,
-        description,
-        walletAddress: walletInfo.address,
-        celoscanUrl: `https://celoscan.io/tx/${tx.hash}`,
-        nextStep: `ERC-8004 registration submitted. Call POST /api/selfclaw/v1/miniclaws/${req.params.id}/confirm-erc8004 with {txHash: "${tx.hash}"} after confirmation.`,
-      });
-    }
-
     logActivity("erc8004_registration", auth.humanId, mcPublicKey, "miniclaw", {
-      walletAddress: walletInfo.address, method: "miniclaw-dashboard", miniclawId: req.params.id,
+      walletAddress: walletInfo.address, method: "self-custody-unsigned", miniclawId: req.params.id,
       registryAddress: config.identityRegistry,
     });
 
