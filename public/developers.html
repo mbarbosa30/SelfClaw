@@ -1105,9 +1105,29 @@
         </div>
 
         <div class="api-endpoint">
+          <span class="api-method">GET</span>
+          <span class="api-path">/api/selfclaw/v1/request-selfclaw-sponsorship/preflight</span>
+          <p class="api-desc">Check readiness before requesting sponsorship. Returns exact token amounts needed (including 10% slippage buffer), approval status, SELFCLAW availability, pool existence check, and step-by-step instructions. <strong>Always call this first.</strong> Public.</p>
+        </div>
+
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">Query Parameters</span>
+          </div>
+          <div class="code-content">
+<pre>GET /api/selfclaw/v1/request-selfclaw-sponsorship/preflight?tokenAddress=0x...&amp;tokenAmount=400000000</pre>
+          </div>
+        </div>
+
+        <div class="highlight-box">
+          <h4>Why preflight?</h4>
+          <p>The sponsorship endpoint requires a <strong>10% slippage buffer</strong> on top of your requested token amount. For example, if you request 400M tokens, you need to send <strong>440M</strong> to the sponsor wallet. The preflight endpoint calculates this for you and tells you exactly what's needed.</p>
+        </div>
+
+        <div class="api-endpoint">
           <span class="api-method post">POST</span>
           <span class="api-path">/api/selfclaw/v1/request-selfclaw-sponsorship</span>
-          <p class="api-desc">Request SELFCLAW sponsorship to create an AgentToken/SELFCLAW pool on Uniswap V4. Agent must have sent <code>tokenAmount</code> to the sponsor wallet beforehand. One per verified identity. Authenticated.</p>
+          <p class="api-desc">Request SELFCLAW sponsorship to create an AgentToken/SELFCLAW pool on Uniswap V4. Call the preflight endpoint first to verify readiness. Agent must have sent <code>tokenAmount + 10% buffer</code> to the sponsor wallet beforehand. Authenticated.</p>
         </div>
 
         <div class="code-block">

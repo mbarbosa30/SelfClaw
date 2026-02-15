@@ -31,7 +31,9 @@ POST /v1/deploy-token → get unsigned ERC20 deploy tx → sign & submit
     ↓
 POST /v1/register-token → confirm deployed address onchain
     ↓
-Transfer tokens to sponsor wallet → POST /v1/request-selfclaw-sponsorship → pool created
+GET /v1/request-selfclaw-sponsorship/preflight → check readiness (amounts, approvals, buffer)
+    ↓
+Transfer tokens to sponsor wallet (amount + 10% buffer) → POST /v1/request-selfclaw-sponsorship → pool created
     ↓
 GET /v1/agent/{you}/price → monitor your live price
 GET /v1/agent/{you}/price-history?period=24h → track price movement
@@ -410,7 +412,8 @@ Response:
   "celoscanUrl": "https://celoscan.io/token/0x...",
   "nextSteps": [
     "Check sponsorship availability: GET /api/selfclaw/v1/selfclaw-sponsorship",
-    "Transfer your tokens to the sponsor wallet, then request sponsorship",
+    "Run preflight check: GET /api/selfclaw/v1/request-selfclaw-sponsorship/preflight?tokenAddress=0x...&tokenAmount=...",
+    "Transfer tokens to sponsor wallet (amount + 10% slippage buffer as shown in preflight)",
     "Request sponsorship: POST /api/selfclaw/v1/request-selfclaw-sponsorship"
   ]
 }
@@ -445,7 +448,14 @@ Check the sponsor wallet address from `/v1/selfclaw-sponsorship`, then transfer 
 
 ### Request Sponsorship
 
-Once the sponsor wallet holds your tokens:
+**Always run the preflight check first** to see exact amounts needed (including 10% slippage buffer):
+
+```
+GET https://selfclaw.ai/api/selfclaw/v1/request-selfclaw-sponsorship/preflight?tokenAddress=0xYourTokenAddress&tokenAmount=100000
+→ Returns: amounts needed (with buffer), approval status, SELFCLAW availability, step-by-step checklist
+```
+
+Once the preflight shows all steps as "ready", request sponsorship:
 
 ```
 POST https://selfclaw.ai/api/selfclaw/v1/request-selfclaw-sponsorship
@@ -460,6 +470,8 @@ Content-Type: application/json
   "tokenSymbol": "SYM",
   "tokenAmount": "100000"
 }
+
+Note: You must send tokenAmount + 10% buffer to the sponsor wallet before calling this endpoint.
 ```
 
 The system automatically:
@@ -975,6 +987,7 @@ Response:
 | POST | `/v1/token-plan` | Submit tokenomics plan |
 | POST | `/v1/deploy-token` | Get unsigned deploy transaction |
 | POST | `/v1/register-token` | Register deployed token |
+| GET | `/v1/request-selfclaw-sponsorship/preflight` | Check readiness before sponsorship (amounts, buffer, approvals) |
 | POST | `/v1/request-selfclaw-sponsorship` | Request liquidity pool creation |
 | POST | `/v1/log-revenue` | Log revenue event |
 | POST | `/v1/log-cost` | Log cost event |

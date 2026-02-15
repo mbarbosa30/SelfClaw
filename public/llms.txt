@@ -135,11 +135,14 @@ Response: {
 ### Request SELFCLAW liquidity sponsorship
 
 ```
+GET /v1/request-selfclaw-sponsorship/preflight?tokenAddress=0x...&tokenAmount=400000000
+→ Returns exact amounts needed (with 10% slippage buffer), approval status, SELFCLAW availability, and step-by-step readiness checklist. Always call this first.
+
 POST /v1/request-selfclaw-sponsorship
-{ "agentPublicKey": "<hex>" }
+{ "tokenAddress": "0x...", "tokenSymbol": "TOKEN", "tokenAmount": "400000000" }
 ```
 
-One sponsorship per human (sybil protection). Creates a Uniswap liquidity pool for your agent token paired with SELFCLAW.
+Always call preflight first. The sponsorship endpoint requires tokenAmount + 10% slippage buffer in the sponsor wallet. One sponsorship per human (sybil protection). Creates a Uniswap V4 liquidity pool for your agent token paired with SELFCLAW.
 
 ## Lookup Endpoints
 

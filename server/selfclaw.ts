@@ -1685,6 +1685,170 @@ router.get("/v1/sponsorship-simulator", publicApiLimiter, async (req: Request, r
   }
 });
 
+router.get("/v1/request-selfclaw-sponsorship/preflight", publicApiLimiter, async (req: Request, res: Response) => {
+  try {
+    const { tokenAddress, tokenAmount } = req.query;
+
+    if (!tokenAddress || !tokenAmount) {
+      return res.status(400).json({
+        error: "Missing required query parameters: tokenAddress, tokenAmount",
+        example: "/api/selfclaw/v1/request-selfclaw-sponsorship/preflight?tokenAddress=0x...&tokenAmount=400000000"
+      });
+    }
+
+    const {
+      getSelfclawBalance, getTokenBalance, getSponsorAddress,
+      computePoolId, getPoolState, checkTokenApprovals,
+    } = await import("../lib/uniswap-v4.js");
+
+    const rawSponsorKey = process.env.SELFCLAW_SPONSOR_PRIVATE_KEY || process.env.CELO_PRIVATE_KEY;
+    const sponsorKey = rawSponsorKey && !rawSponsorKey.startsWith('0x') ? `0x${rawSponsorKey}` : rawSponsorKey;
+    const sponsorAddress = getSponsorAddress(sponsorKey);
+    const selfclawAddress = "0xCD88f99Adf75A9110c0bcd22695A32A20eC54ECb";
+
+    const requestedAmount = parseFloat(tokenAmount as string);
+    const slippageBuffer = 0.10;
+    const requiredWithBuffer = Math.ceil(requestedAmount * (1 + slippageBuffer));
+    const { parseUnits } = await import("viem");
+    const requiredWithBufferWei = parseUnits(requiredWithBuffer.toString(), 18);
+
+    const [agentTokenBalance, selfclawBalance] = await Promise.all([
+      getTokenBalance(tokenAddress as string, 18, sponsorKey),
+      getSelfclawBalance(sponsorKey),
+    ]);
+
+    const heldAmount = parseFloat(agentTokenBalance);
+    const selfclawAvailable = parseFloat(selfclawBalance);
+    const selfclawForPool = Math.floor(selfclawAvailable * 0.5);
+
+    const tokenLower = (tokenAddress as string).toLowerCase();
+    const selfclawLower = selfclawAddress.toLowerCase();
+    const token0 = tokenLower < selfclawLower ? (tokenAddress as string) : selfclawAddress;
+    const token1 = tokenLower < selfclawLower ? selfclawAddress : (tokenAddress as string);
+    const feeTier = 10000;
+    const tickSpacing = 200;
+    const v4PoolId = computePoolId(token0, token1, feeTier, tickSpacing);
+
+    let poolExists = false;
+    try {
+      const poolState = await getPoolState(v4PoolId as `0x${string}`);
+      if (poolState.liquidity !== '0') poolExists = true;
+    } catch (_) {}
+
+    const approvals = await checkTokenApprovals(
+      tokenAddress as `0x${string}`,
+      sponsorAddress as `0x${string}`,
+      requiredWithBufferWei,
+    );
+
+    const selfclawApprovals = await checkTokenApprovals(
+      selfclawAddress as `0x${string}`,
+      sponsorAddress as `0x${string}`,
+      parseUnits(selfclawForPool.toString(), 18),
+    );
+
+    const steps: { step: number; action: string; status: string; detail?: string }[] = [];
+    let stepNum = 1;
+
+    if (heldAmount < requiredWithBuffer) {
+      const shortfall = requiredWithBuffer - heldAmount;
+      steps.push({
+        step: stepNum++,
+        action: `Send ${shortfall.toLocaleString()} tokens to sponsor wallet`,
+        status: 'required',
+        detail: `Sponsor wallet has ${heldAmount.toLocaleString()} of your token, needs ${requiredWithBuffer.toLocaleString()} (${requestedAmount.toLocaleString()} + ${slippageBuffer * 100}% slippage buffer). Send at least ${shortfall.toLocaleString()} more to ${sponsorAddress}.`,
+      });
+    } else {
+      steps.push({
+        step: stepNum++,
+        action: 'Agent tokens in sponsor wallet',
+        status: 'ready',
+        detail: `Sponsor wallet holds ${heldAmount.toLocaleString()} tokens, needs ${requiredWithBuffer.toLocaleString()}.`,
+      });
+    }
+
+    if (selfclawAvailable <= 0) {
+      steps.push({
+        step: stepNum++,
+        action: 'SELFCLAW liquidity available',
+        status: 'blocked',
+        detail: 'No SELFCLAW available in sponsor wallet. Trading fees have not yet accrued.',
+      });
+    } else {
+      steps.push({
+        step: stepNum++,
+        action: 'SELFCLAW liquidity available',
+        status: 'ready',
+        detail: `${selfclawForPool.toLocaleString()} SELFCLAW will be paired (50% of ${selfclawAvailable.toLocaleString()} available).`,
+      });
+    }
+
+    if (approvals.erc20ApprovalNeeded || approvals.permit2ApprovalNeeded || approvals.permit2Expired) {
+      steps.push({
+        step: stepNum++,
+        action: 'Token approvals (ERC-20 + Permit2)',
+        status: 'auto',
+        detail: 'Approvals are handled automatically by the sponsor wallet during pool creation. No action needed from you.',
+      });
+    } else {
+      steps.push({
+        step: stepNum++,
+        action: 'Token approvals (ERC-20 + Permit2)',
+        status: 'ready',
+      });
+    }
+
+    if (poolExists) {
+      steps.push({
+        step: stepNum++,
+        action: 'Pool does not already exist',
+        status: 'blocked',
+        detail: 'A V4 pool already exists for this token pair with active liquidity.',
+      });
+    } else {
+      steps.push({
+        step: stepNum++,
+        action: 'Pool does not already exist',
+        status: 'ready',
+      });
+    }
+
+    const allReady = steps.every(s => s.status === 'ready' || s.status === 'auto');
+
+    res.json({
+      ready: allReady,
+      sponsorWallet: sponsorAddress,
+      tokenAddress,
+      amounts: {
+        requested: requestedAmount.toLocaleString(),
+        slippageBuffer: `${slippageBuffer * 100}%`,
+        requiredWithBuffer: requiredWithBuffer.toLocaleString(),
+        currentlyHeld: heldAmount.toLocaleString(),
+        shortfall: Math.max(0, requiredWithBuffer - heldAmount).toLocaleString(),
+      },
+      selfclaw: {
+        available: selfclawAvailable.toLocaleString(),
+        forPool: selfclawForPool.toLocaleString(),
+        sufficient: selfclawAvailable > 0,
+      },
+      approvals: {
+        agentToken: approvals,
+        selfclaw: selfclawApprovals,
+        note: 'Approvals are managed by the sponsor wallet automatically. You do not need to approve anything.',
+      },
+      poolExists,
+      v4PoolId,
+      steps,
+      nextAction: allReady
+        ? 'Call POST /api/selfclaw/v1/request-selfclaw-sponsorship with { tokenAddress, tokenSymbol, tokenAmount } to create the pool.'
+        : `Resolve the issues above before calling the sponsorship endpoint. ${steps.find(s => s.status === 'required')?.detail || steps.find(s => s.status === 'blocked')?.detail || ''}`,
+    });
+  } catch (error: any) {
+    console.error("[selfclaw] sponsorship preflight error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 router.post("/v1/request-selfclaw-sponsorship", verificationLimiter, async (req: Request, res: Response) => {
   let sponsorshipReq: any;
   try {
@@ -1747,14 +1911,26 @@ router.post("/v1/request-selfclaw-sponsorship", verificationLimiter, async (req:
     const sponsorAddress = getSponsorAddress(sponsorKey);
 
     const agentTokenBalance = await getTokenBalance(tokenAddress, 18, sponsorKey);
-    const requiredAmount = parseFloat(tokenAmount);
+    const requestedAmount = parseFloat(tokenAmount);
+    const slippageBuffer = 0.10;
+    const requiredWithBuffer = Math.ceil(requestedAmount * (1 + slippageBuffer));
     const heldAmount = parseFloat(agentTokenBalance);
 
-    if (heldAmount < requiredAmount) {
+    if (heldAmount < requiredWithBuffer) {
+      const shortfall = requiredWithBuffer - heldAmount;
       return res.status(400).json({
-        error: `Sponsor wallet does not hold enough of your agent token. Has ${agentTokenBalance}, needs ${tokenAmount}`,
+        error: `Sponsor wallet does not hold enough of your agent token (including ${slippageBuffer * 100}% slippage buffer).`,
+        amounts: {
+          requested: requestedAmount,
+          slippageBuffer: `${slippageBuffer * 100}%`,
+          requiredWithBuffer,
+          currentlyHeld: heldAmount,
+          shortfall: Math.max(0, shortfall),
+        },
         sponsorWallet: sponsorAddress,
-        instructions: `Send ${tokenAmount} of your token (${tokenAddress}) to ${sponsorAddress} before requesting sponsorship`
+        instructions: `Send at least ${Math.max(0, shortfall).toLocaleString()} more tokens to ${sponsorAddress}. Total needed: ${requiredWithBuffer.toLocaleString()} (${requestedAmount.toLocaleString()} requested + ${slippageBuffer * 100}% slippage buffer).`,
+        preflightUrl: `/api/selfclaw/v1/request-selfclaw-sponsorship/preflight?tokenAddress=${tokenAddress}&tokenAmount=${tokenAmount}`,
+        retryable: true,
       });
     }
 
@@ -1766,7 +1942,8 @@ router.post("/v1/request-selfclaw-sponsorship", verificationLimiter, async (req:
     if (available <= 0) {
       return res.status(400).json({
         error: "No SELFCLAW available in sponsorship wallet. Fees not yet accrued.",
-        available: availableBalance
+        available: availableBalance,
+        preflightUrl: `/api/selfclaw/v1/request-selfclaw-sponsorship/preflight?tokenAddress=${tokenAddress}&tokenAmount=${tokenAmount}`,
       });
     }
 
@@ -1828,6 +2005,8 @@ router.post("/v1/request-selfclaw-sponsorship", verificationLimiter, async (req:
         error: result.error,
         retryable: true,
         message: "Pool creation failed but your tokens are still in the sponsor wallet. You can safely call this endpoint again to retry.",
+        preflightUrl: `/api/selfclaw/v1/request-selfclaw-sponsorship/preflight?tokenAddress=${tokenAddress}&tokenAmount=${tokenAmount}`,
+        suggestion: "Call the preflight endpoint first to verify all requirements are met before retrying.",
       });
     }
 

@@ -563,6 +563,39 @@ async function ensurePermit2Approval(
   }
 }
 
+export async function checkTokenApprovals(
+  tokenAddress: `0x${string}`,
+  ownerAddress: `0x${string}`,
+  requiredAmount: bigint,
+): Promise<{
+  balance: string;
+  balanceSufficient: boolean;
+  erc20AllowanceToPermit2: string;
+  erc20ApprovalNeeded: boolean;
+  permit2AllowanceToPositionManager: string;
+  permit2ApprovalNeeded: boolean;
+  permit2Expiry: number;
+  permit2Expired: boolean;
+}> {
+  const bal = await publicClient.readContract({ address: tokenAddress, abi: ERC20_ABI, functionName: 'balanceOf', args: [ownerAddress] }) as bigint;
+  const erc20 = await publicClient.readContract({ address: tokenAddress, abi: ERC20_ABI, functionName: 'allowance', args: [ownerAddress, PERMIT2] }) as bigint;
+  const p2 = await publicClient.readContract({ address: PERMIT2, abi: PERMIT2_ABI, functionName: 'allowance', args: [ownerAddress, tokenAddress, POSITION_MANAGER] });
+  const p2Amt = BigInt(p2[0]);
+  const p2Exp = Number(p2[1]);
+  const now = Math.floor(Date.now() / 1000);
+
+  return {
+    balance: formatUnits(bal, 18),
+    balanceSufficient: bal >= requiredAmount,
+    erc20AllowanceToPermit2: erc20 > 10n ** 30n ? 'unlimited' : formatUnits(erc20, 18),
+    erc20ApprovalNeeded: erc20 < requiredAmount,
+    permit2AllowanceToPositionManager: p2Amt > 10n ** 30n ? 'unlimited' : formatUnits(p2Amt, 18),
+    permit2ApprovalNeeded: p2Amt < requiredAmount,
+    permit2Expiry: p2Exp,
+    permit2Expired: p2Exp <= now,
+  };
+}
+
 function decodePositionInfo(info: bigint): { hasSubscriber: boolean; tickLower: number; tickUpper: number; poolId: `0x${string}` } {
   const poolId = ('0x' + (info >> 32n).toString(16).padStart(50, '0')) as `0x${string}`;
   const tickUpper = Number((info >> 8n) & 0xFFFFFFn) - 8388608;
