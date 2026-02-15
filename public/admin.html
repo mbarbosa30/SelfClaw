@@ -499,6 +499,23 @@
       </section>
 
       <section class="admin-section">
+        <h2 class="admin-section-title">Re-link Legacy Agent</h2>
+        <p style="color:var(--text-muted);font-size:0.75rem;margin-bottom:1rem;line-height:1.4;">Link a legacy verified agent to a new user account. Updates the humanId on the agent record and any associated wallet.</p>
+        <div style="display:flex;flex-direction:column;gap:0.75rem;max-width:520px;">
+          <div>
+            <label style="font-family:var(--mono);font-size:0.7rem;text-transform:uppercase;color:var(--text-muted);display:block;margin-bottom:0.25rem;">Agent Public Key</label>
+            <input id="relink-pubkey" type="text" placeholder="Ed25519 public key of the agent" style="width:100%;padding:0.5rem;border:2px solid var(--border-light);font-family:var(--mono);font-size:0.8rem;background:#fff;">
+          </div>
+          <div>
+            <label style="font-family:var(--mono);font-size:0.7rem;text-transform:uppercase;color:var(--text-muted);display:block;margin-bottom:0.25rem;">New Human ID</label>
+            <input id="relink-humanid" type="text" placeholder="humanId of the new owner" style="width:100%;padding:0.5rem;border:2px solid var(--border-light);font-family:var(--mono);font-size:0.8rem;background:#fff;">
+          </div>
+          <button onclick="relinkAgent()" style="align-self:flex-start;padding:0.5rem 1.5rem;background:var(--accent);color:#fff;border:2px solid var(--text);font-family:var(--mono);font-size:0.75rem;text-transform:uppercase;cursor:pointer;font-weight:700;">Re-link Agent</button>
+          <div id="relink-result" style="display:none;padding:0.75rem;border:2px solid var(--border-light);font-family:var(--mono);font-size:0.8rem;line-height:1.5;"></div>
+        </div>
+      </section>
+
+      <section class="admin-section">
         <h2 class="admin-section-title">Token Prices</h2>
         <div id="prices-loading" style="text-align:center;padding:2rem;color:var(--text-muted);"><span class="spinner"></span> Loading prices...</div>
         <div id="prices-content" style="display:none;">
@@ -2255,6 +2272,42 @@
         alert('Error: ' + e.message);
       });
     });
+
+    function relinkAgent() {
+      var pk = document.getElementById('relink-pubkey').value.trim();
+      var hid = document.getElementById('relink-humanid').value.trim();
+      var resultEl = document.getElementById('relink-result');
+      if (!pk || !hid) {
+        resultEl.style.display = 'block';
+        resultEl.style.borderColor = '#c00';
+        resultEl.innerHTML = 'Both fields are required.';
+        return;
+      }
+      resultEl.style.display = 'block';
+      resultEl.style.borderColor = 'var(--border-light)';
+      resultEl.innerHTML = 'Re-linking...';
+      fetch('/api/admin/relink-agent', {
+        method: 'POST',
+        headers: Object.assign({ 'Content-Type': 'application/json' }, authHeaders()),
+        body: JSON.stringify({ publicKey: pk, newHumanId: hid })
+      })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (data.success) {
+          resultEl.style.borderColor = 'var(--green-verify)';
+          resultEl.innerHTML = '<strong>Done.</strong> ' + esc(data.message) +
+            (data.walletUpdated ? '<br>Wallet record also updated.' : '<br>No wallet record found to update.');
+          loadAgentManagement();
+        } else {
+          resultEl.style.borderColor = '#c00';
+          resultEl.innerHTML = 'Error: ' + esc(data.error || 'Unknown error');
+        }
+      })
+      .catch(function(e) {
+        resultEl.style.borderColor = '#c00';
+        resultEl.innerHTML = 'Error: ' + esc(e.message);
+      });
+    }
 
     (function() {
       var token = getToken();

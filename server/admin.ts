@@ -1521,4 +1521,55 @@ router.delete("/agents/:publicKey", async (req: Request, res: Response) => {
   }
 });
 
+router.post("/relink-agent", async (req: Request, res: Response) => {
+  try {
+    if (!requireAdmin(req, res)) return;
+
+    const { publicKey, newHumanId } = req.body;
+    if (!publicKey || !newHumanId) {
+      return res.status(400).json({ error: "publicKey and newHumanId are required" });
+    }
+
+    const agents = await db.select().from(verifiedBots)
+      .where(sql`${verifiedBots.publicKey} = ${publicKey}`)
+      .limit(1);
+
+    if (!agents.length) {
+      return res.status(404).json({ error: `No agent found with publicKey ${publicKey.slice(0, 16)}...` });
+    }
+
+    const agent = agents[0];
+    const oldHumanId = agent.humanId || "(none)";
+
+    await db.update(verifiedBots)
+      .set({ humanId: newHumanId })
+      .where(sql`${verifiedBots.publicKey} = ${publicKey}`);
+
+    const wallets = await db.select().from(agentWallets)
+      .where(sql`${agentWallets.publicKey} = ${publicKey}`)
+      .limit(1);
+
+    if (wallets.length && wallets[0].humanId !== newHumanId) {
+      await db.update(agentWallets)
+        .set({ humanId: newHumanId })
+        .where(sql`${agentWallets.publicKey} = ${publicKey}`);
+    }
+
+    console.log(`[admin] Relinked agent ${agent.deviceId || publicKey.slice(0, 16)}... from humanId=${oldHumanId} to humanId=${newHumanId}`);
+
+    res.json({
+      success: true,
+      agentName: agent.deviceId || null,
+      publicKey: publicKey.slice(0, 16) + "...",
+      oldHumanId,
+      newHumanId,
+      walletUpdated: wallets.length > 0,
+      message: `Agent relinked from ${oldHumanId} to ${newHumanId}`,
+    });
+  } catch (error: any) {
+    console.error("[admin] relink-agent error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 export default router;
