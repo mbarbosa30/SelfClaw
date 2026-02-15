@@ -1269,13 +1269,15 @@ router.put("/token-management/:id", async (req: Request, res: Response) => {
   if (!requireAdmin(req, res)) return;
   try {
     const { id } = req.params;
-    const { hiddenFromRegistry, displayNameOverride, displaySymbolOverride, adminNotes } = req.body;
+    const { hiddenFromRegistry, displayNameOverride, displaySymbolOverride, adminNotes, agentPublicKey, humanId } = req.body;
 
     const updates: Record<string, any> = {};
     if (typeof hiddenFromRegistry === 'boolean') updates.hiddenFromRegistry = hiddenFromRegistry;
     if (displayNameOverride !== undefined) updates.displayNameOverride = displayNameOverride || null;
     if (displaySymbolOverride !== undefined) updates.displaySymbolOverride = displaySymbolOverride || null;
     if (adminNotes !== undefined) updates.adminNotes = adminNotes || null;
+    if (agentPublicKey !== undefined) updates.agentPublicKey = agentPublicKey || null;
+    if (humanId !== undefined) updates.humanId = humanId || null;
 
     if (Object.keys(updates).length === 0) {
       return res.status(400).json({ error: "No fields to update" });

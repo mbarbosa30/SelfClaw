@@ -299,8 +299,10 @@ async function initializeApp() {
       WHERE token_address = '0xC7ED254128840fc3EA461FAEBaA2D9F08c54b59D' AND (token_name = 'TOKEN' OR token_symbol = 'TOKEN');
     `);
     await pool.query(`
-      UPDATE tracked_pools SET token_name = 'PerkyJobs', token_symbol = 'PERKY', v4_position_token_id = '254'
-      WHERE token_address = '0x67aa5E5326C42EB0900C8A5d64e198FA6f305861' AND v4_position_token_id IS NULL;
+      UPDATE tracked_pools SET token_name = 'PerkyJobs', token_symbol = 'PERKY', v4_position_token_id = '254',
+        agent_public_key = 'MCowBQYDK2VwAyEAh4AuZQKsM38AS+ibNvqxt7zfgQwskKTLpfsidhaBDeY='
+      WHERE token_address = '0x67aa5E5326C42EB0900C8A5d64e198FA6f305861'
+        AND (agent_public_key IS NULL OR agent_public_key = '');
     `);
     await pool.query(`
       UPDATE sponsored_agents SET token_symbol = 'MSKT'
