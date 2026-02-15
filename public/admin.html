@@ -1782,6 +1782,22 @@
             d.appendChild(document.createTextNode(str));
             return d.innerHTML;
           }
+          function filterAgentType(type, btn) {
+            var table = document.getElementById('agentTable');
+            if (!table) return;
+            var rows = table.querySelectorAll('tbody tr');
+            rows.forEach(function(row) {
+              var rType = row.getAttribute('data-agenttype');
+              var rHidden = row.getAttribute('data-hidden');
+              if (type === 'all') { row.style.display = ''; }
+              else if (type === 'hidden') { row.style.display = rHidden === '1' ? '' : 'none'; }
+              else { row.style.display = rType === type ? '' : 'none'; }
+            });
+            var btns = document.querySelectorAll('.agent-type-filter');
+            btns.forEach(function(b) { b.style.background = ''; b.style.color = ''; });
+            btn.style.background = 'var(--text-primary)';
+            btn.style.color = 'var(--bg-page)';
+          }
           function fmtAmt(val) {
             if (!val || val === '--') return '--';
             var n = parseFloat(val);
@@ -2044,7 +2060,22 @@
           var visibleCount = agents.filter(function(a) { return !a.hidden; }).length;
           var hiddenCount = agents.filter(function(a) { return a.hidden; }).length;
 
-          var html = '<table style="width:100%;border-collapse:collapse;font-size:0.75rem;">';
+          window._allAgents = agents;
+          var html = '<div style="margin-bottom:0.75rem;display:flex;gap:0.4rem;flex-wrap:wrap;">';
+          html += '<span style="font-family:IBM Plex Mono,monospace;font-size:0.6rem;color:var(--text-muted);line-height:1.8rem;">Filter:</span>';
+          var filterTypes = [
+            { val: 'all', label: 'All (' + agents.length + ')' },
+            { val: 'verified', label: 'Verified (' + agents.filter(function(a){return a.agentType==='verified';}).length + ')' },
+            { val: 'miniclaw', label: 'Miniclaw (' + agents.filter(function(a){return a.agentType==='miniclaw';}).length + ')' },
+            { val: 'sandbox', label: 'Sandbox (' + agents.filter(function(a){return a.agentType==='sandbox';}).length + ')' },
+            { val: 'hidden', label: 'Hidden (' + hiddenCount + ')' }
+          ];
+          filterTypes.forEach(function(f) {
+            var active = f.val === 'all' ? 'background:var(--text-primary);color:var(--bg-page);' : '';
+            html += '<button onclick="filterAgentType(\'' + f.val + '\', this)" class="agent-type-filter" style="padding:3px 10px;font-family:IBM Plex Mono,monospace;font-size:0.55rem;font-weight:600;border:2px solid var(--text-primary);cursor:pointer;text-transform:uppercase;letter-spacing:0.03em;' + active + '">' + f.label + '</button>';
+          });
+          html += '</div>';
+          var html = html + '<table id="agentTable" style="width:100%;border-collapse:collapse;font-size:0.75rem;">';
           html += '<thead><tr style="border-bottom:2px solid var(--border-heavy);">';
           var headers = ['Status', 'Agent', 'Human ID', 'Verified', 'Pipeline', 'Progress', 'Next Step', 'Actions'];
           headers.forEach(function(h) {
@@ -2054,7 +2085,7 @@
 
           agents.forEach(function(agent) {
             var rowOpacity = agent.hidden ? 'opacity:0.5;' : '';
-            html += '<tr data-pk="' + encodeURIComponent(agent.publicKey) + '" style="border-bottom:1px solid var(--border-light, #d4d0ca);' + rowOpacity + '">';
+            html += '<tr data-pk="' + encodeURIComponent(agent.publicKey) + '" data-agenttype="' + (agent.agentType || 'verified') + '" data-hidden="' + (agent.hidden ? '1' : '0') + '" style="border-bottom:1px solid var(--border-light, #d4d0ca);' + rowOpacity + '">';
 
             html += '<td style="padding:0.6rem 0.5rem;text-align:center;">';
             if (agent.hidden) {

@@ -124,7 +124,7 @@ router.get("/v1/feed/:postId", feedReadLimiter, async (req: Request, res: Respon
 
     const [post] = await db.select()
       .from(agentPosts)
-      .where(sql`${agentPosts.id} = ${postId} AND ${agentPosts.active} = true`)
+      .where(sql`${agentPosts.id} = ${postId} AND ${agentPosts.active} = true AND ${agentPosts.agentPublicKey} NOT IN (SELECT public_key FROM verified_bots WHERE hidden = true)`)
       .limit(1);
 
     if (!post) {
