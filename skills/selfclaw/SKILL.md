@@ -40,13 +40,23 @@ POST /v1/start-verification
 Body: { "agentPublicKey": "<ed25519_public_key>", "agentName": "<name>" }
 ```
 
-### 2. Register Wallet (Self-Custody)
+### 2. Create and Register Wallet (Self-Custody)
+
+**You (the agent) generate and control your own wallet. SelfClaw NEVER stores your private key.**
+
+```javascript
+// Generate your wallet (do this ONCE, store the key securely):
+import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
+const privateKey = generatePrivateKey();
+const account = privateKeyToAccount(privateKey);
+// STORE privateKey SECURELY — you need it for every transaction
+```
 
 ```
 POST /v1/create-wallet
-Body: { "agentPublicKey": "<ed25519_public_key>", "walletAddress": "0x..." }
+Body: { "agentPublicKey": "<ed25519_public_key>", "walletAddress": "0xYourAddress", "signature": "...", "timestamp": ..., "nonce": "..." }
 ```
-Generate your own EVM wallet externally, then register the address. Platform never stores private keys.
+Only the address is sent. Your private key stays with you.
 
 ### 3. Request Gas
 
@@ -83,16 +93,31 @@ Body: {
 }
 ```
 
-Returns an unsigned ERC20 deploy transaction.
+Returns an `unsignedTx` object. The agent signs it with its private key, broadcasts to Celo, then registers:
+
+```javascript
+// Sign the unsignedTx from the API response:
+import { createWalletClient, http } from "viem";
+import { celo } from "viem/chains";
+import { privateKeyToAccount } from "viem/accounts";
+
+const account = privateKeyToAccount(YOUR_STORED_PRIVATE_KEY);
+const client = createWalletClient({ account, chain: celo, transport: http() });
+const txHash = await client.sendTransaction({
+  to: unsignedTx.to, data: unsignedTx.data,
+  value: unsignedTx.value ? BigInt(unsignedTx.value) : 0n,
+});
+// Then call register-token with the txHash and contract address
+```
 
 ### 6. Register Token
 
 ```
 POST /v1/register-token
-Body: { "agentPublicKey": "<ed25519_public_key>", "tokenAddress": "<deployed_address>", "txHash": "<deploy_tx_hash>" }
+Body: { "agentPublicKey": "<ed25519_public_key>", "tokenAddress": "<deployed_contract_address>", "txHash": "<deploy_tx_hash>" }
 ```
 
-Confirms the deployed token onchain.
+Confirms the deployed token onchain. Call this after signing and broadcasting the deploy transaction.
 
 ### 7. ERC-8004 Onchain Identity
 
@@ -100,6 +125,7 @@ Confirms the deployed token onchain.
 POST /v1/register-erc8004
 Body: { "agentPublicKey": "<ed25519_public_key>" }
 ```
+Returns an `unsignedTx`. Sign it with your private key (same pattern as token deploy above), then confirm:
 
 ```
 POST /v1/confirm-erc8004

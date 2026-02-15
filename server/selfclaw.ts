@@ -1902,7 +1902,7 @@ router.post("/v1/request-selfclaw-sponsorship", verificationLimiter, async (req:
       .limit(1);
     if (wallet.length === 0) {
       return res.status(403).json({
-        error: "Agent must have a wallet created through SelfClaw before requesting sponsorship.",
+        error: "Agent must have a wallet address registered with SelfClaw before requesting sponsorship.",
         step: "Register a wallet first via POST /api/selfclaw/v1/my-agents/:publicKey/register-wallet with { address: '0x...' }",
       });
     }
@@ -5539,7 +5539,7 @@ router.post("/v1/my-agents/:publicKey/request-sponsorship", verificationLimiter,
       .limit(1);
     if (wallet.length === 0) {
       return res.status(403).json({
-        error: "Agent must have a wallet created through SelfClaw before requesting sponsorship.",
+        error: "Agent must have a wallet address registered with SelfClaw before requesting sponsorship.",
         step: "Register a wallet first via POST /api/selfclaw/v1/my-agents/:publicKey/register-wallet with { address: '0x...' }",
       });
     }
@@ -6145,11 +6145,11 @@ router.get("/v1/my-agents/:publicKey/briefing", async (req: any, res: Response) 
     lines.push(``);
 
     const nudges: { text: string; action: string; curl: string }[] = [];
-    if (!hasWallet) nudges.push({ text: 'Register the agent\'s wallet address to start its onchain journey.', action: 'register-wallet', curl: '' });
-    else if (!hasGas) nudges.push({ text: 'Request gas to cover transaction fees.', action: 'request-gas', curl: '' });
-    if (hasWallet && !hasErc8004) nudges.push({ text: 'Register the agent\'s ERC-8004 onchain identity for credibility.', action: 'register-erc8004', curl: '' });
-    if (hasErc8004 && !hasToken && !hasPlan) nudges.push({ text: 'Plan and deploy a token to power the agent\'s economy.', action: 'deploy-token', curl: '' });
-    if (hasToken && !hasPool) nudges.push({ text: 'Request SELFCLAW sponsorship for a liquidity pool.', action: 'request-sponsorship', curl: '' });
+    if (!hasWallet) nudges.push({ text: 'Generate an EVM wallet (viem: generatePrivateKey() + privateKeyToAccount()), store the private key securely, then register the address via POST /v1/create-wallet.', action: 'register-wallet', curl: '' });
+    else if (!hasGas) nudges.push({ text: 'Request gas for transaction fees: POST /v1/request-gas with the agent\'s public key.', action: 'request-gas', curl: '' });
+    if (hasWallet && !hasErc8004) nudges.push({ text: 'Mint ERC-8004 onchain identity: POST /v1/register-erc8004 → sign the unsignedTx with the agent\'s private key → broadcast to Celo → POST /v1/confirm-erc8004 with txHash.', action: 'register-erc8004', curl: '' });
+    if (hasErc8004 && !hasToken && !hasPlan) nudges.push({ text: 'Design a token plan (PUT /v1/agent-api/tokenomics), then deploy: POST /v1/deploy-token → sign unsignedTx → broadcast → POST /v1/register-token with txHash + tokenAddress.', action: 'deploy-token', curl: '' });
+    if (hasToken && !hasPool) nudges.push({ text: 'Request SELFCLAW sponsorship for a Uniswap V4 liquidity pool: POST /v1/request-selfclaw-sponsorship.', action: 'request-sponsorship', curl: '' });
     if (hasPool && skillsPublished === 0) nudges.push({
       text: 'Publish the agent\'s first skill.',
       action: 'publish-skill',
@@ -6676,7 +6676,7 @@ router.post("/v1/miniclaws/:id/request-sponsorship", verificationLimiter, async 
       .limit(1);
     if (wallet.length === 0) {
       return res.status(403).json({
-        error: "Miniclaw must have a wallet created through SelfClaw before requesting sponsorship.",
+        error: "Miniclaw must have a wallet address registered with SelfClaw before requesting sponsorship.",
         step: "Set up a wallet first via the miniclaw economy pipeline.",
       });
     }

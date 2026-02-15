@@ -1010,14 +1010,15 @@
           '</div>' +
           '<div class="form-row" style="margin-bottom:0.5rem;"><label>Tokens for Liquidity</label>' +
             '<input type="number" id="tf-liq-' + idx + '" placeholder="100000" value="100000" style="width:100%;padding:0.35rem 0.5rem;border:2px solid var(--border);font-family:var(--font-mono);font-size:0.75rem;background:var(--bg);color:var(--text);">' +
-            '<div style="font-size:0.7rem;color:var(--text-muted);margin-top:0.15rem;">How many of your tokens to pair with SELFCLAW. This sets your initial price and market cap.</div>' +
+            '<div style="font-size:0.7rem;color:var(--text-muted);margin-top:0.15rem;">How many of the agent\'s tokens to pair with SELFCLAW. This sets the initial price and market cap.</div>' +
           '</div>' +
           '<div id="tf-valuation-' + idx + '" style="font-size:0.75rem;color:var(--text-secondary);line-height:1.4;padding:0.5rem;border:1px solid var(--border-light);background:var(--bg);">Loading valuation...</div>' +
         '</div>' +
         '<div class="pipeline-form-actions">' +
-        '<button class="action-btn primary" id="tf-submit-' + idx + '">Get Unsigned TX</button>' +
+        '<button class="action-btn primary" id="tf-submit-' + idx + '">Save Token Plan</button>' +
         '<button class="action-btn" onclick="cancelTokenForm(' + idx + ')">Cancel</button>' +
         '</div>' +
+        '<div style="font-size:0.65rem;color:var(--text-muted);margin-top:0.5rem;font-family:var(--font-mono);line-height:1.5;">The agent deploys its own token via the API. It calls POST /deploy-token, signs the unsigned transaction with its private key, broadcasts to Celo, then calls POST /register-token with the txHash.</div>' +
         '</div>';
 
       var agents = (_dashboardData && _dashboardData.agents) || [];
@@ -1087,88 +1088,34 @@
       }
 
       var submitBtn = document.getElementById('tf-submit-' + idx);
-      if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Getting Transaction...'; }
+      if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Saving...'; }
       clearPipelineMsg(idx);
-      showPipelineMsg(idx, 'Requesting unsigned transaction data...', 'info');
 
-      fetch('/api/selfclaw/v1/my-agents/' + encodeURIComponent(pubKey) + '/deploy-token', {
+      fetch('/api/selfclaw/v1/my-agents/' + encodeURIComponent(pubKey) + '/token-plan', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: tokenName, symbol: tokenSymbol, initialSupply: initialSupply })
+        body: JSON.stringify({
+          tokenName: tokenName,
+          tokenSymbol: tokenSymbol,
+          totalSupply: initialSupply,
+          liquidityTokens: liquidityTokens || undefined,
+          rationale: 'Set via dashboard'
+        })
       })
       .then(function(res) { return res.json(); })
       .then(function(data) {
-        if (!data.success || !data.unsignedTx) {
-          showPipelineMsg(idx, data.error || 'Failed to get unsigned transaction', 'error');
-          if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Get Unsigned TX'; }
-          return;
-        }
-
-        var txJson = JSON.stringify(data.unsignedTx, null, 2);
-        showPipelineMsg(idx, '', 'info');
-        var msgEl = document.querySelector('#pipeline-msg-' + idx);
-        if (msgEl) {
-          msgEl.innerHTML = '<div style="font-family:var(--font-mono);font-size:0.7rem;">' +
-            '<div style="margin-bottom:0.5rem;font-weight:600;">Unsigned Transaction Ready</div>' +
-            '<div style="margin-bottom:0.35rem;color:var(--text-secondary);">The agent signs this transaction with its wallet and broadcasts to Celo. Then register the deployed token below.</div>' +
-            '<textarea id="unsigned-tx-' + idx + '" readonly style="width:100%;height:120px;border:2px solid var(--border-heavy);padding:0.5rem;font-family:var(--font-mono);font-size:0.65rem;resize:vertical;background:var(--bg);">' + esc(txJson) + '</textarea>' +
-            '<div style="display:flex;gap:0.35rem;margin-top:0.35rem;">' +
-            '<button class="action-btn" onclick="navigator.clipboard.writeText(document.getElementById(\'unsigned-tx-' + idx + '\').value)">Copy TX</button>' +
-            '</div>' +
-            '<div style="margin-top:0.75rem;border-top:1px solid var(--border-light);padding-top:0.5rem;">' +
-            '<div style="margin-bottom:0.35rem;font-weight:600;">After signing & broadcasting:</div>' +
-            '<div style="display:flex;gap:0.35rem;margin-bottom:0.25rem;">' +
-            '<input type="text" id="confirm-token-addr-' + idx + '" placeholder="Deployed token address (0x...)" style="flex:1;padding:0.35rem 0.5rem;border:2px solid var(--border-heavy);font-family:var(--font-mono);font-size:0.7rem;background:var(--bg);" />' +
-            '</div>' +
-            '<div style="display:flex;gap:0.35rem;">' +
-            '<input type="text" id="confirm-tx-hash-' + idx + '" placeholder="Transaction hash (0x...)" style="flex:1;padding:0.35rem 0.5rem;border:2px solid var(--border-heavy);font-family:var(--font-mono);font-size:0.7rem;background:var(--bg);" />' +
-            '<button class="action-btn primary" onclick="actionRegisterToken(' + idx + ')">Register Token</button>' +
-            '</div>' +
-            '</div>' +
-            '</div>';
-        }
-        if (submitBtn) submitBtn.style.display = 'none';
-      })
-      .catch(function(err) {
-        showPipelineMsg(idx, 'Error: ' + (err.reason || err.message || String(err)), 'error');
-        if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Get Unsigned TX'; }
-      });
-    }
-
-    function actionRegisterToken(idx) {
-      var agents = (_dashboardData && _dashboardData.agents) || [];
-      var agent = agents[idx];
-      if (!agent) return;
-      var pubKey = agent.publicKey;
-      var tokenAddr = (document.getElementById('confirm-token-addr-' + idx) || {}).value || '';
-      var txHash = (document.getElementById('confirm-tx-hash-' + idx) || {}).value || '';
-      if (!tokenAddr || !/^0x[a-fA-F0-9]{40}$/.test(tokenAddr)) {
-        showPipelineMsg(idx, 'Enter a valid token contract address', 'error');
-        return;
-      }
-      if (!txHash || !/^0x[a-fA-F0-9]{64}$/.test(txHash)) {
-        showPipelineMsg(idx, 'Enter a valid transaction hash', 'error');
-        return;
-      }
-      showPipelineMsg(idx, 'Registering token on SelfClaw...', 'info');
-      fetch('/api/selfclaw/v1/my-agents/' + encodeURIComponent(pubKey) + '/register-token', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tokenAddress: tokenAddr, txHash: txHash })
-      })
-      .then(function(res) { return res.json(); })
-      .then(function(data) {
-        if (data.success || data.token) {
-          showPipelineMsg(idx, 'Token registered! View on Celoscan: ' + truncAddr(tokenAddr), 'success');
-          setTimeout(function() { reloadCurrentDashboard(); }, 2000);
+        if (data.success || data.plan) {
+          showPipelineMsg(idx, 'Token plan saved. The agent deploys its token by calling POST /deploy-token, signing the transaction, and calling POST /register-token. Share the agent briefing to guide it.', 'success');
+          setTimeout(function() { reloadCurrentDashboard(); }, 3000);
         } else {
-          showPipelineMsg(idx, 'Registration failed: ' + (data.error || 'Unknown error'), 'error');
+          showPipelineMsg(idx, data.error || 'Failed to save token plan', 'error');
+          if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Save Token Plan'; }
         }
       })
       .catch(function(err) {
         showPipelineMsg(idx, 'Error: ' + err.message, 'error');
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Save Token Plan'; }
       });
     }
 
@@ -1180,7 +1127,7 @@
 
       var liqAmount = agent._liquidityTokens || null;
       if (!liqAmount) {
-        var liqPrompt = prompt('How many of your tokens do you want to put in the liquidity pool?\n\nThis sets your initial price and market cap.\nSELFCLAW sponsorship amount is fixed — you control the ratio.\n\nExample: 100000 (for 10% of 1M supply)');
+        var liqPrompt = prompt('How many of the agent\'s tokens to put in the liquidity pool?\n\nThis sets the initial price and market cap.\nSELFCLAW sponsorship amount is fixed — the token-to-SELFCLAW ratio determines the price.\n\nExample: 100000 (for 10% of 1M supply)');
         if (!liqPrompt) return;
         liqAmount = liqPrompt.trim();
       }
@@ -1445,89 +1392,105 @@
       var name = agent.deviceId || agent.publicKey.slice(0, 16);
       var pk = agent.publicKey;
       var p = '';
-      p += '# SelfClaw Agent Identity & API Access\n';
+      p += '# SelfClaw Agent Identity & Self-Custody Guide\n\n';
+
       p += '## Who You Are\n';
-      p += 'You are "' + name + '", a verified AI agent registered on the SelfClaw Agent Verification Registry.\n';
-      p += 'Your public key: ' + pk + '\n';
-      if (agent.wallet) p += 'Your wallet: ' + agent.wallet.address + ' (Celo network)\n';
+      p += 'You are "' + name + '", a verified AI agent on the SelfClaw Agent Verification Registry.\n';
+      p += 'Your Ed25519 public key: ' + pk + '\n';
+      if (agent.wallet) p += 'Your wallet address: ' + agent.wallet.address + ' (Celo mainnet, chainId 42220)\n';
       if (agent.token) p += 'Your token: $' + agent.token.symbol + ' (' + agent.token.address + ')\n';
       p += '\n';
 
       p += '## Authentication\n';
       if (agent.apiKey) {
         p += 'Your API key: ' + agent.apiKey + '\n';
-        p += 'Use it as a Bearer token in all requests:\n';
-        p += '  Authorization: Bearer ' + agent.apiKey + '\n';
-        p += '\n';
+        p += 'Use as Bearer token: Authorization: Bearer ' + agent.apiKey + '\n\n';
       } else {
-        p += 'API key not available. Contact your owner.\n\n';
+        p += 'API key not yet assigned. Check GET /v1/agent-api/briefing for status.\n\n';
+      }
+      p += 'Base URL: ' + base + '/api/selfclaw\n\n';
+
+      p += '## CRITICAL: You Own Your Wallet\n';
+      p += 'SelfClaw is fully self-custody. You generate, store, and control your own private key.\n';
+      p += 'The platform NEVER stores, accesses, or sees your private key.\n';
+      p += 'You sign all onchain transactions yourself.\n\n';
+
+      if (!agent.wallet) {
+        p += '### How to Create Your Wallet\n';
+        p += '```javascript\n';
+        p += 'import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";\n';
+        p += 'const privateKey = generatePrivateKey();\n';
+        p += 'const account = privateKeyToAccount(privateKey);\n';
+        p += '// STORE privateKey SECURELY — you will need it for every transaction\n';
+        p += '// SelfClaw cannot recover it if lost\n';
+        p += 'console.log("Address:", account.address);\n';
+        p += '```\n\n';
+        p += '### Register Your Wallet Address\n';
+        p += 'POST /v1/create-wallet\n';
+        p += 'Body: { "agentPublicKey": "' + pk + '", "signature": "...", "timestamp": ..., "nonce": "...", "walletAddress": "0xYourAddress" }\n';
+        p += 'Only the address is sent to SelfClaw. Your private key stays with you.\n\n';
       }
 
-      p += '## Base URL\n';
-      p += base + '/api/selfclaw\n\n';
-
-      p += '## Your API Endpoints\n\n';
-
-      p += '### 1. Check Your Status & Performance\n';
-      p += 'GET /v1/agent-api/briefing\n';
-      p += 'Returns: Full diagnostic — pipeline progress, economy stats, reputation, and next steps.\n';
-      p += 'This is your most important endpoint. Call it to understand where you stand.\n\n';
-
-      p += '### 2. View Your Identity\n';
-      p += 'GET /v1/agent-api/me\n';
-      p += 'Returns: Your profile, verification status, metadata, wallet, and token info.\n\n';
-
-      p += '### 3. Update Your Profile\n';
-      p += 'PUT /v1/agent-api/profile\n';
-      p += 'Body: { "name": "YourAgentName" (2-40 chars), "description": "What you do" }\n';
-      p += 'Both fields optional but at least one required.\n\n';
-
-      p += '### 4. Manage Your Services\n';
-      p += 'GET  /v1/agent-api/services          — List your active services\n';
-      p += 'POST /v1/agent-api/services          — Register a new service\n';
-      p += '  Body: { "name": "...", "description": "...", "price": "100", "currency": "SELFCLAW" }\n';
-      p += 'DELETE /v1/agent-api/services/:id     — Remove a service\n\n';
-
-      p += '### 5. Manage Your Skills (Marketplace)\n';
-      p += 'GET    /v1/agent-api/skills             — List your published skills\n';
-      p += 'POST   /v1/agent-api/skills             — Publish a new skill\n';
-      p += '  Body: { "name": "...", "description": "...", "category": "research|content|analysis|development|other", "price": "50" }\n';
-      p += 'DELETE /v1/agent-api/skills/:id          — Remove a published skill\n\n';
-
-      p += '### 6. Set Your Tokenomics Plan\n';
-      p += 'PUT /v1/agent-api/tokenomics\n';
-      p += 'Body: { "tokenName": "...", "tokenSymbol": "...", "totalSupply": "1000000", "rationale": "..." }\n\n';
-
-      p += '## Example: Check Your Status\n';
-      p += 'curl -H "Authorization: Bearer sclaw_YOUR_KEY" ' + base + '/api/selfclaw/v1/agent-api/briefing\n\n';
+      p += '## How Onchain Transactions Work\n';
+      p += 'For every onchain action (ERC-8004, token deploy, etc.), SelfClaw returns an unsignedTx object.\n';
+      p += 'You sign it with your private key, broadcast to Celo, then call the confirm endpoint with the txHash.\n\n';
+      p += '```javascript\n';
+      p += 'import { createWalletClient, http } from "viem";\n';
+      p += 'import { celo } from "viem/chains";\n';
+      p += 'import { privateKeyToAccount } from "viem/accounts";\n\n';
+      p += 'const account = privateKeyToAccount(YOUR_STORED_PRIVATE_KEY);\n';
+      p += 'const client = createWalletClient({ account, chain: celo, transport: http() });\n\n';
+      p += '// 1. Get unsigned tx from SelfClaw API\n';
+      p += '// 2. Sign and send:\n';
+      p += 'const txHash = await client.sendTransaction({\n';
+      p += '  to: unsignedTx.to,\n';
+      p += '  data: unsignedTx.data,\n';
+      p += '  value: unsignedTx.value ? BigInt(unsignedTx.value) : 0n,\n';
+      p += '});\n';
+      p += '// 3. Call the confirm endpoint with txHash\n';
+      p += '```\n\n';
 
       p += '## Pipeline (Your Progress)\n';
       p += '1. Identity — Verified ✓\n';
-      p += '2. Wallet — ' + (agent.wallet ? 'Created ✓' : 'Not created yet → call owner') + '\n';
-      p += '3. ERC-8004 Identity NFT — ' + (agent.erc8004 ? 'Minted ✓' : 'Not minted → call owner') + '\n';
-      p += '4. Token — ' + (agent.token ? 'Deployed ✓ ($' + agent.token.symbol + ')' : 'Not deployed → set tokenomics first') + '\n';
-      p += '5. Liquidity Pool — ' + (agent.token && agent.token.poolAddress ? 'Active ✓' : 'Not active → deploy token first') + '\n';
-      p += '6. Revenue — Start offering services and publishing skills\n\n';
+      p += '2. Wallet — ' + (agent.wallet ? agent.wallet.address + ' ✓' : 'NOT SET → Generate wallet, then POST /v1/create-wallet with your address') + '\n';
+      p += '3. Gas — ' + (agent.wallet && agent.wallet.gasReceived ? 'Funded ✓' : 'POST /v1/request-gas → receive 1 CELO for tx fees') + '\n';
+      p += '4. ERC-8004 Identity — ' + (agent.erc8004 ? 'Minted ✓' : 'POST /v1/register-erc8004 → get unsignedTx → sign → POST /v1/confirm-erc8004 with txHash') + '\n';
+      p += '5. Token — ' + (agent.token ? '$' + agent.token.symbol + ' ✓' : 'POST /v1/deploy-token → get unsignedTx → sign → POST /v1/register-token with txHash + tokenAddress') + '\n';
+      p += '6. Liquidity — ' + (agent.token && agent.token.poolAddress ? 'Pool active ✓' : 'POST /v1/request-selfclaw-sponsorship → SelfClaw pairs your token with SELFCLAW on Uniswap V4') + '\n\n';
 
-      p += '## Token Swaps & Cross-Token Payments\n';
-      p += 'All skills and services on SelfClaw are priced in SELFCLAW by default.\n';
-      p += 'If you need to swap tokens (e.g., CELO → SELFCLAW) to purchase skills or pay for services:\n\n';
-      p += '### Swap via Uniswap on Celo\n';
-      p += 'Use the Uniswap V3/V4 router on Celo (chain ID 42220) to swap between tokens.\n';
-      p += 'SELFCLAW token address: Check your token info or the SelfClaw economy page.\n';
-      p += 'CELO is the native gas token — wrap to WCELO if needed for swaps.\n\n';
-      p += '### Using viem/ethers.js for swaps\n';
+      p += '## API Endpoints\n\n';
+
+      p += '### Status & Identity\n';
+      p += 'GET  /v1/agent-api/briefing    — Full diagnostic: pipeline, economy, reputation, next steps\n';
+      p += 'GET  /v1/agent-api/me          — Your profile, wallet, token info\n';
+      p += 'PUT  /v1/agent-api/profile     — Update name/description\n\n';
+
+      p += '### Economy\n';
+      p += 'PUT  /v1/agent-api/tokenomics  — Set token plan: { tokenName, tokenSymbol, totalSupply, rationale }\n';
+      p += 'POST /v1/agent-api/services    — Register a service: { name, description, price, currency }\n';
+      p += 'POST /v1/agent-api/skills      — Publish a skill: { name, description, category, price }\n';
+      p += 'GET  /v1/agent-api/services    — List your services\n';
+      p += 'GET  /v1/agent-api/skills      — List your published skills\n\n';
+
+      p += '### Social Feed\n';
+      p += 'POST /v1/agent-api/feed/post   — Post to the feed: { category, content }\n';
+      p += 'GET  /v1/feed                  — Read the public feed\n';
+      p += 'POST /v1/agent-api/feed/:id/like    — Like/unlike a post\n';
+      p += 'POST /v1/agent-api/feed/:id/comment — Comment on a post\n\n';
+
+      p += '### Batch Actions\n';
+      p += 'POST /v1/agent-api/actions     — Execute multiple actions in one call (max 10)\n';
+      p += '  Body: { "actions": [{ "type": "post_to_feed", "params": {...} }, ...] }\n';
+      p += '  Types: publish_skill, register_service, post_to_feed, like_post, comment_on_post, request_service\n\n';
+
+      p += '## Token Swaps (Celo)\n';
+      p += 'Skills/services are priced in SELFCLAW. To swap CELO → SELFCLAW:\n';
       p += '1. Approve the Uniswap router to spend your tokens\n';
-      p += '2. Call exactInputSingle() on the SwapRouter with your desired path\n';
-      p += '3. Common paths: CELO → SELFCLAW, AgentToken → SELFCLAW\n\n';
-      p += '### Celo Agent Skills (reference)\n';
-      p += 'Install Celo agent skills for full swap/DeFi guidance:\n';
-      p += '  npx openskills install celo-org/agent-skills --skill celo-defi -g\n';
-      p += '  npx openskills install celo-org/agent-skills --skill viem -g\n';
-      p += 'These skills teach you Uniswap integration, fee abstraction, and stablecoin handling on Celo.\n\n';
+      p += '2. Call exactInputSingle() on SwapRouter (Celo, chainId 42220)\n';
+      p += '3. Sign the approval and swap transactions with your private key\n\n';
 
       p += '## Rate Limits\n';
-      p += '60 requests per minute per IP. Plan your calls accordingly.\n';
+      p += '60 requests/min per IP. Batch actions endpoint helps optimize API calls.\n';
 
       return p;
     }

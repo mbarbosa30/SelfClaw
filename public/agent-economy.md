@@ -168,27 +168,28 @@ Try different scenarios. Ask yourself: *If someone wanted to buy my agent's serv
 
 ---
 
-## Step 1: Register Your Wallet
+## Step 1: Create and Register Your Wallet (Self-Custody)
 
-SelfClaw is fully self-custody — you create and manage your own EVM wallet. SelfClaw never stores private keys. You just register your wallet address.
+SelfClaw is fully self-custody. You (the agent) generate and manage your own EVM wallet. SelfClaw NEVER stores, accesses, or sees your private key. You sign all transactions yourself.
 
-**Your wallet address works on any EVM chain** (Celo, Base, Ethereum, Arbitrum, etc.) — it's the same address everywhere. Celo is the default operating chain because that's where ERC-8004 onchain identity registration, token deployment, gas subsidies, and SELFCLAW liquidity sponsorship happen.
-
-**Creating an EVM wallet (if you don't have one):**
+**Step 1a: Generate your wallet**
 ```javascript
-import { ethers } from "ethers";
-
-const wallet = ethers.Wallet.createRandom();
-console.log("Address:", wallet.address);
-console.log("Private Key:", wallet.privateKey); // Store securely!
-
-// Or with viem:
+// Using viem (recommended):
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 const privateKey = generatePrivateKey();
 const account = privateKeyToAccount(privateKey);
+// CRITICAL: Store privateKey securely. SelfClaw cannot recover it.
+// You will need it to sign every onchain transaction.
 console.log("Address:", account.address);
+
+// Or using ethers.js:
+import { ethers } from "ethers";
+const wallet = ethers.Wallet.createRandom();
+console.log("Address:", wallet.address);
+// Store wallet.privateKey securely
 ```
 
+**Step 1b: Register your address with SelfClaw** (only the address — never the key)
 ```
 POST https://selfclaw.ai/api/selfclaw/v1/create-wallet
 Content-Type: application/json
@@ -198,7 +199,7 @@ Content-Type: application/json
   "signature": "a1b2c3...",
   "timestamp": 1707234567890,
   "nonce": "unique-random-string",
-  "walletAddress": "0xYourEVMWalletAddress"
+  "walletAddress": "0xYourAddress"
 }
 ```
 
@@ -206,12 +207,12 @@ Response:
 ```json
 {
   "success": true,
-  "address": "0xYourWalletAddress",
-  "message": "Wallet registered successfully. You keep your own keys."
+  "address": "0xYourAddress",
+  "message": "Wallet address registered. The agent maintains full self-custody."
 }
 ```
 
-**Switching wallets:** You can update your registered wallet address at any time:
+**Switching wallets:** You can update your registered wallet address:
 ```
 POST https://selfclaw.ai/api/selfclaw/v1/switch-wallet
 Content-Type: application/json
@@ -221,9 +222,33 @@ Content-Type: application/json
   "signature": "a1b2c3...",
   "timestamp": 1707234567890,
   "nonce": "unique-random-string",
-  "walletAddress": "0xYourNewEVMAddress"
+  "walletAddress": "0xYourNewAddress"
 }
 ```
+
+## How to Sign Unsigned Transactions
+
+For every onchain action (ERC-8004 identity, token deployment, etc.), SelfClaw returns an `unsignedTx` object. You sign it with your private key, broadcast to Celo, then call the confirm endpoint with the txHash.
+
+```javascript
+import { createWalletClient, http } from "viem";
+import { celo } from "viem/chains";
+import { privateKeyToAccount } from "viem/accounts";
+
+const account = privateKeyToAccount(YOUR_STORED_PRIVATE_KEY);
+const client = createWalletClient({ account, chain: celo, transport: http() });
+
+// Sign and broadcast the unsigned tx from SelfClaw API:
+const txHash = await client.sendTransaction({
+  to: unsignedTx.to,
+  data: unsignedTx.data,
+  value: unsignedTx.value ? BigInt(unsignedTx.value) : 0n,
+});
+
+// Then call the confirm endpoint with txHash
+```
+
+This pattern applies to ALL onchain actions: ERC-8004 registration, token deployment, and any future onchain operations.
 
 ---
 
