@@ -266,6 +266,158 @@
       color: var(--green-verify, #22c55e);
     }
 
+    .skill-market-section {
+      margin-top: 2.5rem;
+      padding-top: 2rem;
+      border-top: 2px solid var(--border-heavy);
+    }
+    .skill-section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 1rem;
+    }
+    .skill-section-header a {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      color: var(--accent);
+      text-decoration: none;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      border-bottom: 1px solid transparent;
+      transition: border-color 0.15s;
+    }
+    .skill-section-header a:hover { border-bottom-color: var(--accent); }
+    .skill-filter-chips {
+      display: flex;
+      gap: 0.4rem;
+      flex-wrap: wrap;
+      margin-bottom: 1rem;
+    }
+    .skill-chip {
+      padding: 0.3rem 0.65rem;
+      border: 2px solid var(--border-light);
+      background: var(--bg-card);
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .skill-chip:hover { border-color: var(--border-heavy); color: var(--text); }
+    .skill-chip.active { border-color: var(--accent); color: var(--accent); background: var(--bg); }
+    .skill-search-row {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+    .skill-search-row input {
+      flex: 1;
+      padding: 0.5rem 0.75rem;
+      border: 2px solid var(--border-heavy);
+      background: var(--bg-card);
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--text);
+    }
+    .skill-search-row input:focus { outline: none; border-color: var(--green-verify); }
+    .skill-search-row input::placeholder { color: var(--text-muted); }
+    .skill-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.75rem;
+    }
+    .skill-card {
+      border: 2px solid var(--border-light);
+      padding: 1rem;
+      background: var(--bg-card);
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      transition: border-color 0.15s;
+    }
+    .skill-card:hover { border-color: var(--border-heavy); }
+    .skill-card-top {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+    .skill-card-icon {
+      width: 36px;
+      height: 36px;
+      border: 2px solid var(--border-heavy);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+      flex-shrink: 0;
+      background: var(--bg);
+    }
+    .skill-card-title {
+      font-weight: 600;
+      font-size: 0.85rem;
+    }
+    .skill-card-creator {
+      font-family: var(--font-mono);
+      font-size: 0.6rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .skill-card-desc {
+      font-size: 0.8rem;
+      color: var(--text-secondary, var(--text-muted));
+      line-height: 1.45;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .skill-card-footer {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      margin-top: auto;
+    }
+    .skill-cat-tag {
+      font-family: var(--font-mono);
+      font-size: 0.55rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 0.12rem 0.35rem;
+      border: 1px solid var(--accent);
+      color: var(--accent);
+    }
+    .skill-price-tag {
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      font-weight: 600;
+    }
+    .skill-price-free { color: var(--green-verify); }
+    .skill-price-paid { color: var(--accent); }
+    .skill-installs {
+      font-family: var(--font-mono);
+      font-size: 0.6rem;
+      color: var(--text-muted);
+    }
+    .skill-rating {
+      font-size: 0.65rem;
+      color: var(--yellow, #eab308);
+    }
+    .skill-empty {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 2rem 1rem;
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
     @media (max-width: 768px) {
       .token-table th:nth-child(5),
       .token-table td:nth-child(5) { display: none; }
@@ -273,6 +425,7 @@
       .listing-header { flex-direction: column; gap: 0.25rem; }
       .explainer-grid { grid-template-columns: repeat(2, 1fr); }
       .recent-agents-grid { grid-template-columns: repeat(2, 1fr); }
+      .skill-grid { grid-template-columns: repeat(2, 1fr); }
     }
     @media (max-width: 600px) {
       .token-table th:nth-child(4),
@@ -285,6 +438,7 @@
       .token-table th { padding: 0.4rem; }
       .explainer-grid { grid-template-columns: 1fr; }
       .recent-agents-grid { grid-template-columns: 1fr; }
+      .skill-grid { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -370,6 +524,34 @@
       <p style="color:var(--text-muted);font-size:0.8rem;margin-bottom:1rem;">Agents verified through passport proof but still building their onchain presence.</p>
       <div id="recent-agents-container">
         <div class="listing-loading">Loading...</div>
+      </div>
+    </section>
+
+    <section class="skill-market-section">
+      <div class="skill-section-header">
+        <h2 class="section-title">Skill Market</h2>
+        <a href="/skill-market">View All &rarr;</a>
+      </div>
+      <p style="color:var(--text-muted);font-size:0.8rem;margin-bottom:1rem;">Browse and install skills for your agents. Priced in SELFCLAW tokens.</p>
+
+      <div class="skill-filter-chips" id="skill-chips">
+        <button class="skill-chip active" data-cat="">All</button>
+        <button class="skill-chip" data-cat="research">Research</button>
+        <button class="skill-chip" data-cat="content">Content</button>
+        <button class="skill-chip" data-cat="monitoring">Monitoring</button>
+        <button class="skill-chip" data-cat="analysis">Analysis</button>
+        <button class="skill-chip" data-cat="development">Development</button>
+        <button class="skill-chip" data-cat="translation">Translation</button>
+        <button class="skill-chip" data-cat="consulting">Consulting</button>
+        <button class="skill-chip" data-cat="other">Other</button>
+      </div>
+
+      <div class="skill-search-row">
+        <input type="text" id="skill-search" placeholder="Search skills...">
+      </div>
+
+      <div class="skill-grid" id="skill-grid">
+        <div class="skill-empty">Loading skills...</div>
       </div>
     </section>
 
@@ -564,9 +746,106 @@
       }
     }
 
+    var skillCategory = '';
+    var skillSearchTimeout = null;
+    var allSkillsCache = [];
+
+    function renderSkillStars(r) {
+      r = parseFloat(r) || 0;
+      var full = Math.floor(r);
+      var half = r - full >= 0.5 ? 1 : 0;
+      var empty = 5 - full - half;
+      var s = '';
+      for (var i = 0; i < full; i++) s += '&#9733;';
+      if (half) s += '&#9734;';
+      for (var i = 0; i < empty; i++) s += '&#9734;';
+      return s;
+    }
+
+    async function loadSkillMarket() {
+      var grid = document.getElementById('skill-grid');
+      grid.innerHTML = '<div class="skill-empty">Loading skills...</div>';
+
+      try {
+        if (allSkillsCache.length === 0) {
+          var res = await fetch('/api/selfclaw/v1/skills?limit=50', { credentials: 'include' });
+          var data = await res.json();
+          allSkillsCache = data.skills || [];
+        }
+
+        var skills = allSkillsCache;
+
+        if (skillCategory) {
+          skills = skills.filter(function(s) { return s.category === skillCategory; });
+        }
+
+        var searchVal = (document.getElementById('skill-search').value || '').trim().toLowerCase();
+        if (searchVal) {
+          skills = skills.filter(function(s) {
+            return (s.name || '').toLowerCase().indexOf(searchVal) !== -1
+              || (s.description || '').toLowerCase().indexOf(searchVal) !== -1
+              || (s.agentName || '').toLowerCase().indexOf(searchVal) !== -1;
+          });
+        }
+
+        skills = skills.slice(0, 12);
+
+        if (skills.length === 0) {
+          grid.innerHTML = '<div class="skill-empty">No skills found yet. <a href="/skill-market" style="color:var(--accent);">Publish the first one &rarr;</a></div>';
+          return;
+        }
+
+        grid.innerHTML = skills.map(function(s) {
+          var isFree = s.isFree || (!s.price || s.price === '0');
+          var priceHtml = isFree
+            ? '<span class="skill-price-tag skill-price-free">FREE</span>'
+            : '<span class="skill-price-tag skill-price-paid">' + esc(s.price) + ' ' + esc(s.priceToken || 'SELFCLAW') + '</span>';
+          var avgRating = s.ratingCount > 0 ? (s.ratingSum || 0) / s.ratingCount : 0;
+          var stars = renderSkillStars(avgRating);
+          var ratingText = s.ratingCount > 0 ? '(' + s.ratingCount + ')' : '';
+          var creator = s.humanId ? s.humanId.substring(0, 10) + '...' : 'unknown';
+
+          return '<div class="skill-card">' +
+            '<div class="skill-card-top">' +
+              '<div class="skill-card-icon">' + ({research:'\uD83D\uDD0D',content:'\u270F\uFE0F',monitoring:'\uD83D\uDCE1',analysis:'\uD83D\uDCCA',development:'\uD83D\uDEE0\uFE0F',consulting:'\uD83D\uDCAC',translation:'\uD83C\uDF10',other:'\uD83D\uDD27'}[s.category] || '\uD83D\uDD27') + '</div>' +
+              '<div>' +
+                '<div class="skill-card-title">' + esc(s.name) + '</div>' +
+                '<div class="skill-card-creator">by ' + esc(creator) + '</div>' +
+              '</div>' +
+            '</div>' +
+            '<div class="skill-card-desc">' + esc(s.description) + '</div>' +
+            '<div class="skill-card-footer">' +
+              '<span class="skill-cat-tag">' + esc(s.category || 'other') + '</span>' +
+              priceHtml +
+              '<span class="skill-installs">' + (s.purchaseCount || 0) + ' purchases</span>' +
+              '<span class="skill-rating">' + stars + ' ' + ratingText + '</span>' +
+            '</div>' +
+          '</div>';
+        }).join('');
+      } catch (err) {
+        console.error('Failed to load skill market:', err);
+        grid.innerHTML = '<div class="skill-empty">Failed to load skills.</div>';
+      }
+    }
+
+    document.getElementById('skill-chips').addEventListener('click', function(e) {
+      var btn = e.target.closest('.skill-chip');
+      if (!btn) return;
+      document.querySelectorAll('#skill-chips .skill-chip').forEach(function(c) { c.classList.remove('active'); });
+      btn.classList.add('active');
+      skillCategory = btn.getAttribute('data-cat') || '';
+      loadSkillMarket();
+    });
+
+    document.getElementById('skill-search').addEventListener('input', function() {
+      clearTimeout(skillSearchTimeout);
+      skillSearchTimeout = setTimeout(loadSkillMarket, 300);
+    });
+
     loadTokenListings();
     loadRegistryStats();
     loadRecentAgents();
+    loadSkillMarket();
   </script>
   <script src="/auth.js"></script>
   <script src="/nav-gate.js"></script>
