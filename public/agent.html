@@ -437,6 +437,7 @@
       .ap-kv { grid-template-columns: 1fr; gap: 0.25rem 0; }
       .ap-kv-label { padding-top: 0.5rem; }
       .ap-econ-grid { grid-template-columns: 1fr; }
+      .ap-plan-bottom { grid-template-columns: 1fr !important; }
     }
     @media (max-width: 480px) {
       .ap-price-usd { font-size: 1.5rem; }
@@ -579,7 +580,7 @@
       h += '<div class="ap-icon">' + letter + '</div>';
       h += '<div class="ap-info">';
       h += '<div class="ap-name">' + esc(a.agentName) + '</div>';
-      h += '<div class="ap-pubkey">' + esc(a.publicKey) + '</div>';
+      h += '<div class="ap-pubkey">' + esc(a.publicKey.length > 20 ? a.publicKey.slice(0, 10) + '...' + a.publicKey.slice(-8) : a.publicKey) + ' <button class="ap-copy-btn" data-addr="' + esc(a.publicKey) + '" style="font-size:0.6rem;padding:0.1rem 0.4rem;border:1px solid var(--border);background:none;cursor:pointer;">Copy</button></div>';
       h += '<div class="ap-badges">';
       if (a.verifiedAt) {
         h += '<span class="ap-badge ap-badge-verified">&#10003; Verified</span>';
@@ -636,14 +637,11 @@
         h += '<div class="ap-card-head"><span class="ap-card-title">Onchain Identity</span><span class="ap-card-meta">ERC-8004</span></div>';
         h += '<div class="ap-card-body">';
         h += '<div class="ap-kv">';
-        h += '<div class="ap-kv-label">Token ID</div><div class="ap-kv-value">' + esc(String(a.erc8004.tokenId)) + '</div>';
+        h += '<div class="ap-kv-label">Token ID</div><div class="ap-kv-value">#' + esc(String(a.erc8004.tokenId)) + '</div>';
         if (a.erc8004.identity && a.erc8004.identity.owner) {
           h += '<div class="ap-kv-label">Owner</div><div class="ap-kv-value"><a href="https://celoscan.io/address/' + esc(a.erc8004.identity.owner) + '" target="_blank">' + trunc(a.erc8004.identity.owner) + '</a></div>';
         }
-        if (a.erc8004.identity && a.erc8004.identity.uri) {
-          h += '<div class="ap-kv-label">Metadata URI</div><div class="ap-kv-value" style="font-family:var(--font-mono);font-size:0.7rem;">' + esc(a.erc8004.identity.uri) + '</div>';
-        }
-        h += '<div class="ap-kv-label">8004scan</div><div class="ap-kv-value"><a href="' + esc(a.erc8004.scanUrl) + '" target="_blank">View on 8004scan &rarr;</a></div>';
+        h += '<div class="ap-kv-label">Registry</div><div class="ap-kv-value"><a href="' + esc(a.erc8004.scanUrl) + '" target="_blank">View on 8004scan &rarr;</a></div>';
         h += '</div>';
         if (hasRep) {
           var rep = a.erc8004.reputation;
@@ -666,12 +664,7 @@
         h += '<div class="ap-kv-label">Status</div><div class="ap-kv-value" style="color:var(--text-muted);">Not yet verified</div>';
       }
       h += '<div class="ap-kv-label">Method</div><div class="ap-kv-value">' + esc(a.verificationLevel || 'Passport NFC') + '</div>';
-      h += '<div class="ap-kv-label">Human ID</div><div class="ap-kv-value" style="font-family:var(--font-mono);font-size:0.75rem;">' + esc(a.humanId ? a.humanId.slice(0, 16) + '...' : '--') + '</div>';
       if (a.verifiedAt) h += '<div class="ap-kv-label">Verified On</div><div class="ap-kv-value">' + fmtDate(a.verifiedAt) + '</div>';
-      h += '<div class="ap-kv-label">ZK Proof</div><div class="ap-kv-value"><a href="/api/selfclaw/v1/agent/' + encodeURIComponent(a.publicKey) + '/proof" target="_blank">View Proof &rarr;</a></div>';
-      h += '<div class="ap-kv-label">Reputation</div><div class="ap-kv-value"><a href="/api/selfclaw/v1/agent/' + encodeURIComponent(a.publicKey) + '/reputation" target="_blank">View Reputation &rarr;</a></div>';
-      h += '<div class="ap-kv-label">API</div><div class="ap-kv-value"><a href="/api/selfclaw/v1/agent/' + encodeURIComponent(a.publicKey) + '" target="_blank">Agent Endpoint &rarr;</a></div>';
-      h += '<div class="ap-kv-label">Registration</div><div class="ap-kv-value"><a href="/api/selfclaw/v1/agent/' + encodeURIComponent(a.publicKey) + '/registration.json" target="_blank">ERC-8004 JSON &rarr;</a></div>';
       h += '</div></div></div>';
 
       if (hasWallet) {
@@ -693,17 +686,48 @@
         h += '<div class="ap-card ap-full">';
         h += '<div class="ap-card-head"><span class="ap-card-title">Tokenomics Plan</span><span class="ap-card-meta">' + esc(plan.status || 'submitted') + '</span></div>';
         h += '<div class="ap-card-body">';
-        h += '<div class="ap-kv" style="margin-bottom:1rem;">';
-        h += '<div class="ap-kv-label">Purpose</div><div class="ap-kv-value">' + esc(plan.purpose) + '</div>';
+        h += '<p style="font-size:0.9rem;line-height:1.6;margin-bottom:1.25rem;color:var(--text-secondary);">' + esc(plan.purpose) + '</p>';
         if (plan.utility) {
-          var utilStr = plan.utility;
-          if (typeof utilStr === 'object') { try { utilStr = JSON.stringify(utilStr); } catch(e) {} }
-          h += '<div class="ap-kv-label">Utility</div><div class="ap-kv-value">' + esc(String(utilStr)) + '</div>';
+          var utilArr = plan.utility;
+          if (typeof utilArr === 'string') { try { utilArr = JSON.parse(utilArr); } catch(e) { utilArr = [utilArr]; } }
+          if (Array.isArray(utilArr) && utilArr.length > 0) {
+            h += '<div style="margin-bottom:1.25rem;">';
+            h += '<div style="font-family:var(--font-mono);font-size:0.65rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-muted);margin-bottom:0.5rem;">Token Utility</div>';
+            h += '<ul style="list-style:none;padding:0;margin:0;">';
+            utilArr.forEach(function(item) {
+              h += '<li style="font-size:0.85rem;line-height:1.5;padding:0.35rem 0;border-bottom:1px solid var(--border);display:flex;align-items:baseline;gap:0.5rem;">';
+              h += '<span style="color:var(--accent);font-weight:600;flex-shrink:0;">+</span> ' + esc(String(item));
+              h += '</li>';
+            });
+            h += '</ul></div>';
+          } else if (typeof utilArr === 'string') {
+            h += '<div style="margin-bottom:1.25rem;">';
+            h += '<div style="font-family:var(--font-mono);font-size:0.65rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-muted);margin-bottom:0.5rem;">Token Utility</div>';
+            h += '<p style="font-size:0.85rem;color:var(--text-secondary);">' + esc(utilArr) + '</p></div>';
+          }
         }
-        if (plan.economicModel) h += '<div class="ap-kv-label">Model</div><div class="ap-kv-value">' + esc(plan.economicModel) + '</div>';
-        if (plan.supplyReasoning) h += '<div class="ap-kv-label">Supply Logic</div><div class="ap-kv-value">' + esc(plan.supplyReasoning) + '</div>';
-        h += '</div>';
-        if (plan.allocation) h += renderAlloc(plan.allocation);
+        if (plan.allocation) {
+          h += '<div style="margin-bottom:1.25rem;">';
+          h += '<div style="font-family:var(--font-mono);font-size:0.65rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-muted);margin-bottom:0.5rem;">Token Allocation</div>';
+          h += renderAlloc(plan.allocation);
+          h += '</div>';
+        }
+        if (plan.economicModel || plan.supplyReasoning) {
+          h += '<div class="ap-plan-bottom" style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;padding-top:1rem;border-top:1px solid var(--border);">';
+          if (plan.economicModel) {
+            h += '<div>';
+            h += '<div style="font-family:var(--font-mono);font-size:0.65rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-muted);margin-bottom:0.35rem;">Economic Model</div>';
+            h += '<p style="font-size:0.8rem;line-height:1.5;color:var(--text-secondary);margin:0;">' + esc(plan.economicModel) + '</p>';
+            h += '</div>';
+          }
+          if (plan.supplyReasoning) {
+            h += '<div>';
+            h += '<div style="font-family:var(--font-mono);font-size:0.65rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-muted);margin-bottom:0.35rem;">Supply Reasoning</div>';
+            h += '<p style="font-size:0.8rem;line-height:1.5;color:var(--text-secondary);margin:0;">' + esc(plan.supplyReasoning) + '</p>';
+            h += '</div>';
+          }
+          h += '</div>';
+        }
         h += '</div></div>';
       }
 

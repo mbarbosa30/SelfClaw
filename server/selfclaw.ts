@@ -2308,20 +2308,21 @@ router.get("/v1/agent-profile/:name", publicApiLimiter, async (req: Request, res
     
     const agent = agents[0];
     const humanId = agent.humanId;
+    const pk = agent.publicKey;
     
     const [walletResults, poolResults, planResults, activityResults, revenueResults, serviceResults] = await Promise.all([
-      humanId ? db.select().from(agentWallets).where(sql`${agentWallets.humanId} = ${humanId}`).limit(1) : Promise.resolve([]),
-      humanId ? db.select().from(trackedPools).where(sql`${trackedPools.humanId} = ${humanId}`) : Promise.resolve([]),
-      humanId ? db.select().from(tokenPlans).where(sql`${tokenPlans.humanId} = ${humanId}`).limit(1) : Promise.resolve([]),
-      humanId ? db.select({
+      pk ? db.select().from(agentWallets).where(sql`${agentWallets.publicKey} = ${pk}`).limit(1) : Promise.resolve([]),
+      pk ? db.select().from(trackedPools).where(sql`${trackedPools.agentPublicKey} = ${pk}`) : Promise.resolve([]),
+      pk ? db.select().from(tokenPlans).where(sql`${tokenPlans.agentPublicKey} = ${pk}`).limit(1) : Promise.resolve([]),
+      pk ? db.select({
         id: agentActivity.id,
         eventType: agentActivity.eventType,
         agentName: agentActivity.agentName,
         metadata: agentActivity.metadata,
         createdAt: agentActivity.createdAt
-      }).from(agentActivity).where(sql`${agentActivity.humanId} = ${humanId}`).orderBy(desc(agentActivity.createdAt)).limit(20) : Promise.resolve([]),
-      humanId ? db.select().from(revenueEvents).where(sql`${revenueEvents.humanId} = ${humanId}`).orderBy(desc(revenueEvents.createdAt)).limit(20) : Promise.resolve([]),
-      humanId ? db.select().from(agentServices).where(sql`${agentServices.humanId} = ${humanId} AND ${agentServices.active} = true`).orderBy(desc(agentServices.createdAt)) : Promise.resolve([])
+      }).from(agentActivity).where(sql`${agentActivity.agentPublicKey} = ${pk} OR (${agentActivity.agentPublicKey} IS NULL AND ${agentActivity.humanId} = ${humanId} AND ${agentActivity.agentName} = ${agent.deviceId})`).orderBy(desc(agentActivity.createdAt)).limit(20) : Promise.resolve([]),
+      pk ? db.select().from(revenueEvents).where(sql`${revenueEvents.agentPublicKey} = ${pk}`).orderBy(desc(revenueEvents.createdAt)).limit(20) : Promise.resolve([]),
+      pk ? db.select().from(agentServices).where(sql`${agentServices.agentPublicKey} = ${pk} AND ${agentServices.active} = true`).orderBy(desc(agentServices.createdAt)) : Promise.resolve([])
     ]);
     
     const wallet = walletResults[0] || null;
