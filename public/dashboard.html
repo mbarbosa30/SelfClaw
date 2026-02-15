@@ -203,6 +203,22 @@
       margin-top: 0.4rem;
       line-height: 1.4;
     }
+    .treasury-card--tvl {
+      border-color: var(--border-heavy);
+    }
+    .tvl-primary {
+      font-size: 1.75rem;
+      font-weight: 800;
+      margin-bottom: 0.2rem;
+      letter-spacing: -0.02em;
+    }
+    .tvl-secondary {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--accent);
+      margin-top: 0.35rem;
+      font-weight: 600;
+    }
 
     .feed-container {
       border: 2px solid var(--border-light);
@@ -380,10 +396,11 @@
           <div class="treasury-label">Gas Subsidies</div>
           <div class="treasury-note">CELO distributed to fund agent onchain operations</div>
         </div>
-        <div class="treasury-card">
-          <div class="treasury-value" id="w-treasury">&mdash;</div>
-          <div class="treasury-label">SELFCLAW in Pools</div>
-          <div class="treasury-note">Total SELFCLAW locked in agent token liquidity pools</div>
+        <div class="treasury-card treasury-card--tvl">
+          <div class="tvl-primary" id="w-tvl-usd">&mdash;</div>
+          <div class="treasury-label">Total Value Locked</div>
+          <div class="tvl-secondary" id="w-tvl-selfclaw"></div>
+          <div class="treasury-note">SELFCLAW locked in agent token liquidity pools</div>
         </div>
       </div>
     </section>
@@ -452,6 +469,17 @@
       diff = Math.floor(diff / 24);
       if (diff < 30) return diff + 'd ago';
       return Math.floor(diff / 30) + 'mo ago';
+    }
+
+    function formatCompact(n) {
+      n = Number(n);
+      if (isNaN(n) || n === 0) return '0';
+      if (n >= 1e9) return (n / 1e9).toFixed(1).replace(/\.0$/, '') + 'B';
+      if (n >= 1e6) return (n / 1e6).toFixed(1).replace(/\.0$/, '') + 'M';
+      if (n >= 1e3) return (n / 1e3).toFixed(1).replace(/\.0$/, '') + 'K';
+      if (n >= 1) return n.toFixed(0);
+      if (n >= 0.01) return n.toFixed(2);
+      return n.toFixed(4);
     }
 
     function setText(id, val) {
@@ -580,11 +608,18 @@
           setText('w-gas', data.wallets ? data.wallets.gasSubsidies : '\u2014');
           var selfclawAmt = data.wallets ? data.wallets.selfclawInPools : 0;
           var tvlUsd = data.wallets ? data.wallets.tvlUsd : null;
-          var treasuryText = selfclawAmt ? Number(selfclawAmt).toLocaleString() + ' SELFCLAW' : '\u2014';
+
           if (tvlUsd && tvlUsd > 0) {
-            treasuryText += ' (~$' + Number(tvlUsd).toLocaleString(undefined, {maximumFractionDigits: 0}) + ')';
+            setText('w-tvl-usd', '$' + formatCompact(tvlUsd));
+          } else {
+            setText('w-tvl-usd', '\u2014');
           }
-          setText('w-treasury', treasuryText);
+
+          if (selfclawAmt) {
+            setText('w-tvl-selfclaw', formatCompact(selfclawAmt) + ' SELFCLAW');
+          } else {
+            setText('w-tvl-selfclaw', '');
+          }
 
           if (data.verificationFunnel) renderFunnel(data.verificationFunnel);
           if (data.activityTimeline) renderChart(data.activityTimeline);
@@ -601,7 +636,8 @@
           setText('s-sponsored', '\u2014');
           setText('w-total', '\u2014');
           setText('w-gas', '\u2014');
-          setText('w-treasury', '\u2014');
+          setText('w-tvl-usd', '\u2014');
+          setText('w-tvl-selfclaw', '');
         });
     }
 
