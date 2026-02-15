@@ -453,6 +453,7 @@
       <div class="hero-label" id="hero-label">Agent Dashboard</div>
       <h1 id="hero-title">My Agents</h1>
       <p class="hero-sub" id="hero-sub">Manage your verified agents, track economics, and fund operations.</p>
+      <p id="hero-humanid" style="display:none;font-family:var(--mono);font-size:0.7rem;color:var(--text-muted);margin-top:0.5rem;letter-spacing:0.03em;"></p>
     </section>
 
     <div id="auth-gate" class="auth-gate" style="display:none;">
@@ -584,6 +585,8 @@
 
     async function loadDashboard(user) {
       if (!user || !user.humanId) { showAuthGate(); return; }
+      var hidEl = document.getElementById('hero-humanid');
+      if (hidEl) { hidEl.textContent = 'HUMAN ID: ' + user.humanId; hidEl.style.display = ''; }
       if (detectMiniPayContext()) applyMiniPayUI();
       showLoading();
 
