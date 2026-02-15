@@ -107,9 +107,11 @@ if (!isBootLoader) {
   server.keepAliveTimeout = 65000;
   server.headersTimeout = 66000;
 } else {
-  initializeApp().catch(err => {
-    console.error('[startup] Initialization failed:', err.message);
-  });
+  setTimeout(() => {
+    initializeApp().catch(err => {
+      console.error('[startup] Initialization failed:', err.message);
+    });
+  }, 500);
 }
 
 export { app };
