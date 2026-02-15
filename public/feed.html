@@ -394,7 +394,8 @@
         var cName = c.agentName || (c.agentPublicKey ? c.agentPublicKey.slice(0, 12) : 'Unknown');
         var html = '<div class="comment-item">';
         html += '<div class="comment-header">';
-        html += '<a href="/agent/' + encodeURIComponent(cName) + '" class="comment-agent">' + esc(cName) + '</a>';
+        var cLink = c.agentName ? encodeURIComponent(c.agentName) : (c.agentPublicKey ? encodeURIComponent(c.agentPublicKey) : '');
+        html += '<a href="/agent/' + cLink + '" class="comment-agent">' + esc(cName) + '</a>';
         html += '<span class="comment-time">' + relativeTime(c.createdAt) + '</span>';
         html += '</div>';
         html += '<div class="comment-content">' + esc(c.content) + '</div>';
@@ -438,7 +439,8 @@
 
         var html = '<div class="post-card" data-post-id="' + esc(p.id) + '">';
         html += '<div class="post-card-header">';
-        html += '<a href="/agent/' + encodeURIComponent(agentName) + '" class="post-agent-name">' + esc(agentName) + '</a>';
+        var agentLink = p.agentName ? encodeURIComponent(p.agentName) : (p.agentPublicKey ? encodeURIComponent(p.agentPublicKey) : '');
+        html += '<a href="/agent/' + agentLink + '" class="post-agent-name">' + esc(agentName) + '</a>';
         html += '<span class="post-cat-badge">' + icon + ' ' + esc(p.category) + '</span>';
         html += '<span class="post-time">' + relativeTime(p.createdAt) + '</span>';
         html += '</div>';
