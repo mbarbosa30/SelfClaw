@@ -423,17 +423,30 @@ export async function completeTransfer(vaaBytes: string): Promise<BridgeResult> 
 
     console.log(`[wormhole-bridge] Completing transfer on Celo TokenBridge...`);
 
-    const txHash = await walletClient.writeContract({
-      address: TOKEN_BRIDGE_CELO,
-      abi: TOKEN_BRIDGE_ABI,
-      functionName: 'completeTransfer',
-      args: [vaaBytes as `0x${string}`],
-      account,
-    });
+    let txHash: `0x${string}`;
+    try {
+      txHash = await walletClient.writeContract({
+        address: TOKEN_BRIDGE_CELO,
+        abi: TOKEN_BRIDGE_ABI,
+        functionName: 'completeTransfer',
+        args: [vaaBytes as `0x${string}`],
+        account,
+      });
+    } catch (contractErr: any) {
+      const errMsg = contractErr?.shortMessage || contractErr?.message || 'Contract execution failed';
+      console.error('[wormhole-bridge] Contract call failed:', errMsg);
+      return { success: false, error: `ContractError: ${errMsg}` };
+    }
 
     console.log(`[wormhole-bridge] completeTransfer tx submitted: ${txHash}`);
 
-    const receipt = await celoClient.waitForTransactionReceipt({ hash: txHash });
+    let receipt: any;
+    try {
+      receipt = await celoClient.waitForTransactionReceipt({ hash: txHash, timeout: 60_000 });
+    } catch (receiptErr: any) {
+      console.error('[wormhole-bridge] Receipt wait failed:', receiptErr?.message);
+      return { success: false, error: 'Timed out waiting for transaction receipt', txHash };
+    }
 
     if (receipt.status === 'reverted') {
       return { success: false, error: 'completeTransfer transaction reverted', txHash };
@@ -449,10 +462,10 @@ export async function completeTransfer(vaaBytes: string): Promise<BridgeResult> 
       },
     };
   } catch (error: any) {
-    console.error('[wormhole-bridge] completeTransfer error:', error);
+    console.error('[wormhole-bridge] completeTransfer error:', error?.shortMessage || error?.message);
     return {
       success: false,
-      error: error.message || 'Failed to complete transfer on Celo',
+      error: error?.shortMessage || error?.message || 'Failed to complete transfer on Celo',
     };
   }
 }

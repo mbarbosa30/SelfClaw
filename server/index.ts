@@ -377,12 +377,12 @@ async function initializeApp() {
     setTimeout(() => {
       try {
         runAutoClaimPendingBridges().catch((err: any) =>
-          console.error('[auto-bridge] Startup auto-claim error:', err.message)
+          console.error('[auto-bridge] Startup auto-claim error:', err?.shortMessage || err?.message)
         );
       } catch (err: any) {
-        console.error('[auto-bridge] Failed to start:', err.message);
+        console.error('[auto-bridge] Failed to start:', err?.message);
       }
-    }, 5000);
+    }, 30000);
   }
 
   if (initOpenClawGateway) {

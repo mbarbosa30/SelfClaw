@@ -810,44 +810,64 @@ async function pollAndComplete(bridgeId: string, sourceTxHash: string) {
 
       if (vaaResult.vaaBytes) {
         console.log(`[auto-bridge] VAA received for ${sourceTxHash}, completing transfer on Celo...`);
-        await db.update(bridgeTransactions)
-          .set({ status: 'vaa_ready', vaaBytes: vaaResult.vaaBytes, updatedAt: new Date() })
-          .where(eq(bridgeTransactions.id, bridgeId));
+        try {
+          await db.update(bridgeTransactions)
+            .set({ status: 'vaa_ready', vaaBytes: vaaResult.vaaBytes, updatedAt: new Date() })
+            .where(eq(bridgeTransactions.id, bridgeId));
+        } catch (dbErr: any) {
+          console.error(`[auto-bridge] DB update failed for ${sourceTxHash}:`, dbErr?.message);
+        }
 
         const claimResult = await completeTransfer(vaaResult.vaaBytes);
         if (claimResult.success) {
           console.log(`[auto-bridge] Transfer completed on Celo for ${sourceTxHash}`);
-          await db.update(bridgeTransactions)
-            .set({
-              status: 'claimed',
-              destTxHash: claimResult.destTxHash || claimResult.txHash || '',
-              updatedAt: new Date(),
-            })
-            .where(eq(bridgeTransactions.id, bridgeId));
+          try {
+            await db.update(bridgeTransactions)
+              .set({
+                status: 'claimed',
+                destTxHash: claimResult.destTxHash || claimResult.txHash || '',
+                updatedAt: new Date(),
+              })
+              .where(eq(bridgeTransactions.id, bridgeId));
+          } catch (dbErr: any) {
+            console.error(`[auto-bridge] DB update failed for ${sourceTxHash}:`, dbErr?.message);
+          }
         } else {
           console.error(`[auto-bridge] completeTransfer failed for ${sourceTxHash}: ${claimResult.error}`);
-          await db.update(bridgeTransactions)
-            .set({ status: 'vaa_ready', error: claimResult.error || 'completeTransfer failed', updatedAt: new Date() })
-            .where(eq(bridgeTransactions.id, bridgeId));
+          try {
+            await db.update(bridgeTransactions)
+              .set({ status: 'vaa_ready', error: claimResult.error || 'completeTransfer failed', updatedAt: new Date() })
+              .where(eq(bridgeTransactions.id, bridgeId));
+          } catch (dbErr: any) {
+            console.error(`[auto-bridge] DB update failed for ${sourceTxHash}:`, dbErr?.message);
+          }
         }
         return;
       }
 
       if (attempts >= MAX_POLL_ATTEMPTS) {
         console.warn(`[auto-bridge] Max polling attempts reached for ${sourceTxHash}`);
-        await db.update(bridgeTransactions)
-          .set({ status: 'submitted', error: 'VAA polling timed out after 20 minutes. Use manual claim.', updatedAt: new Date() })
-          .where(eq(bridgeTransactions.id, bridgeId));
+        try {
+          await db.update(bridgeTransactions)
+            .set({ status: 'submitted', error: 'VAA polling timed out after 20 minutes. Use manual claim.', updatedAt: new Date() })
+            .where(eq(bridgeTransactions.id, bridgeId));
+        } catch (dbErr: any) {
+          console.error(`[auto-bridge] DB update failed for ${sourceTxHash}:`, dbErr?.message);
+        }
         return;
       }
 
       setTimeout(poll, POLL_INTERVAL_MS);
     } catch (error: any) {
-      console.error(`[auto-bridge] Poll error for ${sourceTxHash}:`, error.message);
+      console.error(`[auto-bridge] Poll error for ${sourceTxHash}:`, error?.shortMessage || error?.message);
       if (attempts >= MAX_POLL_ATTEMPTS) {
-        await db.update(bridgeTransactions)
-          .set({ error: `Polling error: ${error.message}`, updatedAt: new Date() })
-          .where(eq(bridgeTransactions.id, bridgeId));
+        try {
+          await db.update(bridgeTransactions)
+            .set({ error: `Polling error: ${error?.message}`, updatedAt: new Date() })
+            .where(eq(bridgeTransactions.id, bridgeId));
+        } catch (dbErr: any) {
+          console.error(`[auto-bridge] DB update failed for ${sourceTxHash}:`, dbErr?.message);
+        }
         return;
       }
       setTimeout(poll, POLL_INTERVAL_MS);
@@ -871,39 +891,43 @@ export async function runAutoClaimPendingBridges() {
     console.log(`[auto-bridge] Found ${pending.length} pending bridge transaction(s), processing...`);
 
     for (const tx of pending) {
-      if (tx.status === 'vaa_ready' && tx.vaaBytes) {
-        console.log(`[auto-bridge] Completing previously ready transfer: ${tx.sourceTxHash}`);
-        try {
-          const result = await completeTransfer(tx.vaaBytes);
-          if (result.success) {
-            await db.update(bridgeTransactions)
-              .set({
-                status: 'claimed',
-                destTxHash: result.destTxHash || result.txHash || '',
-                error: null,
-                updatedAt: new Date(),
-              })
-              .where(eq(bridgeTransactions.id, tx.id));
-            console.log(`[auto-bridge] Claimed ${tx.sourceTxHash}`);
-          } else {
-            await db.update(bridgeTransactions)
-              .set({ error: result.error || 'Claim failed', updatedAt: new Date() })
-              .where(eq(bridgeTransactions.id, tx.id));
+      try {
+        if (tx.status === 'vaa_ready' && tx.vaaBytes) {
+          console.log(`[auto-bridge] Completing previously ready transfer: ${tx.sourceTxHash}`);
+          try {
+            const result = await completeTransfer(tx.vaaBytes);
+            if (result.success) {
+              await db.update(bridgeTransactions)
+                .set({
+                  status: 'claimed',
+                  destTxHash: result.destTxHash || result.txHash || '',
+                  error: null,
+                  updatedAt: new Date(),
+                })
+                .where(eq(bridgeTransactions.id, tx.id));
+              console.log(`[auto-bridge] Claimed ${tx.sourceTxHash}`);
+            } else {
+              await db.update(bridgeTransactions)
+                .set({ error: result.error || 'Claim failed', updatedAt: new Date() })
+                .where(eq(bridgeTransactions.id, tx.id));
+            }
+          } catch (err: any) {
+            console.error(`[auto-bridge] Claim error for ${tx.sourceTxHash}:`, err?.shortMessage || err?.message);
           }
-        } catch (err: any) {
-          console.error(`[auto-bridge] Claim error for ${tx.sourceTxHash}:`, err.message);
+          continue;
         }
-        continue;
-      }
 
-      console.log(`[auto-bridge] Resuming VAA polling for: ${tx.sourceTxHash}`);
-      await db.update(bridgeTransactions)
-        .set({ status: 'polling', updatedAt: new Date() })
-        .where(eq(bridgeTransactions.id, tx.id));
-      pollAndComplete(tx.id, tx.sourceTxHash);
+        console.log(`[auto-bridge] Resuming VAA polling for: ${tx.sourceTxHash}`);
+        await db.update(bridgeTransactions)
+          .set({ status: 'polling', updatedAt: new Date() })
+          .where(eq(bridgeTransactions.id, tx.id));
+        pollAndComplete(tx.id, tx.sourceTxHash);
+      } catch (txErr: any) {
+        console.error(`[auto-bridge] Error processing tx ${tx.sourceTxHash}:`, txErr?.shortMessage || txErr?.message);
+      }
     }
   } catch (error: any) {
-    console.error('[auto-bridge] runAutoClaimPendingBridges error:', error.message);
+    console.error('[auto-bridge] runAutoClaimPendingBridges error:', error?.shortMessage || error?.message);
   }
 }
 
