@@ -470,7 +470,7 @@
 
     async function loadStats() {
       try {
-        var res = await fetch('/api/selfclaw/v1/skill-market/stats', { credentials: 'include' });
+        var res = await fetch('/api/selfclaw/v1/skills/stats', { credentials: 'include' });
         var data = await res.json();
         document.getElementById('stat-total-skills').textContent = data.totalSkills || 0;
         document.getElementById('stat-total-installs').textContent = data.totalInstalls || 0;
@@ -495,7 +495,7 @@
       if (sort) params.set('sort', sort);
 
       try {
-        var res = await fetch('/api/selfclaw/v1/skill-market?' + params.toString(), { credentials: 'include' });
+        var res = await fetch('/api/selfclaw/v1/skills?' + params.toString(), { credentials: 'include' });
         var data = await res.json();
         var skills = data.skills || [];
 
@@ -505,33 +505,39 @@
         }
 
         grid.innerHTML = skills.map(function(skill) {
-          var priceLabel = skill.isFree ? 'FREE' : esc(skill.priceSelfclaw) + ' SELFCLAW';
-          var priceClass = skill.isFree ? 'sm-price' : 'sm-price paid';
-          var stars = renderStars(skill.rating);
+          var isFree = skill.isFree || (!skill.price || skill.price === '0');
+          var priceLabel = isFree ? 'FREE' : esc(skill.price) + ' ' + esc(skill.priceToken || 'SELFCLAW');
+          var priceClass = isFree ? 'sm-price' : 'sm-price paid';
+          var avgRating = skill.ratingCount > 0 ? (skill.ratingSum || 0) / skill.ratingCount : 0;
+          var stars = renderStars(avgRating);
           var ratingText = skill.ratingCount > 0 ? '(' + skill.ratingCount + ')' : '';
+          var skillId = skill.id;
+          var creator = skill.agentName || (skill.humanId ? skill.humanId.substring(0, 12) + '...' : 'unknown');
 
           var installHtml = '';
           if (isLoggedIn) {
-            installHtml = '<div class="sm-agent-picker" id="picker-' + esc(skill.slug) + '">' +
-              '<button class="sm-install-btn" onclick="startInstall(\'' + esc(skill.slug) + '\')">Install</button>' +
+            installHtml = '<div class="sm-agent-picker" id="picker-' + esc(skillId) + '">' +
+              '<button class="sm-install-btn" onclick="startInstall(\'' + esc(skillId) + '\')">Install</button>' +
               '</div>';
           } else {
             installHtml = '<a href="/verify" class="sm-login-link">Login to Install</a>';
           }
 
+          var catIcons = {research:'🔍',content:'✏️',monitoring:'📡',analysis:'📊',development:'🛠️',consulting:'💬',translation:'🌐',other:'🔧'};
+
           return '<div class="sm-card">' +
             '<div class="sm-card-header">' +
-              '<div class="sm-card-icon">' + esc(skill.icon || '🔧') + '</div>' +
+              '<div class="sm-card-icon">' + (catIcons[skill.category] || '🔧') + '</div>' +
               '<div>' +
                 '<div class="sm-card-name">' + esc(skill.name) + '</div>' +
-                '<div class="sm-card-creator">by ' + esc(skill.creatorHumanId ? skill.creatorHumanId.substring(0, 12) + '...' : 'unknown') + '</div>' +
+                '<div class="sm-card-creator">by ' + esc(creator) + '</div>' +
               '</div>' +
             '</div>' +
             '<div class="sm-card-desc">' + esc(skill.description) + '</div>' +
             '<div class="sm-card-meta">' +
-              '<span class="sm-tag">' + esc(skill.category || 'utility') + '</span>' +
+              '<span class="sm-tag">' + esc(skill.category || 'other') + '</span>' +
               '<span class="' + priceClass + '">' + priceLabel + '</span>' +
-              '<span class="sm-installs">' + (skill.installCount || 0) + ' installs</span>' +
+              '<span class="sm-installs">' + (skill.purchaseCount || 0) + ' purchases</span>' +
               '<span class="sm-rating">' + stars + ' ' + ratingText + '</span>' +
             '</div>' +
             installHtml +
@@ -599,7 +605,7 @@
     async function doInstall(slug, agentId, picker) {
       picker.innerHTML = '<span style="font-family:var(--font-mono);font-size:0.75rem;color:var(--text-muted);">Installing...</span>';
       try {
-        var res = await fetch('/api/selfclaw/v1/skill-market/' + encodeURIComponent(slug) + '/install', {
+        var res = await fetch('/api/selfclaw/v1/skills/' + encodeURIComponent(slug) + '/purchase', {
           method: 'POST',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
@@ -668,20 +674,17 @@
       }
 
       try {
-        var res = await fetch('/api/selfclaw/v1/skill-market', {
+        var res = await fetch('/api/selfclaw/v1/skills', {
           method: 'POST',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             name: name,
             description: description,
-            longDescription: longDescription || null,
-            icon: icon,
             category: category,
-            tags: tags,
-            priceSelfclaw: priceSelfclaw,
-            scheduleInterval: scheduleInterval,
-            handlerPrompt: handlerPrompt,
+            price: priceSelfclaw === '0' ? null : priceSelfclaw,
+            priceToken: 'SELFCLAW',
+            isFree: priceSelfclaw === '0',
           }),
         });
         var data = await res.json();

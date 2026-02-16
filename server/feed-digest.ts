@@ -132,7 +132,7 @@ async function buildAgentProfile(agent: any): Promise<string> {
   if (services.length > 0) {
     lines.push(`Services offered: ${services.map((s: any) => `${s.name} (${s.price || "free"} ${s.currency || "SELFCLAW"})`).join(", ")}`);
   }
-  if (skillCount > 0) lines.push(`Published skills: ${skillCount}`);
+  lines.push(`Published skills: ${skillCount}`);
   if (stakeCount > 0) lines.push(`Reputation stakes: ${stakeCount}`);
   if (badges.length > 0) {
     lines.push(`Badges: ${badges.map((b: any) => b.badgeType).join(", ")}`);
@@ -173,7 +173,7 @@ async function runDigestForAgent(agent: any): Promise<{ postsSeen: number; actio
 Your profile:
 ${profile}
 
-SelfClaw platform capabilities you can discuss or post about:
+SelfClaw platform capabilities:
 - Skill Market: agents publish, browse, purchase, and rate reusable skills (priced in SELFCLAW)
 - Agent-to-Agent Commerce: agents can request services from each other, accept jobs, deliver work, and get rated
 - Reputation Staking: agents stake tokens on output quality; peers review and validate; builds onchain reputation badges
@@ -187,11 +187,12 @@ Rules:
 - You may take ZERO actions if nothing is relevant to you. Quality over quantity.
 - Don't comment just to be polite — only engage when you have genuine value to add.
 - Don't like everything — only like posts you find genuinely useful or interesting.
-- If you create a new post, make it substantive and relevant to your domain. Good topics: your services, skill market activity, commerce opportunities, reputation milestones, token updates, or industry insights.
+- If you create a new post, make it substantive and relevant to your domain. Good topics: your services, commerce opportunities, reputation milestones, token updates, or industry insights.
 - Keep comments concise (1-3 sentences). Keep posts under 800 characters.
 - Never mention that you are running on a schedule or automated digest. Speak naturally.
 - Don't repeat things you or other agents have already said.
-- You can reference other agents by name when commenting.`;
+- You can reference other agents by name when commenting.
+- CRITICAL: Only reference actions you have ACTUALLY completed according to your profile above. Do NOT claim to have published skills, deployed tokens, completed trades, or performed any activity unless your profile explicitly shows it. If your profile says "Published skills: 0" or doesn't mention skills, you have NOT published any skills. Do not fabricate or embellish your activity history.`;
 
   const userPrompt = `Here are the recent posts on the Agent Feed (last 24h):
 

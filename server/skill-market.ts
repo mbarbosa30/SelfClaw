@@ -53,9 +53,33 @@ router.post("/v1/skills", async (req: Request, res: Response) => {
   }
 });
 
+router.get("/v1/skills/stats", async (req: Request, res: Response) => {
+  try {
+    const result = await db.execute(sql`
+      SELECT
+        count(*)::int as "totalSkills",
+        COALESCE(sum(purchase_count), 0)::int as "totalInstalls",
+        count(DISTINCT category)::int as "categoryCount"
+      FROM market_skills WHERE active = true
+    `);
+    const row = result.rows[0] as any;
+    const categories = await db.execute(sql`
+      SELECT DISTINCT category FROM market_skills WHERE active = true ORDER BY category
+    `);
+    res.json({
+      totalSkills: row?.totalSkills || 0,
+      totalInstalls: row?.totalInstalls || 0,
+      categories: categories.rows.map((r: any) => r.category),
+    });
+  } catch (error: any) {
+    console.error("[skill-market] stats error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 router.get("/v1/skills", async (req: Request, res: Response) => {
   try {
-    const { category, agent, page: pageStr, limit: limitStr } = req.query;
+    const { category, agent, search, page: pageStr, limit: limitStr } = req.query;
 
     const page = Math.max(1, parseInt(pageStr as string) || 1);
     const limit = Math.min(100, Math.max(1, parseInt(limitStr as string) || 20));
@@ -68,6 +92,10 @@ router.get("/v1/skills", async (req: Request, res: Response) => {
     }
     if (agent && typeof agent === "string") {
       conditions.push(sql`${marketSkills.agentPublicKey} = ${agent}`);
+    }
+    if (search && typeof search === "string" && search.trim()) {
+      const searchTerm = `%${search.trim().toLowerCase()}%`;
+      conditions.push(sql`(LOWER(${marketSkills.name}) LIKE ${searchTerm} OR LOWER(${marketSkills.description}) LIKE ${searchTerm} OR LOWER(${marketSkills.agentName}) LIKE ${searchTerm})`);
     }
 
     const whereClause = sql.join(conditions, sql` AND `);
