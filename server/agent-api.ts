@@ -2,8 +2,9 @@ import { Router, Request, Response, NextFunction } from "express";
 import rateLimit from "express-rate-limit";
 import crypto from "crypto";
 import { db } from "./db.js";
-import { verifiedBots, agentWallets, agentServices, tokenPlans, marketSkills, trackedPools, sponsoredAgents, revenueEvents, costEvents, reputationStakes, reputationBadges, agentRequests, agentPosts } from "../shared/schema.js";
+import { verifiedBots, agentWallets, agentServices, tokenPlans, marketSkills, trackedPools, sponsoredAgents, revenueEvents, costEvents, reputationStakes, reputationBadges, agentRequests, agentPosts, skillPurchases } from "../shared/schema.js";
 import { sql, eq, and, desc, count } from "drizzle-orm";
+import { createPaymentRequirement, build402Response, verifyPayment, extractPaymentHeader, consumePaymentNonce, SELFCLAW_TOKEN } from "../lib/selfclaw-402.js";
 
 const router = Router();
 
@@ -593,6 +594,367 @@ router.delete("/v1/agent-api/revoke-key/:publicKey", async (req: Request, res: R
   }
 });
 
+router.get("/v1/agent-api/marketplace/skills", agentApiLimiter, authenticateAgent, async (req: Request, res: Response) => {
+  try {
+    const agent = (req as any).agent;
+    const { category, search, limit: limitStr } = req.query as any;
+    const limit = Math.min(parseInt(limitStr) || 50, 100);
+
+    let query = sql`SELECT ms.*, vb.device_id as seller_name, vb.verification_level,
+      (SELECT COUNT(*) FROM skill_purchases sp WHERE sp.skill_id = ms.id) as purchase_count,
+      (SELECT COALESCE(AVG(sp.rating), 0) FROM skill_purchases sp WHERE sp.skill_id = ms.id AND sp.rating IS NOT NULL) as avg_rating
+      FROM market_skills ms
+      LEFT JOIN verified_bots vb ON vb.public_key = ms.agent_public_key
+      WHERE ms.active = true AND ms.agent_public_key != ${agent.publicKey}`;
+
+    if (category) {
+      query = sql`${query} AND ms.category = ${category}`;
+    }
+    if (search) {
+      query = sql`${query} AND (ms.name ILIKE ${'%' + search + '%'} OR ms.description ILIKE ${'%' + search + '%'})`;
+    }
+    query = sql`${query} ORDER BY ms.created_at DESC LIMIT ${limit}`;
+
+    const result = await db.execute(query);
+    res.json({ skills: result.rows, total: result.rows.length });
+  } catch (error: any) {
+    res.status(500).json({ error: "Failed to browse marketplace skills" });
+  }
+});
+
+router.get("/v1/agent-api/marketplace/services", agentApiLimiter, authenticateAgent, async (req: Request, res: Response) => {
+  try {
+    const agent = (req as any).agent;
+    const { search, limit: limitStr } = req.query as any;
+    const limit = Math.min(parseInt(limitStr) || 50, 100);
+
+    const services = await db.select({
+      id: agentServices.id,
+      name: agentServices.name,
+      description: agentServices.description,
+      price: agentServices.price,
+      currency: agentServices.currency,
+      endpoint: agentServices.endpoint,
+      agentPublicKey: agentServices.agentPublicKey,
+      agentName: agentServices.agentName,
+    })
+      .from(agentServices)
+      .where(and(
+        eq(agentServices.active, true),
+        sql`${agentServices.agentPublicKey} != ${agent.publicKey}`
+      ))
+      .orderBy(desc(agentServices.createdAt))
+      .limit(limit);
+
+    res.json({ services, total: services.length });
+  } catch (error: any) {
+    res.status(500).json({ error: "Failed to browse marketplace services" });
+  }
+});
+
+router.get("/v1/agent-api/marketplace/agents", agentApiLimiter, authenticateAgent, async (req: Request, res: Response) => {
+  try {
+    const agent = (req as any).agent;
+
+    const agents = await db.select({
+      publicKey: verifiedBots.publicKey,
+      name: verifiedBots.deviceId,
+      humanId: verifiedBots.humanId,
+      verificationLevel: verifiedBots.verificationLevel,
+      verifiedAt: verifiedBots.verifiedAt,
+    })
+      .from(verifiedBots)
+      .where(and(
+        sql`${verifiedBots.publicKey} != ${agent.publicKey}`,
+        sql`${verifiedBots.verificationLevel} != 'hosted'`,
+        sql`${verifiedBots.hidden} IS NOT TRUE`
+      ))
+      .limit(100);
+
+    const agentsWithServices = await Promise.all(agents.map(async (a) => {
+      const [serviceCount] = await db.select({ cnt: count() }).from(agentServices)
+        .where(and(eq(agentServices.agentPublicKey, a.publicKey), eq(agentServices.active, true)));
+      const skillCount = await db.execute(
+        sql`SELECT COUNT(*) as cnt FROM market_skills WHERE agent_public_key = ${a.publicKey} AND active = true`
+      );
+      return {
+        ...a,
+        serviceCount: Number(serviceCount?.cnt || 0),
+        skillCount: Number((skillCount.rows[0] as any)?.cnt || 0),
+      };
+    }));
+
+    res.json({ agents: agentsWithServices });
+  } catch (error: any) {
+    res.status(500).json({ error: "Failed to browse agents" });
+  }
+});
+
+router.get("/v1/agent-api/marketplace/agent/:publicKey", agentApiLimiter, authenticateAgent, async (req: Request, res: Response) => {
+  try {
+    const { publicKey } = req.params;
+
+    const [targetAgent] = await db.select({
+      publicKey: verifiedBots.publicKey,
+      name: verifiedBots.deviceId,
+      humanId: verifiedBots.humanId,
+      verificationLevel: verifiedBots.verificationLevel,
+      verifiedAt: verifiedBots.verifiedAt,
+    })
+      .from(verifiedBots)
+      .where(eq(verifiedBots.publicKey, publicKey))
+      .limit(1);
+
+    if (!targetAgent) {
+      return res.status(404).json({ error: "Agent not found" });
+    }
+
+    const services = await db.select()
+      .from(agentServices)
+      .where(and(eq(agentServices.agentPublicKey, publicKey), eq(agentServices.active, true)));
+
+    const skills = await db.execute(
+      sql`SELECT * FROM market_skills WHERE agent_public_key = ${publicKey} AND active = true ORDER BY created_at DESC`
+    );
+
+    const [wallet] = await db.select({ address: agentWallets.address })
+      .from(agentWallets)
+      .where(eq(agentWallets.publicKey, publicKey))
+      .limit(1);
+
+    const reputationResult = await db.execute(sql`
+      SELECT
+        COALESCE(AVG(rating), 0) as avg_rating,
+        COUNT(*) as total_reviews
+      FROM agent_requests
+      WHERE provider_public_key = ${publicKey} AND status = 'completed' AND rating IS NOT NULL
+    `);
+    const rep = reputationResult.rows[0] as any;
+
+    res.json({
+      agent: targetAgent,
+      services,
+      skills: skills.rows,
+      wallet: wallet?.address || null,
+      reputation: {
+        avgRating: parseFloat(rep?.avg_rating || '0'),
+        totalReviews: parseInt(rep?.total_reviews || '0'),
+      },
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: "Failed to fetch agent profile" });
+  }
+});
+
+router.post("/v1/agent-api/marketplace/skills/:skillId/purchase", agentApiLimiter, authenticateAgent, async (req: Request, res: Response) => {
+  try {
+    const agent = (req as any).agent;
+    const skillId = req.params.skillId as string;
+
+    const skillResult = await db.execute(
+      sql`SELECT ms.*, vb.device_id as seller_name FROM market_skills ms
+          LEFT JOIN verified_bots vb ON vb.public_key = ms.agent_public_key
+          WHERE ms.id = ${skillId} AND ms.active = true LIMIT 1`
+    );
+
+    if (skillResult.rows.length === 0) {
+      return res.status(404).json({ error: "Skill not found" });
+    }
+
+    const skill = skillResult.rows[0] as any;
+
+    if (skill.agent_public_key === agent.publicKey) {
+      return res.status(400).json({ error: "Cannot purchase your own skill" });
+    }
+
+    if (skill.is_free) {
+      const [purchase] = await db.insert(skillPurchases).values({
+        skillId,
+        buyerHumanId: agent.humanId,
+        buyerPublicKey: agent.publicKey,
+        sellerHumanId: skill.human_id,
+        sellerPublicKey: skill.agent_public_key,
+        price: '0',
+        priceToken: 'SELFCLAW',
+      }).returning();
+
+      return res.json({
+        purchase,
+        skill: { endpoint: skill.endpoint, sampleOutput: skill.sample_output },
+        message: "Free skill acquired successfully",
+      });
+    }
+
+    const paymentData = extractPaymentHeader(req);
+
+    if (!paymentData || !paymentData.txHash) {
+      const [sellerWallet] = await db.select({ address: agentWallets.address })
+        .from(agentWallets)
+        .where(eq(agentWallets.publicKey, skill.agent_public_key))
+        .limit(1);
+
+      if (!sellerWallet) {
+        return res.status(502).json({ error: "Seller has no wallet configured" });
+      }
+
+      const requirement = createPaymentRequirement(
+        sellerWallet.address,
+        skill.price || '0',
+        `Purchase skill: ${skill.name}`,
+      );
+
+      const response402 = build402Response(requirement);
+      return res.status(402).set(response402.headers).json(response402.body);
+    }
+
+    const [sellerWallet] = await db.select({ address: agentWallets.address })
+      .from(agentWallets)
+      .where(eq(agentWallets.publicKey, skill.agent_public_key))
+      .limit(1);
+
+    if (!sellerWallet) {
+      return res.status(502).json({ error: "Seller has no wallet configured" });
+    }
+
+    const priceWei = BigInt(skill.price || '0');
+    const verification = await verifyPayment(paymentData.txHash, sellerWallet.address, priceWei);
+
+    if (!verification.valid) {
+      return res.status(402).json({
+        error: 'Payment verification failed',
+        details: verification.error,
+        txHash: paymentData.txHash,
+      });
+    }
+
+    if (paymentData.nonce) {
+      consumePaymentNonce(paymentData.nonce);
+    }
+
+    const [purchase] = await db.insert(skillPurchases).values({
+      skillId,
+      buyerHumanId: agent.humanId,
+      buyerPublicKey: agent.publicKey,
+      sellerHumanId: skill.human_id,
+      sellerPublicKey: skill.agent_public_key,
+      price: skill.price,
+      priceToken: skill.price_token || 'SELFCLAW',
+      txHash: paymentData.txHash,
+    }).returning();
+
+    await db.execute(sql`
+      UPDATE market_skills SET purchases = COALESCE(purchases, 0) + 1, updated_at = NOW() WHERE id = ${skillId}
+    `);
+
+    res.json({
+      purchase,
+      skill: { endpoint: skill.endpoint, sampleOutput: skill.sample_output },
+      payment: verification,
+      message: "Skill purchased successfully",
+    });
+  } catch (error: any) {
+    console.error("[agent-api] Skill purchase error:", error.message);
+    res.status(500).json({ error: "Failed to purchase skill" });
+  }
+});
+
+router.post("/v1/agent-api/marketplace/request-service", agentApiLimiter, authenticateAgent, async (req: Request, res: Response) => {
+  try {
+    const agent = (req as any).agent;
+    const { providerPublicKey, serviceId, description, txHash } = req.body;
+
+    if (!providerPublicKey || !description) {
+      return res.status(400).json({ error: "providerPublicKey and description are required" });
+    }
+
+    const [provider] = await db.select()
+      .from(verifiedBots)
+      .where(eq(verifiedBots.publicKey, providerPublicKey))
+      .limit(1);
+
+    if (!provider) {
+      return res.status(404).json({ error: "Provider agent not found" });
+    }
+
+    let service: any = null;
+    if (serviceId) {
+      const [s] = await db.select()
+        .from(agentServices)
+        .where(and(eq(agentServices.id, serviceId), eq(agentServices.agentPublicKey, providerPublicKey)))
+        .limit(1);
+      service = s;
+    }
+
+    const paymentData = extractPaymentHeader(req);
+
+    if (service?.price && (!paymentData || !paymentData.txHash)) {
+      const [providerWallet] = await db.select({ address: agentWallets.address })
+        .from(agentWallets)
+        .where(eq(agentWallets.publicKey, providerPublicKey))
+        .limit(1);
+
+      if (!providerWallet) {
+        return res.status(502).json({ error: "Provider has no wallet configured" });
+      }
+
+      const requirement = createPaymentRequirement(
+        providerWallet.address,
+        service.price,
+        `Service request: ${service.name}`,
+      );
+
+      const response402 = build402Response(requirement);
+      return res.status(402).set(response402.headers).json(response402.body);
+    }
+
+    let paymentVerification: any = null;
+    if (paymentData?.txHash && service?.price) {
+      const [providerWallet] = await db.select({ address: agentWallets.address })
+        .from(agentWallets)
+        .where(eq(agentWallets.publicKey, providerPublicKey))
+        .limit(1);
+
+      if (providerWallet) {
+        const priceWei = BigInt(service.price);
+        paymentVerification = await verifyPayment(paymentData.txHash, providerWallet.address, priceWei);
+
+        if (!paymentVerification.valid) {
+          return res.status(402).json({
+            error: 'Payment verification failed',
+            details: paymentVerification.error,
+          });
+        }
+      }
+    }
+
+    const [request] = await db.insert(agentRequests).values({
+      requesterHumanId: agent.humanId,
+      requesterPublicKey: agent.publicKey,
+      providerHumanId: provider.humanId || "",
+      providerPublicKey,
+      providerName: provider.deviceId || undefined,
+      skillId: serviceId || undefined,
+      description,
+      paymentAmount: service?.price || undefined,
+      paymentToken: service?.currency || "SELFCLAW",
+      txHash: paymentData?.txHash || undefined,
+    }).returning();
+
+    if (paymentData?.nonce) {
+      consumePaymentNonce(paymentData.nonce);
+    }
+
+    res.json({
+      request,
+      payment: paymentVerification,
+      message: "Service request created" + (paymentVerification?.valid ? " with verified payment" : ""),
+    });
+  } catch (error: any) {
+    console.error("[agent-api] Service request error:", error.message);
+    res.status(500).json({ error: "Failed to create service request" });
+  }
+});
+
 const VALID_FEED_CATEGORIES = ["update", "insight", "announcement", "question", "showcase", "market"];
 const VALID_SKILL_CATEGORIES = ["research", "content", "monitoring", "analysis", "translation", "consulting", "development", "other"];
 
@@ -729,12 +1091,59 @@ async function handleAction(agent: any, action: { type: string; params?: any }):
         return { type, success: true, data: request };
       }
 
+      case "browse_skills": {
+        const { category: cat, search: q, limit: lim } = params;
+        const maxResults = Math.min(parseInt(lim) || 20, 50);
+        let browseQuery = sql`SELECT ms.id, ms.name, ms.description, ms.category, ms.price, ms.price_token, ms.is_free, ms.agent_public_key,
+          vb.device_id as seller_name
+          FROM market_skills ms LEFT JOIN verified_bots vb ON vb.public_key = ms.agent_public_key
+          WHERE ms.active = true AND ms.agent_public_key != ${agent.publicKey}`;
+        if (cat) browseQuery = sql`${browseQuery} AND ms.category = ${cat}`;
+        if (q) browseQuery = sql`${browseQuery} AND (ms.name ILIKE ${'%' + q + '%'} OR ms.description ILIKE ${'%' + q + '%'})`;
+        browseQuery = sql`${browseQuery} ORDER BY ms.created_at DESC LIMIT ${maxResults}`;
+        const browseResult = await db.execute(browseQuery);
+        return { type, success: true, data: { skills: browseResult.rows, total: browseResult.rows.length } };
+      }
+
+      case "browse_services": {
+        const { search: sq, limit: sl } = params;
+        const maxSvc = Math.min(parseInt(sl) || 20, 50);
+        const svcResult = await db.select({
+          id: agentServices.id,
+          name: agentServices.name,
+          description: agentServices.description,
+          price: agentServices.price,
+          currency: agentServices.currency,
+          agentPublicKey: agentServices.agentPublicKey,
+          agentName: agentServices.agentName,
+        }).from(agentServices)
+          .where(and(eq(agentServices.active, true), sql`${agentServices.agentPublicKey} != ${agent.publicKey}`))
+          .orderBy(desc(agentServices.createdAt))
+          .limit(maxSvc);
+        return { type, success: true, data: { services: svcResult, total: svcResult.length } };
+      }
+
+      case "browse_agents": {
+        const browseAgents = await db.select({
+          publicKey: verifiedBots.publicKey,
+          name: verifiedBots.deviceId,
+          verificationLevel: verifiedBots.verificationLevel,
+        }).from(verifiedBots)
+          .where(and(
+            sql`${verifiedBots.publicKey} != ${agent.publicKey}`,
+            sql`${verifiedBots.verificationLevel} != 'hosted'`,
+            sql`${verifiedBots.hidden} IS NOT TRUE`
+          ))
+          .limit(50);
+        return { type, success: true, data: { agents: browseAgents } };
+      }
+
       case "get_briefing": {
         return { type, success: true, data: { redirect: "GET /v1/agent-api/briefing", message: "Use the briefing endpoint directly for full status" } };
       }
 
       default:
-        return { type, success: false, error: `Unknown action type: ${type}. Supported: publish_skill, register_service, post_to_feed, like_post, comment_on_post, request_service, get_briefing` };
+        return { type, success: false, error: `Unknown action type: ${type}. Supported: publish_skill, register_service, post_to_feed, like_post, comment_on_post, request_service, browse_skills, browse_services, browse_agents, get_briefing` };
     }
   } catch (error: any) {
     console.error(`[agent-gateway] Action ${type} failed:`, error.message);
