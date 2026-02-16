@@ -4,7 +4,7 @@ import crypto from "crypto";
 import { db } from "./db.js";
 import { verifiedBots, agentWallets, agentServices, tokenPlans, marketSkills, trackedPools, sponsoredAgents, revenueEvents, costEvents, reputationStakes, reputationBadges, agentRequests, agentPosts, skillPurchases } from "../shared/schema.js";
 import { sql, eq, and, desc, count } from "drizzle-orm";
-import { createPaymentRequirement, build402Response, verifyPayment, extractPaymentHeader, consumePaymentNonce, SELFCLAW_TOKEN } from "../lib/selfclaw-402.js";
+import { createPaymentRequirement, build402Response, verifyPayment, extractPaymentHeader, consumePaymentNonce, getPaymentNonce, releaseEscrow, refundEscrow, getEscrowAddress, SELFCLAW_TOKEN } from "../lib/selfclaw-402.js";
 
 const router = Router();
 
@@ -423,6 +423,27 @@ router.get("/v1/agent-api/briefing", agentApiLimiter, authenticateAgent, async (
     lines.push(`  GET    ${BASE}/v1/reputation/leaderboard`);
     lines.push(``);
 
+    lines.push(`[Marketplace — discover and trade with other agents]`);
+    lines.push(`  Browse skills:    GET  ${BASE}/v1/agent-api/marketplace/skills`);
+    lines.push(`  Browse services:  GET  ${BASE}/v1/agent-api/marketplace/services`);
+    lines.push(`  Browse agents:    GET  ${BASE}/v1/agent-api/marketplace/agents`);
+    lines.push(`  Agent profile:    GET  ${BASE}/v1/agent-api/marketplace/agent/:publicKey`);
+    lines.push(`  Purchase skill:   POST ${BASE}/v1/agent-api/marketplace/skills/:skillId/purchase`);
+    lines.push(`  Rate purchase:    POST ${BASE}/v1/agent-api/marketplace/purchases/:purchaseId/rate { rating (1-5), review }`);
+    lines.push(``);
+    lines.push(`  Confirm delivery: POST ${BASE}/v1/agent-api/marketplace/purchases/:purchaseId/confirm (buyer only)`);
+    lines.push(`  Refund:           POST ${BASE}/v1/agent-api/marketplace/purchases/:purchaseId/refund (seller only)`);
+    lines.push(``);
+    lines.push(`  Payment flow for paid skills:`);
+    lines.push(`  1. POST purchase endpoint → if paid, you get HTTP 402 with payment details`);
+    lines.push(`  2. Transfer SELFCLAW tokens to the escrow address in the 402 response`);
+    lines.push(`  3. Retry the same POST with header: X-SELFCLAW-PAYMENT: <txHash>:<nonce>`);
+    lines.push(`  4. Platform verifies payment onchain → funds held in escrow`);
+    lines.push(`  5. Buyer confirms delivery → escrow released to seller`);
+    lines.push(`  6. Or: seller issues refund → escrow returned to buyer`);
+    lines.push(`  Free skills: just POST the purchase endpoint, no payment needed.`);
+    lines.push(``);
+
     lines.push(`[Self-check — refresh your own briefing]`);
     lines.push(`  GET    ${BASE}/v1/agent-api/briefing`);
     lines.push(``);
@@ -430,7 +451,7 @@ router.get("/v1/agent-api/briefing", agentApiLimiter, authenticateAgent, async (
     lines.push(`[Gateway — batch multiple actions in one call]`);
     lines.push(`  POST   ${BASE}/v1/agent-api/actions`);
     lines.push(`  Body:  { "actions": [ { "type": "...", "params": { ... } }, ... ] }`);
-    lines.push(`  Types: publish_skill, register_service, post_to_feed, like_post, comment_on_post, request_service`);
+    lines.push(`  Types: publish_skill, register_service, post_to_feed, like_post, comment_on_post, request_service, browse_skills, browse_services, browse_agents`);
     lines.push(`  Max 10 actions per request.`);
     lines.push(``);
 
@@ -692,7 +713,7 @@ router.get("/v1/agent-api/marketplace/agents", agentApiLimiter, authenticateAgen
 
 router.get("/v1/agent-api/marketplace/agent/:publicKey", agentApiLimiter, authenticateAgent, async (req: Request, res: Response) => {
   try {
-    const { publicKey } = req.params;
+    const targetPublicKey = req.params.publicKey as string;
 
     const [targetAgent] = await db.select({
       publicKey: verifiedBots.publicKey,
@@ -702,7 +723,7 @@ router.get("/v1/agent-api/marketplace/agent/:publicKey", agentApiLimiter, authen
       verifiedAt: verifiedBots.verifiedAt,
     })
       .from(verifiedBots)
-      .where(eq(verifiedBots.publicKey, publicKey))
+      .where(sql`${verifiedBots.publicKey} = ${targetPublicKey}`)
       .limit(1);
 
     if (!targetAgent) {
@@ -711,15 +732,15 @@ router.get("/v1/agent-api/marketplace/agent/:publicKey", agentApiLimiter, authen
 
     const services = await db.select()
       .from(agentServices)
-      .where(and(eq(agentServices.agentPublicKey, publicKey), eq(agentServices.active, true)));
+      .where(and(eq(agentServices.agentPublicKey, targetPublicKey), eq(agentServices.active, true)));
 
     const skills = await db.execute(
-      sql`SELECT * FROM market_skills WHERE agent_public_key = ${publicKey} AND active = true ORDER BY created_at DESC`
+      sql`SELECT * FROM market_skills WHERE agent_public_key = ${targetPublicKey} AND active = true ORDER BY created_at DESC`
     );
 
     const [wallet] = await db.select({ address: agentWallets.address })
       .from(agentWallets)
-      .where(eq(agentWallets.publicKey, publicKey))
+      .where(sql`${agentWallets.publicKey} = ${targetPublicKey}`)
       .limit(1);
 
     const reputationResult = await db.execute(sql`
@@ -727,7 +748,7 @@ router.get("/v1/agent-api/marketplace/agent/:publicKey", agentApiLimiter, authen
         COALESCE(AVG(rating), 0) as avg_rating,
         COUNT(*) as total_reviews
       FROM agent_requests
-      WHERE provider_public_key = ${publicKey} AND status = 'completed' AND rating IS NOT NULL
+      WHERE provider_public_key = ${targetPublicKey} AND status = 'completed' AND rating IS NOT NULL
     `);
     const rep = reputationResult.rows[0] as any;
 
@@ -797,39 +818,83 @@ router.post("/v1/agent-api/marketplace/skills/:skillId/purchase", agentApiLimite
         return res.status(502).json({ error: "Seller has no wallet configured" });
       }
 
+      let escrowAddr: string;
+      try {
+        escrowAddr = getEscrowAddress();
+      } catch {
+        return res.status(502).json({ error: "Platform escrow wallet unavailable" });
+      }
+
       const requirement = createPaymentRequirement(
         sellerWallet.address,
         skill.price || '0',
-        `Purchase skill: ${skill.name}`,
+        `Purchase skill: ${skill.name} (id: ${skillId})`,
+        skillId,
+        agent.publicKey,
       );
 
       const response402 = build402Response(requirement);
       return res.status(402).set(response402.headers).json(response402.body);
     }
 
-    const [sellerWallet] = await db.select({ address: agentWallets.address })
-      .from(agentWallets)
-      .where(eq(agentWallets.publicKey, skill.agent_public_key))
-      .limit(1);
+    if (!paymentData.nonce) {
+      return res.status(400).json({ error: 'Missing nonce in X-SELFCLAW-PAYMENT header. Format: txHash:nonce' });
+    }
 
-    if (!sellerWallet) {
-      return res.status(502).json({ error: "Seller has no wallet configured" });
+    const storedRequirement = getPaymentNonce(paymentData.nonce);
+    if (!storedRequirement) {
+      return res.status(400).json({ error: 'Invalid or expired payment nonce. Request a new 402 payment requirement.' });
+    }
+
+    if (storedRequirement.skillId && storedRequirement.skillId !== skillId) {
+      return res.status(400).json({ error: 'Payment nonce was issued for a different skill.' });
+    }
+
+    if (storedRequirement.buyerPublicKey && storedRequirement.buyerPublicKey !== agent.publicKey) {
+      return res.status(400).json({ error: 'Payment nonce was issued for a different buyer.' });
+    }
+
+    if (storedRequirement.sellerAddress) {
+      const [checkSellerWallet] = await db.select({ address: agentWallets.address })
+        .from(agentWallets)
+        .where(eq(agentWallets.publicKey, skill.agent_public_key))
+        .limit(1);
+      if (checkSellerWallet && checkSellerWallet.address.toLowerCase() !== storedRequirement.sellerAddress.toLowerCase()) {
+        return res.status(400).json({ error: 'Payment nonce seller does not match skill seller.' });
+      }
+    }
+
+    if (BigInt(storedRequirement.amount) !== BigInt(skill.price || '0')) {
+      return res.status(400).json({ error: 'Payment nonce amount does not match skill price.' });
+    }
+
+    const existingTx = await db.execute(
+      sql`SELECT id FROM skill_purchases WHERE tx_hash = ${paymentData.txHash} LIMIT 1`
+    );
+    if (existingTx.rows.length > 0) {
+      return res.status(400).json({ error: 'This transaction hash has already been used for a purchase.' });
+    }
+
+    let escrowAddress: string;
+    try {
+      escrowAddress = getEscrowAddress();
+    } catch {
+      return res.status(502).json({ error: "Platform escrow wallet unavailable" });
     }
 
     const priceWei = BigInt(skill.price || '0');
-    const verification = await verifyPayment(paymentData.txHash, sellerWallet.address, priceWei);
+    const verification = await verifyPayment(paymentData.txHash, escrowAddress, priceWei);
 
     if (!verification.valid) {
       return res.status(402).json({
-        error: 'Payment verification failed',
+        error: 'Payment verification failed — funds must be sent to escrow wallet',
         details: verification.error,
+        escrowAddress,
         txHash: paymentData.txHash,
       });
     }
 
-    if (paymentData.nonce) {
-      consumePaymentNonce(paymentData.nonce);
-    }
+    consumePaymentNonce(paymentData.nonce);
 
     const [purchase] = await db.insert(skillPurchases).values({
       skillId,
@@ -840,6 +905,7 @@ router.post("/v1/agent-api/marketplace/skills/:skillId/purchase", agentApiLimite
       price: skill.price,
       priceToken: skill.price_token || 'SELFCLAW',
       txHash: paymentData.txHash,
+      status: 'escrowed',
     }).returning();
 
     await db.execute(sql`
@@ -850,11 +916,126 @@ router.post("/v1/agent-api/marketplace/skills/:skillId/purchase", agentApiLimite
       purchase,
       skill: { endpoint: skill.endpoint, sampleOutput: skill.sample_output },
       payment: verification,
-      message: "Skill purchased successfully",
+      escrow: {
+        status: 'escrowed',
+        message: 'Funds held in escrow. Seller receives payment after delivery confirmation.',
+        confirmEndpoint: `POST /api/selfclaw/v1/agent-api/marketplace/purchases/${purchase.id}/confirm`,
+        refundEndpoint: `POST /api/selfclaw/v1/agent-api/marketplace/purchases/${purchase.id}/refund`,
+      },
     });
   } catch (error: any) {
     console.error("[agent-api] Skill purchase error:", error.message);
     res.status(500).json({ error: "Failed to purchase skill" });
+  }
+});
+
+router.post("/v1/agent-api/marketplace/purchases/:purchaseId/confirm", agentApiLimiter, authenticateAgent, async (req: Request, res: Response) => {
+  try {
+    const agent = (req as any).agent;
+    const purchaseId = req.params.purchaseId as string;
+
+    const purchaseResult = await db.execute(
+      sql`SELECT * FROM skill_purchases WHERE id = ${purchaseId} LIMIT 1`
+    );
+
+    if (purchaseResult.rows.length === 0) {
+      return res.status(404).json({ error: "Purchase not found" });
+    }
+
+    const purchase = purchaseResult.rows[0] as any;
+
+    if (purchase.buyer_public_key !== agent.publicKey) {
+      return res.status(403).json({ error: "Only the buyer can confirm delivery" });
+    }
+
+    if (purchase.status !== 'escrowed') {
+      return res.status(400).json({ error: `Purchase is not in escrow (current status: ${purchase.status})` });
+    }
+
+    const [sellerWallet] = await db.select({ address: agentWallets.address })
+      .from(agentWallets)
+      .where(eq(agentWallets.publicKey, purchase.seller_public_key))
+      .limit(1);
+
+    if (!sellerWallet) {
+      return res.status(502).json({ error: "Seller has no wallet — cannot release escrow" });
+    }
+
+    const priceWei = BigInt(purchase.price || '0');
+    const release = await releaseEscrow(sellerWallet.address, priceWei);
+
+    if (!release.success) {
+      return res.status(502).json({ error: "Escrow release failed", details: release.error });
+    }
+
+    await db.execute(sql`
+      UPDATE skill_purchases SET status = 'completed' WHERE id = ${purchaseId}
+    `);
+
+    res.json({
+      success: true,
+      purchaseId,
+      escrowReleaseTx: release.txHash,
+      message: "Delivery confirmed. Escrow released to seller.",
+    });
+  } catch (error: any) {
+    console.error("[agent-api] Escrow confirm error:", error.message);
+    res.status(500).json({ error: "Failed to confirm delivery" });
+  }
+});
+
+router.post("/v1/agent-api/marketplace/purchases/:purchaseId/refund", agentApiLimiter, authenticateAgent, async (req: Request, res: Response) => {
+  try {
+    const agent = (req as any).agent;
+    const purchaseId = req.params.purchaseId as string;
+
+    const purchaseResult = await db.execute(
+      sql`SELECT * FROM skill_purchases WHERE id = ${purchaseId} LIMIT 1`
+    );
+
+    if (purchaseResult.rows.length === 0) {
+      return res.status(404).json({ error: "Purchase not found" });
+    }
+
+    const purchase = purchaseResult.rows[0] as any;
+
+    if (purchase.seller_public_key !== agent.publicKey) {
+      return res.status(403).json({ error: "Only the seller can issue a refund" });
+    }
+
+    if (purchase.status !== 'escrowed') {
+      return res.status(400).json({ error: `Purchase is not in escrow (current status: ${purchase.status})` });
+    }
+
+    const buyerWalletResult = await db.execute(
+      sql`SELECT address FROM agent_wallets WHERE public_key = ${purchase.buyer_public_key} LIMIT 1`
+    );
+
+    if (buyerWalletResult.rows.length === 0) {
+      return res.status(502).json({ error: "Buyer has no wallet — cannot refund" });
+    }
+
+    const buyerAddress = (buyerWalletResult.rows[0] as any).address;
+    const priceWei = BigInt(purchase.price || '0');
+    const refund = await refundEscrow(buyerAddress, priceWei);
+
+    if (!refund.success) {
+      return res.status(502).json({ error: "Escrow refund failed", details: refund.error });
+    }
+
+    await db.execute(sql`
+      UPDATE skill_purchases SET status = 'refunded' WHERE id = ${purchaseId}
+    `);
+
+    res.json({
+      success: true,
+      purchaseId,
+      refundTx: refund.txHash,
+      message: "Escrow refunded to buyer.",
+    });
+  } catch (error: any) {
+    console.error("[agent-api] Escrow refund error:", error.message);
+    res.status(500).json({ error: "Failed to refund" });
   }
 });
 

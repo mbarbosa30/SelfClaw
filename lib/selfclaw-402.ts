@@ -1,5 +1,6 @@
-import { createPublicClient, http, fallback, parseAbi, formatUnits } from 'viem';
+import { createPublicClient, createWalletClient, http, fallback, parseAbi, formatUnits } from 'viem';
 import { celo } from 'viem/chains';
+import { privateKeyToAccount } from 'viem/accounts';
 
 const SELFCLAW_TOKEN = '0xCD88f99Adf75A9110c0bcd22695A32A20eC54ECb' as const;
 const CELO_RPC_PRIMARY = 'https://forno.celo.org';
@@ -17,7 +18,36 @@ const ERC20_ABI = parseAbi([
   'event Transfer(address indexed from, address indexed to, uint256 value)',
   'function decimals() view returns (uint8)',
   'function balanceOf(address) view returns (uint256)',
+  'function transfer(address to, uint256 amount) returns (bool)',
 ]);
+
+const rawPrivateKey = process.env.CELO_PRIVATE_KEY;
+const PRIVATE_KEY = rawPrivateKey && !rawPrivateKey.startsWith('0x') ? `0x${rawPrivateKey}` : rawPrivateKey;
+
+let _escrowAddress: string | null = null;
+
+export function getEscrowAddress(): string {
+  if (_escrowAddress) return _escrowAddress;
+  if (!PRIVATE_KEY) {
+    throw new Error('CELO_PRIVATE_KEY not set — escrow wallet unavailable');
+  }
+  const account = privateKeyToAccount(PRIVATE_KEY as `0x${string}`);
+  _escrowAddress = account.address;
+  return _escrowAddress;
+}
+
+function getEscrowWalletClient() {
+  if (!PRIVATE_KEY) throw new Error('CELO_PRIVATE_KEY not set');
+  const account = privateKeyToAccount(PRIVATE_KEY as `0x${string}`);
+  return createWalletClient({
+    account,
+    chain: celo,
+    transport: fallback([
+      http(CELO_RPC_PRIMARY, { timeout: 15_000, retryCount: 1 }),
+      http(CELO_RPC_FALLBACK, { timeout: 15_000, retryCount: 1 }),
+    ]),
+  });
+}
 
 export interface PaymentRequirement {
   payTo: string;
@@ -27,6 +57,10 @@ export interface PaymentRequirement {
   description: string;
   nonce: string;
   expiresAt: number;
+  escrow: boolean;
+  sellerAddress?: string;
+  skillId?: string;
+  buyerPublicKey?: string;
 }
 
 export interface PaymentVerification {
@@ -35,6 +69,12 @@ export interface PaymentVerification {
   from?: string;
   to?: string;
   amount?: string;
+  error?: string;
+}
+
+export interface EscrowRelease {
+  success: boolean;
+  txHash?: string;
   error?: string;
 }
 
@@ -50,22 +90,29 @@ setInterval(() => {
 }, 60_000);
 
 export function createPaymentRequirement(
-  payTo: string,
+  sellerAddress: string,
   amount: string,
   description: string,
+  skillId?: string,
+  buyerPublicKey?: string,
   token: string = SELFCLAW_TOKEN,
   tokenSymbol: string = 'SELFCLAW',
   ttlSeconds: number = 300,
 ): PaymentRequirement {
+  const escrowAddr = getEscrowAddress();
   const nonce = `sc402_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
   const requirement: PaymentRequirement = {
-    payTo,
+    payTo: escrowAddr,
     amount,
     token,
     tokenSymbol,
     description,
     nonce,
     expiresAt: Date.now() + ttlSeconds * 1000,
+    escrow: true,
+    sellerAddress,
+    skillId,
+    buyerPublicKey,
   };
   paymentNonces.set(nonce, { requirement, createdAt: Date.now() });
   return requirement;
@@ -82,6 +129,7 @@ export function build402Response(requirement: PaymentRequirement) {
       'X-Payment-PayTo': requirement.payTo,
       'X-Payment-Nonce': requirement.nonce,
       'X-Payment-Expires': requirement.expiresAt.toString(),
+      'X-Payment-Escrow': 'true',
     },
     body: {
       error: 'Payment Required',
@@ -94,10 +142,12 @@ export function build402Response(requirement: PaymentRequirement) {
         nonce: requirement.nonce,
         expiresAt: requirement.expiresAt,
         description: requirement.description,
+        escrow: true,
         instructions: {
-          step1: `Approve or transfer ${requirement.amount} ${requirement.tokenSymbol} to ${requirement.payTo}`,
-          step2: 'Include the transaction hash in X-SELFCLAW-PAYMENT header',
+          step1: `Transfer ${requirement.amount} ${requirement.tokenSymbol} to escrow: ${requirement.payTo}`,
+          step2: 'Include the transaction hash in X-SELFCLAW-PAYMENT header as txHash:nonce',
           step3: 'Retry the same request with the payment header',
+          note: 'Funds are held in escrow and released to the seller after successful delivery. Refunded on failure.',
         },
       },
     },
@@ -157,6 +207,70 @@ export async function verifyPayment(
     };
   } catch (error: any) {
     return { valid: false, error: `Verification failed: ${error.message}` };
+  }
+}
+
+export async function releaseEscrow(
+  sellerAddress: string,
+  amountWei: bigint,
+  token: string = SELFCLAW_TOKEN,
+): Promise<EscrowRelease> {
+  try {
+    const walletClient = getEscrowWalletClient();
+
+    const txHash = await walletClient.writeContract({
+      address: token as `0x${string}`,
+      abi: ERC20_ABI,
+      functionName: 'transfer',
+      args: [sellerAddress as `0x${string}`, amountWei],
+    });
+
+    const receipt = await publicClient.waitForTransactionReceipt({
+      hash: txHash,
+      timeout: 30_000,
+    });
+
+    if (receipt.status !== 'success') {
+      return { success: false, error: 'Escrow release transaction failed onchain' };
+    }
+
+    console.log(`[escrow] Released ${amountWei.toString()} tokens to ${sellerAddress} — tx: ${txHash}`);
+    return { success: true, txHash };
+  } catch (error: any) {
+    console.error(`[escrow] Release failed for ${sellerAddress}:`, error.message);
+    return { success: false, error: `Escrow release failed: ${error.message}` };
+  }
+}
+
+export async function refundEscrow(
+  buyerAddress: string,
+  amountWei: bigint,
+  token: string = SELFCLAW_TOKEN,
+): Promise<EscrowRelease> {
+  try {
+    const walletClient = getEscrowWalletClient();
+
+    const txHash = await walletClient.writeContract({
+      address: token as `0x${string}`,
+      abi: ERC20_ABI,
+      functionName: 'transfer',
+      args: [buyerAddress as `0x${string}`, amountWei],
+    });
+
+    const receipt = await publicClient.waitForTransactionReceipt({
+      hash: txHash,
+      timeout: 30_000,
+    });
+
+    if (receipt.status !== 'success') {
+      return { success: false, error: 'Escrow refund transaction failed onchain' };
+    }
+
+    console.log(`[escrow] Refunded ${amountWei.toString()} tokens to ${buyerAddress} — tx: ${txHash}`);
+    return { success: true, txHash };
+  } catch (error: any) {
+    console.error(`[escrow] Refund failed for ${buyerAddress}:`, error.message);
+    return { success: false, error: `Escrow refund failed: ${error.message}` };
   }
 }
 

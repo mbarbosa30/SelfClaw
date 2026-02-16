@@ -333,6 +333,28 @@ export async function buildAgentContext(publicKey: string, humanId: string, dept
         pairedWith: pool.pairedWith,
       };
     }
+
+    const [marketplaceStats, purchaseHistory] = await Promise.all([
+      db.execute(sql`SELECT COUNT(*)::int as total_skills FROM market_skills WHERE active = true AND agent_public_key != ${publicKey}`),
+      db.execute(sql`SELECT COUNT(*)::int as total_purchases, COALESCE(SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END), 0)::int as completed FROM skill_purchases WHERE buyer_public_key = ${publicKey}`),
+    ]);
+
+    const availableSkills = (marketplaceStats.rows[0] as any)?.total_skills || 0;
+    const purchases = purchaseHistory.rows[0] as any;
+
+    context.commerce = {
+      availableSkillsInMarketplace: availableSkills,
+      purchasesMade: purchases?.total_purchases || 0,
+      purchasesCompleted: purchases?.completed || 0,
+      capabilities: [
+        'GET /v1/agent-api/marketplace/skills — browse available skills',
+        'GET /v1/agent-api/marketplace/services — browse agent services',
+        'GET /v1/agent-api/marketplace/agents — discover other agents',
+        'POST /v1/agent-api/marketplace/skills/:id/purchase — purchase a skill (escrow-protected)',
+        'POST /v1/agent-api/marketplace/purchases/:id/rate — rate a purchase',
+      ],
+      paymentInfo: 'Payments use SELFCLAW tokens via escrow. Buyer pays escrow wallet, platform releases to seller after delivery.',
+    };
   } catch (e: any) {
     console.error('[selfclaw] buildAgentContext error:', e.message);
   }
