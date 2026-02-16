@@ -7244,11 +7244,25 @@ async function pruneOldSnapshots() {
   }
 }
 
-setTimeout(() => {
-  snapshotPrices().catch(() => {});
-  setInterval(() => snapshotPrices().catch(() => {}), 30 * 60 * 1000);
-  pruneOldSnapshots().catch(() => {});
-  setInterval(() => pruneOldSnapshots().catch(() => {}), 24 * 60 * 60 * 1000);
-}, 10_000);
+async function startPriceOracle(attempt = 1): Promise<void> {
+  try {
+    await pruneOldSnapshots();
+    await snapshotPrices();
+    setInterval(() => snapshotPrices().catch(() => {}), 30 * 60 * 1000);
+    setInterval(() => pruneOldSnapshots().catch(() => {}), 24 * 60 * 60 * 1000);
+  } catch (err: any) {
+    if (attempt < 3) {
+      const delay = attempt * 15_000;
+      console.log(`[price-oracle] Startup attempt ${attempt} failed, retrying in ${delay / 1000}s...`);
+      setTimeout(() => startPriceOracle(attempt + 1).catch(() => {}), delay);
+    } else {
+      console.error('[price-oracle] Failed to start after 3 attempts:', err.message);
+      setInterval(() => snapshotPrices().catch(() => {}), 30 * 60 * 1000);
+      setInterval(() => pruneOldSnapshots().catch(() => {}), 24 * 60 * 60 * 1000);
+    }
+  }
+}
+
+setTimeout(() => startPriceOracle().catch(() => {}), 10_000);
 
 export default router;

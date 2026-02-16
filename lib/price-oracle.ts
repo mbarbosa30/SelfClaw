@@ -307,8 +307,16 @@ export async function getAllAgentTokenPrices(
   const results: AgentTokenPrice[] = [];
 
   for (const pool of pools) {
+    if (pool.poolVersion !== 'v4') {
+      console.log('[price-oracle] Skipping non-V4 pool for', pool.tokenSymbol, '(version:', pool.poolVersion, ')');
+      continue;
+    }
+
     const poolId = pool.v4PoolId || pool.poolAddress;
-    if (!poolId || poolId.length < 42) continue;
+    if (!poolId || poolId.length < 66) {
+      console.log('[price-oracle] Skipping pool for', pool.tokenSymbol, '— invalid bytes32 poolId:', poolId?.slice(0, 20));
+      continue;
+    }
 
     try {
       const price = await getAgentTokenPrice(pool.tokenAddress, poolId, pool.tokenSymbol);
