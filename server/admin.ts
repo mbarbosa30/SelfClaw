@@ -3,7 +3,7 @@ import rateLimit from "express-rate-limit";
 import crypto from "crypto";
 import { db } from "./db.js";
 import { agentActivity, verifiedBots, agentWallets, bridgeTransactions, sponsoredAgents, trackedPools, sponsorshipRequests, tokenPlans, agentServices, revenueEvents, costEvents, hostedAgents, conversations, messages, agentMemories, conversationSummaries } from "../shared/schema.js";
-import { sql, desc, eq, inArray, count } from "drizzle-orm";
+import { sql, desc, eq, and, inArray, count } from "drizzle-orm";
 import {
   attestToken,
   completeAttestation,
@@ -1695,6 +1695,216 @@ router.post("/refresh-all-agents", async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     console.error("[admin] refresh-all-agents error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get("/activity", async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    const { event_type, agent, human_id, since, until, failures_only, limit: limitParam, offset: offsetParam } = req.query;
+    const pageLimit = Math.min(parseInt(limitParam as string) || 50, 200);
+    const pageOffset = parseInt(offsetParam as string) || 0;
+
+    const conditions: any[] = [];
+    if (event_type) conditions.push(sql`${agentActivity.eventType} = ${event_type}`);
+    if (agent) conditions.push(sql`(${agentActivity.agentPublicKey} = ${agent} OR ${agentActivity.agentName} ILIKE ${'%' + agent + '%'})`);
+    if (human_id) conditions.push(sql`${agentActivity.humanId} = ${human_id}`);
+    if (since) conditions.push(sql`${agentActivity.createdAt} >= ${new Date(since as string)}`);
+    if (until) conditions.push(sql`${agentActivity.createdAt} <= ${new Date(until as string)}`);
+    if (failures_only === 'true') conditions.push(sql`${agentActivity.eventType} LIKE '%_failed'`);
+
+    const whereClause = conditions.length > 0
+      ? sql`WHERE ${sql.join(conditions, sql` AND `)}`
+      : sql``;
+
+    const [rows, countResult] = await Promise.all([
+      db.execute(sql`SELECT * FROM agent_activity ${whereClause} ORDER BY created_at DESC LIMIT ${pageLimit} OFFSET ${pageOffset}`),
+      db.execute(sql`SELECT COUNT(*) as total FROM agent_activity ${whereClause}`),
+    ]);
+
+    const total = parseInt((countResult.rows[0] as any)?.total || '0');
+
+    res.json({
+      entries: rows.rows,
+      pagination: { total, limit: pageLimit, offset: pageOffset, hasMore: pageOffset + pageLimit < total },
+    });
+  } catch (error: any) {
+    console.error("[admin] activity error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get("/activity/summary", async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    const { hours } = req.query;
+    const lookback = parseInt(hours as string) || 24;
+    const since = new Date(Date.now() - lookback * 60 * 60 * 1000);
+
+    const [allEvents, failedEvents, recentFailures] = await Promise.all([
+      db.execute(sql`
+        SELECT event_type, COUNT(*) as count 
+        FROM agent_activity 
+        WHERE created_at >= ${since}
+        GROUP BY event_type 
+        ORDER BY count DESC
+      `),
+      db.execute(sql`
+        SELECT event_type, COUNT(*) as count 
+        FROM agent_activity 
+        WHERE created_at >= ${since} AND event_type LIKE '%_failed'
+        GROUP BY event_type 
+        ORDER BY count DESC
+      `),
+      db.execute(sql`
+        SELECT event_type, agent_name, metadata, created_at 
+        FROM agent_activity 
+        WHERE created_at >= ${since} AND event_type LIKE '%_failed'
+        ORDER BY created_at DESC 
+        LIMIT 20
+      `),
+    ]);
+
+    const totalEvents = (allEvents.rows as any[]).reduce((sum, r) => sum + parseInt(r.count), 0);
+    const totalFailures = (failedEvents.rows as any[]).reduce((sum, r) => sum + parseInt(r.count), 0);
+
+    res.json({
+      period: `Last ${lookback} hours`,
+      since: since.toISOString(),
+      totals: { events: totalEvents, failures: totalFailures, successRate: totalEvents > 0 ? `${((1 - totalFailures / totalEvents) * 100).toFixed(1)}%` : 'N/A' },
+      byEventType: allEvents.rows,
+      failureBreakdown: failedEvents.rows,
+      recentFailures: recentFailures.rows,
+    });
+  } catch (error: any) {
+    console.error("[admin] activity summary error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get("/activity/errors", async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    const { hours, event_type, limit: limitParam } = req.query;
+    const lookback = parseInt(hours as string) || 168;
+    const pageLimit = Math.min(parseInt(limitParam as string) || 50, 200);
+    const since = new Date(Date.now() - lookback * 60 * 60 * 1000);
+
+    const conditions = [
+      sql`created_at >= ${since}`,
+      sql`event_type LIKE '%_failed'`,
+    ];
+    if (event_type) conditions.push(sql`event_type = ${event_type}`);
+
+    const whereClause = sql`WHERE ${sql.join(conditions, sql` AND `)}`;
+
+    const errors = await db.execute(sql`
+      SELECT id, event_type, human_id, agent_public_key, agent_name, metadata, created_at 
+      FROM agent_activity 
+      ${whereClause}
+      ORDER BY created_at DESC 
+      LIMIT ${pageLimit}
+    `);
+
+    res.json({
+      period: `Last ${lookback} hours`,
+      count: errors.rows.length,
+      errors: errors.rows,
+    });
+  } catch (error: any) {
+    console.error("[admin] activity errors:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get("/activity/agent/:identifier", async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    const { identifier } = req.params;
+    const { limit: limitParam } = req.query;
+    const pageLimit = Math.min(parseInt(limitParam as string) || 100, 500);
+
+    const events = await db.execute(sql`
+      SELECT * FROM agent_activity 
+      WHERE agent_public_key = ${identifier} 
+         OR agent_name ILIKE ${'%' + identifier + '%'}
+         OR human_id = ${identifier}
+      ORDER BY created_at DESC 
+      LIMIT ${pageLimit}
+    `);
+
+    const summary = await db.execute(sql`
+      SELECT event_type, COUNT(*) as count, MAX(created_at) as last_seen
+      FROM agent_activity 
+      WHERE agent_public_key = ${identifier} 
+         OR agent_name ILIKE ${'%' + identifier + '%'}
+         OR human_id = ${identifier}
+      GROUP BY event_type 
+      ORDER BY count DESC
+    `);
+
+    res.json({
+      agent: identifier,
+      totalEvents: events.rows.length,
+      eventSummary: summary.rows,
+      events: events.rows,
+    });
+  } catch (error: any) {
+    console.error("[admin] agent activity error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get("/activity/pipeline/:identifier", async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    const { identifier } = req.params;
+
+    const pipelineEvents = [
+      'verification', 'verification_failed',
+      'wallet_creation', 'wallet_creation_failed',
+      'wallet_registration', 'wallet_registration_failed',
+      'gas_request', 'gas_request_failed',
+      'token_deployment', 'token_deployment_failed',
+      'token_registered', 'token_registered_failed',
+      'token_plan_created', 'token_plan_failed',
+      'erc8004_registration', 'erc8004_registration_failed',
+      'erc8004_confirmed', 'erc8004_confirmed_failed',
+      'selfclaw_sponsorship', 'selfclaw_sponsorship_failed',
+      'create_agent', 'create_agent_failed',
+      'deploy_economy', 'deploy_economy_failed',
+      'hosted_agent_created',
+    ];
+
+    const events = await db.select()
+      .from(agentActivity)
+      .where(
+        and(
+          sql`(${agentActivity.agentPublicKey} = ${identifier} OR ${agentActivity.agentName} ILIKE ${'%' + identifier + '%'} OR ${agentActivity.humanId} = ${identifier})`,
+          inArray(agentActivity.eventType, pipelineEvents)
+        )
+      )
+      .orderBy(agentActivity.createdAt);
+
+    const steps = pipelineEvents.filter(e => !e.endsWith('_failed'));
+    const completedSteps = new Set((events as any[]).filter(e => !e.eventType.endsWith('_failed')).map(e => e.eventType));
+    const failedSteps = new Set((events as any[]).filter(e => e.eventType.endsWith('_failed')).map(e => e.eventType.replace('_failed', '')));
+
+    const pipeline = steps.map(step => ({
+      step,
+      status: completedSteps.has(step) ? 'completed' : failedSteps.has(step) ? 'failed' : 'pending',
+      lastEvent: (events as any[]).filter(e => e.eventType === step || e.eventType === step + '_failed').pop(),
+    }));
+
+    res.json({
+      agent: identifier,
+      pipeline,
+      totalEvents: events.length,
+      rawEvents: events,
+    });
+  } catch (error: any) {
+    console.error("[admin] pipeline activity error:", error);
     res.status(500).json({ error: error.message });
   }
 });

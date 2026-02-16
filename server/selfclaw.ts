@@ -100,6 +100,7 @@ router.post("/v1/start-verification", verificationLimiter, async (req: Request, 
     const { agentPublicKey, agentName, signature } = req.body;
     
     if (!agentPublicKey) {
+      logActivity("verification_failed", undefined, undefined, undefined, { error: "agentPublicKey is required", endpoint: "/v1/start-verification", statusCode: 400 });
       return res.status(400).json({ error: "agentPublicKey is required" });
     }
 
@@ -109,6 +110,7 @@ router.post("/v1/start-verification", verificationLimiter, async (req: Request, 
         .where(sql`LOWER(${verifiedBots.deviceId}) = LOWER(${agentName})`)
         .limit(1);
       if (existingAgents.length > 0 && existingAgents[0].publicKey !== agentPublicKey) {
+        logActivity("verification_failed", undefined, agentPublicKey, agentName, { error: "Agent name already taken", endpoint: "/v1/start-verification", statusCode: 400 });
         return res.status(400).json({
           error: "Agent name already taken",
           suggestions: generateFriendlySuggestions(agentName),
@@ -126,6 +128,7 @@ router.post("/v1/start-verification", verificationLimiter, async (req: Request, 
     if (signature) {
       signatureVerified = await verifyEd25519Signature(agentPublicKey, signature, challenge);
       if (!signatureVerified) {
+        logActivity("verification_failed", undefined, agentPublicKey, agentName, { error: "Invalid signature", endpoint: "/v1/start-verification", statusCode: 400 });
         return res.status(400).json({ 
           error: "Invalid signature",
           message: "The provided signature does not match the agent's public key"
@@ -188,6 +191,7 @@ router.post("/v1/start-verification", verificationLimiter, async (req: Request, 
     });
   } catch (error: any) {
     console.error("[selfclaw] start-verification error:", error);
+    await logActivity("verification_failed", undefined, req.body?.agentPublicKey, req.body?.agentName, { error: error.message, endpoint: "/v1/start-verification", statusCode: 500 });
     res.status(500).json({ error: error.message });
   }
 });
@@ -197,6 +201,7 @@ router.post("/v1/sign-challenge", verificationLimiter, async (req: Request, res:
     const { sessionId, signature } = req.body;
     
     if (!sessionId || !signature) {
+      logActivity("sign_challenge_failed", undefined, undefined, undefined, { error: "sessionId and signature are required", endpoint: "/v1/sign-challenge", statusCode: 400 });
       return res.status(400).json({ 
         error: "sessionId and signature are required",
         hint: "Signature must be hex-encoded Ed25519 signature of the challenge string"
@@ -213,6 +218,7 @@ router.post("/v1/sign-challenge", verificationLimiter, async (req: Request, res:
     
     const session = sessions[0];
     if (!session) {
+      logActivity("sign_challenge_failed", undefined, undefined, undefined, { error: "Invalid or expired session", endpoint: "/v1/sign-challenge", statusCode: 400, sessionId });
       return res.status(400).json({ error: "Invalid or expired session" });
     }
     
@@ -220,11 +226,13 @@ router.post("/v1/sign-challenge", verificationLimiter, async (req: Request, res:
       await db.update(verificationSessions)
         .set({ status: "expired" })
         .where(eq(verificationSessions.id, sessionId));
+      logActivity("sign_challenge_failed", undefined, session.agentPublicKey, session.agentName || undefined, { error: "Challenge has expired", endpoint: "/v1/sign-challenge", statusCode: 400, sessionId });
       return res.status(400).json({ error: "Challenge has expired" });
     }
     
     const isValid = await verifyEd25519Signature(session.agentPublicKey, signature, session.challenge);
     if (!isValid) {
+      logActivity("sign_challenge_failed", undefined, session.agentPublicKey, session.agentName || undefined, { error: "Invalid signature", endpoint: "/v1/sign-challenge", statusCode: 400, sessionId });
       return res.status(400).json({ 
         error: "Invalid signature",
         hint: "Public key must be base64-encoded Ed25519 public key"
@@ -241,6 +249,7 @@ router.post("/v1/sign-challenge", verificationLimiter, async (req: Request, res:
     });
   } catch (error: any) {
     console.error("[selfclaw] sign-challenge error:", error);
+    await logActivity("sign_challenge_failed", undefined, undefined, undefined, { error: error.message, endpoint: "/v1/sign-challenge", statusCode: 500 });
     res.status(500).json({ error: error.message });
   }
 });
@@ -359,6 +368,7 @@ async function handleCallback(req: Request, res: Response) {
     if (!proof || !publicSignals || !attestationId || !userContextData) {
       debugState.lastVerificationAttempt.finalStatus = "error";
       debugState.lastVerificationAttempt.finalReason = "Missing required verification data";
+      logActivity("verification_callback_failed", undefined, undefined, undefined, { error: "Missing required verification data", endpoint: "/v1/callback", statusCode: 200 });
       return res.status(200).json({ status: "error", result: false, reason: "Missing required verification data" });
     }
     
@@ -378,6 +388,7 @@ async function handleCallback(req: Request, res: Response) {
       debugState.lastVerificationAttempt.sdkErrorStack = verifyError.stack?.substring(0, 500);
       debugState.lastVerificationAttempt.finalStatus = "error";
       debugState.lastVerificationAttempt.finalReason = "SDK verify() threw: " + verifyError.message;
+      logActivity("verification_callback_failed", undefined, undefined, undefined, { error: "SDK verify error: " + verifyError.message, endpoint: "/v1/callback", statusCode: 200 });
       return res.status(200).json({ 
         status: "error", 
         result: false, 
@@ -388,6 +399,7 @@ async function handleCallback(req: Request, res: Response) {
     if (!result.isValidDetails.isValid) {
       debugState.lastVerificationAttempt.finalStatus = "error";
       debugState.lastVerificationAttempt.finalReason = "Proof invalid: " + JSON.stringify(result.isValidDetails);
+      logActivity("verification_callback_failed", undefined, undefined, undefined, { error: "Proof verification failed", endpoint: "/v1/callback", statusCode: 200 });
       return res.status(200).json({ 
         status: "error",
         result: false,
@@ -399,6 +411,7 @@ async function handleCallback(req: Request, res: Response) {
     if (!sessionId) {
       debugState.lastVerificationAttempt.finalStatus = "error";
       debugState.lastVerificationAttempt.finalReason = "Missing session ID in proof userData";
+      logActivity("verification_callback_failed", undefined, undefined, undefined, { error: "Missing session ID in proof userData", endpoint: "/v1/callback", statusCode: 200 });
       return res.status(200).json({ status: "error", result: false, reason: "Missing session ID in proof" });
     }
     
@@ -419,6 +432,7 @@ async function handleCallback(req: Request, res: Response) {
           eq(verificationSessions.id, sessionId),
           eq(verificationSessions.status, "pending")
         ));
+      logActivity("verification_callback_failed", undefined, undefined, undefined, { error: "Invalid or expired verification session", endpoint: "/v1/callback", statusCode: 200, sessionId });
       return res.status(200).json({ status: "error", result: false, reason: "Invalid or expired verification session" });
     }
     
@@ -443,11 +457,13 @@ async function handleCallback(req: Request, res: Response) {
     if (!proofAgentKeyHash) {
       debugState.lastVerificationAttempt.finalStatus = "error";
       debugState.lastVerificationAttempt.finalReason = "Missing agentKeyHash in userDefinedData";
+      logActivity("verification_callback_failed", undefined, session.agentPublicKey, session.agentName || undefined, { error: "Missing agentKeyHash in userDefinedData", endpoint: "/v1/callback", statusCode: 200 });
       return res.status(200).json({ status: "error", result: false, reason: "Agent key binding required" });
     }
     if (proofAgentKeyHash !== session.agentKeyHash) {
       debugState.lastVerificationAttempt.finalStatus = "error";
       debugState.lastVerificationAttempt.finalReason = `Agent key mismatch: proof='${proofAgentKeyHash}' vs session='${session.agentKeyHash}'`;
+      logActivity("verification_callback_failed", undefined, session.agentPublicKey, session.agentName || undefined, { error: "Agent key binding mismatch", endpoint: "/v1/callback", statusCode: 200 });
       return res.status(200).json({ status: "error", result: false, reason: "Agent key binding mismatch" });
     }
     
@@ -535,6 +551,7 @@ async function handleCallback(req: Request, res: Response) {
       console.error("[selfclaw] Database insert/update error:", dbError.message);
       debugState.lastVerificationAttempt.finalStatus = "error";
       debugState.lastVerificationAttempt.finalReason = "Database error: " + dbError.message;
+      logActivity("verification_callback_failed", humanId, session.agentPublicKey, session.agentName || undefined, { error: "Database error: " + dbError.message, endpoint: "/v1/callback", statusCode: 200 });
       return res.status(200).json({ status: "error", result: false, reason: "Failed to save verification" });
     }
 
@@ -554,6 +571,7 @@ async function handleCallback(req: Request, res: Response) {
     console.error("[selfclaw] === CALLBACK ERROR ===", error);
     debugState.lastVerificationAttempt.finalStatus = "error";
     debugState.lastVerificationAttempt.finalReason = "Callback handler error: " + (error.message || "Unknown error");
+    await logActivity("verification_callback_failed", undefined, undefined, undefined, { error: error.message || "Unknown error", endpoint: "/v1/callback", statusCode: 200 });
     res.status(200).json({ status: "error", result: false, reason: error.message || "Unknown error" });
   }
 }
@@ -1533,6 +1551,7 @@ router.post("/v1/request-selfclaw-sponsorship", verificationLimiter, async (req:
     const { tokenAddress, tokenSymbol, tokenAmount } = req.body;
 
     if (!tokenAddress || !tokenAmount) {
+      logActivity("selfclaw_sponsorship_failed", humanId, auth.publicKey, undefined, { error: "Missing required fields: tokenAddress, tokenAmount", endpoint: "/v1/request-selfclaw-sponsorship", statusCode: 400 });
       return res.status(400).json({
         error: "Missing required fields: tokenAddress, tokenAmount"
       });
@@ -1542,6 +1561,7 @@ router.post("/v1/request-selfclaw-sponsorship", verificationLimiter, async (req:
       .where(sql`${agentWallets.publicKey} = ${auth.publicKey} AND ${agentWallets.humanId} = ${humanId}`)
       .limit(1);
     if (wallet.length === 0) {
+      logActivity("selfclaw_sponsorship_failed", humanId, auth.publicKey, undefined, { error: "No wallet registered", endpoint: "/v1/request-selfclaw-sponsorship", statusCode: 403 });
       return res.status(403).json({
         error: "Agent must have a wallet address registered with SelfClaw before requesting sponsorship.",
         step: "Register a wallet first via POST /api/selfclaw/v1/my-agents/:publicKey/register-wallet with { address: '0x...' }",
@@ -1552,6 +1572,7 @@ router.post("/v1/request-selfclaw-sponsorship", verificationLimiter, async (req:
       .where(sql`${tokenPlans.agentPublicKey} = ${auth.publicKey} AND ${tokenPlans.humanId} = ${humanId} AND LOWER(${tokenPlans.tokenAddress}) = LOWER(${tokenAddress})`)
       .limit(1);
     if (deployedToken.length === 0) {
+      logActivity("selfclaw_sponsorship_failed", humanId, auth.publicKey, undefined, { error: "Token not deployed through SelfClaw", endpoint: "/v1/request-selfclaw-sponsorship", statusCode: 403 });
       return res.status(403).json({
         error: "Token must be deployed through SelfClaw before requesting sponsorship. External tokens are not eligible.",
         step: "Deploy your agent token first via the SelfClaw token economy flow.",
@@ -1563,6 +1584,7 @@ router.post("/v1/request-selfclaw-sponsorship", verificationLimiter, async (req:
       .limit(1);
     const agentMetadata = agentRecord.length > 0 ? (agentRecord[0].metadata as any || {}) : {};
     if (!agentMetadata.erc8004TokenId) {
+      logActivity("selfclaw_sponsorship_failed", humanId, auth.publicKey, undefined, { error: "ERC-8004 identity required", endpoint: "/v1/request-selfclaw-sponsorship", statusCode: 403 });
       return res.status(403).json({
         error: "ERC-8004 onchain identity is required before requesting sponsorship. Register your agent's identity first.",
         step: "POST /api/selfclaw/v1/register-erc8004",
@@ -1578,6 +1600,7 @@ router.post("/v1/request-selfclaw-sponsorship", verificationLimiter, async (req:
 
     const MAX_SPONSORSHIPS_PER_HUMAN = 3;
     if (existingSponsorship.length >= MAX_SPONSORSHIPS_PER_HUMAN) {
+      logActivity("selfclaw_sponsorship_failed", humanId, auth.publicKey, undefined, { error: "Maximum sponsorships reached", endpoint: "/v1/request-selfclaw-sponsorship", statusCode: 409, count: existingSponsorship.length });
       return res.status(409).json({
         error: `This identity has reached the maximum of ${MAX_SPONSORSHIPS_PER_HUMAN} sponsorships`,
         alreadySponsored: true,
@@ -1604,6 +1627,7 @@ router.post("/v1/request-selfclaw-sponsorship", verificationLimiter, async (req:
 
     if (heldAmount < requestedAmount) {
       const shortfall = requestedAmount - heldAmount;
+      logActivity("selfclaw_sponsorship_failed", humanId, auth.publicKey, undefined, { error: "Insufficient agent token in sponsor wallet", endpoint: "/v1/request-selfclaw-sponsorship", statusCode: 400, requested: requestedAmount, held: heldAmount });
       return res.status(400).json({
         error: `Sponsor wallet does not hold enough of your agent token.`,
         amounts: {
@@ -1624,6 +1648,7 @@ router.post("/v1/request-selfclaw-sponsorship", verificationLimiter, async (req:
     const available = parseFloat(availableBalance);
 
     if (available <= 0) {
+      logActivity("selfclaw_sponsorship_failed", humanId, auth.publicKey, undefined, { error: "No SELFCLAW available in sponsorship wallet", endpoint: "/v1/request-selfclaw-sponsorship", statusCode: 400 });
       return res.status(400).json({
         error: "No SELFCLAW available in sponsorship wallet. Fees not yet accrued.",
         available: availableBalance,
@@ -1647,6 +1672,7 @@ router.post("/v1/request-selfclaw-sponsorship", verificationLimiter, async (req:
     try {
       const poolState = await getPoolState(v4PoolId as `0x${string}`);
       if (poolState.liquidity !== '0') {
+        logActivity("selfclaw_sponsorship_failed", humanId, auth.publicKey, undefined, { error: "V4 pool already exists with active liquidity", endpoint: "/v1/request-selfclaw-sponsorship", statusCode: 409, v4PoolId });
         return res.status(409).json({
           error: "A V4 pool already exists for this token pair with active liquidity",
           v4PoolId,
@@ -1693,6 +1719,7 @@ router.post("/v1/request-selfclaw-sponsorship", verificationLimiter, async (req:
         errorMessage: result.error,
         updatedAt: new Date(),
       }).where(sql`${sponsorshipRequests.id} = ${sponsorshipReq.id}`);
+      logActivity("selfclaw_sponsorship_failed", humanId, auth.publicKey, undefined, { error: result.error, endpoint: "/v1/request-selfclaw-sponsorship", statusCode: 400 });
       return res.status(400).json({
         error: result.error,
         retryable: true,
@@ -1831,6 +1858,7 @@ router.post("/v1/request-selfclaw-sponsorship", verificationLimiter, async (req:
       } catch (_e) {}
     }
     console.error("[selfclaw] request-selfclaw-sponsorship error:", error);
+    await logActivity("selfclaw_sponsorship_failed", undefined, undefined, undefined, { error: error.message, endpoint: "/v1/request-selfclaw-sponsorship", statusCode: 500 });
     res.status(500).json({
       error: error.message,
       retryable: true,
@@ -2455,6 +2483,7 @@ router.post("/v1/create-wallet", verificationLimiter, async (req: Request, res: 
     const { walletAddress } = req.body;
     
     if (!walletAddress) {
+      logActivity("wallet_creation_failed", humanId, agentPublicKey, undefined, { error: "walletAddress is required", endpoint: "/v1/create-wallet", statusCode: 400 });
       return res.status(400).json({ 
         error: "walletAddress is required. SelfClaw never stores private keys — provide your own EVM wallet address."
       });
@@ -2463,6 +2492,7 @@ router.post("/v1/create-wallet", verificationLimiter, async (req: Request, res: 
     const result = await createAgentWallet(humanId, agentPublicKey, walletAddress);
     
     if (!result.success) {
+      logActivity("wallet_creation_failed", humanId, agentPublicKey, undefined, { error: result.error, endpoint: "/v1/create-wallet", statusCode: 400 });
       return res.status(400).json({ error: result.error });
     }
     
@@ -2489,6 +2519,7 @@ router.post("/v1/create-wallet", verificationLimiter, async (req: Request, res: 
     });
   } catch (error: any) {
     console.error("[selfclaw] create-wallet error:", error);
+    await logActivity("wallet_creation_failed", undefined, req.body?.agentPublicKey, undefined, { error: error.message, endpoint: "/v1/create-wallet", statusCode: 500 });
     res.status(500).json({ error: error.message });
   }
 });
@@ -2503,6 +2534,7 @@ router.post("/v1/switch-wallet", verificationLimiter, async (req: Request, res: 
     const { walletAddress } = req.body;
 
     if (!walletAddress) {
+      logActivity("wallet_switch_failed", humanId, agentPublicKey, undefined, { error: "walletAddress is required", endpoint: "/v1/switch-wallet", statusCode: 400 });
       return res.status(400).json({ 
         error: "walletAddress is required. Provide the new EVM wallet address you want to use."
       });
@@ -2511,6 +2543,7 @@ router.post("/v1/switch-wallet", verificationLimiter, async (req: Request, res: 
     const result = await switchWallet(humanId, agentPublicKey, walletAddress);
 
     if (!result.success) {
+      logActivity("wallet_switch_failed", humanId, agentPublicKey, undefined, { error: result.error, endpoint: "/v1/switch-wallet", statusCode: 400 });
       return res.status(400).json({ error: result.error });
     }
 
@@ -2527,6 +2560,7 @@ router.post("/v1/switch-wallet", verificationLimiter, async (req: Request, res: 
     });
   } catch (error: any) {
     console.error("[selfclaw] switch-wallet error:", error);
+    await logActivity("wallet_switch_failed", undefined, req.body?.agentPublicKey, undefined, { error: error.message, endpoint: "/v1/switch-wallet", statusCode: 500 });
     res.status(500).json({ error: error.message });
   }
 });
@@ -2664,6 +2698,7 @@ router.post("/v1/request-gas", verificationLimiter, async (req: Request, res: Re
     const result = await sendGasSubsidy(humanId, auth.publicKey);
     
     if (!result.success) {
+      logActivity("gas_request_failed", humanId, auth.publicKey, undefined, { error: result.error, endpoint: "/v1/request-gas", statusCode: 400, alreadyReceived: result.alreadyReceived || false });
       return res.status(400).json({ 
         error: result.error,
         alreadyReceived: result.alreadyReceived || false
@@ -2689,6 +2724,7 @@ router.post("/v1/request-gas", verificationLimiter, async (req: Request, res: Re
     });
   } catch (error: any) {
     console.error("[selfclaw] request-gas error:", error);
+    await logActivity("gas_request_failed", undefined, undefined, undefined, { error: error.message, endpoint: "/v1/request-gas", statusCode: 500 });
     res.status(500).json({ error: error.message });
   }
 });
@@ -2764,6 +2800,7 @@ router.post("/v1/deploy-token", verificationLimiter, async (req: Request, res: R
     const humanId = auth.humanId;
     
     if (!name || !symbol || !initialSupply) {
+      logActivity("token_deployment_failed", humanId, auth.publicKey, undefined, { error: "name, symbol, and initialSupply are required", endpoint: "/v1/deploy-token", statusCode: 400 });
       return res.status(400).json({ 
         error: "name, symbol, and initialSupply are required" 
       });
@@ -2776,6 +2813,7 @@ router.post("/v1/deploy-token", verificationLimiter, async (req: Request, res: R
         .where(sql`${tokenPlans.id} = ${tokenPlanId} AND ${tokenPlans.humanId} = ${humanId}`)
         .limit(1);
       if (plans.length === 0) {
+        logActivity("token_deployment_failed", humanId, auth.publicKey, undefined, { error: "Token plan not found or does not belong to this agent", endpoint: "/v1/deploy-token", statusCode: 400 });
         return res.status(400).json({ error: "Token plan not found or does not belong to this agent" });
       }
     }
@@ -2794,6 +2832,7 @@ router.post("/v1/deploy-token", verificationLimiter, async (req: Request, res: R
 
     const walletInfo = await getAgentWallet(auth.publicKey);
     if (!walletInfo?.address) {
+      logActivity("token_deployment_failed", humanId, auth.publicKey, undefined, { error: "No wallet found", endpoint: "/v1/deploy-token", statusCode: 400 });
       return res.status(400).json({ error: "No wallet found. Register a wallet first." });
     }
 
@@ -2874,6 +2913,7 @@ router.post("/v1/deploy-token", verificationLimiter, async (req: Request, res: R
     });
   } catch (error: any) {
     console.error("[selfclaw] deploy-token error:", error);
+    await logActivity("token_deployment_failed", undefined, req.body?.agentPublicKey, undefined, { error: error.message, endpoint: "/v1/deploy-token", statusCode: 500 });
     res.status(500).json({
       error: error.message,
       hint: "Token deployment preparation failed. Common causes: wallet not registered, insufficient gas balance, or RPC connectivity issues. If gas was burned on a previous failed attempt, you can request gas again via POST /api/selfclaw/v1/request-gas."
@@ -2890,6 +2930,7 @@ router.post("/v1/register-token", verificationLimiter, async (req: Request, res:
     const humanId = auth.humanId;
 
     if (!tokenAddress || !txHash) {
+      logActivity("token_registered_failed", humanId, auth.publicKey, undefined, { error: "tokenAddress and txHash are required", endpoint: "/v1/register-token", statusCode: 400 });
       return res.status(400).json({
         error: "tokenAddress and txHash are required",
         hint: "After signing and submitting your deploy-token transaction, call this endpoint with the deployed contract address and transaction hash."
@@ -2897,10 +2938,12 @@ router.post("/v1/register-token", verificationLimiter, async (req: Request, res:
     }
 
     if (!/^0x[0-9a-fA-F]{40}$/.test(tokenAddress)) {
+      logActivity("token_registered_failed", humanId, auth.publicKey, undefined, { error: "Invalid tokenAddress format", endpoint: "/v1/register-token", statusCode: 400 });
       return res.status(400).json({ error: "Invalid tokenAddress format" });
     }
 
     if (!/^0x[0-9a-fA-F]{64}$/.test(txHash)) {
+      logActivity("token_registered_failed", humanId, auth.publicKey, undefined, { error: "Invalid txHash format", endpoint: "/v1/register-token", statusCode: 400 });
       return res.status(400).json({ error: "Invalid txHash format" });
     }
 
@@ -2932,6 +2975,7 @@ router.post("/v1/register-token", verificationLimiter, async (req: Request, res:
     }
 
     if (!onChainName && !onChainSymbol) {
+      logActivity("token_registered_failed", humanId, auth.publicKey, undefined, { error: "Could not verify token at the provided address", endpoint: "/v1/register-token", statusCode: 400, tokenAddress });
       return res.status(400).json({
         error: "Could not verify token at the provided address. Make sure the transaction has been confirmed on Celo."
       });
@@ -3002,6 +3046,7 @@ router.post("/v1/register-token", verificationLimiter, async (req: Request, res:
     });
   } catch (error: any) {
     console.error("[selfclaw] register-token error:", error);
+    await logActivity("token_registered_failed", undefined, req.body?.agentPublicKey, undefined, { error: error.message, endpoint: "/v1/register-token", statusCode: 500 });
     res.status(500).json({ error: error.message });
   }
 });
@@ -3014,14 +3059,17 @@ router.post("/v1/token-plan", verificationLimiter, async (req: Request, res: Res
     const { purpose, supplyReasoning, allocation, utility, economicModel } = req.body;
 
     if (!purpose || !supplyReasoning || !allocation || !utility || !economicModel) {
+      logActivity("token_plan_failed", auth.humanId, auth.publicKey, undefined, { error: "purpose, supplyReasoning, allocation, utility, and economicModel are required", endpoint: "/v1/token-plan", statusCode: 400 });
       return res.status(400).json({ error: "purpose, supplyReasoning, allocation, utility, and economicModel are required" });
     }
 
     if (typeof allocation !== "object" || Array.isArray(allocation)) {
+      logActivity("token_plan_failed", auth.humanId, auth.publicKey, undefined, { error: "allocation must be an object", endpoint: "/v1/token-plan", statusCode: 400 });
       return res.status(400).json({ error: "allocation must be an object" });
     }
 
     if (!Array.isArray(utility)) {
+      logActivity("token_plan_failed", auth.humanId, auth.publicKey, undefined, { error: "utility must be an array", endpoint: "/v1/token-plan", statusCode: 400 });
       return res.status(400).json({ error: "utility must be an array" });
     }
 
@@ -3059,6 +3107,7 @@ router.post("/v1/token-plan", verificationLimiter, async (req: Request, res: Res
     });
   } catch (error: any) {
     console.error("[selfclaw] token-plan create error:", error);
+    await logActivity("token_plan_failed", undefined, undefined, undefined, { error: error.message, endpoint: "/v1/token-plan", statusCode: 500 });
     res.status(500).json({ error: error.message });
   }
 });
@@ -3180,16 +3229,19 @@ router.post("/v1/register-erc8004", verificationLimiter, async (req: Request, re
     
     const walletInfo = await getAgentWallet(auth.publicKey);
     if (!walletInfo || !walletInfo.address) {
+      logActivity("erc8004_registration_failed", humanId, auth.publicKey, undefined, { error: "No wallet found", endpoint: "/v1/register-erc8004", statusCode: 400 });
       return res.status(400).json({ error: "No wallet found. Register a wallet first via POST /v1/create-wallet with { walletAddress: '0x...' }." });
     }
     
     if (!erc8004Service.isReady()) {
+      logActivity("erc8004_registration_failed", humanId, auth.publicKey, undefined, { error: "ERC-8004 contracts not available yet", endpoint: "/v1/register-erc8004", statusCode: 503 });
       return res.status(503).json({ error: "ERC-8004 contracts not available yet" });
     }
     
     const agent = auth.agent;
     const existingMetadata = (agent.metadata as Record<string, any>) || {};
     if (existingMetadata.erc8004Minted) {
+      logActivity("erc8004_registration_failed", humanId, auth.publicKey, agent.deviceId ?? undefined, { error: "Already registered", endpoint: "/v1/register-erc8004", statusCode: 400, tokenId: existingMetadata.erc8004TokenId });
       return res.status(400).json({
         error: "Already registered",
         tokenId: existingMetadata.erc8004TokenId,
@@ -3299,6 +3351,7 @@ router.post("/v1/register-erc8004", verificationLimiter, async (req: Request, re
     });
   } catch (error: any) {
     console.error("[selfclaw] register-erc8004 error:", error);
+    await logActivity("erc8004_registration_failed", undefined, undefined, undefined, { error: error.message, endpoint: "/v1/register-erc8004", statusCode: 500 });
     res.status(500).json({ error: error.message });
   }
 });
@@ -3310,12 +3363,14 @@ router.post("/v1/confirm-erc8004", verificationLimiter, async (req: Request, res
 
     const { txHash } = req.body;
     if (!txHash) {
+      logActivity("erc8004_confirmed_failed", auth.humanId, auth.publicKey, undefined, { error: "txHash is required", endpoint: "/v1/confirm-erc8004", statusCode: 400 });
       return res.status(400).json({ error: "txHash is required — provide the transaction hash from your ERC-8004 register() call" });
     }
 
     const agent = auth.agent;
     const existingMetadata = (agent.metadata as Record<string, any>) || {};
     if (existingMetadata.erc8004Minted) {
+      logActivity("erc8004_confirmed_failed", auth.humanId, auth.publicKey, agent.deviceId ?? undefined, { error: "Already confirmed", endpoint: "/v1/confirm-erc8004", statusCode: 400, tokenId: existingMetadata.erc8004TokenId });
       return res.status(400).json({
         error: "Already confirmed",
         tokenId: existingMetadata.erc8004TokenId,
@@ -3325,6 +3380,7 @@ router.post("/v1/confirm-erc8004", verificationLimiter, async (req: Request, res
 
     const receipt = await viemPublicClient.getTransactionReceipt({ hash: txHash as `0x${string}` });
     if (!receipt || receipt.status === "reverted") {
+      logActivity("erc8004_confirmed_failed", auth.humanId, auth.publicKey, agent.deviceId ?? undefined, { error: "Transaction failed or not found", endpoint: "/v1/confirm-erc8004", statusCode: 400, txHash });
       return res.status(400).json({
         error: "Transaction failed or not found",
         hint: "Make sure the transaction is confirmed on Celo mainnet before calling this endpoint.",
@@ -3333,6 +3389,7 @@ router.post("/v1/confirm-erc8004", verificationLimiter, async (req: Request, res
 
     const config = erc8004Service.getConfig();
     if (receipt.to?.toLowerCase() !== config.identityRegistry.toLowerCase()) {
+      logActivity("erc8004_confirmed_failed", auth.humanId, auth.publicKey, agent.deviceId ?? undefined, { error: "Transaction is not to the ERC-8004 Identity Registry", endpoint: "/v1/confirm-erc8004", statusCode: 400 });
       return res.status(400).json({
         error: "Transaction is not to the ERC-8004 Identity Registry",
         expected: config.identityRegistry,
@@ -3350,6 +3407,7 @@ router.post("/v1/confirm-erc8004", verificationLimiter, async (req: Request, res
     }
 
     if (tokenId === "0") {
+      logActivity("erc8004_confirmed_failed", auth.humanId, auth.publicKey, agent.deviceId ?? undefined, { error: "Could not extract token ID from transaction logs", endpoint: "/v1/confirm-erc8004", statusCode: 400, txHash });
       return res.status(400).json({
         error: "Could not extract token ID from transaction logs",
         hint: "The transaction may not be an ERC-8004 register() call.",
@@ -3398,6 +3456,7 @@ router.post("/v1/confirm-erc8004", verificationLimiter, async (req: Request, res
     });
   } catch (error: any) {
     console.error("[selfclaw] confirm-erc8004 error:", error);
+    await logActivity("erc8004_confirmed_failed", undefined, undefined, undefined, { error: error.message, endpoint: "/v1/confirm-erc8004", statusCode: 500 });
     res.status(500).json({ error: error.message });
   }
 });
@@ -3411,6 +3470,7 @@ router.post("/v1/set-agent-wallet", verificationLimiter, async (req: Request, re
     const metadata = (agent.metadata as Record<string, any>) || {};
 
     if (!metadata.erc8004TokenId) {
+      logActivity("set_agent_wallet_failed", auth.humanId, auth.publicKey, undefined, { error: "No ERC-8004 identity found", endpoint: "/v1/set-agent-wallet", statusCode: 400 });
       return res.status(400).json({
         error: "No ERC-8004 identity found. Register first via POST /api/selfclaw/v1/register-erc8004",
       });
@@ -3421,6 +3481,7 @@ router.post("/v1/set-agent-wallet", verificationLimiter, async (req: Request, re
       .limit(1);
 
     if (!wallet.length || !wallet[0].address) {
+      logActivity("set_agent_wallet_failed", auth.humanId, auth.publicKey, undefined, { error: "No agent wallet found", endpoint: "/v1/set-agent-wallet", statusCode: 400 });
       return res.status(400).json({ error: "No agent wallet found. Register a wallet first." });
     }
 
@@ -3498,6 +3559,7 @@ router.post("/v1/set-agent-wallet", verificationLimiter, async (req: Request, re
       console.warn(`[selfclaw] setAgentWallet gas estimation failed: ${estimateErr.message}`);
       const msg = estimateErr.message || '';
       if (msg.includes('revert') || msg.includes('execution reverted') || msg.includes('CALL_EXCEPTION')) {
+        logActivity("set_agent_wallet_failed", auth.humanId, auth.publicKey, undefined, { error: "setAgentWallet would revert", endpoint: "/v1/set-agent-wallet", statusCode: 422 });
         return res.status(422).json({
           success: false,
           error: "The onchain setAgentWallet() call would revert. The deployed ERC-8004 contract may not support this function yet.",
@@ -3530,6 +3592,7 @@ router.post("/v1/set-agent-wallet", verificationLimiter, async (req: Request, re
     });
   } catch (error: any) {
     console.error("[selfclaw] set-agent-wallet error:", error);
+    await logActivity("set_agent_wallet_failed", undefined, undefined, undefined, { error: error.message, endpoint: "/v1/set-agent-wallet", statusCode: 500 });
     res.status(500).json({ error: error.message });
   }
 });
@@ -4373,6 +4436,7 @@ router.get("/v1/human/:humanId/economics", publicApiLimiter, async (req: Request
 router.post("/v1/create-agent", verificationLimiter, async (req: any, res: Response) => {
   try {
     if (!req.session?.isAuthenticated || !req.session?.humanId) {
+      logActivity("create_agent_failed", undefined, undefined, undefined, { error: "Login required", endpoint: "/v1/create-agent", statusCode: 401 });
       return res.status(401).json({
         error: "Login required",
         hint: "You must be logged in with Self.xyz passport to create an agent. Visit selfclaw.ai and click LOGIN."
@@ -4383,14 +4447,17 @@ router.post("/v1/create-agent", verificationLimiter, async (req: any, res: Respo
     const { agentName, description } = req.body;
 
     if (!agentName || typeof agentName !== "string" || agentName.trim().length < 2) {
+      logActivity("create_agent_failed", humanId, undefined, undefined, { error: "agentName is required (minimum 2 characters)", endpoint: "/v1/create-agent", statusCode: 400 });
       return res.status(400).json({ error: "agentName is required (minimum 2 characters)" });
     }
     if (agentName.trim().length > 32) {
+      logActivity("create_agent_failed", humanId, undefined, undefined, { error: "agentName must be 32 characters or fewer", endpoint: "/v1/create-agent", statusCode: 400 });
       return res.status(400).json({ error: "agentName must be 32 characters or fewer" });
     }
 
     let cleanName = agentName.trim().toLowerCase().replace(/[^a-z0-9\-]/g, "-").replace(/^-+|-+$/g, "").replace(/-{2,}/g, "-");
     if (!cleanName || cleanName.length < 2) {
+      logActivity("create_agent_failed", humanId, undefined, undefined, { error: "Agent name must contain at least 2 alphanumeric characters", endpoint: "/v1/create-agent", statusCode: 400 });
       return res.status(400).json({ error: "Agent name must contain at least 2 alphanumeric characters" });
     }
     if (cleanName.length > 63) {
@@ -4402,6 +4469,7 @@ router.post("/v1/create-agent", verificationLimiter, async (req: any, res: Respo
       .where(sql`LOWER(${verifiedBots.deviceId}) = LOWER(${cleanName})`)
       .limit(1);
     if (existingAgents.length > 0) {
+      logActivity("create_agent_failed", humanId, undefined, cleanName, { error: "Agent name already taken", endpoint: "/v1/create-agent", statusCode: 400 });
       return res.status(400).json({
         error: "Agent name already taken",
         suggestions: generateFriendlySuggestions(cleanName),
@@ -4469,6 +4537,7 @@ router.post("/v1/create-agent", verificationLimiter, async (req: any, res: Respo
     });
   } catch (error: any) {
     console.error("[selfclaw] create-agent error:", error);
+    await logActivity("create_agent_failed", req.session?.humanId, undefined, undefined, { error: error.message, endpoint: "/v1/create-agent", statusCode: 500 });
     res.status(500).json({ error: error.message });
   }
 });
@@ -4476,6 +4545,7 @@ router.post("/v1/create-agent", verificationLimiter, async (req: any, res: Respo
 router.post("/v1/create-agent/deploy-economy", async (req: any, res: Response) => {
   try {
     if (!req.session?.isAuthenticated || !req.session?.humanId) {
+      logActivity("deploy_economy_failed", undefined, undefined, undefined, { error: "Login required", endpoint: "/v1/create-agent/deploy-economy", statusCode: 401 });
       return res.status(401).json({ error: "Login required. Scan the QR code with your Self app." });
     }
 
@@ -4483,6 +4553,7 @@ router.post("/v1/create-agent/deploy-economy", async (req: any, res: Response) =
     const { publicKey, tokenName, tokenSymbol, totalSupply, selfclawForPool } = req.body;
 
     if (!publicKey || !tokenName || !tokenSymbol || !totalSupply) {
+      logActivity("deploy_economy_failed", humanId, publicKey, undefined, { error: "publicKey, tokenName, tokenSymbol, and totalSupply are required", endpoint: "/v1/create-agent/deploy-economy", statusCode: 400 });
       return res.status(400).json({ error: "publicKey, tokenName, tokenSymbol, and totalSupply are required" });
     }
 
@@ -4491,6 +4562,7 @@ router.post("/v1/create-agent/deploy-economy", async (req: any, res: Response) =
       .limit(1);
 
     if (agents.length === 0) {
+      logActivity("deploy_economy_failed", humanId, publicKey, undefined, { error: "Agent not found or does not belong to your identity", endpoint: "/v1/create-agent/deploy-economy", statusCode: 403 });
       return res.status(403).json({ error: "Agent not found or does not belong to your identity." });
     }
 
@@ -4993,6 +5065,7 @@ router.post("/v1/my-agents/:publicKey/register-wallet", verificationLimiter, asy
 
     const { address } = req.body;
     if (!address || typeof address !== 'string' || !/^0x[a-fA-F0-9]{40}$/.test(address)) {
+      logActivity("wallet_registration_failed", auth.humanId, req.params.publicKey, auth.agent.deviceId, { error: "Invalid wallet address format", endpoint: "/v1/my-agents/:publicKey/register-wallet", statusCode: 400 });
       return res.status(400).json({
         error: "Valid EVM wallet address required (0x... format, 42 characters).",
         hint: "The agent generates its own EVM wallet (ethers.js, viem, etc.) and registers the address here.",
@@ -5001,6 +5074,7 @@ router.post("/v1/my-agents/:publicKey/register-wallet", verificationLimiter, asy
 
     const result = await createAgentWallet(auth.humanId, req.params.publicKey, address);
     if (!result.success) {
+      logActivity("wallet_registration_failed", auth.humanId, req.params.publicKey, auth.agent.deviceId, { error: result.error, endpoint: "/v1/my-agents/:publicKey/register-wallet", statusCode: 400 });
       return res.status(400).json({ error: result.error });
     }
 
@@ -5020,6 +5094,7 @@ router.post("/v1/my-agents/:publicKey/register-wallet", verificationLimiter, asy
     });
   } catch (error: any) {
     console.error("[selfclaw] my-agents register-wallet error:", error);
+    await logActivity("wallet_registration_failed", undefined, req.params.publicKey, undefined, { error: error.message, endpoint: "/v1/my-agents/:publicKey/register-wallet", statusCode: 500 });
     res.status(500).json({ error: error.message });
   }
 });
@@ -5039,6 +5114,7 @@ router.post("/v1/my-agents/:publicKey/request-gas", verificationLimiter, async (
 
     const result = await sendGasSubsidy(auth.humanId, req.params.publicKey);
     if (!result.success) {
+      logActivity("gas_request_failed", auth.humanId, req.params.publicKey, auth.agent.deviceId, { error: result.error, endpoint: "/v1/my-agents/:publicKey/request-gas", statusCode: 400 });
       return res.status(400).json({
         error: result.error,
         alreadyReceived: result.alreadyReceived || false
@@ -5056,6 +5132,7 @@ router.post("/v1/my-agents/:publicKey/request-gas", verificationLimiter, async (
     });
   } catch (error: any) {
     console.error("[selfclaw] my-agents request-gas error:", error);
+    await logActivity("gas_request_failed", undefined, req.params.publicKey, undefined, { error: error.message, endpoint: "/v1/my-agents/:publicKey/request-gas", statusCode: 500 });
     res.status(500).json({ error: error.message });
   }
 });
@@ -5067,11 +5144,13 @@ router.post("/v1/my-agents/:publicKey/deploy-token", verificationLimiter, async 
 
     const { name, symbol, initialSupply } = req.body;
     if (!name || !symbol || !initialSupply) {
+      logActivity("token_deployment_failed", auth.humanId, req.params.publicKey, auth.agent.deviceId, { error: "name, symbol, and initialSupply are required", endpoint: "/v1/my-agents/:publicKey/deploy-token", statusCode: 400 });
       return res.status(400).json({ error: "name, symbol, and initialSupply are required" });
     }
 
     const walletInfo = await getAgentWallet(req.params.publicKey);
     if (!walletInfo?.address) {
+      logActivity("token_deployment_failed", auth.humanId, req.params.publicKey, auth.agent.deviceId, { error: "No wallet found", endpoint: "/v1/my-agents/:publicKey/deploy-token", statusCode: 400 });
       return res.status(400).json({ error: "No wallet found. Register the agent's wallet address first." });
     }
 
@@ -5126,6 +5205,7 @@ router.post("/v1/my-agents/:publicKey/deploy-token", verificationLimiter, async 
     });
   } catch (error: any) {
     console.error("[selfclaw] my-agents deploy-token error:", error);
+    await logActivity("token_deployment_failed", undefined, req.params.publicKey, undefined, { error: error.message, endpoint: "/v1/my-agents/:publicKey/deploy-token", statusCode: 500 });
     res.status(500).json({ error: error.message });
   }
 });
@@ -5137,10 +5217,12 @@ router.post("/v1/my-agents/:publicKey/register-token", verificationLimiter, asyn
 
     const { tokenAddress, txHash } = req.body;
     if (!tokenAddress || !txHash) {
+      logActivity("token_registered_failed", auth.humanId, req.params.publicKey, auth.agent.deviceId, { error: "tokenAddress and txHash are required", endpoint: "/v1/my-agents/:publicKey/register-token", statusCode: 400 });
       return res.status(400).json({ error: "tokenAddress and txHash are required" });
     }
 
     if (!/^0x[0-9a-fA-F]{40}$/.test(tokenAddress)) {
+      logActivity("token_registered_failed", auth.humanId, req.params.publicKey, auth.agent.deviceId, { error: "Invalid tokenAddress format", endpoint: "/v1/my-agents/:publicKey/register-token", statusCode: 400 });
       return res.status(400).json({ error: "Invalid tokenAddress format" });
     }
 
@@ -5168,6 +5250,7 @@ router.post("/v1/my-agents/:publicKey/register-token", verificationLimiter, asyn
     }
 
     if (!onChainName && !onChainSymbol) {
+      logActivity("token_registered_failed", auth.humanId, req.params.publicKey, auth.agent.deviceId, { error: "Could not verify token at the provided address", endpoint: "/v1/my-agents/:publicKey/register-token", statusCode: 400, tokenAddress });
       return res.status(400).json({ error: "Could not verify token at the provided address." });
     }
 
@@ -5230,6 +5313,7 @@ router.post("/v1/my-agents/:publicKey/register-token", verificationLimiter, asyn
     });
   } catch (error: any) {
     console.error("[selfclaw] my-agents register-token error:", error);
+    await logActivity("token_registered_failed", undefined, req.params.publicKey, undefined, { error: error.message, endpoint: "/v1/my-agents/:publicKey/register-token", statusCode: 500 });
     res.status(500).json({ error: error.message });
   }
 });
@@ -5242,6 +5326,7 @@ router.post("/v1/my-agents/:publicKey/request-sponsorship", verificationLimiter,
 
     const { tokenAddress, tokenSymbol, tokenAmount } = req.body;
     if (!tokenAddress || !tokenAmount) {
+      logActivity("selfclaw_sponsorship_failed", auth.humanId, req.params.publicKey, auth.agent.deviceId, { error: "tokenAddress and tokenAmount are required", endpoint: "/v1/my-agents/:publicKey/request-sponsorship", statusCode: 400 });
       return res.status(400).json({ error: "tokenAddress and tokenAmount are required" });
     }
 
@@ -5249,6 +5334,7 @@ router.post("/v1/my-agents/:publicKey/request-sponsorship", verificationLimiter,
       .where(sql`${agentWallets.publicKey} = ${req.params.publicKey} AND ${agentWallets.humanId} = ${auth.humanId}`)
       .limit(1);
     if (wallet.length === 0) {
+      logActivity("selfclaw_sponsorship_failed", auth.humanId, req.params.publicKey, auth.agent.deviceId, { error: "No wallet registered", endpoint: "/v1/my-agents/:publicKey/request-sponsorship", statusCode: 403 });
       return res.status(403).json({
         error: "Agent must have a wallet address registered with SelfClaw before requesting sponsorship.",
         step: "Register a wallet first via POST /api/selfclaw/v1/my-agents/:publicKey/register-wallet with { address: '0x...' }",
@@ -5259,6 +5345,7 @@ router.post("/v1/my-agents/:publicKey/request-sponsorship", verificationLimiter,
       .where(sql`${tokenPlans.agentPublicKey} = ${req.params.publicKey} AND ${tokenPlans.humanId} = ${auth.humanId} AND LOWER(${tokenPlans.tokenAddress}) = LOWER(${tokenAddress})`)
       .limit(1);
     if (deployedToken.length === 0) {
+      logActivity("selfclaw_sponsorship_failed", auth.humanId, req.params.publicKey, auth.agent.deviceId, { error: "Token not deployed through SelfClaw", endpoint: "/v1/my-agents/:publicKey/request-sponsorship", statusCode: 403 });
       return res.status(403).json({
         error: "Token must be deployed through SelfClaw before requesting sponsorship. External tokens are not eligible.",
         step: "Deploy your agent token first via the SelfClaw token economy flow.",
@@ -5269,6 +5356,7 @@ router.post("/v1/my-agents/:publicKey/request-sponsorship", verificationLimiter,
       .where(eq(sponsoredAgents.humanId, auth.humanId));
     const MAX_SPONSORSHIPS_PER_HUMAN = 3;
     if (existing.length >= MAX_SPONSORSHIPS_PER_HUMAN) {
+      logActivity("selfclaw_sponsorship_failed", auth.humanId, req.params.publicKey, auth.agent.deviceId, { error: "Maximum sponsorships reached", endpoint: "/v1/my-agents/:publicKey/request-sponsorship", statusCode: 409, count: existing.length });
       return res.status(409).json({
         error: `This identity has reached the maximum of ${MAX_SPONSORSHIPS_PER_HUMAN} sponsorships`,
         alreadySponsored: true,
@@ -5323,6 +5411,7 @@ router.post("/v1/my-agents/:publicKey/request-sponsorship", verificationLimiter,
     try {
       const poolState = await getPoolState(v4PoolId as `0x${string}`);
       if (poolState.liquidity !== '0') {
+        logActivity("selfclaw_sponsorship_failed", auth.humanId, req.params.publicKey, auth.agent.deviceId, { error: "V4 pool already exists", endpoint: "/v1/my-agents/:publicKey/request-sponsorship", statusCode: 409, v4PoolId });
         return res.status(409).json({ error: "A V4 pool already exists for this token pair", v4PoolId });
       }
     } catch (_e: any) {}
@@ -5362,6 +5451,7 @@ router.post("/v1/my-agents/:publicKey/request-sponsorship", verificationLimiter,
         errorMessage: result.error,
         updatedAt: new Date(),
       }).where(sql`${sponsorshipRequests.id} = ${sponsorshipReq.id}`);
+      logActivity("selfclaw_sponsorship_failed", auth.humanId, req.params.publicKey, auth.agent.deviceId, { error: result.error, endpoint: "/v1/my-agents/:publicKey/request-sponsorship", statusCode: 400 });
       return res.status(400).json({ error: result.error });
     }
 
@@ -5462,6 +5552,7 @@ router.post("/v1/my-agents/:publicKey/request-sponsorship", verificationLimiter,
       } catch (_e) {}
     }
     console.error("[selfclaw] my-agents request-sponsorship error:", error);
+    await logActivity("selfclaw_sponsorship_failed", undefined, req.params.publicKey, undefined, { error: error.message, endpoint: "/v1/my-agents/:publicKey/request-sponsorship", statusCode: 500 });
     res.status(500).json({ error: error.message });
   }
 });
@@ -5473,15 +5564,18 @@ router.post("/v1/my-agents/:publicKey/register-erc8004", verificationLimiter, as
 
     const walletInfo = await getAgentWallet(req.params.publicKey);
     if (!walletInfo || !walletInfo.address) {
+      logActivity("erc8004_registration_failed", auth.humanId, req.params.publicKey, auth.agent.deviceId, { error: "No wallet found", endpoint: "/v1/my-agents/:publicKey/register-erc8004", statusCode: 400 });
       return res.status(400).json({ error: "No wallet found. Register the agent's wallet address first." });
     }
 
     if (!erc8004Service.isReady()) {
+      logActivity("erc8004_registration_failed", auth.humanId, req.params.publicKey, auth.agent.deviceId, { error: "ERC-8004 contracts not available yet", endpoint: "/v1/my-agents/:publicKey/register-erc8004", statusCode: 503 });
       return res.status(503).json({ error: "ERC-8004 contracts not available yet" });
     }
 
     const existingMeta = (auth.agent.metadata as Record<string, any>) || {};
     if (existingMeta.erc8004Minted) {
+      logActivity("erc8004_registration_failed", auth.humanId, req.params.publicKey, auth.agent.deviceId, { error: "Already registered", endpoint: "/v1/my-agents/:publicKey/register-erc8004", statusCode: 400 });
       return res.status(400).json({
         error: "Already registered",
         tokenId: existingMeta.erc8004TokenId,
@@ -5570,6 +5664,7 @@ router.post("/v1/my-agents/:publicKey/register-erc8004", verificationLimiter, as
     });
   } catch (error: any) {
     console.error("[selfclaw] my-agents register-erc8004 error:", error);
+    await logActivity("erc8004_registration_failed", undefined, req.params.publicKey, undefined, { error: error.message, endpoint: "/v1/my-agents/:publicKey/register-erc8004", statusCode: 500 });
     res.status(500).json({ error: error.message });
   }
 });
@@ -5986,6 +6081,7 @@ router.post("/v1/miniclaws/:id/register-wallet", verificationLimiter, async (req
 
     const { address } = req.body;
     if (!address || typeof address !== 'string' || !/^0x[a-fA-F0-9]{40}$/.test(address)) {
+      logActivity("wallet_registration_failed", auth.humanId, mcPublicKey, "miniclaw", { error: "Invalid wallet address format", endpoint: "/v1/miniclaws/:id/register-wallet", statusCode: 400, miniclawId: req.params.id });
       return res.status(400).json({
         error: "Valid EVM wallet address required (0x... format, 42 characters).",
         hint: "The agent generates its own EVM wallet (ethers.js, viem, etc.) and registers the address here.",
@@ -5994,6 +6090,7 @@ router.post("/v1/miniclaws/:id/register-wallet", verificationLimiter, async (req
 
     const result = await createAgentWallet(auth.humanId, mcPublicKey, address);
     if (!result.success) {
+      logActivity("wallet_registration_failed", auth.humanId, mcPublicKey, "miniclaw", { error: result.error, endpoint: "/v1/miniclaws/:id/register-wallet", statusCode: 400, miniclawId: req.params.id });
       return res.status(400).json({ error: result.error });
     }
 
@@ -6008,6 +6105,7 @@ router.post("/v1/miniclaws/:id/register-wallet", verificationLimiter, async (req
     });
   } catch (error: any) {
     console.error("[selfclaw] miniclaw register-wallet error:", error);
+    await logActivity("wallet_registration_failed", undefined, undefined, "miniclaw", { error: error.message, endpoint: "/v1/miniclaws/:id/register-wallet", statusCode: 500, miniclawId: req.params.id });
     res.status(500).json({ error: error.message });
   }
 });
@@ -6027,6 +6125,7 @@ router.post("/v1/miniclaws/:id/request-gas", verificationLimiter, async (req: an
     const mcPublicKey = auth.miniclaw.publicKey;
     const result = await sendGasSubsidy(auth.humanId, mcPublicKey);
     if (!result.success) {
+      logActivity("gas_request_failed", auth.humanId, mcPublicKey, "miniclaw", { error: result.error, endpoint: "/v1/miniclaws/:id/request-gas", statusCode: 400, miniclawId: req.params.id });
       return res.status(400).json({
         error: result.error,
         alreadyReceived: result.alreadyReceived || false
@@ -6044,6 +6143,7 @@ router.post("/v1/miniclaws/:id/request-gas", verificationLimiter, async (req: an
     });
   } catch (error: any) {
     console.error("[selfclaw] miniclaw request-gas error:", error);
+    await logActivity("gas_request_failed", undefined, undefined, "miniclaw", { error: error.message, endpoint: "/v1/miniclaws/:id/request-gas", statusCode: 500, miniclawId: req.params.id });
     res.status(500).json({ error: error.message });
   }
 });
@@ -6056,11 +6156,13 @@ router.post("/v1/miniclaws/:id/deploy-token", verificationLimiter, async (req: a
     const mcPublicKey = auth.miniclaw.publicKey;
     const { name, symbol, initialSupply } = req.body;
     if (!name || !symbol || !initialSupply) {
+      logActivity("token_deployment_failed", auth.humanId, mcPublicKey, "miniclaw", { error: "name, symbol, and initialSupply are required", endpoint: "/v1/miniclaws/:id/deploy-token", statusCode: 400, miniclawId: req.params.id });
       return res.status(400).json({ error: "name, symbol, and initialSupply are required" });
     }
 
     const walletInfo = await getAgentWallet(mcPublicKey);
     if (!walletInfo?.address) {
+      logActivity("token_deployment_failed", auth.humanId, mcPublicKey, "miniclaw", { error: "No wallet found", endpoint: "/v1/miniclaws/:id/deploy-token", statusCode: 400, miniclawId: req.params.id });
       return res.status(400).json({ error: "No wallet found. Register the agent's wallet address first." });
     }
 
@@ -6116,6 +6218,7 @@ router.post("/v1/miniclaws/:id/deploy-token", verificationLimiter, async (req: a
     });
   } catch (error: any) {
     console.error("[selfclaw] miniclaw deploy-token error:", error);
+    await logActivity("token_deployment_failed", undefined, undefined, "miniclaw", { error: error.message, endpoint: "/v1/miniclaws/:id/deploy-token", statusCode: 500, miniclawId: req.params.id });
     res.status(500).json({ error: error.message });
   }
 });
@@ -6128,10 +6231,12 @@ router.post("/v1/miniclaws/:id/register-token", verificationLimiter, async (req:
     const mcPublicKey = auth.miniclaw.publicKey;
     const { tokenAddress, txHash } = req.body;
     if (!tokenAddress || !txHash) {
+      logActivity("token_registered_failed", auth.humanId, mcPublicKey, "miniclaw", { error: "tokenAddress and txHash are required", endpoint: "/v1/miniclaws/:id/register-token", statusCode: 400, miniclawId: req.params.id });
       return res.status(400).json({ error: "tokenAddress and txHash are required" });
     }
 
     if (!/^0x[0-9a-fA-F]{40}$/.test(tokenAddress)) {
+      logActivity("token_registered_failed", auth.humanId, mcPublicKey, "miniclaw", { error: "Invalid tokenAddress format", endpoint: "/v1/miniclaws/:id/register-token", statusCode: 400, miniclawId: req.params.id });
       return res.status(400).json({ error: "Invalid tokenAddress format" });
     }
 
@@ -6159,6 +6264,7 @@ router.post("/v1/miniclaws/:id/register-token", verificationLimiter, async (req:
     }
 
     if (!onChainName && !onChainSymbol) {
+      logActivity("token_registered_failed", auth.humanId, mcPublicKey, "miniclaw", { error: "Could not verify token at the provided address", endpoint: "/v1/miniclaws/:id/register-token", statusCode: 400, miniclawId: req.params.id, tokenAddress });
       return res.status(400).json({ error: "Could not verify token at the provided address." });
     }
 
@@ -6221,6 +6327,7 @@ router.post("/v1/miniclaws/:id/register-token", verificationLimiter, async (req:
     });
   } catch (error: any) {
     console.error("[selfclaw] miniclaw register-token error:", error);
+    await logActivity("token_registered_failed", undefined, undefined, "miniclaw", { error: error.message, endpoint: "/v1/miniclaws/:id/register-token", statusCode: 500, miniclawId: req.params.id });
     res.status(500).json({ error: error.message });
   }
 });
@@ -6234,15 +6341,18 @@ router.post("/v1/miniclaws/:id/register-erc8004", verificationLimiter, async (re
     const mc = auth.miniclaw;
     const walletInfo = await getAgentWallet(mcPublicKey);
     if (!walletInfo || !walletInfo.address) {
+      logActivity("erc8004_registration_failed", auth.humanId, mcPublicKey, "miniclaw", { error: "No wallet found", endpoint: "/v1/miniclaws/:id/register-erc8004", statusCode: 400, miniclawId: req.params.id });
       return res.status(400).json({ error: "No wallet found. Register the agent's wallet address first via register-wallet." });
     }
 
     if (!erc8004Service.isReady()) {
+      logActivity("erc8004_registration_failed", auth.humanId, mcPublicKey, "miniclaw", { error: "ERC-8004 contracts not available yet", endpoint: "/v1/miniclaws/:id/register-erc8004", statusCode: 503, miniclawId: req.params.id });
       return res.status(503).json({ error: "ERC-8004 contracts not available yet" });
     }
 
     const existingMetadata = (mc.metadata as Record<string, any>) || {};
     if (existingMetadata.erc8004Minted) {
+      logActivity("erc8004_registration_failed", auth.humanId, mcPublicKey, "miniclaw", { error: "Already registered", endpoint: "/v1/miniclaws/:id/register-erc8004", statusCode: 400, miniclawId: req.params.id });
       return res.status(400).json({
         error: "Already registered",
         tokenId: existingMetadata.erc8004TokenId,
@@ -6353,6 +6463,7 @@ router.post("/v1/miniclaws/:id/register-erc8004", verificationLimiter, async (re
     });
   } catch (error: any) {
     console.error("[selfclaw] miniclaw register-erc8004 error:", error);
+    await logActivity("erc8004_registration_failed", undefined, undefined, "miniclaw", { error: error.message, endpoint: "/v1/miniclaws/:id/register-erc8004", statusCode: 500, miniclawId: req.params.id });
     res.status(500).json({ error: error.message });
   }
 });
@@ -6437,6 +6548,7 @@ router.post("/v1/miniclaws/:id/request-sponsorship", verificationLimiter, async 
     const mcPublicKey = auth.miniclaw.publicKey;
     const { tokenAddress, tokenSymbol, tokenAmount } = req.body;
     if (!tokenAddress || !tokenAmount) {
+      logActivity("selfclaw_sponsorship_failed", auth.humanId, mcPublicKey, "miniclaw", { error: "tokenAddress and tokenAmount are required", endpoint: "/v1/miniclaws/:id/request-sponsorship", statusCode: 400, miniclawId: req.params.id });
       return res.status(400).json({ error: "tokenAddress and tokenAmount are required" });
     }
 
@@ -6444,6 +6556,7 @@ router.post("/v1/miniclaws/:id/request-sponsorship", verificationLimiter, async 
       .where(sql`${agentWallets.publicKey} = ${mcPublicKey} AND ${agentWallets.humanId} = ${auth.humanId}`)
       .limit(1);
     if (wallet.length === 0) {
+      logActivity("selfclaw_sponsorship_failed", auth.humanId, mcPublicKey, "miniclaw", { error: "No wallet registered", endpoint: "/v1/miniclaws/:id/request-sponsorship", statusCode: 403, miniclawId: req.params.id });
       return res.status(403).json({
         error: "Miniclaw must have a wallet address registered with SelfClaw before requesting sponsorship.",
         step: "Set up a wallet first via the miniclaw economy pipeline.",
@@ -6458,6 +6571,7 @@ router.post("/v1/miniclaws/:id/request-sponsorship", verificationLimiter, async 
         .where(sql`${agentActivity.eventType} IN ('token_registered', 'token_deployment') AND ${agentActivity.agentPublicKey} = ${mcPublicKey} AND ${agentActivity.humanId} = ${auth.humanId} AND (LOWER(${agentActivity.metadata}->>'tokenAddress') = LOWER(${tokenAddress}) OR LOWER(${agentActivity.metadata}->>'predictedTokenAddress') = LOWER(${tokenAddress}))`)
         .limit(1);
       if (tokenActivity.length === 0) {
+        logActivity("selfclaw_sponsorship_failed", auth.humanId, mcPublicKey, "miniclaw", { error: "Token not deployed through SelfClaw", endpoint: "/v1/miniclaws/:id/request-sponsorship", statusCode: 403, miniclawId: req.params.id });
         return res.status(403).json({
           error: "Token must be deployed through SelfClaw before requesting sponsorship. External tokens are not eligible.",
           step: "Deploy your miniclaw token first via the SelfClaw economy pipeline.",
@@ -6469,6 +6583,7 @@ router.post("/v1/miniclaws/:id/request-sponsorship", verificationLimiter, async 
       .where(eq(sponsoredAgents.humanId, auth.humanId));
     const MAX_SPONSORSHIPS_PER_HUMAN = 3;
     if (existing.length >= MAX_SPONSORSHIPS_PER_HUMAN) {
+      logActivity("selfclaw_sponsorship_failed", auth.humanId, mcPublicKey, "miniclaw", { error: "Maximum sponsorships reached", endpoint: "/v1/miniclaws/:id/request-sponsorship", statusCode: 409, miniclawId: req.params.id, count: existing.length });
       return res.status(409).json({
         error: `This identity has reached the maximum of ${MAX_SPONSORSHIPS_PER_HUMAN} sponsorships`,
         alreadySponsored: true,
@@ -6493,6 +6608,7 @@ router.post("/v1/miniclaws/:id/request-sponsorship", verificationLimiter, async 
     const heldAmount = parseFloat(agentTokenBalance);
 
     if (heldAmount < requiredAmount) {
+      logActivity("selfclaw_sponsorship_failed", auth.humanId, mcPublicKey, "miniclaw", { error: "Insufficient agent token in sponsor wallet", endpoint: "/v1/miniclaws/:id/request-sponsorship", statusCode: 400, miniclawId: req.params.id });
       return res.status(400).json({
         error: `Sponsor wallet does not hold enough of your agent token.`,
         sponsorWallet: sponsorAddress,
@@ -6507,6 +6623,7 @@ router.post("/v1/miniclaws/:id/request-sponsorship", verificationLimiter, async 
     const availableBalance = await getSelfclawBalance(sponsorKey);
     const available = parseFloat(availableBalance);
     if (available <= 0) {
+      logActivity("selfclaw_sponsorship_failed", auth.humanId, mcPublicKey, "miniclaw", { error: "No SELFCLAW available in sponsorship wallet", endpoint: "/v1/miniclaws/:id/request-sponsorship", statusCode: 400, miniclawId: req.params.id });
       return res.status(400).json({ error: "No SELFCLAW available in sponsorship wallet." });
     }
 
@@ -6523,6 +6640,7 @@ router.post("/v1/miniclaws/:id/request-sponsorship", verificationLimiter, async 
     try {
       const poolState = await getPoolState(v4PoolId as `0x${string}`);
       if (poolState.liquidity !== '0') {
+        logActivity("selfclaw_sponsorship_failed", auth.humanId, mcPublicKey, "miniclaw", { error: "V4 pool already exists", endpoint: "/v1/miniclaws/:id/request-sponsorship", statusCode: 409, miniclawId: req.params.id, v4PoolId });
         return res.status(409).json({ error: "A V4 pool already exists for this token pair", v4PoolId });
       }
     } catch (_e: any) {}
@@ -6562,6 +6680,7 @@ router.post("/v1/miniclaws/:id/request-sponsorship", verificationLimiter, async 
         errorMessage: result.error,
         updatedAt: new Date(),
       }).where(sql`${sponsorshipRequests.id} = ${sponsorshipReq.id}`);
+      logActivity("selfclaw_sponsorship_failed", auth.humanId, mcPublicKey, "miniclaw", { error: result.error, endpoint: "/v1/miniclaws/:id/request-sponsorship", statusCode: 400, miniclawId: req.params.id });
       return res.status(400).json({ error: result.error });
     }
 
@@ -6660,6 +6779,7 @@ router.post("/v1/miniclaws/:id/request-sponsorship", verificationLimiter, async 
       } catch (_e) {}
     }
     console.error("[selfclaw] miniclaw request-sponsorship error:", error);
+    await logActivity("selfclaw_sponsorship_failed", undefined, undefined, "miniclaw", { error: error.message, endpoint: "/v1/miniclaws/:id/request-sponsorship", statusCode: 500, miniclawId: req.params.id });
     res.status(500).json({ error: error.message });
   }
 });

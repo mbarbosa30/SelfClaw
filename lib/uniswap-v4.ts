@@ -815,8 +815,8 @@ export async function createPoolAndAddLiquidity(params: CreatePoolParams): Promi
     const isCeloToken0 = token0.toLowerCase() === CELO_NATIVE.toLowerCase();
     const isCeloToken1 = token1.toLowerCase() === CELO_NATIVE.toLowerCase();
 
-    const amount0Max = amount0 + (amount0 * 10n / 100n);
-    const amount1Max = amount1 + (amount1 * 10n / 100n);
+    const amount0Max = amount0 + (amount0 * 1n / 100n);
+    const amount1Max = amount1 + (amount1 * 1n / 100n);
 
     console.log(`[uniswap-v4] Approving tokens via Permit2... amount0Max=${formatUnits(amount0Max, 18)}, amount1Max=${formatUnits(amount1Max, 18)}`);
     console.log(`[uniswap-v4] Wallet: ${account.address}, token0=${token0}, token1=${token1}`);
