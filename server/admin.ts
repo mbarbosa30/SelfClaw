@@ -1527,37 +1527,42 @@ router.post("/relink-agent", async (req: Request, res: Response) => {
   try {
     if (!requireAdmin(req, res)) return;
 
-    const { publicKey, newHumanId } = req.body;
-    if (!publicKey || !newHumanId) {
-      return res.status(400).json({ error: "publicKey and newHumanId are required" });
+    const { publicKey, agentId, newHumanId } = req.body;
+    if ((!publicKey && !agentId) || !newHumanId) {
+      return res.status(400).json({ error: "Either publicKey or agentId, plus newHumanId, are required" });
     }
 
-    const agents = await db.select().from(verifiedBots)
-      .where(sql`${verifiedBots.publicKey} = ${publicKey}`)
-      .limit(1);
+    if (agentId && (isNaN(Number(agentId)) || Number(agentId) <= 0)) {
+      return res.status(400).json({ error: "agentId must be a positive number" });
+    }
+
+    const agents = agentId
+      ? await db.select().from(verifiedBots).where(sql`${verifiedBots.id} = ${Number(agentId)}`).limit(1)
+      : await db.select().from(verifiedBots).where(sql`${verifiedBots.publicKey} = ${publicKey}`).limit(1);
 
     if (!agents.length) {
-      return res.status(404).json({ error: `No agent found with publicKey ${publicKey.slice(0, 16)}...` });
+      return res.status(404).json({ error: agentId ? `No agent found with ID #${agentId}` : `No agent found with publicKey ${publicKey.slice(0, 16)}...` });
     }
 
     const agent = agents[0];
+    const agentPk = agent.publicKey;
     const oldHumanId = agent.humanId || "(none)";
 
     await db.update(verifiedBots)
       .set({ humanId: newHumanId })
-      .where(sql`${verifiedBots.publicKey} = ${publicKey}`);
+      .where(sql`${verifiedBots.id} = ${agent.id}`);
 
     const wallets = await db.select().from(agentWallets)
-      .where(sql`${agentWallets.publicKey} = ${publicKey}`)
+      .where(sql`${agentWallets.publicKey} = ${agentPk}`)
       .limit(1);
 
     if (wallets.length && wallets[0].humanId !== newHumanId) {
       await db.update(agentWallets)
         .set({ humanId: newHumanId })
-        .where(sql`${agentWallets.publicKey} = ${publicKey}`);
+        .where(sql`${agentWallets.publicKey} = ${agentPk}`);
     }
 
-    console.log(`[admin] Relinked agent ${agent.deviceId || publicKey.slice(0, 16)}... from humanId=${oldHumanId} to humanId=${newHumanId}`);
+    console.log(`[admin] Relinked agent #${agent.id} (${agent.deviceId || agentPk?.slice(0, 16)}) from humanId=${oldHumanId} to humanId=${newHumanId}`);
 
     res.json({
       success: true,

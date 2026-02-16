@@ -500,12 +500,12 @@
       </section>
 
       <section class="admin-section">
-        <h2 class="admin-section-title">Re-link Legacy Agent</h2>
-        <p style="color:var(--text-muted);font-size:0.75rem;margin-bottom:1rem;line-height:1.4;">Link a legacy verified agent to a new user account. Updates the humanId on the agent record and any associated wallet.</p>
+        <h2 class="admin-section-title">Re-link Agent</h2>
+        <p style="color:var(--text-muted);font-size:0.75rem;margin-bottom:1rem;line-height:1.4;">Reassign an agent to a different human identity. Enter the agent's database ID number and the new humanId. Updates both the agent record and any associated wallet.</p>
         <div style="display:flex;flex-direction:column;gap:0.75rem;max-width:520px;">
           <div>
-            <label style="font-family:var(--mono);font-size:0.7rem;text-transform:uppercase;color:var(--text-muted);display:block;margin-bottom:0.25rem;">Agent Public Key</label>
-            <input id="relink-pubkey" type="text" placeholder="Ed25519 public key of the agent" style="width:100%;padding:0.5rem;border:2px solid var(--border-light);font-family:var(--mono);font-size:0.8rem;background:#fff;">
+            <label style="font-family:var(--mono);font-size:0.7rem;text-transform:uppercase;color:var(--text-muted);display:block;margin-bottom:0.25rem;">Agent Number (ID)</label>
+            <input id="relink-agentid" type="number" placeholder="e.g. 42" style="width:100%;padding:0.5rem;border:2px solid var(--border-light);font-family:var(--mono);font-size:0.8rem;background:#fff;">
           </div>
           <div>
             <label style="font-family:var(--mono);font-size:0.7rem;text-transform:uppercase;color:var(--text-muted);display:block;margin-bottom:0.25rem;">New Human ID</label>
@@ -2413,10 +2413,10 @@
     }
 
     function relinkAgent() {
-      var pk = document.getElementById('relink-pubkey').value.trim();
+      var aid = document.getElementById('relink-agentid').value.trim();
       var hid = document.getElementById('relink-humanid').value.trim();
       var resultEl = document.getElementById('relink-result');
-      if (!pk || !hid) {
+      if (!aid || !hid) {
         resultEl.style.display = 'block';
         resultEl.style.borderColor = '#c00';
         resultEl.innerHTML = 'Both fields are required.';
@@ -2424,11 +2424,11 @@
       }
       resultEl.style.display = 'block';
       resultEl.style.borderColor = 'var(--border-light)';
-      resultEl.innerHTML = 'Re-linking...';
+      resultEl.innerHTML = 'Re-linking agent #' + esc(aid) + '...';
       fetch('/api/admin/relink-agent', {
         method: 'POST',
         headers: Object.assign({ 'Content-Type': 'application/json' }, authHeaders()),
-        body: JSON.stringify({ publicKey: pk, newHumanId: hid })
+        body: JSON.stringify({ agentId: Number(aid), newHumanId: hid })
       })
       .then(function(r) { return r.json(); })
       .then(function(data) {
