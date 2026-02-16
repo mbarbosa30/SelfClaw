@@ -2397,33 +2397,28 @@ router.get("/v1/agent-profile/:name", publicApiLimiter, async (req: Request, res
     let feedbackEntries: Array<{ rater: string; score: number; decimals: number; tag1: string; tag2: string }> = [];
 
     if (metadata?.erc8004TokenId) {
-      try {
-        const [summary, feedback, identity] = await Promise.all([
-          erc8004Service.getReputationSummary(metadata.erc8004TokenId),
-          erc8004Service.readAllFeedback(metadata.erc8004TokenId),
-          erc8004Service.getAgentIdentity(metadata.erc8004TokenId),
-        ]);
+      if (metadata.onchainFeedbackCount !== undefined && metadata.onchainFeedbackCount !== null) {
+        reputationData = {
+          totalFeedback: metadata.onchainFeedbackCount,
+          averageScore: metadata.onchainAvgScore ?? 0,
+          lastUpdated: metadata.onchainLastUpdated ?? 0,
+        };
+      }
 
-        if (summary) {
-          reputationData = {
-            totalFeedback: summary.totalFeedback,
-            averageScore: summary.averageScore,
-            lastUpdated: summary.lastUpdated,
-          };
-        }
+      if (metadata.erc8004Owner) {
+        identityData = {
+          owner: metadata.erc8004Owner,
+          uri: metadata.erc8004Uri || '',
+        };
+      }
 
-        if (feedback) {
-          feedbackEntries = feedback;
+      if (metadata.onchainFeedbackCount > 0) {
+        try {
+          const feedback = await erc8004Service.readAllFeedback(metadata.erc8004TokenId);
+          if (feedback) feedbackEntries = feedback;
+        } catch (e: any) {
+          console.log('[agent-profile] ERC-8004 feedback fetch failed:', e.message);
         }
-
-        if (identity) {
-          identityData = {
-            owner: identity.owner,
-            uri: identity.uri,
-          };
-        }
-      } catch (e: any) {
-        console.log('[agent-profile] ERC-8004 fetch failed:', e.message);
       }
     }
 
@@ -4162,7 +4157,7 @@ async function updatePoolPrices() {
   }
 }
 
-setInterval(() => updatePoolPrices().catch(() => {}), 5 * 60 * 1000);
+setInterval(() => updatePoolPrices().catch(() => {}), 10 * 60 * 1000);
 setTimeout(() => updatePoolPrices().catch(() => {}), 30 * 1000);
 
 // ===================== REVENUE TRACKING =====================
@@ -7242,8 +7237,15 @@ router.get("/v1/agent/:identifier/price-history", publicApiLimiter, async (req: 
   }
 });
 
+let tokenListingsCache: { data: any; timestamp: number } | null = null;
+const TOKEN_LISTINGS_CACHE_TTL = 3 * 60 * 1000;
+
 router.get("/v1/token-listings", publicApiLimiter, async (req: Request, res: Response) => {
   try {
+    if (tokenListingsCache && Date.now() - tokenListingsCache.timestamp < TOKEN_LISTINGS_CACHE_TTL) {
+      return res.json(tokenListingsCache.data);
+    }
+
     const allPools = await db.select().from(trackedPools)
       .where(sql`${trackedPools.humanId} != 'platform'`);
 
@@ -7254,23 +7256,12 @@ router.get("/v1/token-listings", publicApiLimiter, async (req: Request, res: Res
     }
 
     const refPrices = await getReferencePrices();
-    const prices = await getAllAgentTokenPrices(pools.map(p => ({
-      tokenAddress: p.tokenAddress,
-      v4PoolId: p.v4PoolId,
-      poolAddress: p.poolAddress,
-      tokenSymbol: p.tokenSymbol,
-      poolVersion: p.poolVersion,
-    })));
-
-    const priceMap = new Map<string, any>();
-    for (const p of prices) {
-      priceMap.set(p.tokenAddress.toLowerCase(), p);
-    }
 
     const cutoff24h = new Date(Date.now() - 86400_000);
     const allSnapshots = await db.select({
       tokenAddress: tokenPriceSnapshots.tokenAddress,
       priceUsd: tokenPriceSnapshots.priceUsd,
+      marketCapUsd: tokenPriceSnapshots.marketCapUsd,
       createdAt: tokenPriceSnapshots.createdAt,
     })
       .from(tokenPriceSnapshots)
@@ -7279,12 +7270,19 @@ router.get("/v1/token-listings", publicApiLimiter, async (req: Request, res: Res
 
     const sparklineMap = new Map<string, number[]>();
     const oldestPriceMap = new Map<string, number>();
+    const latestSnapshotPriceMap = new Map<string, number>();
+    const latestMarketCapMap = new Map<string, number>();
     for (const s of allSnapshots) {
       const addr = s.tokenAddress.toLowerCase();
       if (!sparklineMap.has(addr)) sparklineMap.set(addr, []);
       const price = parseFloat(s.priceUsd || '0');
-      sparklineMap.get(addr)!.push(price);
-      if (!oldestPriceMap.has(addr)) oldestPriceMap.set(addr, price);
+      if (price > 0) {
+        sparklineMap.get(addr)!.push(price);
+        if (!oldestPriceMap.has(addr)) oldestPriceMap.set(addr, price);
+        latestSnapshotPriceMap.set(addr, price);
+        const mcap = parseFloat(s.marketCapUsd || '0');
+        if (mcap > 0) latestMarketCapMap.set(addr, mcap);
+      }
     }
 
     const agentMap = new Map<string, any>();
@@ -7299,12 +7297,13 @@ router.get("/v1/token-listings", publicApiLimiter, async (req: Request, res: Res
 
     const tokens = pools.map((pool) => {
       const addr = pool.tokenAddress.toLowerCase();
-      const price = priceMap.get(addr);
       const sparkline = sparklineMap.get(addr) || [];
       const oldestPrice = oldestPriceMap.get(addr) || 0;
-      const currentPrice = price?.priceInUsd || 0;
-      const change24h = oldestPrice > 0 ? ((currentPrice - oldestPrice) / oldestPrice) * 100 : 0;
+      const currentPrice = latestSnapshotPriceMap.get(addr) || 0;
+      const change24h = oldestPrice > 0 && currentPrice > 0 ? ((currentPrice - oldestPrice) / oldestPrice) * 100 : 0;
       const agentName = pool.agentPublicKey ? agentMap.get(pool.agentPublicKey) || null : null;
+
+      const marketCapUsd = latestMarketCapMap.get(addr) || 0;
 
       return {
         rank: 0,
@@ -7315,8 +7314,8 @@ router.get("/v1/token-listings", publicApiLimiter, async (req: Request, res: Res
         priceUsd: currentPrice,
         priceFormatted: formatPrice(currentPrice),
         change24h: Math.round(change24h * 100) / 100,
-        marketCapUsd: price?.marketCapUsd || 0,
-        marketCapFormatted: formatMarketCap(price?.marketCapUsd || 0),
+        marketCapUsd,
+        marketCapFormatted: formatMarketCap(marketCapUsd),
         poolVersion: pool.poolVersion || 'v4',
         v4PoolId: pool.v4PoolId,
         uniswapUrl: pool.v4PoolId
@@ -7330,7 +7329,7 @@ router.get("/v1/token-listings", publicApiLimiter, async (req: Request, res: Res
 
     tokens.forEach((t, i) => { t.rank = i + 1; });
 
-    res.json({
+    const response = {
       tokens,
       reference: {
         celoUsd: refPrices.celoUsd,
@@ -7338,7 +7337,11 @@ router.get("/v1/token-listings", publicApiLimiter, async (req: Request, res: Res
         selfclawUsd: refPrices.selfclawUsd,
       },
       updatedAt: new Date().toISOString(),
-    });
+    };
+
+    tokenListingsCache = { data: response, timestamp: Date.now() };
+
+    res.json(response);
   } catch (error: any) {
     console.error("[selfclaw] token-listings error:", error.message);
     res.status(500).json({ error: "Failed to fetch token listings" });
@@ -7371,33 +7374,41 @@ router.get("/v1/agent/:identifier/reputation", publicApiLimiter, async (req: Req
       });
     }
 
-    const [summary, feedback, identity] = await Promise.all([
-      erc8004Service.getReputationSummary(erc8004TokenId),
-      erc8004Service.readAllFeedback(erc8004TokenId),
-      erc8004Service.getAgentIdentity(erc8004TokenId),
-    ]);
+    const cachedSummary = metadata?.onchainFeedbackCount !== undefined && metadata?.onchainFeedbackCount !== null ? {
+      totalFeedback: metadata.onchainFeedbackCount,
+      averageScore: metadata.onchainAvgScore ?? 0,
+      lastUpdated: metadata.onchainLastUpdated ?? 0,
+    } : null;
+
+    const cachedIdentity = metadata?.erc8004Owner ? {
+      owner: metadata.erc8004Owner,
+      uri: metadata.erc8004Uri || '',
+      scanUrl: `https://www.8004scan.io/agents/celo/${erc8004TokenId}`,
+    } : null;
+
+    let feedbackData: Array<{ rater: string; score: number; decimals: number; tag1: string; tag2: string }> = [];
+    if (cachedSummary && cachedSummary.totalFeedback > 0) {
+      try {
+        const feedback = await erc8004Service.readAllFeedback(erc8004TokenId);
+        if (feedback) feedbackData = feedback;
+      } catch (e: any) {
+        console.log('[reputation] feedback fetch failed:', e.message);
+      }
+    }
 
     res.json({
       agentName: agent.deviceId,
       hasErc8004: true,
       erc8004TokenId,
-      reputation: summary ? {
-        totalFeedback: summary.totalFeedback,
-        averageScore: summary.averageScore,
-        lastUpdated: summary.lastUpdated,
-      } : null,
-      feedback: (feedback || []).map(f => ({
+      reputation: cachedSummary,
+      feedback: feedbackData.map(f => ({
         rater: f.rater,
         score: f.score,
         decimals: f.decimals,
         tag1: f.tag1,
         tag2: f.tag2,
       })),
-      identity: identity ? {
-        owner: identity.owner,
-        uri: identity.uri,
-        scanUrl: `https://www.8004scan.io/agents/celo/${erc8004TokenId}`,
-      } : null,
+      identity: cachedIdentity,
     });
   } catch (error: any) {
     console.error("[selfclaw] reputation error:", error.message);
@@ -7455,7 +7466,9 @@ async function snapshotPrices() {
       new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Price fetch timeout')), 30_000)),
     ]);
 
+    let inserted = 0;
     for (const p of prices) {
+      if (p.priceInUsd <= 0 && p.priceInCelo <= 0) continue;
       try {
         await db.insert(tokenPriceSnapshots).values({
           tokenAddress: p.tokenAddress,
@@ -7468,12 +7481,13 @@ async function snapshotPrices() {
           totalSupply: p.totalSupply,
           liquidity: p.liquidity,
         });
+        inserted++;
       } catch (insertErr: any) {
         console.error('[price-oracle] Snapshot insert error:', insertErr.message);
       }
     }
 
-    console.log(`[price-oracle] Snapshot saved for ${prices.length} tokens`);
+    console.log(`[price-oracle] Snapshot saved: ${inserted}/${prices.length} tokens (skipped ${prices.length - inserted} zero-price)`);
   } catch (error: any) {
     console.error('[price-oracle] Snapshot error:', error.message);
   }
@@ -7481,9 +7495,9 @@ async function snapshotPrices() {
 
 async function pruneOldSnapshots() {
   try {
-    const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
     await db.delete(tokenPriceSnapshots).where(lt(tokenPriceSnapshots.createdAt, cutoff));
-    console.log('[price-oracle] Old snapshots pruned (>30 days)');
+    console.log('[price-oracle] Old snapshots pruned (>7 days)');
   } catch (error: any) {
     console.error('[price-oracle] Prune error:', error.message);
   }
@@ -7491,7 +7505,7 @@ async function pruneOldSnapshots() {
 
 setTimeout(() => {
   snapshotPrices().catch(() => {});
-  setInterval(() => snapshotPrices().catch(() => {}), 5 * 60 * 1000);
+  setInterval(() => snapshotPrices().catch(() => {}), 30 * 60 * 1000);
   pruneOldSnapshots().catch(() => {});
   setInterval(() => pruneOldSnapshots().catch(() => {}), 24 * 60 * 60 * 1000);
 }, 10_000);

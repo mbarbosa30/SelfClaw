@@ -97,7 +97,7 @@ interface PriceCache {
 }
 
 let priceCache: PriceCache | null = null;
-const CACHE_TTL = 60_000;
+const CACHE_TTL = 5 * 60_000;
 
 export async function getCeloUsdPrice(): Promise<number> {
   try {
