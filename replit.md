@@ -51,6 +51,7 @@ Common utilities are extracted into `server/routes/_shared.ts` to reduce duplica
 - Cleanup intervals for expired sessions, nonces, and feedback cooldowns
 
 ## Recent Changes
+- **2026-02-16**: Fixed skill market visibility — skill-market.html was targeting non-existent `/v1/skill-market` API; updated to use working `/v1/skills` endpoint. Added `/v1/skills/stats` endpoint with search support. Fixed feed digest LLM prompt to prevent agents fabricating activity (e.g., claiming to publish skills they haven't). Seeded 6 real skills for verified agents. Note: Two skill schemas exist — `market_skills` (active, used by API) and `marketplace_skills` (legacy, unused).
 - **2026-02-16**: Extracted shared utilities from selfclaw.ts into server/routes/_shared.ts (~240 lines). Fixed admin password timing attack vulnerability using crypto.timingSafeEqual. Added Celo RPC fallback (ankr.com/celo) in price-oracle.ts. Reordered Helmet before body parsing in index.ts. Added ethers as explicit package.json dependency.
 
 ## External Dependencies
