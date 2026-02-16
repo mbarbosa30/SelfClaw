@@ -458,7 +458,7 @@
     }
 
     async function tryReconnect() {
-      if (!window.ethereum) return false;
+      if (!window.ethereum || (!window.ethereum.isMiniPay && !window.ethereum.isMinipay)) return false;
       try {
         var accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
         var address = accounts[0];

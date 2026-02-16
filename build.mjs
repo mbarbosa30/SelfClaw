@@ -12,25 +12,43 @@ const outBase = "dist";
 
 let fileCount = 0;
 
+function rewriteImports(code) {
+  code = code.replace(/from\s+["']\.\/([^"']+)\.js["']/g, 'from "./$1.mjs"');
+  code = code.replace(/from\s+["']\.\.\/([^"']+)\.js["']/g, 'from "../$1.mjs"');
+  code = code.replace(/from\s+["']\.\.\/\.\.\/([^"']+)\.js["']/g, 'from "../../$1.mjs"');
+  code = code.replace(/import\(["']\.\/([^"']+)\.js["']\)/g, 'import("./$1.mjs")');
+  code = code.replace(/import\(["']\.\.\/([^"']+)\.js["']\)/g, 'import("../$1.mjs")');
+  code = code.replace(/import\(["']\.\.\/\.\.\/([^"']+)\.js["']\)/g, 'import("../../$1.mjs")');
+  return code;
+}
+
+function walkDir(dir) {
+  const results = [];
+  if (!fs.existsSync(dir)) return results;
+  const entries = fs.readdirSync(dir, { withFileTypes: true });
+  for (const entry of entries) {
+    const fullPath = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      results.push(...walkDir(fullPath));
+    } else if (entry.name.endsWith(".ts") && !entry.name.endsWith(".d.ts")) {
+      results.push(fullPath);
+    }
+  }
+  return results;
+}
+
 for (const dir of dirs) {
   const srcDir = path.join(__dirname, dir);
-  const outDir = path.join(__dirname, outBase, dir);
+  const tsFiles = walkDir(srcDir);
 
-  if (!fs.existsSync(srcDir)) continue;
-  fs.mkdirSync(outDir, { recursive: true });
+  for (const srcPath of tsFiles) {
+    const relPath = path.relative(srcDir, srcPath);
+    const outPath = path.join(__dirname, outBase, dir, relPath.replace(/\.ts$/, ".mjs"));
 
-  const files = fs.readdirSync(srcDir).filter(f => f.endsWith(".ts") && !f.endsWith(".d.ts"));
-
-  for (const file of files) {
-    const srcPath = path.join(srcDir, file);
-    const outPath = path.join(outDir, file.replace(/\.ts$/, ".mjs"));
+    fs.mkdirSync(path.dirname(outPath), { recursive: true });
 
     let code = fs.readFileSync(srcPath, "utf-8");
-
-    code = code.replace(/from\s+["']\.\/([^"']+)\.js["']/g, 'from "./$1.mjs"');
-    code = code.replace(/from\s+["']\.\.\/([^"']+)\.js["']/g, 'from "../$1.mjs"');
-    code = code.replace(/import\(["']\.\/([^"']+)\.js["']\)/g, 'import("./$1.mjs")');
-    code = code.replace(/import\(["']\.\.\/([^"']+)\.js["']\)/g, 'import("../$1.mjs")');
+    code = rewriteImports(code);
 
     const result = await transform(code, {
       loader: "ts",
@@ -43,12 +61,7 @@ for (const dir of dirs) {
       return { code };
     });
 
-    let outCode = result.code;
-    outCode = outCode.replace(/from\s+["']\.\/([^"']+)\.js["']/g, 'from "./$1.mjs"');
-    outCode = outCode.replace(/from\s+["']\.\.\/([^"']+)\.js["']/g, 'from "../$1.mjs"');
-    outCode = outCode.replace(/import\(["']\.\/([^"']+)\.js["']\)/g, 'import("./$1.mjs")');
-    outCode = outCode.replace(/import\(["']\.\.\/([^"']+)\.js["']\)/g, 'import("../$1.mjs")');
-
+    let outCode = rewriteImports(result.code);
     fs.writeFileSync(outPath, outCode);
     fileCount++;
   }

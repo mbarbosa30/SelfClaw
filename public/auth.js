@@ -16,16 +16,21 @@
   }
 
   function detectMiniPay() {
-    if (window.ethereum && (window.ethereum.isMiniPay || window.ethereum.isMinipay)) {
-      return true;
-    }
     if (navigator.userAgent && navigator.userAgent.indexOf('MiniPay') !== -1) {
       return true;
     }
+    try {
+      if (window.ethereum && (window.ethereum.isMiniPay || window.ethereum.isMinipay)) {
+        return true;
+      }
+    } catch(e) {}
     return false;
   }
 
   async function connectMiniPay() {
+    if (!window.ethereum || (!window.ethereum.isMiniPay && !window.ethereum.isMinipay)) {
+      throw new Error('MiniPay wallet not available');
+    }
     var accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
     var address = accounts[0];
     if (!address) throw new Error('No account');
@@ -57,14 +62,17 @@
     }
   }
 
-  function waitForEthereum(maxWait) {
+  function waitForMiniPay(maxWait) {
     return new Promise(function(resolve) {
-      if (window.ethereum) { resolve(true); return; }
+      if (window.ethereum && (window.ethereum.isMiniPay || window.ethereum.isMinipay)) {
+        resolve(true);
+        return;
+      }
       var elapsed = 0;
       var interval = 200;
       var poll = setInterval(function() {
         elapsed += interval;
-        if (window.ethereum) {
+        if (window.ethereum && (window.ethereum.isMiniPay || window.ethereum.isMinipay)) {
           clearInterval(poll);
           resolve(true);
         } else if (elapsed >= maxWait) {
@@ -93,26 +101,19 @@
   async function checkAuth() {
     var isMiniPayUA = navigator.userAgent && navigator.userAgent.indexOf('MiniPay') !== -1;
 
-    if (detectMiniPay() || isMiniPayUA) {
+    if (isMiniPayUA || detectMiniPay()) {
       isMiniPay = true;
 
-      if (!window.ethereum) {
-        var ready = await waitForEthereum(3000);
+      if (!window.ethereum || (!window.ethereum.isMiniPay && !window.ethereum.isMinipay)) {
+        var ready = await waitForMiniPay(3000);
         if (!ready) {
-          console.log('[auth] MiniPay detected but ethereum provider not available after 3s');
+          console.log('[auth] MiniPay detected via UA but provider not available after 3s');
         }
       }
 
-      if (window.ethereum) {
+      if (window.ethereum && (window.ethereum.isMiniPay || window.ethereum.isMinipay)) {
         var connected = await tryMiniPayConnect(3);
         if (connected) return;
-      }
-    } else if (!window.ethereum) {
-      var appeared = await waitForEthereum(500);
-      if (appeared && detectMiniPay()) {
-        isMiniPay = true;
-        var connected2 = await tryMiniPayConnect(2);
-        if (connected2) return;
       }
     }
 
