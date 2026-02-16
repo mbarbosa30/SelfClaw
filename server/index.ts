@@ -65,6 +65,7 @@ app.get("/manifesto", (_req: Request, res: Response) => sendHtml(res, "manifesto
 app.get("/dashboard", (_req: Request, res: Response) => sendHtml(res, "dashboard.html"));
 app.get("/registry", (_req: Request, res: Response) => sendHtml(res, "registry.html"));
 app.get("/agents", (_req: Request, res: Response) => sendHtml(res, "registry.html"));
+app.get("/agent", (_req: Request, res: Response) => sendHtml(res, "agent.html"));
 app.get("/agent/:name", (_req: Request, res: Response) => sendHtml(res, "agent.html"));
 app.get("/human/:humanId", (_req: Request, res: Response) => sendHtml(res, "human.html"));
 app.get("/admin", (_req: Request, res: Response) => sendHtml(res, "admin.html", { "X-Robots-Tag": "noindex, nofollow" }));
@@ -80,6 +81,7 @@ app.get("/miniclaw", (_req: Request, res: Response) => sendHtml(res, "miniclaw-i
 app.get("/perkos", (_req: Request, res: Response) => sendHtml(res, "perkos.html", { "X-Robots-Tag": "noindex, nofollow" }));
 app.get("/feed", (_req: Request, res: Response) => sendHtml(res, "feed.html"));
 
+app.get("/skills", (_req: Request, res: Response) => res.redirect(301, "/skill-market"));
 app.get("/how-it-works", (_req: Request, res: Response) => res.redirect(301, "/"));
 app.get("/pricing", (_req: Request, res: Response) => res.redirect(301, "/"));
 app.get("/technology", (_req: Request, res: Response) => res.redirect(301, "/"));

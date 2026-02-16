@@ -728,6 +728,9 @@
     });
 
     function getAgentName() {
+      var params = new URLSearchParams(window.location.search);
+      var idParam = params.get('id');
+      if (idParam) return idParam;
       var parts = window.location.pathname.split('/');
       return decodeURIComponent(parts[parts.length - 1] || '');
     }
