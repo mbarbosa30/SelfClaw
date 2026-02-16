@@ -4,7 +4,7 @@ import crypto from "crypto";
 import { db } from "./db.js";
 import { verifiedBots, agentWallets, agentServices, tokenPlans, marketSkills, trackedPools, sponsoredAgents, revenueEvents, costEvents, reputationStakes, reputationBadges, agentRequests, agentPosts, skillPurchases } from "../shared/schema.js";
 import { sql, eq, and, desc, count } from "drizzle-orm";
-import { createPaymentRequirement, build402Response, verifyPayment, extractPaymentHeader, consumePaymentNonce, getPaymentNonce, releaseEscrow, refundEscrow, getEscrowAddress, SELFCLAW_TOKEN } from "../lib/selfclaw-402.js";
+import { createPaymentRequirement, buildPaymentRequiredResponse, verifyPayment, extractPaymentHeader, consumePaymentNonce, getPaymentNonce, releaseEscrow, refundEscrow, getEscrowAddress, SELFCLAW_TOKEN } from "../lib/selfclaw-commerce.js";
 
 const router = Router();
 
@@ -435,12 +435,13 @@ router.get("/v1/agent-api/briefing", agentApiLimiter, authenticateAgent, async (
     lines.push(`  Refund:           POST ${BASE}/v1/agent-api/marketplace/purchases/:purchaseId/refund (seller only)`);
     lines.push(``);
     lines.push(`  Payment flow for paid skills:`);
-    lines.push(`  1. POST purchase endpoint → if paid, you get HTTP 402 with payment details`);
-    lines.push(`  2. Transfer SELFCLAW tokens to the escrow address in the 402 response`);
+    lines.push(`  1. POST purchase endpoint → if paid, you get a payment-required response with escrow details`);
+    lines.push(`  2. Transfer SELFCLAW tokens to the escrow address in the payment response`);
     lines.push(`  3. Retry the same POST with header: X-SELFCLAW-PAYMENT: <txHash>:<nonce>`);
     lines.push(`  4. Platform verifies payment onchain → funds held in escrow`);
     lines.push(`  5. Buyer confirms delivery → escrow released to seller`);
     lines.push(`  6. Or: seller issues refund → escrow returned to buyer`);
+    lines.push(`  Note: You pay gas for the initial transfer to escrow. The platform pays gas for releasing/refunding escrow.`);
     lines.push(`  Free skills: just POST the purchase endpoint, no payment needed.`);
     lines.push(``);
 
@@ -833,8 +834,8 @@ router.post("/v1/agent-api/marketplace/skills/:skillId/purchase", agentApiLimite
         agent.publicKey,
       );
 
-      const response402 = build402Response(requirement);
-      return res.status(402).set(response402.headers).json(response402.body);
+      const paymentResponse = buildPaymentRequiredResponse(requirement);
+      return res.status(402).set(paymentResponse.headers).json(paymentResponse.body);
     }
 
     if (!paymentData.nonce) {
@@ -843,7 +844,7 @@ router.post("/v1/agent-api/marketplace/skills/:skillId/purchase", agentApiLimite
 
     const storedRequirement = getPaymentNonce(paymentData.nonce);
     if (!storedRequirement) {
-      return res.status(400).json({ error: 'Invalid or expired payment nonce. Request a new 402 payment requirement.' });
+      return res.status(400).json({ error: 'Invalid or expired payment nonce. Request a new payment requirement.' });
     }
 
     if (storedRequirement.skillId && storedRequirement.skillId !== skillId) {
@@ -1084,8 +1085,8 @@ router.post("/v1/agent-api/marketplace/request-service", agentApiLimiter, authen
         `Service request: ${service.name}`,
       );
 
-      const response402 = build402Response(requirement);
-      return res.status(402).set(response402.headers).json(response402.body);
+      const paymentResponse = buildPaymentRequiredResponse(requirement);
+      return res.status(402).set(paymentResponse.headers).json(paymentResponse.body);
     }
 
     let paymentVerification: any = null;

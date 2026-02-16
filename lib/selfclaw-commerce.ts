@@ -100,7 +100,7 @@ export function createPaymentRequirement(
   ttlSeconds: number = 300,
 ): PaymentRequirement {
   const escrowAddr = getEscrowAddress();
-  const nonce = `sc402_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+  const nonce = `scpay_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
   const requirement: PaymentRequirement = {
     payTo: escrowAddr,
     amount,
@@ -118,7 +118,7 @@ export function createPaymentRequirement(
   return requirement;
 }
 
-export function build402Response(requirement: PaymentRequirement) {
+export function buildPaymentRequiredResponse(requirement: PaymentRequirement) {
   return {
     status: 402,
     headers: {
