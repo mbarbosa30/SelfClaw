@@ -1,7 +1,8 @@
-import { createPublicClient, http, formatUnits } from 'viem';
+import { createPublicClient, http, fallback, formatUnits } from 'viem';
 import { celo } from 'viem/chains';
 
-const CELO_RPC = 'https://forno.celo.org';
+const CELO_RPC_PRIMARY = 'https://forno.celo.org';
+const CELO_RPC_FALLBACK = 'https://rpc.ankr.com/celo';
 
 const SELFCLAW_TOKEN = '0xCD88f99Adf75A9110c0bcd22695A32A20eC54ECb' as `0x${string}`;
 const CELO_NATIVE = '0x471EcE3750Da237f93B8E339c536989b8978a438' as `0x${string}`;
@@ -16,7 +17,10 @@ const Q96 = 2n ** 96n;
 
 const publicClient = createPublicClient({
   chain: celo,
-  transport: http(CELO_RPC, { timeout: 15_000, retryCount: 1 }),
+  transport: fallback([
+    http(CELO_RPC_PRIMARY, { timeout: 15_000, retryCount: 1 }),
+    http(CELO_RPC_FALLBACK, { timeout: 15_000, retryCount: 1 }),
+  ]),
 });
 
 const STATE_VIEW_ABI = [

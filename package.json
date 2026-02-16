@@ -43,6 +43,7 @@
     "drizzle-kit": "^0.31.8",
     "drizzle-orm": "^0.45.1",
     "drizzle-zod": "^0.8.3",
+    "ethers": "^6.16.0",
     "express": "^4.22.1",
     "express-rate-limit": "^8.2.1",
     "express-session": "^1.19.0",

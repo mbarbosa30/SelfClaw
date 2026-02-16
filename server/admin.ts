@@ -73,7 +73,12 @@ router.post("/login", loginLimiter, (req: Request, res: Response) => {
     return res.status(503).json({ error: "Admin access not configured" });
   }
   const { password } = req.body;
-  if (!password || password !== ADMIN_PASSWORD) {
+  if (!password || typeof password !== 'string' || !ADMIN_PASSWORD) {
+    return res.status(401).json({ error: "Invalid password" });
+  }
+  const pwBuf = Buffer.from(password);
+  const adminBuf = Buffer.from(ADMIN_PASSWORD);
+  if (pwBuf.length !== adminBuf.length || !crypto.timingSafeEqual(pwBuf, adminBuf)) {
     return res.status(401).json({ error: "Invalid password" });
   }
   const token = generateToken();

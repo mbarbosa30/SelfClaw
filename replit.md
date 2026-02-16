@@ -41,6 +41,18 @@ The application is built with Node.js 22+ and TypeScript (tsx), using Express.js
 - **Pipeline Context Enrichment**: API responses include `agentContext` with agent identity, wallet, tokenomics rationale, services, revenue, and pool data, along with `pipeline` progress and `nextSteps`.
 - **Production Hardening**: Includes database connection pooling, PostgreSQL-backed sessions, Helmet middleware for security, request timeouts, graceful shutdowns, database indexing, and rate limiting.
 
+### Shared Utilities Module
+Common utilities are extracted into `server/routes/_shared.ts` to reduce duplication and prevent multiple timer instances. This module exports:
+- Rate limiters (publicApiLimiter, verificationLimiter, feedbackLimiter)
+- Authentication helpers (authenticateAgentRequest, Ed25519 signature verification)
+- Activity logging (logActivity) and agent context building (buildAgentContext)
+- Constants (SELFCLAW_SCOPE, CANONICAL_DOMAIN, SELFCLAW_ENDPOINT)
+- Shared mutable state (deployEconomySessions, deployWalletKeys, debugState, usedNonces, feedbackCooldowns)
+- Cleanup intervals for expired sessions, nonces, and feedback cooldowns
+
+## Recent Changes
+- **2026-02-16**: Extracted shared utilities from selfclaw.ts into server/routes/_shared.ts (~240 lines). Fixed admin password timing attack vulnerability using crypto.timingSafeEqual. Added Celo RPC fallback (ankr.com/celo) in price-oracle.ts. Reordered Helmet before body parsing in index.ts. Added ethers as explicit package.json dependency.
+
 ## External Dependencies
 - **Self.xyz SDK**: Used for passport-based verification and Zero-Knowledge Proofs.
 - **Celo & Base Networks**: EVM-compatible blockchains for core identity, wallet, and token functionalities.

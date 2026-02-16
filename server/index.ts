@@ -19,16 +19,16 @@ app.get("/health", (_req: Request, res: Response) => {
   res.status(200).json({ status: "ok" });
 });
 
+app.use(helmet({
+  contentSecurityPolicy: false,
+  crossOriginEmbedderPolicy: false,
+}));
+
 app.get("/", (_req: Request, res: Response) => {
   res.status(200).sendFile("index.html", { root: "public" });
 });
 
 app.use(express.json({ limit: '10mb' }));
-
-app.use(helmet({
-  contentSecurityPolicy: false,
-  crossOriginEmbedderPolicy: false,
-}));
 
 function sendHtml(res: Response, file: string, extraHeaders?: Record<string, string>) {
   res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
