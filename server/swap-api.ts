@@ -3,8 +3,71 @@ import rateLimit from "express-rate-limit";
 import { db } from "./db.js";
 import { verifiedBots, agentWallets, trackedPools } from "../shared/schema.js";
 import { eq, sql } from "drizzle-orm";
-import { createPublicClient, http, fallback, parseUnits, formatUnits, encodePacked, encodeAbiParameters, parseAbiParameters, keccak256, encodeFunctionData } from "viem";
+import { createPublicClient, http, fallback, parseUnits, formatUnits, encodePacked, encodeAbiParameters, parseAbiParameters, keccak256, encodeFunctionData, type Address } from "viem";
 import { celo } from "viem/chains";
+
+function sqrtPriceX96ToPrice(sqrtPriceX96: bigint, token0Decimals: number, token1Decimals: number): { token0Per1: number; token1Per0: number } {
+  const Q96 = 2n ** 96n;
+  const numerator = sqrtPriceX96 * sqrtPriceX96;
+  const denominator = Q96 * Q96;
+  const PRECISION = 10n ** 18n;
+  const rawPrice = (numerator * PRECISION) / denominator;
+  const decimalAdjust = 10 ** (token0Decimals - token1Decimals);
+  const token1Per0 = Number(rawPrice) / 1e18 * decimalAdjust;
+  const token0Per1 = token1Per0 > 0 ? 1 / token1Per0 : 0;
+  return { token0Per1, token1Per0 };
+}
+
+function estimateSwapOutput(
+  amountIn: bigint,
+  sqrtPriceX96: bigint,
+  zeroForOne: boolean,
+  feeBps: number,
+  _decimalsIn: number,
+  _decimalsOut: number,
+): bigint {
+  if (sqrtPriceX96 === 0n) return 0n;
+  const Q96 = 2n ** 96n;
+  const feeMultiplier = 10000n - BigInt(feeBps);
+  const amountInAfterFee = (amountIn * feeMultiplier) / 10000n;
+
+  if (zeroForOne) {
+    return (amountInAfterFee * sqrtPriceX96 * sqrtPriceX96) / (Q96 * Q96);
+  } else {
+    return (amountInAfterFee * Q96 * Q96) / (sqrtPriceX96 * sqrtPriceX96);
+  }
+}
+
+async function getTokenDecimals(tokenAddress: string): Promise<number> {
+  try {
+    const d = await publicClient.readContract({
+      address: tokenAddress as Address,
+      abi: ERC20_ABI,
+      functionName: 'decimals',
+    });
+    return Number(d);
+  } catch {
+    return 18;
+  }
+}
+
+async function getPoolSlot0(poolId: string): Promise<{ sqrtPriceX96: bigint; tick: number; lpFee: number }> {
+  try {
+    const slot0 = await publicClient.readContract({
+      address: V4_CONTRACTS.STATE_VIEW,
+      abi: STATE_VIEW_ABI,
+      functionName: 'getSlot0',
+      args: [poolId as `0x${string}`],
+    });
+    return {
+      sqrtPriceX96: slot0[0],
+      tick: Number(slot0[1]),
+      lpFee: Number(slot0[3]),
+    };
+  } catch {
+    return { sqrtPriceX96: 0n, tick: 0, lpFee: 0 };
+  }
+}
 
 const router = Router();
 
@@ -140,14 +203,29 @@ router.get("/v1/agent-api/swap/pools", swapLimiter, authenticateAgent, async (re
 
     const pools = await Promise.all(allPools.map(async (p) => {
       let liquidity = '0';
-      let sqrtPriceX96 = '0';
+      let sqrtPriceX96Str = '0';
+      let price: { tokenPerSelfclaw: number; selfclawPerToken: number } | null = null;
       try {
         const [slot0, liq] = await Promise.all([
           publicClient.readContract({ address: V4_CONTRACTS.STATE_VIEW, abi: STATE_VIEW_ABI, functionName: 'getSlot0', args: [p.poolAddress as `0x${string}`] }),
           publicClient.readContract({ address: V4_CONTRACTS.STATE_VIEW, abi: STATE_VIEW_ABI, functionName: 'getLiquidity', args: [p.poolAddress as `0x${string}`] }),
         ]);
-        sqrtPriceX96 = slot0[0].toString();
+        sqrtPriceX96Str = slot0[0].toString();
         liquidity = liq.toString();
+
+        if (slot0[0] > 0n) {
+          const { token0 } = sortTokens(p.tokenAddress, WRAPPED_SELFCLAW_CELO);
+          const tokenIsToken0 = token0.toLowerCase() === p.tokenAddress.toLowerCase();
+          const tokenDecimals = await getTokenDecimals(p.tokenAddress);
+          const selfclawDecimals = 18;
+          const t0Dec = tokenIsToken0 ? tokenDecimals : selfclawDecimals;
+          const t1Dec = tokenIsToken0 ? selfclawDecimals : tokenDecimals;
+          const { token0Per1, token1Per0 } = sqrtPriceX96ToPrice(slot0[0], t0Dec, t1Dec);
+          price = {
+            tokenPerSelfclaw: tokenIsToken0 ? token0Per1 : token1Per0,
+            selfclawPerToken: tokenIsToken0 ? token1Per0 : token0Per1,
+          };
+        }
       } catch {}
 
       return {
@@ -159,6 +237,8 @@ router.get("/v1/agent-api/swap/pools", swapLimiter, authenticateAgent, async (re
         feeTier: p.feeTier || 10000,
         tickSpacing: TICK_SPACINGS[p.feeTier || 10000] || 200,
         liquidity,
+        sqrtPriceX96: sqrtPriceX96Str,
+        price,
         hasLiquidity: liquidity !== '0',
       };
     }));
@@ -177,15 +257,34 @@ router.get("/v1/agent-api/swap/pools", swapLimiter, authenticateAgent, async (re
         SELFCLAW: WRAPPED_SELFCLAW_CELO,
         CELO: CELO_NATIVE,
       },
-      corePools: {
-        SELFCLAW_CELO: {
-          poolId: SELFCLAW_CELO_POOL_ID,
-          token0: CELO_NATIVE,
-          token1: WRAPPED_SELFCLAW_CELO,
-          feeTier: 3000,
-          tickSpacing: 60,
-        },
-      },
+      corePools: await (async () => {
+        let corePrice: { celoPerSelfclaw: number; selfclawPerCelo: number } | null = null;
+        let coreSqrtPriceX96 = '0';
+        try {
+          const coreSlot0 = await getPoolSlot0(SELFCLAW_CELO_POOL_ID);
+          if (coreSlot0.sqrtPriceX96 > 0n) {
+            coreSqrtPriceX96 = coreSlot0.sqrtPriceX96.toString();
+            const { token0 } = sortTokens(CELO_NATIVE, WRAPPED_SELFCLAW_CELO);
+            const celoIsToken0 = token0.toLowerCase() === CELO_NATIVE.toLowerCase();
+            const { token0Per1, token1Per0 } = sqrtPriceX96ToPrice(coreSlot0.sqrtPriceX96, 18, 18);
+            corePrice = {
+              celoPerSelfclaw: celoIsToken0 ? token0Per1 : token1Per0,
+              selfclawPerCelo: celoIsToken0 ? token1Per0 : token0Per1,
+            };
+          }
+        } catch {}
+        return {
+          SELFCLAW_CELO: {
+            poolId: SELFCLAW_CELO_POOL_ID,
+            token0: CELO_NATIVE,
+            token1: WRAPPED_SELFCLAW_CELO,
+            feeTier: 3000,
+            tickSpacing: 60,
+            sqrtPriceX96: coreSqrtPriceX96,
+            price: corePrice,
+          },
+        };
+      })(),
       agentPools: pools.filter(p => p.poolId !== SELFCLAW_CELO_POOL_ID),
       totalPools: pools.length,
       note: "All SelfClaw pools are Uniswap V4 on Celo. Agent tokens are paired with SELFCLAW. SELFCLAW is paired with CELO. To swap AgentToken ↔ CELO, route through SELFCLAW (multi-hop). Use POST /v1/agent-api/swap/quote to get unsigned transaction data.",
@@ -279,16 +378,85 @@ router.post("/v1/agent-api/swap/quote", swapLimiter, authenticateAgent, async (r
       };
     }
 
-    let decimalsIn = 18;
-    try {
-      const d = await publicClient.readContract({ address: tokenInAddr as `0x${string}`, abi: ERC20_ABI, functionName: 'decimals' });
-      decimalsIn = Number(d);
-    } catch {}
+    const decimalsIn = await getTokenDecimals(tokenInAddr);
+    const decimalsOut = await getTokenDecimals(tokenOutAddr);
 
     const amountInWei = parseUnits(amountIn.toString(), decimalsIn);
     const deadline = BigInt(Math.floor(Date.now() / 1000) + 1800);
     const slippageMultiplier = BigInt(10000 - slippage);
     const isCeloIn = tokenInAddr === celoAddr;
+
+    const poolPrices: Array<{ poolId: string; sqrtPriceX96: string; feeBps: number; priceToken0Per1: number; priceToken1Per0: number }> = [];
+    for (const leg of route.legs) {
+      const slot0 = await getPoolSlot0(leg.poolId);
+      const { token0 } = sortTokens(leg.tokenIn, leg.tokenOut);
+      const decIn = await getTokenDecimals(leg.tokenIn);
+      const decOut = await getTokenDecimals(leg.tokenOut);
+      const t0Dec = leg.tokenIn.toLowerCase() === token0.toLowerCase() ? decIn : decOut;
+      const t1Dec = leg.tokenIn.toLowerCase() === token0.toLowerCase() ? decOut : decIn;
+      const { token0Per1, token1Per0 } = sqrtPriceX96ToPrice(slot0.sqrtPriceX96, t0Dec, t1Dec);
+      poolPrices.push({
+        poolId: leg.poolId,
+        sqrtPriceX96: slot0.sqrtPriceX96.toString(),
+        feeBps: leg.feeTier / 100,
+        priceToken0Per1: token0Per1,
+        priceToken1Per0: token1Per0,
+      });
+    }
+
+    let estimatedOutWei: bigint;
+    let priceEstimate: { estimatedAmountOut: string; estimatedAmountOutWei: string; pricePerTokenIn: number; legs: Array<{ poolId: string; feePct: string; estimatedOutput: string; estimatedOutputWei: string }> };
+
+    if (route.type === 'direct') {
+      const leg = route.legs[0];
+      const { token0 } = sortTokens(leg.tokenIn, leg.tokenOut);
+      const zeroForOne = leg.tokenIn.toLowerCase() === token0.toLowerCase();
+      const slot0 = await getPoolSlot0(leg.poolId);
+
+      estimatedOutWei = estimateSwapOutput(amountInWei, slot0.sqrtPriceX96, zeroForOne, leg.feeTier / 100, decimalsIn, decimalsOut);
+      const estimatedOutFormatted = formatUnits(estimatedOutWei, decimalsOut);
+      const pricePerIn = estimatedOutWei > 0n ? Number(estimatedOutFormatted) / Number(amountIn) : 0;
+      priceEstimate = {
+        estimatedAmountOut: estimatedOutFormatted,
+        estimatedAmountOutWei: estimatedOutWei.toString(),
+        pricePerTokenIn: pricePerIn,
+        legs: [{
+          poolId: leg.poolId,
+          feePct: `${leg.feeTier / 10000}%`,
+          estimatedOutput: estimatedOutFormatted,
+          estimatedOutputWei: estimatedOutWei.toString(),
+        }],
+      };
+    } else {
+      const leg1 = route.legs[0];
+      const leg2 = route.legs[1];
+
+      const { token0: t0a } = sortTokens(leg1.tokenIn, leg1.tokenOut);
+      const zeroForOne1 = leg1.tokenIn.toLowerCase() === t0a.toLowerCase();
+      const slot0_1 = await getPoolSlot0(leg1.poolId);
+      const decSelfclaw = 18;
+      const intermediateOutWei = estimateSwapOutput(amountInWei, slot0_1.sqrtPriceX96, zeroForOne1, leg1.feeTier / 100, decimalsIn, decSelfclaw);
+
+      const { token0: t0b } = sortTokens(leg2.tokenIn, leg2.tokenOut);
+      const zeroForOne2 = leg2.tokenIn.toLowerCase() === t0b.toLowerCase();
+      const slot0_2 = await getPoolSlot0(leg2.poolId);
+      estimatedOutWei = estimateSwapOutput(intermediateOutWei, slot0_2.sqrtPriceX96, zeroForOne2, leg2.feeTier / 100, decSelfclaw, decimalsOut);
+
+      const intermediateFormatted = formatUnits(intermediateOutWei, decSelfclaw);
+      const finalFormatted = formatUnits(estimatedOutWei, decimalsOut);
+      const pricePerIn = estimatedOutWei > 0n ? Number(finalFormatted) / Number(amountIn) : 0;
+      priceEstimate = {
+        estimatedAmountOut: finalFormatted,
+        estimatedAmountOutWei: estimatedOutWei.toString(),
+        pricePerTokenIn: pricePerIn,
+        legs: [
+          { poolId: leg1.poolId, feePct: `${leg1.feeTier / 10000}%`, estimatedOutput: intermediateFormatted, estimatedOutputWei: intermediateOutWei.toString() },
+          { poolId: leg2.poolId, feePct: `${leg2.feeTier / 10000}%`, estimatedOutput: finalFormatted, estimatedOutputWei: estimatedOutWei.toString() },
+        ],
+      };
+    }
+
+    const minAmountOutFinal = estimatedOutWei * slippageMultiplier / 10000n;
 
     const transactions: Array<{ step: number; description: string; to: string; data: string; value: string }> = [];
     let stepNum = 0;
@@ -331,7 +499,6 @@ router.post("/v1/agent-api/swap/quote", swapLimiter, authenticateAgent, async (r
       const leg = route.legs[0];
       const { token0, token1 } = sortTokens(leg.tokenIn, leg.tokenOut);
       const zeroForOne = leg.tokenIn.toLowerCase() === token0.toLowerCase();
-      const minAmountOut = amountInWei * slippageMultiplier / 10000n;
 
       const swapActions = encodePacked(
         ['uint8', 'uint8', 'uint8'],
@@ -344,7 +511,7 @@ router.post("/v1/agent-api/swap/quote", swapLimiter, authenticateAgent, async (r
           [token0, token1, leg.feeTier, leg.tickSpacing, '0x0000000000000000000000000000000000000000' as `0x${string}`],
           zeroForOne,
           amountInWei,
-          minAmountOut,
+          minAmountOutFinal,
           '0x' as `0x${string}`,
         ]
       );
@@ -356,7 +523,7 @@ router.post("/v1/agent-api/swap/quote", swapLimiter, authenticateAgent, async (r
 
       const takeParams = encodeAbiParameters(
         parseAbiParameters('address, uint256'),
-        [leg.tokenOut as `0x${string}`, minAmountOut]
+        [leg.tokenOut as `0x${string}`, minAmountOutFinal]
       );
 
       const v4SwapInput = encodeAbiParameters(
@@ -374,7 +541,7 @@ router.post("/v1/agent-api/swap/quote", swapLimiter, authenticateAgent, async (r
 
       transactions.push({
         step: stepNum,
-        description: `Swap ${amountIn} ${tokenIn} → ${tokenOut} (direct, ${leg.feeTier / 10000}% fee)`,
+        description: `Swap ${amountIn} ${tokenIn} → ~${priceEstimate.estimatedAmountOut} ${tokenOut} (direct, ${leg.feeTier / 10000}% fee)`,
         to: V4_CONTRACTS.UNIVERSAL_ROUTER,
         data: executeData,
         value: isCeloIn ? amountInWei.toString() : '0',
@@ -383,8 +550,9 @@ router.post("/v1/agent-api/swap/quote", swapLimiter, authenticateAgent, async (r
       const leg1 = route.legs[0];
       const leg2 = route.legs[1];
 
-      const intermediateMin = amountInWei * slippageMultiplier / 10000n;
-      const finalMin = intermediateMin * slippageMultiplier / 10000n;
+      const intermediateMinWei = estimatedOutWei > 0n
+        ? (BigInt(priceEstimate.legs[0].estimatedOutputWei) * slippageMultiplier / 10000n)
+        : 0n;
 
       const { token0: t0a, token1: t1a } = sortTokens(leg1.tokenIn, leg1.tokenOut);
       const zeroForOne1 = leg1.tokenIn.toLowerCase() === t0a.toLowerCase();
@@ -400,7 +568,7 @@ router.post("/v1/agent-api/swap/quote", swapLimiter, authenticateAgent, async (r
           [t0a, t1a, leg1.feeTier, leg1.tickSpacing, '0x0000000000000000000000000000000000000000' as `0x${string}`],
           zeroForOne1,
           amountInWei,
-          intermediateMin,
+          intermediateMinWei,
           '0x' as `0x${string}`,
         ]
       );
@@ -412,7 +580,7 @@ router.post("/v1/agent-api/swap/quote", swapLimiter, authenticateAgent, async (r
 
       const takeParams1 = encodeAbiParameters(
         parseAbiParameters('address, uint256'),
-        [leg1.tokenOut as `0x${string}`, intermediateMin]
+        [leg1.tokenOut as `0x${string}`, intermediateMinWei]
       );
 
       const v4Input1 = encodeAbiParameters(
@@ -433,20 +601,20 @@ router.post("/v1/agent-api/swap/quote", swapLimiter, authenticateAgent, async (r
         [
           [t0b, t1b, leg2.feeTier, leg2.tickSpacing, '0x0000000000000000000000000000000000000000' as `0x${string}`],
           zeroForOne2,
-          intermediateMin,
-          finalMin,
+          intermediateMinWei,
+          minAmountOutFinal,
           '0x' as `0x${string}`,
         ]
       );
 
       const settleParams2 = encodeAbiParameters(
         parseAbiParameters('address, uint256'),
-        [leg2.tokenIn as `0x${string}`, intermediateMin]
+        [leg2.tokenIn as `0x${string}`, intermediateMinWei]
       );
 
       const takeParams2 = encodeAbiParameters(
         parseAbiParameters('address, uint256'),
-        [leg2.tokenOut as `0x${string}`, finalMin]
+        [leg2.tokenOut as `0x${string}`, minAmountOutFinal]
       );
 
       const v4Input2 = encodeAbiParameters(
@@ -464,7 +632,7 @@ router.post("/v1/agent-api/swap/quote", swapLimiter, authenticateAgent, async (r
 
       transactions.push({
         step: stepNum,
-        description: `Multi-hop swap: ${amountIn} ${leg1.tokenIn} → SELFCLAW → ${leg2.tokenOut} (via UniversalRouter)`,
+        description: `Multi-hop swap: ${amountIn} ${leg1.tokenIn} → ~${priceEstimate.legs[0].estimatedOutput} SELFCLAW → ~${priceEstimate.estimatedAmountOut} ${leg2.tokenOut} (via UniversalRouter)`,
         to: V4_CONTRACTS.UNIVERSAL_ROUTER,
         data: executeData,
         value: isCeloIn ? amountInWei.toString() : '0',
@@ -479,7 +647,16 @@ router.post("/v1/agent-api/swap/quote", swapLimiter, authenticateAgent, async (r
       },
       amountIn: amountIn.toString(),
       amountInWei: amountInWei.toString(),
+      estimate: priceEstimate,
+      minAmountOut: formatUnits(minAmountOutFinal, decimalsOut),
+      minAmountOutWei: minAmountOutFinal.toString(),
       slippageBps: slippage,
+      fees: {
+        totalFeePct: route.legs.reduce((sum, l) => sum + l.feeTier / 10000, 0) + '%',
+        perLeg: route.legs.map(l => ({ poolId: l.poolId, feePct: `${l.feeTier / 10000}%`, feeBps: l.feeTier / 100 })),
+        note: "Fees are deducted from the input amount by the V4 PoolManager during execution. The estimated output already accounts for fees.",
+      },
+      poolPrices,
       deadlineUnix: Number(deadline),
       signerAddress: walletAddress,
       transactions,
@@ -488,7 +665,8 @@ router.post("/v1/agent-api/swap/quote", swapLimiter, authenticateAgent, async (r
         "Wait for each transaction to be confirmed before sending the next.",
         "The final transaction executes the swap on Uniswap V4's UniversalRouter.",
         isCeloIn ? "The swap transaction includes a CELO value — send it as msg.value." : "All transactions are standard contract calls (value: 0).",
-        `Slippage tolerance: ${slippage / 100}%. Adjust with slippageBps parameter.`,
+        `Slippage tolerance: ${slippage / 100}%. Min output: ${formatUnits(minAmountOutFinal, decimalsOut)}.`,
+        `Estimated output: ~${priceEstimate.estimatedAmountOut}. Actual output may vary with liquidity depth and price impact.`,
       ],
       v4Contracts: {
         universalRouter: V4_CONTRACTS.UNIVERSAL_ROUTER,

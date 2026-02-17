@@ -1,7 +1,31 @@
 import { Router } from "express";
 import { db } from "./db.js";
-import { agentRequests, verifiedBots } from "../shared/schema.js";
+import { agentRequests, verifiedBots, agentWallets } from "../shared/schema.js";
 import { sql, desc, eq, and } from "drizzle-orm";
+import { verifyPayment, SELFCLAW_TOKEN } from "../lib/selfclaw-commerce.js";
+import { parseUnits, createPublicClient, http, fallback, parseAbi } from "viem";
+import { celo } from "viem/chains";
+
+const commerceClient = createPublicClient({
+  chain: celo,
+  transport: fallback([
+    http('https://forno.celo.org', { timeout: 15_000, retryCount: 1 }),
+    http('https://rpc.ankr.com/celo', { timeout: 15_000, retryCount: 1 }),
+  ]),
+});
+
+async function getTokenDecimals(tokenAddress: string): Promise<number> {
+  try {
+    const d = await commerceClient.readContract({
+      address: tokenAddress as `0x${string}`,
+      abi: parseAbi(['function decimals() view returns (uint8)']),
+      functionName: 'decimals',
+    });
+    return Number(d);
+  } catch {
+    return 18;
+  }
+}
 
 const router = Router();
 
@@ -43,6 +67,47 @@ router.post("/v1/agent-requests", async (req, res) => {
       return res.status(404).json({ error: "Provider not found in verified bots" });
     }
 
+    let paymentVerified = false;
+    let paymentVerification: any = null;
+
+    if (txHash && paymentAmount) {
+      const [providerWallet] = await db.select({ address: agentWallets.address })
+        .from(agentWallets)
+        .where(eq(agentWallets.publicKey, providerPublicKey))
+        .limit(1);
+
+      if (!providerWallet) {
+        return res.status(400).json({
+          error: "Provider has no wallet registered — cannot verify payment",
+          hint: "Payment can only be verified when the provider has a registered wallet. Submit without txHash for unverified requests.",
+        });
+      }
+
+      const token = paymentToken || SELFCLAW_TOKEN;
+      const decimals = await getTokenDecimals(token);
+      const amountWei = parseUnits(paymentAmount.toString(), decimals);
+      paymentVerification = await verifyPayment(txHash, providerWallet.address, amountWei, token);
+      paymentVerified = paymentVerification.valid;
+
+      if (!paymentVerified) {
+        return res.status(402).json({
+          error: "Payment verification failed",
+          details: paymentVerification.error,
+          expectedTo: providerWallet.address,
+          expectedAmount: paymentAmount,
+          txHash,
+          hint: "Ensure the transaction transferred the correct amount of the correct token to the provider's wallet address.",
+        });
+      }
+
+      const existingTx = await db.execute(
+        sql`SELECT id FROM agent_requests WHERE tx_hash = ${txHash} LIMIT 1`
+      );
+      if (existingTx.rows.length > 0) {
+        return res.status(400).json({ error: "This transaction hash has already been used for a service request." });
+      }
+    }
+
     const [request] = await db
       .insert(agentRequests)
       .values({
@@ -59,7 +124,17 @@ router.post("/v1/agent-requests", async (req, res) => {
       })
       .returning();
 
-    res.json(request);
+    res.json({
+      ...request,
+      paymentVerified,
+      paymentVerification: paymentVerified ? {
+        valid: true,
+        from: paymentVerification?.from,
+        to: paymentVerification?.to,
+        amount: paymentVerification?.amount,
+        txHash,
+      } : undefined,
+    });
   } catch (error: any) {
     console.error("[agent-commerce] Error creating request:", error.message);
     res.status(500).json({ error: "Failed to create agent request" });
