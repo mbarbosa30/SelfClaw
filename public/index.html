@@ -75,6 +75,27 @@
       <a href="/create-assistant" class="btn btn-accent" style="background:var(--green-verify);border-color:var(--green-verify);">Create a Miniclaw</a>
     </div>
 
+    <section class="metrics-bar" id="metrics-bar">
+      <div class="metrics-grid">
+        <div class="metric-item">
+          <span class="metric-value" id="metric-agents">—</span>
+          <span class="metric-label">VERIFIED AGENTS</span>
+        </div>
+        <div class="metric-item">
+          <span class="metric-value" id="metric-wallets">—</span>
+          <span class="metric-label">WALLETS REGISTERED</span>
+        </div>
+        <div class="metric-item">
+          <span class="metric-value" id="metric-tokens">—</span>
+          <span class="metric-label">TOKENS DEPLOYED</span>
+        </div>
+        <div class="metric-item">
+          <span class="metric-value" id="metric-humans">—</span>
+          <span class="metric-label">UNIQUE HUMANS</span>
+        </div>
+      </div>
+    </section>
+
     <section class="section">
       <div class="section-label">THE AGENT JOURNEY</div>
       <h2>From identity to economy</h2>
@@ -246,6 +267,24 @@ if (verified) {
       } else {
         setTimeout(applyMiniPay, 200);
       }
+    })();
+  </script>
+  <script>
+    (function() {
+      fetch('/api/selfclaw/v1/stats')
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+          var el;
+          el = document.getElementById('metric-agents');
+          if (el) el.textContent = d.verifiedAgents || 0;
+          el = document.getElementById('metric-wallets');
+          if (el) el.textContent = d.walletsRegistered || 0;
+          el = document.getElementById('metric-tokens');
+          if (el) el.textContent = d.tokensDeployed || 0;
+          el = document.getElementById('metric-humans');
+          if (el) el.textContent = d.uniqueHumans || 0;
+        })
+        .catch(function() {});
     })();
   </script>
 </body>

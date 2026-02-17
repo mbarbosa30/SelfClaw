@@ -365,6 +365,44 @@ h4 {
   position: relative;
 }
 
+.metrics-bar {
+  padding: var(--space-md) 0;
+  border-bottom: 2px solid var(--border-heavy);
+  margin-bottom: var(--space-lg);
+}
+
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-md);
+  max-width: 900px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.metric-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.metric-value {
+  font-family: var(--font-mono);
+  font-size: 2.5rem;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1;
+}
+
+.metric-label {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+}
+
 .hero-label {
   font-family: var(--font-mono);
   font-size: 0.75rem;
@@ -1546,6 +1584,15 @@ h4 {
   .section-card { padding: 1rem; }
 
   .hero { padding: var(--space-lg) 0 var(--space-md); }
+
+  .metrics-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-sm);
+  }
+
+  .metric-value {
+    font-size: 2rem;
+  }
 
   .hero-cta {
     flex-direction: column;

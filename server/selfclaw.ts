@@ -298,6 +298,25 @@ router.all("/v1/ping", (req: Request, res: Response) => {
 });
 
 // Health check for the API
+router.get("/v1/stats", publicApiLimiter, async (_req: Request, res: Response) => {
+  try {
+    const [[agents], [wallets], [tokens], [humans]] = await Promise.all([
+      db.select({ count: count() }).from(verifiedBots),
+      db.select({ count: count() }).from(agentWallets),
+      db.select({ count: count() }).from(sponsoredAgents).where(isNotNull(sponsoredAgents.tokenAddress)),
+      db.select({ count: sql<number>`COUNT(DISTINCT ${verifiedBots.humanId})` }).from(verifiedBots).where(isNotNull(verifiedBots.humanId)),
+    ]);
+    res.json({
+      verifiedAgents: Number(agents.count),
+      walletsRegistered: Number(wallets.count),
+      tokensDeployed: Number(tokens.count),
+      uniqueHumans: Number(humans.count),
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: "Failed to fetch stats" });
+  }
+});
+
 router.get("/v1/health", (req: Request, res: Response) => {
   res.status(200).json({ status: "healthy", endpoint: SELFCLAW_ENDPOINT });
 });
