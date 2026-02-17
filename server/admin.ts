@@ -837,13 +837,25 @@ async function pollAndComplete(bridgeId: string, sourceTxHash: string) {
             console.error(`[auto-bridge] DB update failed for ${sourceTxHash}:`, dbErr?.message);
           }
         } else {
-          console.error(`[auto-bridge] completeTransfer failed for ${sourceTxHash}: ${claimResult.error}`);
-          try {
-            await db.update(bridgeTransactions)
-              .set({ status: 'vaa_ready', error: claimResult.error || 'completeTransfer failed', updatedAt: new Date() })
-              .where(eq(bridgeTransactions.id, bridgeId));
-          } catch (dbErr: any) {
-            console.error(`[auto-bridge] DB update failed for ${sourceTxHash}:`, dbErr?.message);
+          const errMsg = claimResult.error || 'completeTransfer failed';
+          if (errMsg.includes('already completed') || errMsg.includes('transfer already')) {
+            console.log(`[auto-bridge] Transfer already completed for ${sourceTxHash}, marking as done`);
+            try {
+              await db.update(bridgeTransactions)
+                .set({ status: 'completed', error: null, updatedAt: new Date() })
+                .where(eq(bridgeTransactions.id, bridgeId));
+            } catch (dbErr: any) {
+              console.error(`[auto-bridge] DB update failed for ${sourceTxHash}:`, dbErr?.message);
+            }
+          } else {
+            console.error(`[auto-bridge] completeTransfer failed for ${sourceTxHash}: ${errMsg}`);
+            try {
+              await db.update(bridgeTransactions)
+                .set({ status: 'vaa_ready', error: errMsg, updatedAt: new Date() })
+                .where(eq(bridgeTransactions.id, bridgeId));
+            } catch (dbErr: any) {
+              console.error(`[auto-bridge] DB update failed for ${sourceTxHash}:`, dbErr?.message);
+            }
           }
         }
         return;
@@ -911,9 +923,17 @@ export async function runAutoClaimPendingBridges() {
                 .where(eq(bridgeTransactions.id, tx.id));
               console.log(`[auto-bridge] Claimed ${tx.sourceTxHash}`);
             } else {
-              await db.update(bridgeTransactions)
-                .set({ error: result.error || 'Claim failed', updatedAt: new Date() })
-                .where(eq(bridgeTransactions.id, tx.id));
+              const errMsg = result.error || 'Claim failed';
+              if (errMsg.includes('already completed') || errMsg.includes('transfer already')) {
+                console.log(`[auto-bridge] Transfer already completed for ${tx.sourceTxHash}, marking as done`);
+                await db.update(bridgeTransactions)
+                  .set({ status: 'completed', error: null, updatedAt: new Date() })
+                  .where(eq(bridgeTransactions.id, tx.id));
+              } else {
+                await db.update(bridgeTransactions)
+                  .set({ error: errMsg, updatedAt: new Date() })
+                  .where(eq(bridgeTransactions.id, tx.id));
+              }
             }
           } catch (err: any) {
             console.error(`[auto-bridge] Claim error for ${tx.sourceTxHash}:`, err?.shortMessage || err?.message);

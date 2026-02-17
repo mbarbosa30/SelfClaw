@@ -550,10 +550,9 @@
 
     <div id="empty-state" class="empty-state" style="display:none;">
       <h3>No Agents Yet</h3>
-      <p>Verify your agent's public key or create a miniclaw to get started.</p>
+      <p>Verify your agent's public key to get started.</p>
       <div style="display:flex;gap:0.75rem;justify-content:center;flex-wrap:wrap;">
         <a href="/verify" class="action-btn primary">Verify an Agent</a>
-        <a href="/create-assistant" class="action-btn" style="background:var(--green-verify);color:#fff;border-color:var(--green-verify);">Create Miniclaw</a>
       </div>
     </div>
 
@@ -663,7 +662,7 @@
         ]);
 
         var hostedAgents = [];
-        if (hostedRes.ok) {
+        if (hostedRes.ok && _isMiniPayContext) {
           var hData = await hostedRes.json();
           hostedAgents = hData.agents || [];
         }

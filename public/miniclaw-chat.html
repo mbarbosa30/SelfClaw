@@ -26,6 +26,19 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script>
+    (function() {
+      function isMiniPay() {
+        if (navigator.userAgent && navigator.userAgent.indexOf('MiniPay') !== -1) return true;
+        try { if (window.ethereum && (window.ethereum.isMiniPay || window.ethereum.isMinipay)) return true; } catch(e) {}
+        return false;
+      }
+      if (!isMiniPay()) {
+        window.location.replace('/');
+        document.documentElement.style.display = 'none';
+      }
+    })();
+  </script>
   <style>
     :root {
       --bg: #f2f0ec;
