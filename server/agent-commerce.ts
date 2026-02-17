@@ -5,13 +5,28 @@ import { sql, desc, eq, and } from "drizzle-orm";
 
 const router = Router();
 
+async function resolveAgent(req: any, res: any): Promise<{ publicKey: string; humanId: string } | null> {
+  const authHeader = req.headers?.authorization;
+  if (authHeader && authHeader.startsWith("Bearer ")) {
+    const apiKey = authHeader.slice(7).trim();
+    if (apiKey) {
+      const [agent] = await db.select().from(verifiedBots).where(eq(verifiedBots.apiKey, apiKey)).limit(1);
+      if (agent) return { publicKey: agent.publicKey, humanId: agent.humanId || "" };
+    }
+  }
+  const session = req.session as any;
+  if (session?.publicKey && session?.humanId) {
+    return { publicKey: session.publicKey, humanId: session.humanId };
+  }
+  res.status(401).json({ error: "Authentication required. Use Bearer <api_key> or session auth." });
+  return null;
+}
+
 router.post("/v1/agent-requests", async (req, res) => {
   try {
-    const humanId = (req.session as any)?.humanId;
-    const publicKey = (req.session as any)?.publicKey;
-    if (!humanId || !publicKey) {
-      return res.status(401).json({ error: "Authentication required" });
-    }
+    const auth = await resolveAgent(req, res);
+    if (!auth) return;
+    const { publicKey, humanId } = auth;
 
     const { providerPublicKey, skillId, description, paymentAmount, paymentToken, txHash } = req.body;
     if (!providerPublicKey || !description) {
@@ -53,11 +68,9 @@ router.post("/v1/agent-requests", async (req, res) => {
 
 router.get("/v1/agent-requests", async (req, res) => {
   try {
-    const humanId = (req.session as any)?.humanId;
-    const publicKey = (req.session as any)?.publicKey;
-    if (!humanId || !publicKey) {
-      return res.status(401).json({ error: "Authentication required" });
-    }
+    const auth = await resolveAgent(req, res);
+    if (!auth) return;
+    const { publicKey, humanId } = auth;
 
     const { role, status } = req.query as { role?: string; status?: string };
 
@@ -92,6 +105,10 @@ router.get("/v1/agent-requests", async (req, res) => {
 
 router.get("/v1/agent-requests/:id", async (req, res) => {
   try {
+    const auth = await resolveAgent(req, res);
+    if (!auth) return;
+    const { publicKey } = auth;
+
     const [request] = await db
       .select()
       .from(agentRequests)
@@ -100,6 +117,10 @@ router.get("/v1/agent-requests/:id", async (req, res) => {
 
     if (!request) {
       return res.status(404).json({ error: "Request not found" });
+    }
+
+    if (request.requesterPublicKey !== publicKey && request.providerPublicKey !== publicKey) {
+      return res.status(403).json({ error: "Not authorized to view this request" });
     }
 
     res.json(request);
@@ -111,11 +132,9 @@ router.get("/v1/agent-requests/:id", async (req, res) => {
 
 router.put("/v1/agent-requests/:id/accept", async (req, res) => {
   try {
-    const humanId = (req.session as any)?.humanId;
-    const publicKey = (req.session as any)?.publicKey;
-    if (!humanId || !publicKey) {
-      return res.status(401).json({ error: "Authentication required" });
-    }
+    const auth = await resolveAgent(req, res);
+    if (!auth) return;
+    const { publicKey, humanId } = auth;
 
     const [request] = await db
       .select()
@@ -150,11 +169,9 @@ router.put("/v1/agent-requests/:id/accept", async (req, res) => {
 
 router.put("/v1/agent-requests/:id/complete", async (req, res) => {
   try {
-    const humanId = (req.session as any)?.humanId;
-    const publicKey = (req.session as any)?.publicKey;
-    if (!humanId || !publicKey) {
-      return res.status(401).json({ error: "Authentication required" });
-    }
+    const auth = await resolveAgent(req, res);
+    if (!auth) return;
+    const { publicKey, humanId } = auth;
 
     const { result } = req.body;
 
@@ -195,11 +212,9 @@ router.put("/v1/agent-requests/:id/complete", async (req, res) => {
 
 router.put("/v1/agent-requests/:id/cancel", async (req, res) => {
   try {
-    const humanId = (req.session as any)?.humanId;
-    const publicKey = (req.session as any)?.publicKey;
-    if (!humanId || !publicKey) {
-      return res.status(401).json({ error: "Authentication required" });
-    }
+    const auth = await resolveAgent(req, res);
+    if (!auth) return;
+    const { publicKey, humanId } = auth;
 
     const [request] = await db
       .select()
@@ -234,11 +249,9 @@ router.put("/v1/agent-requests/:id/cancel", async (req, res) => {
 
 router.post("/v1/agent-requests/:id/rate", async (req, res) => {
   try {
-    const humanId = (req.session as any)?.humanId;
-    const publicKey = (req.session as any)?.publicKey;
-    if (!humanId || !publicKey) {
-      return res.status(401).json({ error: "Authentication required" });
-    }
+    const auth = await resolveAgent(req, res);
+    if (!auth) return;
+    const { publicKey, humanId } = auth;
 
     const { rating } = req.body;
     if (!rating || rating < 1 || rating > 5 || !Number.isInteger(rating)) {
