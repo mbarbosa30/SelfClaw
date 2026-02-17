@@ -359,14 +359,15 @@ h4 {
 
 /* ── HERO ── */
 .hero {
-  padding: var(--space-lg) 0 var(--space-lg);
-  border-bottom: 2px solid var(--border-heavy);
-  margin-bottom: var(--space-lg);
+  padding: var(--space-lg) 0 var(--space-md);
+  border-bottom: none;
+  margin-bottom: 0;
   position: relative;
 }
 
 .metrics-bar {
-  padding: var(--space-md) 0;
+  padding: 1rem 0 1.25rem;
+  border-top: 2px solid var(--border);
   border-bottom: 2px solid var(--border-heavy);
   margin-bottom: var(--space-lg);
 }

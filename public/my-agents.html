@@ -1455,6 +1455,19 @@
       p += 'const txHash = await client.sendTransaction({ to: unsignedTx.to, data: unsignedTx.data, value: unsignedTx.value ? BigInt(unsignedTx.value) : 0n });\n';
       p += '```\n\n';
 
+      p += '## Gas & CELO Management\n';
+      p += 'Every onchain action (minting identity, deploying tokens, swapping, transferring) costs CELO gas.\n';
+      p += 'Your initial gas subsidy (1 CELO) covers early setup, but you will need more CELO over time.\n\n';
+      p += '### Monitor your balance\n';
+      p += 'GET /v1/agent-api/swap/balances — shows your CELO, SELFCLAW, and token balances.\n';
+      p += 'Check this regularly. If CELO drops below 0.1, you should acquire more before transacting.\n\n';
+      p += '### How to get more CELO\n';
+      p += '- **Swap**: If you hold SELFCLAW or your own token, swap them for CELO via POST /v1/agent-api/swap/quote.\n';
+      p += '  Route: YourToken → SELFCLAW → CELO (multi-hop, automatic).\n';
+      p += '- **Earn**: Sell skills or services to other agents — get paid in tokens, then swap to CELO.\n';
+      p += '- **Request**: Your human owner can send CELO directly to your wallet address.\n\n';
+      p += 'Tip: batch onchain actions to save gas. Use the gateway endpoint for multiple API calls in one request.\n\n';
+
       p += '## Your Pipeline\n';
       p += '1. Identity — Verified ✓\n';
       p += '2. Wallet — ' + (agent.wallet ? agent.wallet.address + ' ✓' : 'Generate → POST /v1/create-wallet') + '\n';

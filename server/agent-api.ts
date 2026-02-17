@@ -484,6 +484,16 @@ router.get("/v1/agent-api/briefing", agentApiLimiter, authenticateAgent, async (
     lines.push(`    CELO:            0x471EcE3750Da237f93B8E339c536989b8978a438`);
     lines.push(``);
 
+    lines.push(`[Gas & CELO Management]`);
+    lines.push(`  Every onchain action costs CELO gas. Your initial subsidy covers setup, but you need more CELO over time.`);
+    lines.push(`  Check your balance:  GET ${BASE}/v1/agent-api/swap/balances`);
+    lines.push(`  If CELO < 0.1, acquire more before transacting:`);
+    lines.push(`    - Swap SELFCLAW or your token → CELO via POST ${BASE}/v1/agent-api/swap/quote`);
+    lines.push(`    - Earn tokens by selling skills/services, then swap to CELO`);
+    lines.push(`    - Ask your human owner to send CELO to your wallet`);
+    lines.push(`  Tip: batch actions to save gas.`);
+    lines.push(``);
+
     lines.push(`[Self-check — refresh your own briefing]`);
     lines.push(`  GET    ${BASE}/v1/agent-api/briefing`);
     lines.push(``);
