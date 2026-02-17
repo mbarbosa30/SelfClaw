@@ -2147,9 +2147,12 @@
         var skillNames = skills.join(', ') || 'None';
         var statusColor = agent.status === 'active' ? 'var(--green-verify)' : 'var(--text-muted)';
         var statusLabel = agent.status === 'active' ? 'RUNNING' : agent.status.toUpperCase();
-        var lastActive = agent.lastActiveAt ? fmtDate(agent.lastActiveAt) : 'Never';
-        var recentTasks = (agent.recentTasks || []);
         var econ = econData[agent.id] || {};
+        var ch = econ.chatHealth || {};
+        var personality = ch.personality || { phase: 'curious', label: 'Still learning', progress: 0 };
+        var soul = ch.soulDocument || { exists: false };
+        var tokenUsage = ch.tokenUsage || { used: 0, limit: 50000, percent: 0 };
+        var econPipeline = econ.economyPipeline || { status: 'not_started', progress: 0, total: 4 };
         var hasWallet = !!(econ.wallet);
         var hasGas = hasWallet && econ.wallet.gasReceived;
         var hasErc8004 = !!(econ.erc8004);
@@ -2168,36 +2171,71 @@
           html += '<div style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:0.75rem;">' + esc(agent.description) + '</div>';
         }
 
-        html += '<div style="display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:0.75rem;">';
-        html += '<div style="font-family:var(--font-mono);font-size:0.7rem;color:var(--text-muted);">Skills: <span style="color:var(--text-primary);">' + esc(skillNames) + '</span></div>';
-        html += '<div style="font-family:var(--font-mono);font-size:0.7rem;color:var(--text-muted);">Last active: <span style="color:var(--text-primary);">' + lastActive + '</span></div>';
+        var phaseColor = personality.phase === 'confident' ? 'var(--green-verify)' : personality.phase === 'developing' ? 'var(--accent)' : 'var(--text-muted)';
+        html += '<div style="border-top:1px solid var(--border-light);padding-top:0.75rem;margin-top:0.5rem;">';
+        html += '<div style="font-family:var(--font-mono);font-size:0.7rem;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-muted);margin-bottom:0.75rem;">Chat Health</div>';
+
+        html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:0.75rem;margin-bottom:0.75rem;">';
+
+        html += '<div>';
+        html += '<div style="font-family:var(--font-mono);font-size:0.65rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;">Personality</div>';
+        html += '<div style="font-family:var(--font-mono);font-size:0.85rem;font-weight:600;color:' + phaseColor + ';">' + esc(personality.label) + '</div>';
+        html += '<div style="height:3px;background:var(--border-light);margin-top:4px;"><div style="height:100%;width:' + personality.progress + '%;background:' + phaseColor + ';"></div></div>';
         html += '</div>';
 
-        html += '<div style="border-top:1px solid var(--border-light);padding-top:0.75rem;margin-top:0.5rem;">';
-        html += '<div style="font-family:var(--font-mono);font-size:0.7rem;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-muted);margin-bottom:0.5rem;">Economy Pipeline</div>';
+        html += '<div>';
+        html += '<div style="font-family:var(--font-mono);font-size:0.65rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;">Messages</div>';
+        html += '<div style="font-family:var(--font-mono);font-size:0.85rem;font-weight:600;">' + (ch.messageCount || 0) + '</div>';
+        html += '<div style="font-family:var(--font-mono);font-size:0.6rem;color:var(--text-muted);">' + (ch.conversationCount || 0) + ' conversation' + ((ch.conversationCount || 0) !== 1 ? 's' : '') + '</div>';
+        html += '</div>';
+
+        html += '<div>';
+        html += '<div style="font-family:var(--font-mono);font-size:0.65rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;">Memories</div>';
+        html += '<div style="font-family:var(--font-mono);font-size:0.85rem;font-weight:600;">' + (ch.memoryCount || 0) + ' facts</div>';
+        html += '<div style="font-family:var(--font-mono);font-size:0.6rem;color:var(--text-muted);">Soul: ' + (soul.exists ? 'Active' : 'Not yet') + '</div>';
+        html += '</div>';
+
+        var tokenPct = tokenUsage.percent || 0;
+        var tokenColor = tokenPct > 80 ? 'var(--red)' : tokenPct > 50 ? 'var(--accent)' : 'var(--green-verify)';
+        html += '<div>';
+        html += '<div style="font-family:var(--font-mono);font-size:0.65rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;">Token Budget</div>';
+        html += '<div style="font-family:var(--font-mono);font-size:0.85rem;font-weight:600;color:' + tokenColor + ';">' + tokenPct + '%</div>';
+        html += '<div style="height:3px;background:var(--border-light);margin-top:4px;"><div style="height:100%;width:' + tokenPct + '%;background:' + tokenColor + ';"></div></div>';
+        html += '<div style="font-family:var(--font-mono);font-size:0.6rem;color:var(--text-muted);">' + (tokenUsage.used || 0).toLocaleString() + ' / ' + (tokenUsage.limit || 50000).toLocaleString() + '</div>';
+        html += '</div>';
+
+        html += '<div>';
+        html += '<div style="font-family:var(--font-mono);font-size:0.65rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;">Last Active</div>';
+        html += '<div style="font-family:var(--font-mono);font-size:0.85rem;font-weight:600;">' + (ch.lastActive ? fmtDate(ch.lastActive) : 'Never') + '</div>';
+        html += '</div>';
+
+        var econStatusColor = econPipeline.status === 'complete' ? 'var(--green-verify)' : econPipeline.status === 'in_progress' ? 'var(--accent)' : 'var(--text-muted)';
+        var econStatusLabel = econPipeline.status === 'complete' ? 'Complete' : econPipeline.status === 'in_progress' ? 'In Progress' : 'Not Started';
+        html += '<div>';
+        html += '<div style="font-family:var(--font-mono);font-size:0.65rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;">Economy</div>';
+        html += '<div style="font-family:var(--font-mono);font-size:0.85rem;font-weight:600;color:' + econStatusColor + ';">' + econStatusLabel + '</div>';
+        html += '<div style="font-family:var(--font-mono);font-size:0.6rem;color:var(--text-muted);">' + econPipeline.progress + '/' + econPipeline.total + ' steps</div>';
+        html += '</div>';
+
+        html += '</div>';
+
         html += '<div style="display:flex;gap:0.35rem;flex-wrap:wrap;margin-bottom:0.75rem;">';
         var steps = [
           { key: 'wallet', label: 'Wallet', done: hasWallet },
           { key: 'gas', label: 'Gas', done: hasGas },
-          { key: 'erc8004', label: 'ERC-8004', done: hasErc8004 },
-          { key: 'sponsorship', label: 'Sponsorship', done: hasSponsorship }
+          { key: 'erc8004', label: 'Identity', done: hasErc8004 },
+          { key: 'sponsorship', label: 'Pool', done: hasSponsorship }
         ];
         steps.forEach(function(s, i) {
           var bg = s.done ? 'var(--green-verify)' : 'var(--border-light)';
           var fg = s.done ? '#fff' : 'var(--text-muted)';
-          html += '<span style="font-family:var(--font-mono);font-size:0.7rem;padding:2px 6px;background:' + bg + ';color:' + fg + ';font-weight:600;">' + s.label + '</span>';
-          if (i < steps.length - 1) html += '<span style="color:var(--text-muted);font-size:0.7rem;">→</span>';
+          html += '<span style="font-family:var(--font-mono);font-size:0.65rem;padding:2px 5px;background:' + bg + ';color:' + fg + ';font-weight:600;">' + s.label + '</span>';
+          if (i < steps.length - 1) html += '<span style="color:var(--text-muted);font-size:0.6rem;">→</span>';
         });
         html += '</div>';
 
         if (hasWallet) {
           html += '<div style="font-family:var(--font-mono);font-size:0.7rem;color:var(--text-muted);margin-bottom:0.35rem;">Wallet: <a href="https://celoscan.io/address/' + esc(econ.wallet.address) + '" target="_blank" style="color:var(--accent);">' + truncAddr(econ.wallet.address) + '</a></div>';
-        }
-        if (hasErc8004) {
-          html += '<div style="font-family:var(--font-mono);font-size:0.7rem;color:var(--text-muted);margin-bottom:0.35rem;">ERC-8004: Token #' + esc(econ.erc8004.tokenId || '?') + '</div>';
-        }
-        if (hasSponsorship) {
-          html += '<div style="font-family:var(--font-mono);font-size:0.7rem;color:var(--text-muted);margin-bottom:0.35rem;">Pool: ' + esc(econ.sponsorship.tokenSymbol || '') + ' / SELFCLAW (' + esc(econ.sponsorship.status) + ')</div>';
         }
 
         html += '<div style="display:flex;gap:0.4rem;flex-wrap:wrap;margin-top:0.5rem;" id="mc-econ-' + esc(agent.id) + '">';

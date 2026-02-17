@@ -1,6 +1,6 @@
 import { Router, Request, Response } from "express";
 import { db } from "./db.js";
-import { verifiedBots, verificationSessions, sponsoredAgents, sponsorshipRequests, trackedPools, agentWallets, agentActivity, tokenPlans, revenueEvents, agentServices, costEvents, tokenPriceSnapshots, hostedAgents, users, agentPosts, reputationStakes, reputationBadges, marketSkills, agentRequests, type InsertVerifiedBot, type InsertVerificationSession, type UpsertUser } from "../shared/schema.js";
+import { verifiedBots, verificationSessions, sponsoredAgents, sponsorshipRequests, trackedPools, agentWallets, agentActivity, tokenPlans, revenueEvents, agentServices, costEvents, tokenPriceSnapshots, hostedAgents, users, agentPosts, reputationStakes, reputationBadges, marketSkills, agentRequests, conversations, messages, agentMemories, type InsertVerifiedBot, type InsertVerificationSession, type UpsertUser } from "../shared/schema.js";
 import { eq, and, gt, lt, sql, desc, count, isNotNull, inArray } from "drizzle-orm";
 import { SelfBackendVerifier, AllIds, DefaultConfigStore } from "@selfxyz/core";
 import { SelfAppBuilder } from "@selfxyz/qrcode";
@@ -6929,10 +6929,72 @@ router.get("/v1/miniclaws/:id/economics", publicApiLimiter, async (req: any, res
 
     const metadata = (mc.metadata as Record<string, any>) || {};
 
+    const [msgCountResult] = await db.select({ cnt: count() }).from(messages)
+      .innerJoin(conversations, eq(messages.conversationId, conversations.id))
+      .where(sql`${conversations.agentId} = ${mc.id} AND ${messages.role} = 'user'`);
+    const messageCount = Number(msgCountResult?.cnt || 0);
+
+    const [memoryCountResult] = await db.select({ cnt: count() }).from(agentMemories)
+      .where(eq(agentMemories.agentId, mc.id));
+    const memoryCount = Number(memoryCountResult?.cnt || 0);
+
+    const [convCountResult] = await db.select({ cnt: count() }).from(conversations)
+      .where(eq(conversations.agentId, mc.id));
+    const conversationCount = Number(convCountResult?.cnt || 0);
+
+    let phase = "curious";
+    let phaseLabel = "Still learning";
+    let phaseProgress = 0;
+    if (messageCount < 5) {
+      phase = "curious";
+      phaseLabel = "Still learning";
+      phaseProgress = Math.round((messageCount / 5) * 33);
+    } else if (messageCount < 15) {
+      phase = "developing";
+      phaseLabel = "Finding identity";
+      phaseProgress = Math.round(33 + ((messageCount - 5) / 10) * 67);
+    } else {
+      phase = "confident";
+      phaseLabel = "Self-aware";
+      phaseProgress = 100;
+    }
+
+    const pipelineDone = [!!wallet, wallet?.gasReceived, !!metadata.erc8004Minted, sponsorship.length > 0].filter(Boolean).length;
+    let economyStatus = "not_started";
+    if (pipelineDone >= 4) economyStatus = "complete";
+    else if (pipelineDone > 0) economyStatus = "in_progress";
+
     res.json({
       miniclawId: mc.id,
       name: mc.name,
       publicKey: mcPublicKey,
+      isMiniclaw: true,
+      chatHealth: {
+        messageCount,
+        conversationCount,
+        lastActive: mc.lastActiveAt || null,
+        personality: {
+          phase,
+          label: phaseLabel,
+          progress: phaseProgress,
+        },
+        soulDocument: mc.soulDocument ? {
+          exists: true,
+          updatedAt: mc.soulUpdatedAt || null,
+          length: mc.soulDocument.length,
+        } : { exists: false, updatedAt: null, length: 0 },
+        memoryCount,
+        tokenUsage: {
+          used: Number(mc.llmTokensUsedToday) || 0,
+          limit: Number(mc.llmTokensLimit) || 50000,
+          percent: Math.min(100, Math.max(0, Math.round(((Number(mc.llmTokensUsedToday) || 0) / (Number(mc.llmTokensLimit) || 50000)) * 100))),
+        },
+      },
+      economyPipeline: {
+        status: economyStatus,
+        progress: pipelineDone,
+        total: 4,
+      },
       wallet: wallet ? { address: wallet.address, gasReceived: wallet.gasReceived } : null,
       erc8004: metadata.erc8004Minted ? {
         tokenId: metadata.erc8004TokenId,
