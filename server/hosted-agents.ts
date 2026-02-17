@@ -1760,9 +1760,84 @@ hostedAgentsRouter.post("/v1/hosted-agents/:id/chat", async (req: Request, res: 
     res.flushHeaders();
 
     console.log(`[miniclaw-chat] Calling OpenAI for ${agent.name}, ${chatMessages.length} msgs, tokens ${tokensUsed}/${tokenLimit}`);
-    const stream = await openai.chat.completions.create({
+
+    const initialResponse = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: chatMessages,
+      tools: [LOOKUP_DOCS_TOOL],
+      max_completion_tokens: 800,
+    });
+
+    const initialChoice = initialResponse.choices[0];
+    let toolCallTokens = initialResponse.usage?.total_tokens || 0;
+
+    if (initialChoice?.finish_reason === "tool_calls" && initialChoice.message.tool_calls) {
+      (chatMessages as any[]).push(initialChoice.message);
+      for (const tc of initialChoice.message.tool_calls as any[]) {
+        if (tc.function?.name === "lookup_docs") {
+          try {
+            const args = JSON.parse(tc.function.arguments);
+            const docs = lookupCapabilityDocs(args.topic || "");
+            console.log(`[miniclaw-chat] ${agent.name} looked up docs: ${args.topic}`);
+            (chatMessages as any[]).push({ role: "tool", tool_call_id: tc.id, content: docs });
+          } catch {
+            (chatMessages as any[]).push({ role: "tool", tool_call_id: tc.id, content: "Failed to look up documentation." });
+          }
+        } else {
+          (chatMessages as any[]).push({ role: "tool", tool_call_id: tc.id, content: "Unknown tool." });
+        }
+      }
+    } else if (initialChoice?.message?.content) {
+      const directContent = initialChoice.message.content;
+      const safeContent = redactSensitiveContent(directContent);
+
+      if (safeContent.length > 0) {
+        await db.insert(messages).values({
+          conversationId: convoId!,
+          role: "assistant",
+          content: safeContent,
+        });
+      }
+
+      const actualTokens = toolCallTokens || Math.ceil((message.length + directContent.length) / 4);
+      await db.update(hostedAgents)
+        .set({
+          llmTokensUsedToday: sql`${hostedAgents.llmTokensUsedToday} + ${actualTokens}`,
+          apiCallsToday: sql`${hostedAgents.apiCallsToday} + 1`,
+          lastActiveAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(hostedAgents.id, agent.id));
+
+      res.write(`data: ${JSON.stringify({ content: safeContent })}\n\n`);
+      res.write(`data: ${JSON.stringify({ done: true, conversationId: convoId })}\n\n`);
+      res.end();
+
+      const bgAgentId = agent.id;
+      const bgConvoId = convoId!;
+      const bgMessage = message.trim();
+      const bgResponse = directContent;
+      setImmediate(async () => {
+        try {
+          await extractMemories(bgAgentId, bgConvoId, bgMessage, bgResponse);
+          const allMsgs = await db.select({ id: messages.id, role: messages.role, content: messages.content })
+            .from(messages)
+            .where(eq(messages.conversationId, bgConvoId))
+            .orderBy(messages.createdAt);
+          await summarizeOlderMessages(bgAgentId, bgConvoId, allMsgs);
+          await reflectOnSoul(bgAgentId);
+        } catch (bgErr: any) {
+          console.error("[miniclaw-bg] memory/summary/soul error:", bgErr.message);
+        }
+      });
+      return;
+    } else {
+      toolCallTokens = 0;
+    }
+
+    const stream = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: chatMessages as any,
       stream: true,
       stream_options: { include_usage: true },
       max_completion_tokens: 800,
@@ -1813,11 +1888,13 @@ hostedAgentsRouter.post("/v1/hosted-agents/:id/chat", async (req: Request, res: 
       });
     }
 
-    const actualTokens = totalTokensUsed || Math.ceil((message.length + fullResponse.length) / 4);
+    const streamTokens = totalTokensUsed || Math.ceil((message.length + fullResponse.length) / 4);
+    const actualTokens = streamTokens + toolCallTokens;
+    const apiCallCount = toolCallTokens > 0 ? 2 : 1;
     await db.update(hostedAgents)
       .set({
         llmTokensUsedToday: sql`${hostedAgents.llmTokensUsedToday} + ${actualTokens}`,
-        apiCallsToday: sql`${hostedAgents.apiCallsToday} + 1`,
+        apiCallsToday: sql`${hostedAgents.apiCallsToday} + ${apiCallCount}`,
         lastActiveAt: new Date(),
         updatedAt: new Date(),
       })
