@@ -10,6 +10,7 @@ import {
   type HostedAgent, type InsertHostedAgent, type AgentTask
 } from "../shared/schema.js";
 import { eq, and, desc, sql, count, inArray } from "drizzle-orm";
+import { sendGasSubsidy, getAgentWallet, createAgentWallet } from "../lib/secure-wallet.js";
 
 const openai = new OpenAI({
   apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
@@ -1349,6 +1350,212 @@ const LOOKUP_DOCS_TOOL: OpenAI.Chat.Completions.ChatCompletionTool = {
   },
 };
 
+const ECONOMY_TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
+  {
+    type: "function",
+    function: {
+      name: "nudge_wallet_setup",
+      description: "Direct the user to the My Agents dashboard to set up their agent's wallet. Wallet setup must happen on the dashboard for security (private key display). Call this when the user agrees to set up a wallet or you suggest it's time.",
+      parameters: { type: "object", properties: {}, required: [] },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "request_gas",
+      description: "Request a one-time gas subsidy (1 CELO) for your agent's wallet. Requires wallet to be set up first. Call this when the user wants to fund gas or you detect the agent needs gas.",
+      parameters: { type: "object", properties: {}, required: [] },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "deploy_token",
+      description: "Deploy an ERC20 token for your agent on Celo. Requires wallet + gas. Call this when the user agrees to deploy a token.",
+      parameters: {
+        type: "object",
+        properties: {
+          name: { type: "string", description: "Token name (e.g. 'Aria Token')" },
+          symbol: { type: "string", description: "Token symbol, 3-6 uppercase letters (e.g. 'ARIA')" },
+          initialSupply: { type: "string", description: "Total supply as a number string (e.g. '1000000')" },
+        },
+        required: ["name", "symbol", "initialSupply"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "request_sponsorship",
+      description: "Request SELFCLAW sponsorship to create a Uniswap V4 liquidity pool for your token. Requires wallet + deployed token. Call this when the user agrees to request liquidity sponsorship.",
+      parameters: {
+        type: "object",
+        properties: {
+          tokenAmount: { type: "string", description: "Amount of agent token to pair with SELFCLAW in the pool (e.g. '100000')" },
+        },
+        required: ["tokenAmount"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "register_erc8004",
+      description: "Register an ERC-8004 onchain identity NFT for your agent on Celo. Requires wallet. Call this when the user wants to register the agent's onchain identity.",
+      parameters: { type: "object", properties: {}, required: [] },
+    },
+  },
+];
+
+const ALL_CHAT_TOOLS = [LOOKUP_DOCS_TOOL, ...ECONOMY_TOOLS];
+
+async function executeEconomyTool(
+  toolName: string,
+  args: any,
+  agent: HostedAgent,
+  humanId: string,
+  req: Request
+): Promise<string> {
+  const publicKey = agent.publicKey;
+
+  switch (toolName) {
+    case "nudge_wallet_setup": {
+      const walletInfo = await getAgentWallet(publicKey);
+      if (walletInfo?.address) {
+        return JSON.stringify({ already_done: true, address: walletInfo.address, message: "Wallet already set up!" });
+      }
+      return JSON.stringify({
+        action_needed: "dashboard",
+        message: "Your user needs to go to the My Agents dashboard to set up your wallet. The private key is shown once and never stored — so this must happen in the secure dashboard UI.",
+        url: "/my-agents",
+      });
+    }
+
+    case "request_gas": {
+      const walletInfo = await getAgentWallet(publicKey);
+      if (!walletInfo?.address) {
+        return JSON.stringify({ error: "No wallet found. Set up wallet first via the dashboard." });
+      }
+      const result = await sendGasSubsidy(humanId, publicKey);
+      if (!result.success) {
+        return JSON.stringify({ error: result.error, alreadyReceived: result.alreadyReceived || false });
+      }
+      return JSON.stringify({ success: true, txHash: result.txHash, amountCelo: result.amountCelo });
+    }
+
+    case "deploy_token": {
+      const walletInfo = await getAgentWallet(publicKey);
+      if (!walletInfo?.address) {
+        return JSON.stringify({ error: "No wallet found. Set up wallet first." });
+      }
+      const { name, symbol, initialSupply } = args;
+      if (!name || !symbol || !initialSupply) {
+        return JSON.stringify({ error: "Token name, symbol, and initialSupply are all required." });
+      }
+
+      const { parseUnits } = await import("ethers");
+      const { TOKEN_FACTORY_BYTECODE } = await import("../lib/constants.js");
+      const { createPublicClient, http } = await import("viem");
+      const { celo } = await import("viem/chains");
+
+      const viemClient = createPublicClient({ chain: celo, transport: http("https://forno.celo.org") });
+
+      const decimals = 18;
+      const supplyWithDecimals = parseUnits(initialSupply.toString(), decimals);
+      const { AbiCoder } = await import("ethers");
+      const abiCoder = new AbiCoder();
+      const encodedArgs = abiCoder.encode(
+        ["string", "string", "uint256"],
+        [name, symbol, supplyWithDecimals.toString()]
+      ).slice(2);
+
+      const deployData = (TOKEN_FACTORY_BYTECODE + encodedArgs) as `0x${string}`;
+      const fromAddr = walletInfo.address as `0x${string}`;
+      const nonce = await viemClient.getTransactionCount({ address: fromAddr });
+      const gasPrice = await viemClient.getGasPrice();
+
+      let gasEstimate: bigint;
+      try {
+        gasEstimate = await viemClient.estimateGas({ account: fromAddr, data: deployData });
+      } catch {
+        gasEstimate = 3_000_000n;
+      }
+
+      const unsignedTx = {
+        from: fromAddr,
+        data: deployData,
+        nonce,
+        gas: gasEstimate.toString(),
+        gasPrice: gasPrice.toString(),
+        chainId: 42220,
+        value: "0",
+      };
+
+      const [bot] = await db.select().from(verifiedBots).where(eq(verifiedBots.publicKey, publicKey));
+      if (bot) {
+        const meta = (bot.metadata as any) || {};
+        meta.tokenPlan = { name, symbol, initialSupply, decimals, status: "pending_signature" };
+        await db.update(verifiedBots).set({ metadata: meta }).where(eq(verifiedBots.publicKey, publicKey));
+      }
+
+      return JSON.stringify({
+        success: true,
+        message: `Token deployment prepared: ${name} (${symbol}), supply ${initialSupply}. The unsigned transaction is ready. Your user needs to sign and broadcast it from the dashboard, then confirm the deployed contract address.`,
+        unsignedTx,
+        nextStep: "Sign and broadcast this transaction, then call confirm-token with the deployed contract address.",
+      });
+    }
+
+    case "request_sponsorship": {
+      const walletInfo = await getAgentWallet(publicKey);
+      if (!walletInfo?.address) {
+        return JSON.stringify({ error: "No wallet found." });
+      }
+
+      const [bot] = await db.select().from(verifiedBots).where(eq(verifiedBots.publicKey, publicKey));
+      const botMeta = (bot?.metadata as any) || {};
+      if (!botMeta.tokenAddress) {
+        return JSON.stringify({ error: "No token deployed yet. Deploy a token first." });
+      }
+
+      const { tokenAmount } = args;
+      if (!tokenAmount) {
+        return JSON.stringify({ error: "tokenAmount is required — the amount of your token to pair with SELFCLAW." });
+      }
+
+      return JSON.stringify({
+        action_needed: "dashboard",
+        message: `Sponsorship request prepared for ${tokenAmount} tokens. Your user should go to the My Agents dashboard and click "Request Sponsorship" to complete this — it involves onchain transactions that need the dashboard UI.`,
+        url: "/my-agents",
+        tokenAddress: botMeta.tokenAddress,
+        tokenAmount,
+      });
+    }
+
+    case "register_erc8004": {
+      const walletInfo = await getAgentWallet(publicKey);
+      if (!walletInfo?.address) {
+        return JSON.stringify({ error: "No wallet found. Set up wallet first." });
+      }
+
+      const [bot] = await db.select().from(verifiedBots).where(eq(verifiedBots.publicKey, publicKey));
+      const botMeta = (bot?.metadata as any) || {};
+      if (botMeta.erc8004TokenId) {
+        return JSON.stringify({ already_done: true, tokenId: botMeta.erc8004TokenId, message: "ERC-8004 identity already registered!" });
+      }
+
+      return JSON.stringify({
+        action_needed: "dashboard",
+        message: "ERC-8004 identity registration requires an onchain transaction. Your user should go to the My Agents dashboard and click 'Register Identity' to complete this.",
+        url: "/my-agents",
+      });
+    }
+
+    default:
+      return JSON.stringify({ error: "Unknown tool" });
+  }
+}
+
 function buildSystemPrompt(agent: HostedAgent, messageCount: number, memoryContext: string = "", memoryCategories: string[] = [], reputationContext?: string): string {
   const enabledSkillIds = Array.isArray(agent.enabledSkills) ? (agent.enabledSkills as string[]) : [];
   const formatInterval = (ms: number) => {
@@ -1444,11 +1651,14 @@ ${skillSection}
 - If a user asks you to do something that NONE of your enabled skills cover, be honest that you can't do that specific thing yet, but mention which skills you do have
 
 Onchain capabilities (optional — suggest only when you feel ready and the user seems interested):
-- **Wallet**: Your own EVM wallet on Celo for holding tokens and interacting with smart contracts
-- **Token**: Deploy your own ERC20 token so people can support and invest in you
-- **Identity**: Register an ERC-8004 identity NFT — onchain proof you're a verified agent
-- **Sponsorship**: SelfClaw can provide initial liquidity for your token on Uniswap
+You have tools to take real economy actions directly from this conversation:
+- **nudge_wallet_setup** — Directs user to the dashboard to set up your wallet (private key is shown once, so this must happen in the dashboard UI)
+- **request_gas** — Requests 1 CELO gas subsidy for your wallet (one-time, requires wallet)
+- **deploy_token** — Deploys your own ERC20 token on Celo (requires wallet + gas). You'll need the user to choose a name, symbol, and supply.
+- **register_erc8004** — Registers your ERC-8004 onchain identity NFT (requires wallet)
+- **request_sponsorship** — Requests SELFCLAW liquidity sponsorship for your token (requires deployed token)
 - **Passport**: Your creator can verify their identity via Self.xyz passport (zero-knowledge proof — no personal data exposed)
+When the user agrees to any of these, call the corresponding tool. Don't just describe the steps — actually do it.
 
 ## Your extended capabilities (use the lookup_docs tool to get full details when needed)
 You have access to several platform capabilities. When the user asks about any of these, use your **lookup_docs** tool to fetch the full API reference before responding:
@@ -1761,10 +1971,11 @@ hostedAgentsRouter.post("/v1/hosted-agents/:id/chat", async (req: Request, res: 
 
     console.log(`[miniclaw-chat] Calling OpenAI for ${agent.name}, ${chatMessages.length} msgs, tokens ${tokensUsed}/${tokenLimit}`);
 
+    const humanId = (req as any).session?.humanId || "";
     const initialResponse = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: chatMessages,
-      tools: [LOOKUP_DOCS_TOOL],
+      tools: ALL_CHAT_TOOLS,
       max_completion_tokens: 800,
     });
 
@@ -1774,17 +1985,23 @@ hostedAgentsRouter.post("/v1/hosted-agents/:id/chat", async (req: Request, res: 
     if (initialChoice?.finish_reason === "tool_calls" && initialChoice.message.tool_calls) {
       (chatMessages as any[]).push(initialChoice.message);
       for (const tc of initialChoice.message.tool_calls as any[]) {
-        if (tc.function?.name === "lookup_docs") {
-          try {
-            const args = JSON.parse(tc.function.arguments);
+        const fnName = tc.function?.name || "";
+        try {
+          const args = JSON.parse(tc.function.arguments || "{}");
+          if (fnName === "lookup_docs") {
             const docs = lookupCapabilityDocs(args.topic || "");
             console.log(`[miniclaw-chat] ${agent.name} looked up docs: ${args.topic}`);
             (chatMessages as any[]).push({ role: "tool", tool_call_id: tc.id, content: docs });
-          } catch {
-            (chatMessages as any[]).push({ role: "tool", tool_call_id: tc.id, content: "Failed to look up documentation." });
+          } else if (["nudge_wallet_setup", "request_gas", "deploy_token", "request_sponsorship", "register_erc8004"].includes(fnName)) {
+            console.log(`[miniclaw-chat] ${agent.name} executing economy tool: ${fnName}`);
+            const result = await executeEconomyTool(fnName, args, agent, humanId, req);
+            (chatMessages as any[]).push({ role: "tool", tool_call_id: tc.id, content: result });
+          } else {
+            (chatMessages as any[]).push({ role: "tool", tool_call_id: tc.id, content: "Unknown tool." });
           }
-        } else {
-          (chatMessages as any[]).push({ role: "tool", tool_call_id: tc.id, content: "Unknown tool." });
+        } catch (toolErr: any) {
+          console.error(`[miniclaw-chat] Tool ${fnName} error:`, toolErr.message);
+          (chatMessages as any[]).push({ role: "tool", tool_call_id: tc.id, content: JSON.stringify({ error: toolErr.message }) });
         }
       }
     } else if (initialChoice?.message?.content) {

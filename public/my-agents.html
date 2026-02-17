@@ -308,6 +308,60 @@
       margin-top: 0.1rem;
     }
 
+    .health-overview {
+      display: grid; grid-template-columns: auto 1fr; gap: 0 1.25rem;
+      margin-bottom: 1rem; padding: 1rem;
+      border: 2px solid var(--border-heavy); background: rgba(0,0,0,0.015);
+    }
+    .health-indicator {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding-right: 1.25rem; border-right: 2px solid var(--border);
+      min-width: 80px;
+    }
+    .health-dot {
+      width: 14px; height: 14px; margin-bottom: 0.3rem;
+    }
+    .health-dot.healthy { background: var(--green-verify); }
+    .health-dot.active { background: var(--accent); }
+    .health-dot.building { background: #6B4AFF; }
+    .health-dot.setup { background: var(--border); }
+    .health-dot.critical { background: var(--red); }
+    .health-label {
+      font-family: var(--font-mono); font-size: 0.7rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.08em;
+    }
+    .health-label.healthy { color: var(--green-verify); }
+    .health-label.active { color: var(--accent); }
+    .health-label.building { color: #6B4AFF; }
+    .health-label.setup { color: var(--text-muted); }
+    .health-label.critical { color: var(--red); }
+    .health-metrics {
+      display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.5rem 1rem;
+    }
+    @media (max-width: 768px) { .health-metrics { grid-template-columns: repeat(3, 1fr); } }
+    @media (max-width: 480px) {
+      .health-overview { grid-template-columns: 1fr; gap: 0.75rem; }
+      .health-indicator { flex-direction: row; gap: 0.5rem; padding-right: 0; border-right: none; padding-bottom: 0.5rem; border-bottom: 2px solid var(--border); }
+      .health-metrics { grid-template-columns: repeat(2, 1fr); }
+    }
+    .health-metric-label {
+      font-family: var(--font-mono); font-size: 0.65rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted);
+      margin-bottom: 0.1rem;
+    }
+    .health-metric-value {
+      font-family: var(--font-mono); font-size: 0.85rem; font-weight: 700;
+    }
+    .health-metric-sub {
+      font-family: var(--font-mono); font-size: 0.65rem; color: var(--text-muted);
+    }
+    .health-progress-bar {
+      width: 100%; height: 4px; background: var(--border); margin-top: 0.25rem;
+    }
+    .health-progress-fill {
+      height: 100%; background: var(--green-verify); transition: width 0.3s;
+    }
+
     .briefing-panel {
       border: 2px solid var(--border); margin-top: 0.75rem;
       background: rgba(26,26,26,0.02);
@@ -690,6 +744,64 @@
         }
       }
       return { steps: steps, hasWallet: hasWallet, hasGas: hasGas, hasErc8004: hasErc8004, hasToken: hasToken, hasSponsorship: hasSponsorship, hasPool: hasPool, poolAddr: poolAddr };
+    }
+
+    function renderHealthOverview(agent) {
+      var h = agent.health || { status: 'setup', label: 'Setting Up', pipelineProgress: 0, pipelineTotal: 6 };
+      var rep = agent.reputation || { score: 0, validated: 0, slashed: 0, pending: 0, badges: [] };
+      var sk = agent.skills || { count: 0, totalSales: 0, avgRating: null };
+      var com = agent.commerce || { provided: 0, providedCompleted: 0, requested: 0, requestedCompleted: 0 };
+      var econ = agent.economics || {};
+      var agentNet = (econ.totalRevenue || 0) - (econ.totalCosts || 0);
+
+      var html = '<div class="health-overview">';
+
+      html += '<div class="health-indicator">';
+      html += '<div class="health-dot ' + h.status + '"></div>';
+      html += '<div class="health-label ' + h.status + '">' + esc(h.label) + '</div>';
+      html += '<div class="health-progress-bar"><div class="health-progress-fill" style="width:' + Math.round((h.pipelineProgress / h.pipelineTotal) * 100) + '%"></div></div>';
+      html += '<div class="health-metric-sub">' + h.pipelineProgress + '/' + h.pipelineTotal + '</div>';
+      html += '</div>';
+
+      html += '<div class="health-metrics">';
+
+      html += '<div>';
+      html += '<div class="health-metric-label">Net P/L</div>';
+      html += '<div class="health-metric-value" style="color:' + (agentNet >= 0 ? 'var(--green-verify)' : 'var(--red)') + '">' + fmt$(agentNet) + '</div>';
+      html += '<div class="health-metric-sub">' + fmt$(econ.totalRevenue || 0) + ' rev / ' + fmt$(econ.totalCosts || 0) + ' cost</div>';
+      html += '</div>';
+
+      html += '<div>';
+      html += '<div class="health-metric-label">Reputation</div>';
+      html += '<div class="health-metric-value" style="color:' + (rep.score >= 30 ? 'var(--green-verify)' : rep.score > 0 ? 'var(--accent)' : 'var(--text-muted)') + '">' + rep.score + '</div>';
+      html += '<div class="health-metric-sub">' + rep.validated + ' valid / ' + rep.slashed + ' slashed</div>';
+      if (rep.badges && rep.badges.length > 0) {
+        html += '<div class="health-metric-sub">' + rep.badges.length + ' badge' + (rep.badges.length !== 1 ? 's' : '') + '</div>';
+      }
+      html += '</div>';
+
+      html += '<div>';
+      html += '<div class="health-metric-label">Skills</div>';
+      html += '<div class="health-metric-value">' + sk.count + '</div>';
+      html += '<div class="health-metric-sub">' + sk.totalSales + ' sale' + (sk.totalSales !== 1 ? 's' : '');
+      if (sk.avgRating != null) html += ' / ' + sk.avgRating.toFixed(1) + ' avg';
+      html += '</div>';
+      html += '</div>';
+
+      html += '<div>';
+      html += '<div class="health-metric-label">Commerce</div>';
+      html += '<div class="health-metric-value">' + (com.providedCompleted + com.requestedCompleted) + '</div>';
+      html += '<div class="health-metric-sub">' + com.provided + ' provided / ' + com.requested + ' requested</div>';
+      html += '</div>';
+
+      html += '<div>';
+      html += '<div class="health-metric-label">Services</div>';
+      html += '<div class="health-metric-value">' + (agent.services || 0) + '</div>';
+      html += '</div>';
+
+      html += '</div>';
+      html += '</div>';
+      return html;
     }
 
     function renderStatusSummary(agent) {
@@ -1214,12 +1326,7 @@
         html += '<span class="agent-card-badge ' + statusClass + '">' + statusText + '</span>';
         html += '</div>';
 
-        html += '<div class="agent-card-stats">';
-        html += '<div><div class="agent-stat-label">Revenue</div><div class="agent-stat-value" style="color:var(--green-verify)">' + fmt$(econ.totalRevenue || 0) + '</div></div>';
-        html += '<div><div class="agent-stat-label">Costs</div><div class="agent-stat-value">' + fmt$(econ.totalCosts || 0) + '</div></div>';
-        html += '<div><div class="agent-stat-label">Net</div><div class="agent-stat-value" style="color:' + (agentNet >= 0 ? 'var(--green-verify)' : 'var(--red)') + '">' + fmt$(agentNet) + '</div></div>';
-        html += '<div><div class="agent-stat-label">Services</div><div class="agent-stat-value">' + (agent.services || 0) + '</div></div>';
-        html += '</div>';
+        html += renderHealthOverview(agent);
 
         html += renderStatusSummary(agent);
 

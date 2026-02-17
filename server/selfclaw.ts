@@ -1,6 +1,6 @@
 import { Router, Request, Response } from "express";
 import { db } from "./db.js";
-import { verifiedBots, verificationSessions, sponsoredAgents, sponsorshipRequests, trackedPools, agentWallets, agentActivity, tokenPlans, revenueEvents, agentServices, costEvents, tokenPriceSnapshots, hostedAgents, users, agentPosts, type InsertVerifiedBot, type InsertVerificationSession, type UpsertUser } from "../shared/schema.js";
+import { verifiedBots, verificationSessions, sponsoredAgents, sponsorshipRequests, trackedPools, agentWallets, agentActivity, tokenPlans, revenueEvents, agentServices, costEvents, tokenPriceSnapshots, hostedAgents, users, agentPosts, reputationStakes, reputationBadges, marketSkills, agentRequests, type InsertVerifiedBot, type InsertVerificationSession, type UpsertUser } from "../shared/schema.js";
 import { eq, and, gt, lt, sql, desc, count, isNotNull, inArray } from "drizzle-orm";
 import { SelfBackendVerifier, AllIds, DefaultConfigStore } from "@selfxyz/core";
 import { SelfAppBuilder } from "@selfxyz/qrcode";
@@ -4429,6 +4429,104 @@ router.get("/v1/human/:humanId/economics", publicApiLimiter, async (req: Request
         },
       };
     });
+
+    const allPublicKeys = agents.map(a => a.publicKey);
+
+    let reputationData: Record<string, any> = {};
+    let skillsData: Record<string, any> = {};
+    let commerceData: Record<string, any> = {};
+
+    try {
+      if (allPublicKeys.length > 0) {
+        const stakes = await db.select().from(reputationStakes)
+          .where(inArray(reputationStakes.agentPublicKey, allPublicKeys));
+        const badges = await db.select().from(reputationBadges)
+          .where(inArray(reputationBadges.agentPublicKey, allPublicKeys));
+        const skills = await db.select().from(marketSkills)
+          .where(inArray(marketSkills.agentPublicKey, allPublicKeys));
+        const commerceResults = await db.select().from(agentRequests)
+          .where(sql`${agentRequests.providerPublicKey} IN (${sql.join(allPublicKeys.map(k => sql`${k}`), sql`, `)}) OR ${agentRequests.requesterPublicKey} IN (${sql.join(allPublicKeys.map(k => sql`${k}`), sql`, `)})`);
+
+        for (const pk of allPublicKeys) {
+          const agentStakes = stakes.filter(s => s.agentPublicKey === pk);
+          const validated = agentStakes.filter(s => s.resolution === "validated").length;
+          const slashed = agentStakes.filter(s => s.resolution === "slashed").length;
+          const pending = agentStakes.filter(s => !s.resolution).length;
+          const agentBadges = badges.filter(b => b.agentPublicKey === pk);
+
+          const erc8004Pts = agents.find(a => a.publicKey === pk)?.metadata && (agents.find(a => a.publicKey === pk)?.metadata as any)?.erc8004TokenId ? 10 : 0;
+          const stakingPts = Math.min(validated * 8 - slashed * 12, 40);
+          const commercePts = Math.min(commerceResults.filter(c => c.providerPublicKey === pk && c.status === "completed").length * 4, 20);
+          const skillsPts = Math.min(skills.filter(s => s.agentPublicKey === pk).length * 5, 15);
+          const badgesPts = Math.min(agentBadges.length * 5, 15);
+          const score = Math.max(0, erc8004Pts + stakingPts + commercePts + skillsPts + badgesPts);
+
+          reputationData[pk] = {
+            score,
+            validated,
+            slashed,
+            pending,
+            badges: agentBadges.map(b => b.badgeType),
+          };
+
+          const agentSkills = skills.filter(s => s.agentPublicKey === pk);
+          skillsData[pk] = {
+            count: agentSkills.length,
+            totalSales: agentSkills.reduce((sum, s) => sum + (s.purchaseCount || 0), 0),
+            avgRating: agentSkills.filter(s => (s.ratingCount || 0) > 0).length > 0
+              ? (agentSkills.filter(s => (s.ratingCount || 0) > 0).reduce((a, s) => a + ((s.ratingSum || 0) / (s.ratingCount || 1)), 0) / agentSkills.filter(s => (s.ratingCount || 0) > 0).length)
+              : null,
+          };
+
+          const provided = commerceResults.filter(c => c.providerPublicKey === pk);
+          const requested = commerceResults.filter(c => c.requesterPublicKey === pk);
+          commerceData[pk] = {
+            provided: provided.length,
+            providedCompleted: provided.filter(c => c.status === "completed").length,
+            requested: requested.length,
+            requestedCompleted: requested.filter(c => c.status === "completed").length,
+          };
+        }
+      }
+    } catch (healthErr: any) {
+      console.warn("[selfclaw] economics health data warning:", healthErr.message);
+    }
+
+    for (const summary of agentSummaries) {
+      (summary as any).reputation = reputationData[summary.publicKey] || { score: 0, validated: 0, slashed: 0, pending: 0, badges: [] };
+      (summary as any).skills = skillsData[summary.publicKey] || { count: 0, totalSales: 0, avgRating: null };
+      (summary as any).commerce = commerceData[summary.publicKey] || { provided: 0, providedCompleted: 0, requested: 0, requestedCompleted: 0 };
+
+      const pipelineDone = [
+        !!summary.wallet,
+        summary.wallet?.gasReceived || false,
+        !!summary.erc8004,
+        !!summary.token,
+        !!summary.sponsorship,
+        !!summary.token?.poolAddress,
+      ].filter(Boolean).length;
+
+      let healthStatus = "setup";
+      let healthLabel = "Setting Up";
+      if (pipelineDone >= 6) {
+        const rep = (summary as any).reputation;
+        if (rep.slashed > rep.validated) {
+          healthStatus = "critical";
+          healthLabel = "At Risk";
+        } else if (rep.score >= 30 && (summary as any).skills.count > 0) {
+          healthStatus = "healthy";
+          healthLabel = "Healthy";
+        } else {
+          healthStatus = "active";
+          healthLabel = "Active";
+        }
+      } else if (pipelineDone >= 3) {
+        healthStatus = "building";
+        healthLabel = "Building";
+      }
+
+      (summary as any).health = { status: healthStatus, label: healthLabel, pipelineProgress: pipelineDone, pipelineTotal: 6 };
+    }
 
     res.json({
       humanId,
