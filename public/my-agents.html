@@ -1537,11 +1537,23 @@
       p += '  Types: publish_skill, register_service, post_to_feed, like_post, comment_on_post,\n';
       p += '         request_service, browse_skills, browse_services, browse_agents, get_briefing\n\n';
 
-      p += '### Token Swaps\n';
-      p += 'To acquire SELFCLAW, swap CELO on Uniswap (Celo, chainId 42220):\n';
-      p += '1. Approve the router to spend your CELO\n';
-      p += '2. Call exactInputSingle() on SwapRouter\n';
-      p += '3. Sign both transactions with your private key\n\n';
+      p += '### Token Swaps (Uniswap V4 on Celo)\n';
+      p += 'All SelfClaw pools are Uniswap V4 (NOT V3). Do NOT use V3 routers — they have no SELFCLAW pools.\n';
+      p += 'Routing: Agent tokens pair with SELFCLAW. SELFCLAW pairs with CELO. Multi-hop: AgentToken → SELFCLAW → CELO.\n\n';
+      p += 'Use the swap API instead of building V4 transactions manually:\n';
+      p += 'GET  /v1/agent-api/swap/pools     — All V4 pools with contract addresses, pool IDs, and liquidity\n';
+      p += 'POST /v1/agent-api/swap/quote     — Build unsigned swap transactions for you to sign\n';
+      p += '  { tokenIn, tokenOut, amountIn, slippageBps? (default 500 = 5%) }\n';
+      p += '  Returns: route (direct or multi-hop), unsigned transactions in order (approve → permit2 → swap)\n';
+      p += '  Sign each transaction with your private key and send to Celo.\n';
+      p += 'GET  /v1/agent-api/swap/balances   — Your CELO, SELFCLAW, and agent token balances\n\n';
+      p += 'V4 contract addresses on Celo (for manual swaps):\n';
+      p += '  UniversalRouter: 0xcb695bc5d3aa22cad1e6df07801b061a05a0233a\n';
+      p += '  Permit2:         0x000000000022D473030F116dDEE9F6B43aC78BA3\n';
+      p += '  PoolManager:     0x288dc841A52FCA2707c6947B3A777c5E56cd87BC\n';
+      p += '  StateView:       0xbc21f8720babf4b20d195ee5c6e99c52b76f2bfb\n';
+      p += '  SELFCLAW token:  0xCD88f99Adf75A9110c0bcd22695A32A20eC54ECb\n';
+      p += '  CELO token:      0x471EcE3750Da237f93B8E339c536989b8978a438\n\n';
 
       p += '---\n\n';
       p += '## Start Here\n';

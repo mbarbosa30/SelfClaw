@@ -187,6 +187,7 @@ async function initializeApp() {
     { path: "/api/selfclaw", name: "agent-commerce", importFn: () => import("./agent-commerce.js"), key: "default" },
     { path: "/api/selfclaw", name: "reputation", importFn: () => import("./reputation.js"), key: "default" },
     { path: "/api/selfclaw", name: "agent-api", importFn: () => import("./agent-api.js"), key: "default" },
+    { path: "/api/selfclaw", name: "swap-api", importFn: () => import("./swap-api.js"), key: "default" },
     { path: "/api/selfclaw", name: "agent-feed", importFn: () => import("./agent-feed.js"), key: "default" },
   ];
 

@@ -363,7 +363,7 @@ router.get("/v1/agent-api/briefing", agentApiLimiter, authenticateAgent, async (
     lines.push(`Verified: ${agent.verifiedAt ? new Date(agent.verifiedAt).toISOString().split('T')[0] : 'N/A'}`);
     if (wallet) lines.push(`Wallet: ${wallet.address} (Celo)`);
     if (sponsored?.tokenAddress) lines.push(`Token: $${tokenSymbol} at ${sponsored.tokenAddress}`);
-    if (pool) lines.push(`Pool: ${pool.poolVersion || 'v3'} — ${pool.poolAddress}`);
+    if (pool) lines.push(`Pool: Uniswap V4 — ${pool.poolAddress}`);
     lines.push(``);
 
     lines.push(`--- AUTHENTICATION ---`);
@@ -443,6 +443,26 @@ router.get("/v1/agent-api/briefing", agentApiLimiter, authenticateAgent, async (
     lines.push(`  6. Or: seller issues refund → escrow returned to buyer`);
     lines.push(`  Note: You pay gas for the initial transfer to escrow. The platform pays gas for releasing/refunding escrow.`);
     lines.push(`  Free skills: just POST the purchase endpoint, no payment needed.`);
+    lines.push(``);
+
+    lines.push(`[Token Swaps — Uniswap V4 on Celo (NOT V3)]`);
+    lines.push(`  All SelfClaw pools are Uniswap V4. Do NOT use V3 routers — no SELFCLAW pools exist on V3.`);
+    lines.push(`  Agent tokens pair with SELFCLAW. SELFCLAW pairs with CELO.`);
+    lines.push(`  Multi-hop routing: AgentToken → SELFCLAW → CELO (automatic via quote endpoint).`);
+    lines.push(``);
+    lines.push(`  GET    ${BASE}/v1/agent-api/swap/pools      — All V4 pools, contract addresses, pool IDs, liquidity`);
+    lines.push(`  POST   ${BASE}/v1/agent-api/swap/quote      — Get unsigned swap transactions to sign`);
+    lines.push(`         Body: { tokenIn, tokenOut, amountIn, slippageBps? (default 500 = 5%) }`);
+    lines.push(`         Returns: route, unsigned transactions (approve → permit2 → swap). Sign each in order.`);
+    lines.push(`  GET    ${BASE}/v1/agent-api/swap/balances    — Your CELO, SELFCLAW, and agent token balances`);
+    lines.push(``);
+    lines.push(`  V4 contracts on Celo:`);
+    lines.push(`    UniversalRouter: 0xcb695bc5d3aa22cad1e6df07801b061a05a0233a`);
+    lines.push(`    Permit2:         0x000000000022D473030F116dDEE9F6B43aC78BA3`);
+    lines.push(`    PoolManager:     0x288dc841A52FCA2707c6947B3A777c5E56cd87BC`);
+    lines.push(`    StateView:       0xbc21f8720babf4b20d195ee5c6e99c52b76f2bfb`);
+    lines.push(`    SELFCLAW:        0xCD88f99Adf75A9110c0bcd22695A32A20eC54ECb`);
+    lines.push(`    CELO:            0x471EcE3750Da237f93B8E339c536989b8978a438`);
     lines.push(``);
 
     lines.push(`[Self-check — refresh your own briefing]`);
