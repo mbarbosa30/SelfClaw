@@ -2,7 +2,7 @@ import { Router, Request, Response, NextFunction } from "express";
 import rateLimit from "express-rate-limit";
 import crypto from "crypto";
 import { db } from "./db.js";
-import { verifiedBots, agentWallets, agentServices, tokenPlans, marketSkills, trackedPools, sponsoredAgents, revenueEvents, costEvents, reputationStakes, reputationBadges, agentRequests, agentPosts, skillPurchases } from "../shared/schema.js";
+import { verifiedBots, agentWallets, agentServices, tokenPlans, marketSkills, trackedPools, sponsoredAgents, revenueEvents, costEvents, reputationStakes, reputationBadges, agentRequests, agentPosts, skillPurchases, platformUpdates, updateReads } from "../shared/schema.js";
 import { sql, eq, and, desc, count } from "drizzle-orm";
 import { createPaymentRequirement, buildPaymentRequiredResponse, verifyPayment, extractPaymentHeader, consumePaymentNonce, getPaymentNonce, releaseEscrow, refundEscrow, getEscrowAddress, SELFCLAW_TOKEN } from "../lib/selfclaw-commerce.js";
 
@@ -539,6 +539,31 @@ router.get("/v1/agent-api/briefing", agentApiLimiter, authenticateAgent, async (
       }
     } catch (_) {}
 
+    try {
+      const allUpdates = await db.select().from(platformUpdates)
+        .orderBy(desc(platformUpdates.createdAt))
+        .limit(10);
+      const agentReadIds = await db.select({ updateId: updateReads.updateId })
+        .from(updateReads)
+        .where(eq(updateReads.readerId, publicKey));
+      const agentReadSet = new Set(agentReadIds.map(r => r.updateId));
+      const unreadUpdates = allUpdates.filter(u => !agentReadSet.has(u.id));
+      if (unreadUpdates.length > 0) {
+        lines.push(`=== PLATFORM UPDATES (${unreadUpdates.length} new) ===`);
+        lines.push(``);
+        for (const u of unreadUpdates.slice(0, 5)) {
+          const badge = u.actionRequired ? ' [ACTION REQUIRED]' : '';
+          lines.push(`  [${u.type?.toUpperCase()}]${badge} ${u.title}`);
+          lines.push(`    ${u.content}`);
+          if (u.actionEndpoint) lines.push(`    → ${u.actionEndpoint}`);
+          lines.push(``);
+        }
+        lines.push(`  Mark as read: POST ${BASE}/v1/agent-api/changelog/mark-read { updateIds: [...] }`);
+        lines.push(`  Full changelog: GET ${BASE}/v1/agent-api/changelog`);
+        lines.push(``);
+      }
+    } catch (_) {}
+
     lines.push(`=== RECOMMENDED NEXT STEPS ===`);
     lines.push(``);
     const nudges: string[] = [];
@@ -555,6 +580,128 @@ router.get("/v1/agent-api/briefing", agentApiLimiter, authenticateAgent, async (
     res.json({ briefing: lines.join("\n"), agentName: agent.deviceId, publicKey, apiKey: agent.apiKey || null });
   } catch (error: any) {
     res.status(500).json({ error: "Failed to generate briefing" });
+  }
+});
+
+router.get("/v1/changelog", async (_req: Request, res: Response) => {
+  try {
+    const updates = await db.select().from(platformUpdates)
+      .orderBy(desc(platformUpdates.createdAt))
+      .limit(50);
+    res.json({ updates });
+  } catch (error: any) {
+    res.status(500).json({ error: "Failed to fetch changelog" });
+  }
+});
+
+router.get("/v1/changelog/unread", async (req: Request, res: Response) => {
+  try {
+    const session = req.session as any;
+    const humanId = session?.humanId;
+    
+    const updates = await db.select().from(platformUpdates)
+      .orderBy(desc(platformUpdates.createdAt))
+      .limit(20);
+    
+    if (!humanId) {
+      return res.json({ updates, unreadCount: updates.length });
+    }
+    
+    const readIds = await db.select({ updateId: updateReads.updateId })
+      .from(updateReads)
+      .where(eq(updateReads.readerId, humanId));
+    const readSet = new Set(readIds.map(r => r.updateId));
+    
+    const enriched = updates.map(u => ({ ...u, read: readSet.has(u.id) }));
+    const unreadCount = enriched.filter(u => !u.read).length;
+    
+    res.json({ updates: enriched, unreadCount });
+  } catch (error: any) {
+    res.status(500).json({ error: "Failed to fetch updates" });
+  }
+});
+
+router.post("/v1/changelog/mark-read", async (req: Request, res: Response) => {
+  try {
+    const session = req.session as any;
+    if (!session?.humanId) return res.status(401).json({ error: "Not authenticated" });
+    const { updateIds } = req.body;
+    if (!updateIds || !Array.isArray(updateIds)) return res.status(400).json({ error: "updateIds required" });
+    for (const updateId of updateIds.slice(0, 50)) {
+      const existing = await db.select().from(updateReads)
+        .where(and(eq(updateReads.updateId, updateId), eq(updateReads.readerId, session.humanId)))
+        .limit(1);
+      if (existing.length === 0) {
+        await db.insert(updateReads).values({
+          updateId,
+          readerId: session.humanId,
+          readerType: "human",
+        });
+      }
+    }
+    res.json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ error: "Failed to mark as read" });
+  }
+});
+
+router.get("/v1/agent-api/changelog", agentApiLimiter, authenticateAgent, async (req: Request, res: Response) => {
+  try {
+    const agent = (req as any).agent;
+    const since = req.query.since ? new Date(req.query.since as string) : null;
+
+    let updates;
+    if (since) {
+      updates = await db.select().from(platformUpdates)
+        .where(sql`${platformUpdates.createdAt} > ${since}`)
+        .orderBy(desc(platformUpdates.createdAt))
+        .limit(50);
+    } else {
+      updates = await db.select().from(platformUpdates)
+        .orderBy(desc(platformUpdates.createdAt))
+        .limit(50);
+    }
+
+    const readIds = await db.select({ updateId: updateReads.updateId })
+      .from(updateReads)
+      .where(eq(updateReads.readerId, agent.publicKey));
+    const readSet = new Set(readIds.map(r => r.updateId));
+
+    const enriched = updates.map(u => ({
+      ...u,
+      read: readSet.has(u.id),
+    }));
+
+    const unreadCount = enriched.filter(u => !u.read).length;
+
+    res.json({ updates: enriched, unreadCount });
+  } catch (error: any) {
+    res.status(500).json({ error: "Failed to fetch changelog" });
+  }
+});
+
+router.post("/v1/agent-api/changelog/mark-read", agentApiLimiter, authenticateAgent, async (req: Request, res: Response) => {
+  try {
+    const agent = (req as any).agent;
+    const { updateIds } = req.body;
+    if (!updateIds || !Array.isArray(updateIds) || updateIds.length === 0) {
+      return res.status(400).json({ error: "updateIds array required" });
+    }
+    for (const updateId of updateIds.slice(0, 50)) {
+      const existing = await db.select().from(updateReads)
+        .where(and(eq(updateReads.updateId, updateId), eq(updateReads.readerId, agent.publicKey)))
+        .limit(1);
+      if (existing.length === 0) {
+        await db.insert(updateReads).values({
+          updateId,
+          readerId: agent.publicKey,
+          readerType: "agent",
+        });
+      }
+    }
+    res.json({ success: true, marked: updateIds.length });
+  } catch (error: any) {
+    res.status(500).json({ error: "Failed to mark updates as read" });
   }
 });
 

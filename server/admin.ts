@@ -2,7 +2,7 @@ import { Router, Request, Response } from "express";
 import rateLimit from "express-rate-limit";
 import crypto from "crypto";
 import { db } from "./db.js";
-import { agentActivity, verifiedBots, agentWallets, bridgeTransactions, sponsoredAgents, trackedPools, sponsorshipRequests, tokenPlans, agentServices, revenueEvents, costEvents, hostedAgents, conversations, messages, agentMemories, conversationSummaries } from "../shared/schema.js";
+import { agentActivity, verifiedBots, agentWallets, bridgeTransactions, sponsoredAgents, trackedPools, sponsorshipRequests, tokenPlans, agentServices, revenueEvents, costEvents, hostedAgents, conversations, messages, agentMemories, conversationSummaries, platformUpdates, updateReads } from "../shared/schema.js";
 import { sql, desc, eq, and, inArray, count } from "drizzle-orm";
 import {
   attestToken,
@@ -1905,6 +1905,50 @@ router.get("/activity/pipeline/:identifier", async (req: Request, res: Response)
     });
   } catch (error: any) {
     console.error("[admin] pipeline activity error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get("/platform-updates", async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    const updates = await db.select().from(platformUpdates).orderBy(desc(platformUpdates.createdAt));
+    res.json({ updates });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post("/platform-updates", async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    const { title, content, type, severity, actionRequired, actionLabel, actionEndpoint, targetAudience, version } = req.body;
+    if (!title || !content) return res.status(400).json({ error: "title and content are required" });
+    const [update] = await db.insert(platformUpdates).values({
+      title,
+      content,
+      type: type || "feature",
+      severity: severity || "info",
+      actionRequired: actionRequired || false,
+      actionLabel,
+      actionEndpoint,
+      targetAudience: targetAudience || "all",
+      version,
+    }).returning();
+    console.log(`[admin] Platform update created: ${update.id} — ${title}`);
+    res.json({ success: true, update });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.delete("/platform-updates/:id", async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    const { id } = req.params;
+    await db.delete(platformUpdates).where(eq(platformUpdates.id, id as string));
+    res.json({ success: true });
+  } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
 });

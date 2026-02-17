@@ -907,3 +907,34 @@ export const validations = pgTable("validations", {
   txHash: varchar("tx_hash"),
   createdAt: timestamp("created_at").defaultNow(),
 });
+
+export const platformUpdates = pgTable("platform_updates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: varchar("title").notNull(),
+  content: text("content").notNull(),
+  type: varchar("type").notNull().default("feature"),
+  severity: varchar("severity").default("info"),
+  actionRequired: boolean("action_required").default(false),
+  actionLabel: varchar("action_label"),
+  actionEndpoint: varchar("action_endpoint"),
+  targetAudience: varchar("target_audience").default("all"),
+  version: varchar("version"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_platform_updates_type").on(table.type),
+  index("idx_platform_updates_created").on(table.createdAt),
+]);
+
+export type PlatformUpdate = typeof platformUpdates.$inferSelect;
+export type InsertPlatformUpdate = typeof platformUpdates.$inferInsert;
+
+export const updateReads = pgTable("update_reads", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  updateId: varchar("update_id").notNull(),
+  readerId: varchar("reader_id").notNull(),
+  readerType: varchar("reader_type").notNull().default("human"),
+  readAt: timestamp("read_at").defaultNow(),
+}, (table) => [
+  index("idx_update_reads_reader").on(table.readerId),
+  index("idx_update_reads_update").on(table.updateId),
+]);

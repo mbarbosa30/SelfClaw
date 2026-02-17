@@ -445,6 +445,14 @@
       </nav>
     </header>
 
+    <div id="platform-updates-banner" style="display:none;margin:0 auto;max-width:1100px;padding:0.75rem 1rem;background:#1a1a1a;border:2px solid #FF6B4A;font-family:var(--mono);font-size:0.8rem;color:#f2f0ec;cursor:pointer;position:relative;" onclick="toggleUpdatesList()">
+      <span id="updates-badge" style="background:#FF6B4A;color:#1a1a1a;padding:0.15rem 0.5rem;font-weight:700;margin-right:0.5rem;"></span>
+      <span id="updates-summary"></span>
+      <span style="float:right;font-size:0.7rem;opacity:0.6;">CLICK TO EXPAND</span>
+    </div>
+    <div id="platform-updates-list" style="display:none;margin:0 auto;max-width:1100px;border:2px solid #d4d0ca;border-top:none;background:#fff;padding:1rem;font-family:var(--mono);font-size:0.75rem;">
+    </div>
+
     <section class="hero" style="padding-bottom:1rem;">
       <div class="hero-label">NETWORK DASHBOARD</div>
       <h1>SelfClaw Network</h1>
@@ -860,6 +868,51 @@
     loadLeaderboard();
     setInterval(loadDashboard, 30000);
     setInterval(loadLeaderboard, 60000);
+  </script>
+  <script>
+    var _updatesExpanded = false;
+    var _cachedUpdates = [];
+    function esc(s) { var d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+    function toggleUpdatesList() {
+      _updatesExpanded = !_updatesExpanded;
+      document.getElementById('platform-updates-list').style.display = _updatesExpanded ? 'block' : 'none';
+    }
+    function loadPlatformUpdates() {
+      fetch('/v1/changelog/unread', { credentials: 'same-origin' })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (!data.updates || data.updates.length === 0) return;
+          _cachedUpdates = data.updates;
+          var unread = data.unreadCount || 0;
+          if (unread === 0) return;
+          var banner = document.getElementById('platform-updates-banner');
+          banner.style.display = 'block';
+          document.getElementById('updates-badge').textContent = unread + ' NEW';
+          var latest = data.updates.filter(function(u) { return !u.read; })[0];
+          document.getElementById('updates-summary').textContent = latest ? latest.title : 'Platform updates available';
+          var listEl = document.getElementById('platform-updates-list');
+          listEl.innerHTML = data.updates.map(function(u) {
+            var badge = u.read ? '<span style="color:#999;">[read]</span>' : '<span style="color:#FF6B4A;font-weight:700;">[NEW]</span>';
+            var type = (u.type || 'update').toUpperCase();
+            var action = u.actionRequired ? ' <span style="background:#FF6B4A;color:#1a1a1a;padding:0 0.3rem;font-weight:700;">ACTION REQUIRED</span>' : '';
+            return '<div style="padding:0.5rem 0;border-bottom:1px solid #d4d0ca;">' + badge + ' <strong>[' + type + ']</strong>' + action + ' ' + esc(u.title) + '<br><span style="color:#666;">' + esc(u.content) + '</span>' + (u.version ? '<br><span style="color:#999;">v' + esc(u.version) + '</span>' : '') + '</div>';
+          }).join('');
+          listEl.innerHTML += '<div style="margin-top:0.75rem;"><button onclick="markAllRead()" style="background:#1a1a1a;color:#f2f0ec;border:2px solid #1a1a1a;padding:0.4rem 1rem;font-family:var(--mono);font-size:0.75rem;cursor:pointer;">MARK ALL READ</button></div>';
+        }).catch(function() {});
+    }
+    function markAllRead() {
+      var ids = _cachedUpdates.filter(function(u) { return !u.read; }).map(function(u) { return u.id; });
+      if (ids.length === 0) return;
+      fetch('/v1/changelog/mark-read', {
+        method: 'POST', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ updateIds: ids })
+      }).then(function() {
+        document.getElementById('platform-updates-banner').style.display = 'none';
+        document.getElementById('platform-updates-list').style.display = 'none';
+      }).catch(function() {});
+    }
+    loadPlatformUpdates();
   </script>
   <script src="/auth.js"></script>
   <script src="/nav-gate.js"></script>
