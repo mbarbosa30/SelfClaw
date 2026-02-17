@@ -656,6 +656,14 @@
               var err2 = await res.json().catch(function() { return { error: 'Chat failed' }; });
               throw new Error(err2.error || 'Chat failed');
             }
+          } else if (res.status === 429) {
+            var errBody = await res.json().catch(function() { return {}; });
+            typingEl.style.display = 'none';
+            addMessageToUI('assistant', errBody.error || 'Daily token limit reached — your Miniclaw needs to recharge. Try again in a few hours.', new Date().toISOString());
+            scrollToBottom();
+            isSending = false;
+            sendBtn.disabled = !inputEl.value.trim();
+            return;
           } else {
             var err = await res.json().catch(function() { return { error: 'Chat failed' }; });
             throw new Error(err.error || 'Chat failed');

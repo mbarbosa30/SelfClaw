@@ -814,6 +814,14 @@ async function resetDailyQuotas() {
     if (result.length > 0) {
       console.log(`[agent-worker] Daily quotas reset for ${result.length} agent(s): ${result.map(a => a.name).join(', ')}`);
     }
+
+    const fixed = await db.update(hostedAgents)
+      .set({ llmTokensLimit: 50000 })
+      .where(sql`${hostedAgents.llmTokensLimit} IS NULL OR ${hostedAgents.llmTokensLimit} = 5000`)
+      .returning({ id: hostedAgents.id, name: hostedAgents.name });
+    if (fixed.length > 0) {
+      console.log(`[agent-worker] Fixed token limits for ${fixed.length} agent(s): ${fixed.map(a => a.name).join(', ')}`);
+    }
   } catch (e: any) {
     console.error("[agent-worker] Quota reset error:", e.message);
   }
