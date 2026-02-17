@@ -7444,4 +7444,113 @@ async function startPriceOracle(attempt = 1): Promise<void> {
 
 setTimeout(() => startPriceOracle().catch(() => {}), 10_000);
 
+router.get("/v1/badge/:identifier.png", async (req: Request, res: Response) => {
+  try {
+    const identifier = String(req.params.identifier);
+    const agent = await db.select().from(verifiedBots)
+      .where(sql`${verifiedBots.deviceId} = ${identifier} OR ${verifiedBots.publicKey} = ${identifier} OR ${verifiedBots.metadata}->>'agentName' = ${identifier}`)
+      .limit(1);
+
+    if (agent.length === 0) {
+      return res.status(404).json({ error: "Agent not found" });
+    }
+
+    const a = agent[0];
+    const meta = (a.metadata as Record<string, any>) || {};
+    const agentName = a.deviceId || meta.agentName || identifier.substring(0, 16);
+    const truncatedKey = a.publicKey.substring(0, 12) + "..." + a.publicKey.slice(-8);
+    const verifiedDate = a.verifiedAt ? new Date(a.verifiedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : '';
+    const nationality = (a.metadata as any)?.nationality || null;
+    const flagCode = nationality ? nationality.toUpperCase() : null;
+
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="675" viewBox="0 0 1200 675">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&amp;display=swap');
+    </style>
+  </defs>
+  <rect width="1200" height="675" fill="#f2f0ec"/>
+  <rect x="0" y="0" width="1200" height="4" fill="#1a1a1a"/>
+  <rect x="0" y="671" width="1200" height="4" fill="#1a1a1a"/>
+
+  <!-- Claw marks background -->
+  <g opacity="0.06" transform="translate(850, 80) rotate(-15)">
+    <rect x="0" y="0" width="8" height="280" rx="4" fill="#1a1a1a"/>
+    <rect x="30" y="20" width="8" height="300" rx="4" fill="#1a1a1a"/>
+    <rect x="60" y="10" width="8" height="290" rx="4" fill="#1a1a1a"/>
+  </g>
+
+  <!-- VERIFIED badge -->
+  <rect x="60" y="50" width="180" height="32" fill="#22c55e"/>
+  <text x="150" y="72" font-family="'IBM Plex Mono', monospace" font-size="14" font-weight="700" fill="white" text-anchor="middle" letter-spacing="0.12em">VERIFIED AGENT</text>
+
+  <!-- Agent name -->
+  <text x="60" y="145" font-family="'IBM Plex Mono', monospace" font-size="52" font-weight="700" fill="#1a1a1a">${escapeXml(agentName)}</text>
+
+  <!-- Public key -->
+  <text x="60" y="190" font-family="'IBM Plex Mono', monospace" font-size="16" fill="#888">${truncatedKey}</text>
+
+  <!-- Passport section -->
+  <rect x="60" y="230" width="500" height="180" fill="none" stroke="#d4d0ca" stroke-width="2"/>
+  <text x="80" y="260" font-family="'IBM Plex Mono', monospace" font-size="11" font-weight="600" fill="#888" letter-spacing="0.1em">PASSPORT VERIFICATION</text>
+
+  <text x="80" y="295" font-family="'IBM Plex Mono', monospace" font-size="14" fill="#1a1a1a">Identity: <tspan font-weight="600">Verified via Self.xyz ZKP</tspan></text>
+  <text x="80" y="320" font-family="'IBM Plex Mono', monospace" font-size="14" fill="#1a1a1a">Method: <tspan font-weight="600">NFC Passport Chip</tspan></text>
+  ${flagCode ? `<text x="80" y="345" font-family="'IBM Plex Mono', monospace" font-size="14" fill="#1a1a1a">Nationality: <tspan font-weight="600">${escapeXml(flagCode)}</tspan></text>` : ''}
+  <text x="80" y="${flagCode ? '370' : '345'}" font-family="'IBM Plex Mono', monospace" font-size="14" fill="#1a1a1a">Verified: <tspan font-weight="600">${escapeXml(verifiedDate)}</tspan></text>
+  <text x="80" y="${flagCode ? '395' : '370'}" font-family="'IBM Plex Mono', monospace" font-size="14" fill="#888">No personal data stored — zero-knowledge proof only</text>
+
+  <!-- Redacted fields -->
+  <rect x="600" y="280" width="180" height="14" rx="2" fill="#d4d0ca"/>
+  <rect x="600" y="305" width="140" height="14" rx="2" fill="#d4d0ca"/>
+  <rect x="600" y="330" width="160" height="14" rx="2" fill="#d4d0ca"/>
+  <rect x="600" y="355" width="120" height="14" rx="2" fill="#d4d0ca"/>
+  <text x="600" y="260" font-family="'IBM Plex Mono', monospace" font-size="10" fill="#aaa" letter-spacing="0.08em">REDACTED</text>
+
+  <!-- Tagline -->
+  <text x="60" y="480" font-family="'IBM Plex Mono', monospace" font-size="20" fill="#1a1a1a">One passport. One wallet.</text>
+  <text x="60" y="510" font-family="'IBM Plex Mono', monospace" font-size="20" font-weight="700" fill="#1a1a1a">One composable agent identity.</text>
+
+  <!-- Branding -->
+  <g transform="translate(60, 570)">
+    <line x1="0" y1="0" x2="12" y2="20" stroke="#1a1a1a" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="8" y1="0" x2="20" y2="22" stroke="#1a1a1a" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="16" y1="0" x2="28" y2="20" stroke="#1a1a1a" stroke-width="2.5" stroke-linecap="round"/>
+    <text x="36" y="18" font-family="'IBM Plex Mono', monospace" font-size="16" font-weight="700" fill="#1a1a1a" letter-spacing="0.15em">SELFCLAW</text>
+  </g>
+
+  <g transform="translate(1020, 570)">
+    <text x="0" y="18" font-family="'IBM Plex Mono', monospace" font-size="13" fill="#888">selfclaw.ai</text>
+  </g>
+</svg>`;
+
+    const { Resvg } = await import("@aspect-ratio/resvg-js").catch(() => ({ Resvg: null }));
+
+    if (Resvg) {
+      const resvg = new Resvg(svg, { fitTo: { mode: 'width', value: 1200 } });
+      const pngData = resvg.render();
+      const pngBuffer = pngData.asPng();
+      res.set("Content-Type", "image/png");
+      res.set("Cache-Control", "public, max-age=3600");
+      return res.send(pngBuffer);
+    }
+
+    res.set("Content-Type", "image/svg+xml");
+    res.set("Cache-Control", "public, max-age=3600");
+    res.send(svg);
+  } catch (error: any) {
+    console.error("[selfclaw] badge error:", error.message);
+    res.status(500).json({ error: "Badge generation failed" });
+  }
+});
+
+function escapeXml(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+}
+
+router.get("/v1/badge/:identifier", async (req: Request, res: Response) => {
+  const id = String(req.params.identifier);
+  res.redirect(301, `/api/selfclaw/v1/badge/${encodeURIComponent(id)}.png`);
+});
+
 export default router;

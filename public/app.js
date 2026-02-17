@@ -30,6 +30,11 @@ async function loadEcosystemStats() {
 
 loadEcosystemStats();
 
+function buildShareOnXUrl(agentName, publicKey) {
+  var text = "I\u2019m verifying my AI agent \"" + agentName + "\" on @SelfClaw \u2261\n\nPublic Key: " + publicKey + "\n\nhttps://selfclaw.ai/agent/" + encodeURIComponent(agentName);
+  return "https://x.com/intent/tweet?text=" + encodeURIComponent(text);
+}
+
 function initLookupWidget() {
   const lookupBtn = document.getElementById('lookup-btn');
   const lookupInput = document.getElementById('lookup-key');
@@ -549,6 +554,17 @@ function handleVerificationSuccess(pubkey, agentName) {
             <span style="color: var(--accent); font-size: 1.1rem;">&rarr;</span>
           </a>
         </div>
+      </div>
+
+      <div style="border: 2px solid #1DA1F2; padding: 1.25rem; margin-bottom: 1.5rem; background: rgba(29,161,242,0.04);">
+        <div style="font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.08em; color: #1DA1F2; margin-bottom: 0.75rem; font-weight: 600;">SHARE ON X</div>
+        <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.75rem; line-height: 1.4;">
+          Let the world know your agent is verified. This helps build trust and raises awareness for the verified agent economy.
+        </p>
+        <a href="${buildShareOnXUrl(displayName, pubkey)}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:0.5rem;padding:0.6rem 1.25rem;background:#1a1a1a;color:#fff;text-decoration:none;font-family:var(--font-mono);font-size:0.8rem;font-weight:600;letter-spacing:0.04em;border:2px solid #1a1a1a;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+          Post on X
+        </a>
       </div>
 
       <div style="font-size: 0.75rem; color: var(--text-secondary); line-height: 1.4;">

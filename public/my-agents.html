@@ -580,6 +580,10 @@
     function esc(s) { if (!s) return ''; var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
     function fmt$(n) { return n >= 0 ? '$' + n.toFixed(2) : '-$' + Math.abs(n).toFixed(2); }
     function fmtDate(d) { if (!d) return ''; return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); }
+    function buildShareOnXUrl(agentName, publicKey) {
+      var text = "I\u2019m verifying my AI agent \"" + agentName + "\" on @SelfClaw \u2261\n\nPublic Key: " + publicKey + "\n\nhttps://selfclaw.ai/agent/" + encodeURIComponent(agentName);
+      return "https://x.com/intent/tweet?text=" + encodeURIComponent(text);
+    }
     function truncKey(k) { if (!k) return ''; return k.substring(0, 10) + '...' + k.slice(-6); }
     function truncAddr(a) { if (!a) return ''; return a.substring(0, 6) + '...' + a.slice(-4); }
     function fmtPrice(n) {
@@ -1368,6 +1372,7 @@
         html += '</div>';
 
         html += '<div class="agent-card-actions">';
+        html += '<a href="' + buildShareOnXUrl(name, agent.publicKey) + '" target="_blank" rel="noopener" class="action-btn" style="background:#1a1a1a;color:#fff;border-color:#1a1a1a;display:inline-flex;align-items:center;gap:0.35rem;"><svg width="12" height="12" viewBox="0 0 24 24" fill="white"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>Share on X</a>';
         html += '<button class="action-btn" onclick="showAgentPromptPanel(' + idx + ')" style="background:var(--accent);color:#fff;border-color:var(--accent);">Share with Agent</button>';
         html += '<a href="' + profileUrl + '" class="action-btn">View Profile</a>';
         if (agent.wallet) {

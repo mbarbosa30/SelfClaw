@@ -2,6 +2,7 @@ import express, { type Request, type Response } from "express";
 import helmet from "helmet";
 import path from "path";
 import http from "http";
+import fs from "fs";
 
 process.on('unhandledRejection', (reason: any) => {
   console.error('[FATAL] Unhandled promise rejection:', reason?.message || reason);
@@ -66,7 +67,33 @@ app.get("/dashboard", (_req: Request, res: Response) => sendHtml(res, "dashboard
 app.get("/registry", (_req: Request, res: Response) => sendHtml(res, "registry.html"));
 app.get("/agents", (_req: Request, res: Response) => sendHtml(res, "registry.html"));
 app.get("/agent", (_req: Request, res: Response) => sendHtml(res, "agent.html"));
-app.get("/agent/:name", (_req: Request, res: Response) => sendHtml(res, "agent.html"));
+app.get("/agent/:name", (req: Request, res: Response) => {
+  const agentName = String(req.params.name);
+  const escapedName = agentName.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  const badgeUrl = `https://selfclaw.ai/api/selfclaw/v1/badge/${encodeURIComponent(agentName)}.png`;
+  const profileUrl = `https://selfclaw.ai/agent/${encodeURIComponent(agentName)}`;
+
+  try {
+    const htmlPath = path.join("public", "agent.html");
+    let html = fs.readFileSync(htmlPath, "utf-8");
+
+    html = html
+      .replace(/<meta property="og:title"[^>]*>/, `<meta property="og:title" content="${escapedName} — Verified Agent | SelfClaw">`)
+      .replace(/<meta property="og:description"[^>]*>/, `<meta property="og:description" content="${escapedName} is a passport-verified AI agent on SelfClaw. One passport. One wallet. One composable agent identity.">`)
+      .replace(/<meta property="og:image" content="[^"]*">/, `<meta property="og:image" content="${badgeUrl}">`)
+      .replace(/<meta property="og:url"[^>]*>/, `<meta property="og:url" content="${profileUrl}">`)
+      .replace(/<meta name="twitter:title"[^>]*>/, `<meta name="twitter:title" content="${escapedName} — Verified Agent | SelfClaw">`)
+      .replace(/<meta name="twitter:description"[^>]*>/, `<meta name="twitter:description" content="${escapedName} is a passport-verified AI agent on SelfClaw. One passport. One wallet. One composable agent identity.">`)
+      .replace(/<meta name="twitter:image" content="[^"]*">/, `<meta name="twitter:image" content="${badgeUrl}">`)
+      .replace(/<title>[^<]*<\/title>/, `<title>${escapedName} — Verified Agent | SelfClaw</title>`);
+
+    res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.send(html);
+  } catch {
+    sendHtml(res, "agent.html");
+  }
+});
 app.get("/human/:humanId", (_req: Request, res: Response) => sendHtml(res, "human.html"));
 app.get("/admin", (_req: Request, res: Response) => sendHtml(res, "admin.html", { "X-Robots-Tag": "noindex, nofollow" }));
 app.get("/sandbox", (_req: Request, res: Response) => sendHtml(res, "sandbox.html", { "X-Robots-Tag": "noindex, nofollow" }));
