@@ -698,7 +698,7 @@
       try {
         var res = await fetch('/api/selfclaw/v1/stats', { credentials: 'include' });
         var stats = await res.json();
-        document.getElementById('stat-verified').textContent = stats.totalAgents || 0;
+        document.getElementById('stat-verified').textContent = stats.verifiedAgents || 0;
         document.getElementById('stat-humans').textContent = stats.uniqueHumans || 0;
       } catch(e) {}
     }
