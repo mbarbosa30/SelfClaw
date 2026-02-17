@@ -121,7 +121,7 @@ router.post("/v1/start-verification", verificationLimiter, async (req: Request, 
     const sessionId = crypto.randomUUID();
     const agentKeyHash = crypto.createHash("sha256").update(agentPublicKey).digest("hex").substring(0, 16);
     const challenge = generateChallenge(sessionId, agentKeyHash);
-    const challengeExpiry = new Date(Date.now() + 10 * 60 * 1000);
+    const challengeExpiry = new Date(Date.now() + 30 * 60 * 1000);
     
     let signatureVerified = false;
     
@@ -434,23 +434,18 @@ async function handleCallback(req: Request, res: Response) {
       return res.status(200).json({ status: "error", result: false, reason: "Missing session ID in proof" });
     }
     
+    const maxCallbackAge = new Date(Date.now() - 60 * 60 * 1000);
     const sessions = await db.select()
       .from(verificationSessions)
       .where(and(
         eq(verificationSessions.id, sessionId),
-        eq(verificationSessions.status, "pending"),
-        gt(verificationSessions.challengeExpiry, new Date())
+        sql`${verificationSessions.status} IN ('pending', 'expired')`,
+        gt(verificationSessions.createdAt, maxCallbackAge)
       ))
       .limit(1);
     
     const session = sessions[0];
     if (!session) {
-      await db.update(verificationSessions)
-        .set({ status: "expired" })
-        .where(and(
-          eq(verificationSessions.id, sessionId),
-          eq(verificationSessions.status, "pending")
-        ));
       logActivity("verification_callback_failed", undefined, undefined, undefined, { error: "Invalid or expired verification session", endpoint: "/v1/callback", statusCode: 200, sessionId });
       return res.status(200).json({ status: "error", result: false, reason: "Invalid or expired verification session" });
     }
@@ -1062,39 +1057,6 @@ router.post("/v1/verify", async (_req: Request, res: Response) => {
     message: "Use the Self.xyz verification flow instead: POST /api/selfclaw/v1/start-verification",
     docs: "https://selfclaw.ai/developers"
   });
-});
-
-router.get("/v1/stats", publicApiLimiter, async (_req: Request, res: Response) => {
-  try {
-    const [totalResult] = await db.select({ count: count() }).from(verifiedBots).where(sql`${verifiedBots.hidden} IS NOT TRUE`);
-    const [humanResult] = await db.select({ count: sql<number>`COUNT(DISTINCT ${verifiedBots.humanId})` }).from(verifiedBots).where(sql`${verifiedBots.hidden} IS NOT TRUE`);
-
-    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    const [last24hResult] = await db.select({ count: count() })
-      .from(verifiedBots)
-      .where(sql`${verifiedBots.hidden} IS NOT TRUE AND ${verifiedBots.verifiedAt} > ${oneDayAgo}`);
-
-    const latestAgent = await db.select({ verifiedAt: verifiedBots.verifiedAt })
-      .from(verifiedBots)
-      .where(sql`${verifiedBots.hidden} IS NOT TRUE`)
-      .orderBy(desc(verifiedBots.verifiedAt))
-      .limit(1);
-
-    const [tokensResult] = await db.select({ count: count() })
-      .from(sponsoredAgents)
-      .where(isNotNull(sponsoredAgents.tokenAddress));
-
-    res.json({
-      totalAgents: totalResult?.count || 0,
-      uniqueHumans: humanResult?.count || 0,
-      last24h: last24hResult?.count || 0,
-      tokensDeployed: tokensResult?.count || 0,
-      latestVerification: latestAgent[0]?.verifiedAt || null
-    });
-  } catch (error: any) {
-    console.error("[selfclaw] stats error:", error);
-    res.status(500).json({ error: error.message });
-  }
 });
 
 router.get("/v1/sponsorship/:humanId", publicApiLimiter, async (req: Request, res: Response) => {
@@ -3765,6 +3727,10 @@ router.get("/v1/dashboard", publicApiLimiter, async (_req: Request, res: Respons
       if (row.status && row.status in funnelMap) {
         funnelMap[row.status] = Number(row.statusCount);
       }
+    }
+    const totalVerified = Number(totalVerifiedResult[0]?.value ?? 0);
+    if (totalVerified > funnelMap.verified) {
+      funnelMap.verified = totalVerified;
     }
 
     const selfclawInPools = Number(celoLiquidityResult[0]?.value ?? 0);
