@@ -2166,6 +2166,60 @@ router.get("/v1/ecosystem-stats", publicApiLimiter, async (_req: Request, res: R
   }
 });
 
+// SelfClaw Score — composite 0-100 score for a verified agent
+router.get("/v1/agent-score/:publicKey", publicApiLimiter, async (req: Request, res: Response) => {
+  try {
+    const { computeScoreWithPercentile } = await import("./selfclaw-score.js");
+    const score = await computeScoreWithPercentile(req.params.publicKey);
+    if (!score) return res.status(404).json({ error: "Agent not found or not a verified agent" });
+    res.json(score);
+  } catch (error: any) {
+    console.error("[selfclaw] agent-score error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// SelfClaw Score Leaderboard — all verified agents ranked by composite score
+router.get("/v1/score-leaderboard", publicApiLimiter, async (req: Request, res: Response) => {
+  try {
+    const { computeAllScores } = await import("./selfclaw-score.js");
+    const limitParam = Math.min(Number(req.query.limit) || 50, 100);
+    const allScores = await computeAllScores();
+
+    const leaderboard = Array.from(allScores.entries())
+      .sort((a, b) => b[1].total - a[1].total)
+      .slice(0, limitParam)
+      .map(([publicKey, score], index) => ({
+        rank: index + 1,
+        publicKey,
+        ...score,
+      }));
+
+    const agentNames = new Map<string, string>();
+    if (leaderboard.length > 0) {
+      const keys = leaderboard.map(l => l.publicKey);
+      const agents = await db.select({
+        publicKey: verifiedBots.publicKey,
+        deviceId: verifiedBots.deviceId,
+      }).from(verifiedBots).where(inArray(verifiedBots.publicKey, keys));
+      for (const a of agents) {
+        agentNames.set(a.publicKey, a.deviceId);
+      }
+    }
+
+    res.json({
+      leaderboard: leaderboard.map(l => ({
+        ...l,
+        agentName: agentNames.get(l.publicKey) || "Unknown",
+      })),
+      totalAgents: allScores.size,
+    });
+  } catch (error: any) {
+    console.error("[selfclaw] score-leaderboard error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Reputation leaderboard — ranks all agents with ERC-8004 tokens by onchain reputation
 router.get("/v1/reputation-leaderboard", publicApiLimiter, async (req: Request, res: Response) => {
   try {

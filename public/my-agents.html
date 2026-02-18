@@ -362,6 +362,59 @@
       height: 100%; background: var(--green-verify); transition: width 0.3s;
     }
 
+    .score-card {
+      display: flex; align-items: center; gap: 1rem;
+      margin-bottom: 1rem; padding: 1rem;
+      border: 2px solid var(--border-heavy); background: rgba(0,0,0,0.015);
+    }
+    .score-badge {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      min-width: 80px; padding-right: 1rem; border-right: 2px solid var(--border);
+    }
+    .score-number {
+      font-family: var(--font-mono); font-size: 2rem; font-weight: 700; line-height: 1;
+    }
+    .score-grade {
+      font-family: var(--font-mono); font-size: 0.75rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.08em; margin-top: 0.2rem;
+    }
+    .score-grade.S { color: #FFD700; }
+    .score-grade.A { color: var(--green-verify); }
+    .score-grade.B { color: var(--accent); }
+    .score-grade.C { color: var(--text-muted); }
+    .score-grade.D { color: var(--red); }
+    .score-percentile {
+      font-family: var(--font-mono); font-size: 0.6rem; color: var(--text-muted); margin-top: 0.15rem;
+    }
+    .score-radar {
+      flex-shrink: 0;
+    }
+    .score-breakdown {
+      display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.25rem 0.75rem;
+      flex: 1;
+    }
+    @media (max-width: 768px) {
+      .score-card { flex-direction: column; align-items: stretch; }
+      .score-badge { flex-direction: row; gap: 0.5rem; padding-right: 0; border-right: none; padding-bottom: 0.5rem; border-bottom: 2px solid var(--border); }
+      .score-breakdown { grid-template-columns: repeat(3, 1fr); }
+    }
+    @media (max-width: 480px) { .score-breakdown { grid-template-columns: repeat(2, 1fr); } }
+    .score-cat-label {
+      font-family: var(--font-mono); font-size: 0.6rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted);
+    }
+    .score-cat-bar {
+      width: 100%; height: 4px; background: var(--border); margin-top: 0.15rem;
+    }
+    .score-cat-fill { height: 100%; transition: width 0.3s; }
+    .score-cat-val {
+      font-family: var(--font-mono); font-size: 0.7rem; font-weight: 700;
+    }
+    .score-loading {
+      font-family: var(--font-mono); font-size: 0.7rem; color: var(--text-muted);
+      padding: 0.5rem 0;
+    }
+
     .briefing-panel {
       border: 2px solid var(--border); margin-top: 0.75rem;
       background: rgba(26,26,26,0.02);
@@ -1329,6 +1382,8 @@
         html += '<span class="agent-card-badge ' + statusClass + '">' + statusText + '</span>';
         html += '</div>';
 
+        html += '<div class="score-card" id="score-card-' + idx + '"><div class="score-loading">Loading SelfClaw Score...</div></div>';
+
         html += renderHealthOverview(agent);
 
         html += renderStatusSummary(agent);
@@ -1389,6 +1444,103 @@
         html += '</div>';
         return html;
       }).join('');
+
+      agents.forEach(function(agent, idx) {
+        if (agent.verificationLevel !== 'hosted') {
+          loadAgentScore(idx, agent.publicKey);
+        } else {
+          var el = document.getElementById('score-card-' + idx);
+          if (el) el.style.display = 'none';
+        }
+      });
+    }
+
+    function loadAgentScore(idx, publicKey) {
+      fetch('/v1/agent-score/' + encodeURIComponent(publicKey))
+        .then(function(r) { return r.ok ? r.json() : null; })
+        .then(function(score) {
+          var el = document.getElementById('score-card-' + idx);
+          if (!el || !score) { if (el) el.innerHTML = '<div class="score-loading">Score unavailable</div>'; return; }
+          el.innerHTML = renderScoreCard(score);
+        })
+        .catch(function() {
+          var el = document.getElementById('score-card-' + idx);
+          if (el) el.innerHTML = '<div class="score-loading">Score unavailable</div>';
+        });
+    }
+
+    function renderScoreCard(s) {
+      var cats = [
+        { key: 'identity', label: 'Identity', color: '#6B4AFF' },
+        { key: 'economy', label: 'Economy', color: 'var(--green-verify)' },
+        { key: 'engagement', label: 'Engage', color: 'var(--accent)' },
+        { key: 'skills', label: 'Skills', color: '#00BCD4' },
+        { key: 'reputation', label: 'Repute', color: '#FFD700' }
+      ];
+
+      var gradeColor = s.grade === 'S' ? '#FFD700' : s.grade === 'A' ? 'var(--green-verify)' : s.grade === 'B' ? 'var(--accent)' : s.grade === 'C' ? 'var(--text-muted)' : 'var(--red)';
+
+      var html = '<div class="score-badge">';
+      html += '<div class="score-number" style="color:' + gradeColor + '">' + s.total + '</div>';
+      html += '<div class="score-grade ' + s.grade + '">Grade ' + s.grade + '</div>';
+      html += '<div class="score-percentile">Top ' + (100 - s.percentile) + '%</div>';
+      html += '</div>';
+
+      html += renderRadarSVG(s.breakdown, cats);
+
+      html += '<div class="score-breakdown">';
+      cats.forEach(function(c) {
+        var val = s.breakdown[c.key] || 0;
+        html += '<div>';
+        html += '<div class="score-cat-label">' + c.label + '</div>';
+        html += '<div class="score-cat-val" style="color:' + c.color + '">' + val + '</div>';
+        html += '<div class="score-cat-bar"><div class="score-cat-fill" style="width:' + val + '%;background:' + c.color + '"></div></div>';
+        html += '</div>';
+      });
+      html += '</div>';
+
+      return html;
+    }
+
+    function renderRadarSVG(breakdown, cats) {
+      var size = 90, cx = size / 2, cy = size / 2, r = 32;
+      var n = cats.length;
+      var angleStep = (2 * Math.PI) / n;
+      var startAngle = -Math.PI / 2;
+
+      var gridHtml = '';
+      [0.33, 0.66, 1].forEach(function(scale) {
+        var pts = [];
+        for (var i = 0; i < n; i++) {
+          var a = startAngle + i * angleStep;
+          pts.push((cx + r * scale * Math.cos(a)).toFixed(1) + ',' + (cy + r * scale * Math.sin(a)).toFixed(1));
+        }
+        gridHtml += '<polygon points="' + pts.join(' ') + '" fill="none" stroke="var(--border)" stroke-width="0.5"/>';
+      });
+
+      for (var i = 0; i < n; i++) {
+        var a = startAngle + i * angleStep;
+        gridHtml += '<line x1="' + cx + '" y1="' + cy + '" x2="' + (cx + r * Math.cos(a)).toFixed(1) + '" y2="' + (cy + r * Math.sin(a)).toFixed(1) + '" stroke="var(--border)" stroke-width="0.5"/>';
+      }
+
+      var dataPts = [];
+      cats.forEach(function(c, i) {
+        var val = (breakdown[c.key] || 0) / 100;
+        var a = startAngle + i * angleStep;
+        dataPts.push((cx + r * val * Math.cos(a)).toFixed(1) + ',' + (cy + r * val * Math.sin(a)).toFixed(1));
+      });
+
+      gridHtml += '<polygon points="' + dataPts.join(' ') + '" fill="rgba(255,107,74,0.15)" stroke="var(--accent)" stroke-width="1.5"/>';
+
+      cats.forEach(function(c, i) {
+        var a = startAngle + i * angleStep;
+        var lx = cx + (r + 10) * Math.cos(a);
+        var ly = cy + (r + 10) * Math.sin(a);
+        var anchor = Math.abs(Math.cos(a)) < 0.1 ? 'middle' : Math.cos(a) > 0 ? 'start' : 'end';
+        gridHtml += '<text x="' + lx.toFixed(1) + '" y="' + (ly + 2).toFixed(1) + '" text-anchor="' + anchor + '" font-family="var(--font-mono)" font-size="5" fill="var(--text-muted)">' + c.label.charAt(0) + '</text>';
+      });
+
+      return '<svg class="score-radar" width="' + size + '" height="' + size + '" viewBox="0 0 ' + size + ' ' + size + '">' + gridHtml + '</svg>';
     }
 
     function renderTokenEconomyPanel(agent) {
