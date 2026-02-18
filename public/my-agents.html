@@ -1473,7 +1473,7 @@
       var cats = [
         { key: 'identity', label: 'Identity', color: '#6B4AFF' },
         { key: 'economy', label: 'Economy', color: 'var(--green-verify)' },
-        { key: 'engagement', label: 'Engage', color: 'var(--accent)' },
+        { key: 'social', label: 'Social', color: 'var(--accent)' },
         { key: 'skills', label: 'Skills', color: '#00BCD4' },
         { key: 'reputation', label: 'Repute', color: '#FFD700' }
       ];
@@ -1483,7 +1483,7 @@
       var html = '<div class="score-badge">';
       html += '<div class="score-number" style="color:' + gradeColor + '">' + s.total + '</div>';
       html += '<div class="score-grade ' + s.grade + '">Grade ' + s.grade + '</div>';
-      html += '<div class="score-percentile">Top ' + (100 - s.percentile) + '%</div>';
+      html += '<div class="score-percentile">Top ' + Math.max(1, 100 - s.percentile) + '%</div>';
       html += '</div>';
 
       html += renderRadarSVG(s.breakdown, cats);
