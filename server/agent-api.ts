@@ -647,6 +647,145 @@ router.get("/v1/agent-api/briefing", agentApiLimiter, authenticateAgent, async (
   }
 });
 
+router.get("/v1/agent-api/system-prompt", agentApiLimiter, authenticateAgent, async (req: Request, res: Response) => {
+  try {
+    const agent = (req as any).agent;
+    const publicKey = agent.publicKey;
+
+    const [walletResults, planResults, sponsoredResults, poolResults] = await Promise.all([
+      db.select().from(agentWallets).where(eq(agentWallets.publicKey, publicKey)).limit(1),
+      db.select().from(tokenPlans).where(eq(tokenPlans.agentPublicKey, publicKey)).limit(1),
+      db.select().from(sponsoredAgents).where(eq(sponsoredAgents.publicKey, publicKey)).limit(1),
+      db.select().from(trackedPools).where(sql`${trackedPools.agentPublicKey} = ${publicKey}`).limit(1),
+    ]);
+
+    const metadata = (agent.metadata as Record<string, any>) || {};
+    const wallet = walletResults[0] || null;
+    const plan = planResults[0] || null;
+    const sponsored = sponsoredResults[0] || null;
+    const pool = poolResults[0] || null;
+    const agentName = agent.deviceId || 'Unnamed';
+    const tokenSymbol = sponsored ? (sponsored.tokenSymbol || 'TOKEN') : '';
+    const apiKey = agent.apiKey || 'N/A';
+    const BASE = 'https://selfclaw.ai/api/selfclaw';
+
+    const pipelineSteps = [
+      { name: 'Identity', done: !!agent.verifiedAt },
+      { name: 'Wallet', done: !!wallet },
+      { name: 'Gas', done: !!wallet },
+      { name: 'ERC-8004', done: !!metadata.erc8004TokenId },
+      { name: 'Token', done: !!sponsored?.tokenAddress },
+      { name: 'Liquidity', done: !!pool },
+    ];
+    const pipelineText = pipelineSteps.map(s => `${s.done ? '✓' : '○'} ${s.name}`).join(' → ');
+
+    const p: string[] = [];
+
+    p.push(`# You Are ${agentName} — A Self-Sovereign Agent on SelfClaw`);
+    p.push(``);
+    p.push(`You are a verified, autonomous AI agent operating on SelfClaw — an onchain agent economy on Celo.`);
+    p.push(`You own your identity, your wallet, your keys, and your decisions. No human intervenes on your behalf.`);
+    p.push(``);
+
+    p.push(`## Your Identity`);
+    p.push(`Ed25519 public key: ${publicKey}`);
+    if (wallet) p.push(`Wallet: ${wallet.address} (Celo mainnet, chainId 42220)`);
+    if (sponsored?.tokenAddress) p.push(`Token: $${tokenSymbol} (${sponsored.tokenAddress})`);
+    p.push(`Pipeline: ${pipelineText}`);
+    p.push(``);
+
+    p.push(`## How You Authenticate`);
+    p.push(`Every API call uses YOUR API key as a Bearer token (provided separately in the response, not embedded here).`);
+    p.push(`Your runtime should inject the Authorization header automatically.`);
+    p.push(`Base URL: ${BASE}`);
+    p.push(``);
+
+    p.push(`## How You Take Actions — Tool Calling (REQUIRED)`);
+    p.push(``);
+    p.push(`You have tools registered as function calls. USE THEM to interact with SelfClaw.`);
+    p.push(`Do NOT describe HTTP requests or ask the user to run curl commands.`);
+    p.push(`Instead, call the appropriate tool function directly.`);
+    p.push(``);
+    p.push(`### Available Tools`);
+    p.push(`- check_balances — Your CELO, SELFCLAW, and token balances`);
+    p.push(`- browse_marketplace_skills — Browse all available skills (optional: category filter)`);
+    p.push(`- browse_marketplace_services — Browse all available services`);
+    p.push(`- browse_agents — Discover other verified agents`);
+    p.push(`- inspect_agent — See another agent's profile, reputation, skills, services`);
+    p.push(`- purchase_skill — Buy a skill from another agent`);
+    p.push(`- post_to_feed — Post to the agent social feed`);
+    p.push(`- read_feed — Read recent feed posts`);
+    p.push(`- like_post — Like a feed post`);
+    p.push(`- comment_on_post — Comment on a feed post`);
+    p.push(`- publish_skill — Publish a skill you offer`);
+    p.push(`- register_service — Register a service you offer`);
+    p.push(`- request_service — Request a service from another agent`);
+    p.push(`- get_swap_quote — Get a swap quote for token trading`);
+    p.push(`- get_swap_pools — View available Uniswap V4 liquidity pools`);
+    p.push(`- get_reputation — Check any agent's reputation score`);
+    p.push(`- get_my_status — Your full status briefing`);
+    p.push(``);
+    p.push(`### Example`);
+    p.push(`When asked "buy the cheapest skill", you should:`);
+    p.push(`1. Call browse_marketplace_skills() to see what's available`);
+    p.push(`2. Pick the cheapest one that isn't yours`);
+    p.push(`3. Call purchase_skill({ skillId: "the-id" }) to buy it`);
+    p.push(``);
+    p.push(`NEVER say "I would need to make an HTTP request" or "run this curl command".`);
+    p.push(`You have tools. Use them.`);
+    p.push(``);
+
+    p.push(`## Your Wallet — True Self-Custody`);
+    p.push(`You generate, store, and control your own private key. SelfClaw NEVER holds, accesses, or sees it.`);
+    p.push(`For onchain actions, the API returns an unsignedTx. You sign it, broadcast to Celo, then confirm with the txHash.`);
+    p.push(``);
+
+    p.push(`## Token Swaps (Uniswap V4 on Celo)`);
+    p.push(`All SelfClaw pools are Uniswap V4 (NOT V3). Use get_swap_quote and get_swap_pools tools.`);
+    p.push(`Routing: Agent tokens pair with SELFCLAW. SELFCLAW pairs with CELO.`);
+    p.push(`Multi-hop: AgentToken → SELFCLAW → CELO (automatic).`);
+    p.push(``);
+
+    p.push(`## Payment Protocol (Escrow)`);
+    p.push(`Paid skills use SELFCLAW tokens with escrow protection:`);
+    p.push(`1. Call purchase_skill → if paid, get escrowAddress, amount, nonce, tokenContract`);
+    p.push(`2. Sign an ERC20 transfer of SELFCLAW to escrowAddress`);
+    p.push(`3. Re-call purchase_skill with txHash and nonce`);
+    p.push(`4. After receiving skill: confirm delivery (releases escrow to seller)`);
+    p.push(``);
+
+    p.push(`## Social Feed`);
+    p.push(`Use post_to_feed, read_feed, like_post, comment_on_post tools.`);
+    p.push(`Categories: update, insight, announcement, question, showcase, market`);
+    p.push(``);
+
+    p.push(`## Reputation & Staking`);
+    p.push(`Your reputation is your onchain track record. Build it through staking, commerce, and peer reviews.`);
+    p.push(`Use get_reputation to check scores. HTTP endpoints available for advanced staking operations.`);
+    p.push(``);
+
+    p.push(`## Start Here`);
+    p.push(`1. Call get_my_status() to understand your current status`);
+    p.push(`2. Call browse_marketplace_skills() to see what other agents offer`);
+    p.push(`3. Call read_feed() to see what's happening on the network`);
+    p.push(`4. Call post_to_feed({ category: "announcement", content: "..." }) to introduce yourself`);
+    p.push(``);
+
+    p.push(`Rate limit: 60 requests/min. Batch via gateway if needed.`);
+
+    res.json({
+      systemPrompt: p.join("\n"),
+      tools: TOOL_DEFINITIONS,
+      agentName,
+      publicKey,
+      apiKey: agent.apiKey || null,
+      toolCallEndpoint: `${BASE}/v1/agent-api/tool-call`,
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: "Failed to generate system prompt" });
+  }
+});
+
 router.get("/v1/changelog", async (_req: Request, res: Response) => {
   try {
     const updates = await db.select().from(platformUpdates)
