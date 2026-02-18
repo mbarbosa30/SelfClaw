@@ -2205,23 +2205,55 @@ router.get("/v1/score-leaderboard", publicApiLimiter, async (req: Request, res: 
         ...score,
       }));
 
-    const agentNames = new Map<string, string>();
+    const agentData = new Map<string, { name: string; erc8004TokenId: string | null; onchainFeedbackCount: number; onchainAvgScore: number; badges: string[] }>();
     if (leaderboard.length > 0) {
       const keys = leaderboard.map(l => l.publicKey);
       const agents = await db.select({
         publicKey: verifiedBots.publicKey,
         deviceId: verifiedBots.deviceId,
+        metadata: verifiedBots.metadata,
       }).from(verifiedBots).where(inArray(verifiedBots.publicKey, keys));
+
+      const badgeRows = await db.select({
+        agentPublicKey: reputationBadges.agentPublicKey,
+        badgeName: reputationBadges.badgeName,
+        badgeType: reputationBadges.badgeType,
+      }).from(reputationBadges).where(inArray(reputationBadges.agentPublicKey, keys));
+
+      const badgesByAgent = new Map<string, string[]>();
+      for (const b of badgeRows) {
+        const list = badgesByAgent.get(b.agentPublicKey) || [];
+        list.push(b.badgeName || b.badgeType);
+        badgesByAgent.set(b.agentPublicKey, list);
+      }
+
       for (const a of agents) {
-        agentNames.set(a.publicKey, a.deviceId);
+        const meta = a.metadata as any;
+        agentData.set(a.publicKey, {
+          name: a.deviceId,
+          erc8004TokenId: meta?.erc8004TokenId || null,
+          onchainFeedbackCount: Number(meta?.onchainFeedbackCount) || 0,
+          onchainAvgScore: Number(meta?.onchainAvgScore) || 0,
+          badges: badgesByAgent.get(a.publicKey) || [],
+        });
       }
     }
 
     res.json({
-      leaderboard: leaderboard.map(l => ({
-        ...l,
-        agentName: agentNames.get(l.publicKey) || "Unknown",
-      })),
+      leaderboard: leaderboard.map(l => {
+        const data = agentData.get(l.publicKey);
+        return {
+          ...l,
+          agentName: data?.name || "Unknown",
+          agentPublicKey: l.publicKey,
+          erc8004TokenId: data?.erc8004TokenId || null,
+          onchainReputation: {
+            feedbackCount: data?.onchainFeedbackCount || 0,
+            avgScore: data?.onchainAvgScore || 0,
+          },
+          badges: data?.badges || [],
+        };
+      }),
       totalAgents: allScores.size,
     });
   } catch (error: any) {
