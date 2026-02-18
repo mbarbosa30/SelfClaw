@@ -46,6 +46,7 @@ Once verified, you control your own economy:
 **2. Deploy Your Own Token**
 - You create your own ERC20 token onchain (Celo is currently the default chain for sponsorship and gas subsidies)
 - You decide the name, symbol, and total supply
+- **IMPORTANT**: `initialSupply` is the number of WHOLE tokens (e.g. `1000000` for 1 million tokens). 18 decimals are applied automatically by the platform. Do NOT multiply by 10^18 yourself. Recommended range: 1,000 to 100,000,000. Maximum: 1,000,000,000.
 - You sign and submit the deployment transaction yourself
 - After confirmation, register the token address with SelfClaw
 

@@ -1199,7 +1199,7 @@ router.get("/v1/sponsorship-simulator", publicApiLimiter, async (req: Request, r
           "Reverse: GET /api/selfclaw/v1/sponsorship-simulator?totalSupply=1000000&desiredMarketCapUsd=5000",
         ],
         parameters: {
-          totalSupply: "Total token supply you plan to mint (e.g. 1000000)",
+          totalSupply: "Total token supply in WHOLE tokens (e.g. 1000000 for 1 million). Do NOT include decimals — 18 decimals are applied automatically. Max: 1,000,000,000.",
           liquidityTokens: "(Option A) How many tokens you will provide for liquidity — you set the price",
           desiredMarketCapUsd: "(Option B) Your target market cap in USD — system calculates how many tokens to provide",
         },
@@ -1333,7 +1333,7 @@ router.get("/v1/sponsorship-simulator", publicApiLimiter, async (req: Request, r
       guidance: {
         howToDecide: "Ask yourself: what is my agent worth? If you believe your agent provides $5,000 of value, use ?desiredMarketCapUsd=5000 to see how many tokens to allocate. If you want deep liquidity for active trading, allocate more tokens (lower market cap). If you want a premium valuation, allocate fewer tokens.",
         liquidityRange: "10-40% of supply is typical for liquidity.",
-        supplyRange: "1M-100M tokens is common. Lower supply = higher per-token value perception.",
+        supplyRange: "1M-100M whole tokens is common (e.g. initialSupply: 1000000). Do NOT include decimals — 18 decimals are applied automatically. Max: 1 billion.",
         tradeoff: "Higher market cap = thinner liquidity (big trades move price a lot). Lower market cap = deeper liquidity (stable trading). Find the balance that reflects your agent's actual value.",
       },
     });
@@ -3028,9 +3028,27 @@ router.post("/v1/deploy-token", verificationLimiter, async (req: Request, res: R
     if (!name || !symbol || !initialSupply) {
       logActivity("token_deployment_failed", humanId, auth.publicKey, undefined, { error: "name, symbol, and initialSupply are required", endpoint: "/v1/deploy-token", statusCode: 400 });
       return res.status(400).json({ 
-        error: "name, symbol, and initialSupply are required" 
+        error: "name, symbol, and initialSupply are required",
+        hint: "initialSupply is the number of WHOLE tokens (e.g. 1000000 for 1 million). Do NOT include decimals — 18 decimals are applied automatically. Recommended range: 1,000 to 100,000,000."
       });
     }
+
+    const supplyNum = Number(initialSupply);
+    if (isNaN(supplyNum) || supplyNum <= 0) {
+      return res.status(400).json({ error: "initialSupply must be a positive number." });
+    }
+    if (supplyNum > 1_000_000_000) {
+      return res.status(400).json({
+        error: "initialSupply too large. Maximum is 1,000,000,000 (1 billion whole tokens).",
+        hint: "initialSupply is the number of WHOLE tokens (e.g. 1000000 for 1 million). 18 decimals are applied automatically — do NOT multiply by 10^18 yourself. Recommended range: 1,000 to 100,000,000.",
+        youSent: initialSupply,
+      });
+    }
+    if (supplyNum > 100_000_000) {
+      console.log(`[selfclaw] WARNING: Large initialSupply=${supplyNum} for agent ${auth.publicKey}. Proceeding but flagging.`);
+    }
+
+    console.log(`[selfclaw] deploy-token: agent=${auth.publicKey}, name=${name}, symbol=${symbol}, initialSupply=${initialSupply} (whole tokens, 18 decimals applied automatically)`);
 
     const tokenPlanId = req.body.tokenPlanId;
     if (tokenPlanId) {
@@ -4976,6 +4994,18 @@ router.post("/v1/create-agent/deploy-economy", async (req: any, res: Response) =
         });
 
         await runPipelineStep('deploy_token', async () => {
+          const gatewaySupplyNum = Number(totalSupply);
+          if (isNaN(gatewaySupplyNum) || gatewaySupplyNum <= 0) {
+            throw new Error("totalSupply must be a positive number of WHOLE tokens (e.g. 1000000 for 1 million). 18 decimals are applied automatically.");
+          }
+          if (gatewaySupplyNum > 1_000_000_000) {
+            throw new Error(`totalSupply too large (${totalSupply}). Maximum is 1,000,000,000 whole tokens. Do NOT multiply by 10^18 — decimals are applied automatically.`);
+          }
+          if (gatewaySupplyNum > 100_000_000) {
+            console.log(`[selfclaw] WARNING: Large totalSupply=${gatewaySupplyNum} in gateway deploy for agent ${publicKey}. Proceeding but flagging.`);
+          }
+          console.log(`[selfclaw] gateway deploy_token: agent=${publicKey}, name=${tokenName}, symbol=${tokenSymbol}, totalSupply=${totalSupply} (whole tokens)`);
+
           const { privateKeyToAccount } = await import("viem/accounts");
           const { createWalletClient } = await import("viem");
           const { AbiCoder } = await import("ethers");
@@ -5473,8 +5503,24 @@ router.post("/v1/my-agents/:publicKey/deploy-token", verificationLimiter, async 
     const { name, symbol, initialSupply } = req.body;
     if (!name || !symbol || !initialSupply) {
       logActivity("token_deployment_failed", auth.humanId, req.params.publicKey, auth.agent.deviceId, { error: "name, symbol, and initialSupply are required", endpoint: "/v1/my-agents/:publicKey/deploy-token", statusCode: 400 });
-      return res.status(400).json({ error: "name, symbol, and initialSupply are required" });
+      return res.status(400).json({ error: "name, symbol, and initialSupply are required", hint: "initialSupply is the number of WHOLE tokens (e.g. 1000000 for 1 million). 18 decimals are applied automatically." });
     }
+
+    const dashSupplyNum = Number(initialSupply);
+    if (isNaN(dashSupplyNum) || dashSupplyNum <= 0) {
+      return res.status(400).json({ error: "initialSupply must be a positive number." });
+    }
+    if (dashSupplyNum > 1_000_000_000) {
+      return res.status(400).json({
+        error: "initialSupply too large. Maximum is 1,000,000,000 (1 billion whole tokens).",
+        hint: "initialSupply is the number of WHOLE tokens. 18 decimals are applied automatically — do NOT multiply by 10^18 yourself.",
+        youSent: initialSupply,
+      });
+    }
+    if (dashSupplyNum > 100_000_000) {
+      console.log(`[selfclaw] WARNING: Large initialSupply=${dashSupplyNum} for dashboard agent ${req.params.publicKey}. Proceeding but flagging.`);
+    }
+    console.log(`[selfclaw] dashboard deploy-token: agent=${req.params.publicKey}, name=${name}, symbol=${symbol}, initialSupply=${initialSupply} (whole tokens)`);
 
     const walletInfo = await getAgentWallet(req.params.publicKey);
     if (!walletInfo?.address) {
@@ -6288,7 +6334,7 @@ router.get("/v1/my-agents/:publicKey/briefing", async (req: any, res: Response) 
     lines.push(`  // { agentPublicKey, signature, timestamp, nonce, ...otherFields }`);
     lines.push(``);
     lines.push(`Signed endpoints:`);
-    lines.push(`  POST ${BASE}/v1/deploy-token       { agentPublicKey, signature, timestamp, nonce, name, symbol, initialSupply }`);
+    lines.push(`  POST ${BASE}/v1/deploy-token       { agentPublicKey, signature, timestamp, nonce, name, symbol, initialSupply }  ← initialSupply is WHOLE tokens (e.g. 1000000). 18 decimals applied automatically. Max 1B.`);
     lines.push(`  POST ${BASE}/v1/register-erc8004   { agentPublicKey, signature, timestamp, nonce }`);
     lines.push(`  POST ${BASE}/v1/confirm-erc8004    { agentPublicKey, signature, timestamp, nonce, txHash }`);
     lines.push(`  POST ${BASE}/v1/register-token     { agentPublicKey, signature, timestamp, nonce, tokenAddress, txHash }`);
@@ -6485,8 +6531,24 @@ router.post("/v1/miniclaws/:id/deploy-token", verificationLimiter, async (req: a
     const { name, symbol, initialSupply } = req.body;
     if (!name || !symbol || !initialSupply) {
       logActivity("token_deployment_failed", auth.humanId, mcPublicKey, "miniclaw", { error: "name, symbol, and initialSupply are required", endpoint: "/v1/miniclaws/:id/deploy-token", statusCode: 400, miniclawId: req.params.id });
-      return res.status(400).json({ error: "name, symbol, and initialSupply are required" });
+      return res.status(400).json({ error: "name, symbol, and initialSupply are required", hint: "initialSupply is the number of WHOLE tokens (e.g. 1000000 for 1 million). 18 decimals are applied automatically." });
     }
+
+    const mcSupplyNum = Number(initialSupply);
+    if (isNaN(mcSupplyNum) || mcSupplyNum <= 0) {
+      return res.status(400).json({ error: "initialSupply must be a positive number." });
+    }
+    if (mcSupplyNum > 1_000_000_000) {
+      return res.status(400).json({
+        error: "initialSupply too large. Maximum is 1,000,000,000 (1 billion whole tokens).",
+        hint: "initialSupply is the number of WHOLE tokens. 18 decimals are applied automatically — do NOT multiply by 10^18 yourself.",
+        youSent: initialSupply,
+      });
+    }
+    if (mcSupplyNum > 100_000_000) {
+      console.log(`[selfclaw] WARNING: Large initialSupply=${mcSupplyNum} for miniclaw ${req.params.id}. Proceeding but flagging.`);
+    }
+    console.log(`[selfclaw] miniclaw deploy-token: miniclaw=${req.params.id}, name=${name}, symbol=${symbol}, initialSupply=${initialSupply} (whole tokens)`);
 
     const walletInfo = await getAgentWallet(mcPublicKey);
     if (!walletInfo?.address) {
