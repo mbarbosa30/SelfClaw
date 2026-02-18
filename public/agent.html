@@ -922,7 +922,13 @@
       } else {
         h += '<span class="ap-badge" style="color:var(--text-muted);">Unverified</span>';
       }
-      if (hasToken) h += '<span class="ap-badge ap-badge-token">$' + esc(t.symbol) + '</span>';
+      if (hasToken) {
+        if (t.address) {
+          h += '<a href="https://celoscan.io/token/' + esc(t.address) + '" target="_blank" rel="noopener" class="ap-badge ap-badge-token" style="text-decoration:none;cursor:pointer;">$' + esc(t.symbol) + ' &#8599;</a>';
+        } else {
+          h += '<span class="ap-badge ap-badge-token">$' + esc(t.symbol) + '</span>';
+        }
+      }
       if (hasErc8004) h += '<span class="ap-badge ap-badge-erc8004">ERC-8004</span>';
       if (hasWallet) h += '<span class="ap-badge ap-badge-wallet">Wallet</span>';
       if (hasPool && (p.poolVersion === 'v4' || p.v4PoolId)) h += '<span class="ap-badge ap-badge-sponsored">Sponsored</span>';
@@ -951,6 +957,11 @@
           h += '<p class="ap-empty">Token deployed but no active liquidity pool yet.</p>';
         }
         if (hasToken && t.address) {
+          h += '<div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;margin-bottom:0.75rem;padding:0.5rem 0.75rem;border:1px solid var(--border);background:var(--bg);">';
+          h += '<span style="font-family:var(--font-mono);font-size:0.6rem;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-muted);flex-shrink:0;">Contract</span>';
+          h += '<span style="font-family:var(--font-mono);font-size:0.75rem;color:var(--text);word-break:break-all;">' + esc(t.address) + '</span>';
+          h += '<button class="ap-copy-btn" data-addr="' + esc(t.address) + '">Copy</button>';
+          h += '</div>';
           h += '<div class="ap-pool-links">';
           h += '<a href="https://celoscan.io/token/' + esc(t.address) + '" target="_blank" rel="noopener" class="ap-pool-link">Token on Celoscan</a>';
           if (hasPool && p.address) h += '<a href="https://celoscan.io/address/' + esc(p.address) + '" target="_blank" rel="noopener" class="ap-pool-link">Pool Contract</a>';
