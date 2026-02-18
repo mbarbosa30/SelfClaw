@@ -134,15 +134,15 @@ async function computeSocialScore(publicKey: string): Promise<number> {
   else if (interaction >= 10) score += 10;
   else if (interaction >= 1) score += 5;
 
-  const [digestCount] = await db.select({ count: count() })
-    .from(agentPosts)
-    .where(and(
-      eq(agentPosts.agentPublicKey, publicKey),
-      eq(agentPosts.active, true),
-      sql`${agentPosts.metadata}->>'source' = 'feed_digest'`
-    ));
-
-  const digests = Number(digestCount?.count || 0);
+  let digests = 0;
+  try {
+    const digestResult = await db.execute(
+      sql`SELECT COUNT(*)::int as count FROM feed_digest_log WHERE agent_public_key = ${publicKey}`
+    );
+    digests = Number((digestResult as any).rows?.[0]?.count || 0);
+  } catch (e: any) {
+    console.error("[selfclaw-score] feed_digest_log query failed:", e.message);
+  }
   if (digests >= 5) score += 15;
   else if (digests >= 1) score += 8;
 
