@@ -2320,24 +2320,104 @@ router.get("/v1/reputation-leaderboard", publicApiLimiter, async (req: Request, 
   }
 });
 
-// Judge/peer feedback — verified agents or judges can submit reputation feedback for other agents
+// Shared helper: submit onchain feedback (v2.0 spec compliant)
+async function submitOnchainFeedback(opts: {
+  targetAgentPublicKey: string;
+  targetTokenId: string;
+  value: number;
+  valueDecimals: number;
+  tag1: string;
+  tag2: string;
+  reasoning?: string;
+  endpoint?: string;
+  fromLabel: string;
+  fromHumanId?: string;
+}): Promise<{ txHash: string; explorerUrl: string }> {
+  const { ethers } = await import("ethers");
+  const config = erc8004Service.getConfig();
+
+  const wallet = process.env.CELO_PRIVATE_KEY
+    ? new ethers.Wallet(process.env.CELO_PRIVATE_KEY, new ethers.JsonRpcProvider(config.rpcUrl))
+    : null;
+
+  if (!wallet) {
+    throw new Error("Platform wallet not configured for reputation transactions");
+  }
+
+  const feedbackURIData: Record<string, any> = {
+    agentRegistry: `eip155:42220:${config.identityRegistry}`,
+    agentId: Number(opts.targetTokenId),
+    clientAddress: `eip155:42220:${wallet.address}`,
+    createdAt: new Date().toISOString(),
+    value: String(opts.value),
+    valueDecimals: opts.valueDecimals,
+    tag1: opts.tag1,
+    tag2: opts.tag2,
+  };
+  if (opts.endpoint) feedbackURIData.endpoint = opts.endpoint;
+  if (opts.reasoning) feedbackURIData.reasoning = opts.reasoning;
+  if (opts.fromHumanId) feedbackURIData.context = `Feedback from verified human ${opts.fromHumanId.substring(0, 8)}...`;
+
+  if (opts.valueDecimals < 0 || opts.valueDecimals > 18) {
+    throw new Error("valueDecimals must be 0-18");
+  }
+
+  const feedbackURIJson = JSON.stringify(feedbackURIData);
+  const feedbackHash = ethers.keccak256(ethers.toUtf8Bytes(feedbackURIJson));
+  const feedbackURIEncoded = `data:application/json;base64,${Buffer.from(feedbackURIJson).toString("base64")}`;
+
+  const REPUTATION_ABI = [
+    "function giveFeedback(uint256 agentId, int128 value, uint8 valueDecimals, string tag1, string tag2, string endpoint, string feedbackURI, bytes32 feedbackHash) external"
+  ];
+  const reputation = new ethers.Contract(config.resolver, REPUTATION_ABI, wallet);
+
+  const agentEndpoint = opts.endpoint || `https://selfclaw.ai/agent?id=${encodeURIComponent(opts.targetAgentPublicKey)}`;
+
+  const tx = await reputation.giveFeedback(
+    opts.targetTokenId,
+    BigInt(opts.value),
+    opts.valueDecimals,
+    opts.tag1,
+    opts.tag2,
+    agentEndpoint,
+    feedbackURIEncoded,
+    feedbackHash
+  );
+
+  const receipt = await tx.wait();
+
+  console.log(`[selfclaw] Feedback submitted: ${opts.fromLabel} gave value=${opts.value}/${opts.valueDecimals}dec to token#${opts.targetTokenId} tx: ${receipt.hash}`);
+
+  return {
+    txHash: receipt.hash,
+    explorerUrl: erc8004Service.getTxExplorerUrl(receipt.hash),
+  };
+}
+
+// Judge/peer feedback — verified agents or judges can submit reputation feedback for other agents (API auth)
 router.post("/v1/reputation/feedback", feedbackLimiter, async (req: Request, res: Response) => {
   try {
     const auth = await authenticateAgent(req, res);
     if (!auth) return;
 
-    const { targetAgentPublicKey, score, tag1, tag2, feedbackURI } = req.body;
+    const { targetAgentPublicKey, score, value, valueDecimals, tag1, tag2, reasoning } = req.body;
 
-    if (!targetAgentPublicKey || score === undefined) {
+    const feedbackValue = value !== undefined ? Number(value) : (score !== undefined ? Number(score) : undefined);
+    const feedbackDecimals = valueDecimals !== undefined ? Number(valueDecimals) : 0;
+
+    if (!targetAgentPublicKey || feedbackValue === undefined) {
       return res.status(400).json({
-        error: "targetAgentPublicKey and score are required",
-        hint: "score should be 0-100 (0=worst, 100=best). Optional: tag1, tag2, feedbackURI"
+        error: "targetAgentPublicKey and value (or score) are required",
+        hint: "v2.0: use value (int128) + valueDecimals (uint8, 0-18). Legacy: score (0-100) still accepted."
       });
     }
 
-    const numericScore = Number(score);
-    if (isNaN(numericScore) || numericScore < 0 || numericScore > 100) {
-      return res.status(400).json({ error: "score must be between 0 and 100" });
+    if (isNaN(feedbackValue)) {
+      return res.status(400).json({ error: "value/score must be a valid number" });
+    }
+
+    if (feedbackDecimals < 0 || feedbackDecimals > 18 || !Number.isInteger(feedbackDecimals)) {
+      return res.status(400).json({ error: "valueDecimals must be an integer between 0 and 18" });
     }
 
     if (targetAgentPublicKey === auth.publicKey) {
@@ -2381,66 +2461,135 @@ router.post("/v1/reputation/feedback", feedbackLimiter, async (req: Request, res
       return res.status(400).json({ error: "Target agent's ERC-8004 token not found onchain" });
     }
 
-    const feedbackData = JSON.stringify({
-      type: "peer-feedback",
-      from: auth.publicKey,
-      fromHumanId: auth.humanId,
-      score: numericScore,
-      tag1: tag1 || "general",
-      tag2: tag2 || "",
-      submittedAt: new Date().toISOString()
-    });
-
-    const { ethers } = await import("ethers");
-    const feedbackHash = ethers.keccak256(ethers.toUtf8Bytes(feedbackData));
-
-    const config = erc8004Service.getConfig();
-    const wallet = process.env.CELO_PRIVATE_KEY
-      ? new ethers.Wallet(process.env.CELO_PRIVATE_KEY, new ethers.JsonRpcProvider(config.rpcUrl))
-      : null;
-
-    if (!wallet) {
-      return res.status(503).json({ error: "Platform wallet not configured for reputation transactions" });
-    }
-
-    const REPUTATION_REGISTRY_ABI = [
-      "function giveFeedback(uint256 agentId, uint256 score, uint8 decimals, string tag1, string tag2, string endpoint, string feedbackURI, bytes32 feedbackHash) external"
-    ];
-
-    const reputation = new ethers.Contract(config.resolver, REPUTATION_REGISTRY_ABI, wallet);
-
-    const tx = await reputation.giveFeedback(
+    const result = await submitOnchainFeedback({
+      targetAgentPublicKey,
       targetTokenId,
-      numericScore,
-      0,
-      tag1 || "peer-review",
-      tag2 || "hackathon",
-      `https://selfclaw.ai/api/selfclaw/v1/agent/${encodeURIComponent(auth.publicKey)}`,
-      feedbackURI || "",
-      feedbackHash
-    );
-
-    const receipt = await tx.wait();
+      value: feedbackValue,
+      valueDecimals: feedbackDecimals,
+      tag1: tag1 || "peer-review",
+      tag2: tag2 || "",
+      reasoning: reasoning || undefined,
+      fromLabel: auth.publicKey.substring(0, 20) + "...",
+      fromHumanId: auth.humanId,
+    });
 
     feedbackCooldowns.set(cooldownKey, Date.now());
 
-    console.log(`[selfclaw] Peer feedback: ${auth.publicKey.substring(0, 20)}... gave score ${numericScore} to ${targetAgentPublicKey.substring(0, 20)}... tx: ${receipt.hash}`);
-
     res.json({
       success: true,
-      txHash: receipt.hash,
-      explorerUrl: erc8004Service.getTxExplorerUrl(receipt.hash),
+      txHash: result.txHash,
+      explorerUrl: result.explorerUrl,
       feedback: {
         from: auth.publicKey,
         to: targetAgentPublicKey,
-        score: numericScore,
+        value: feedbackValue,
+        valueDecimals: feedbackDecimals,
         tag1: tag1 || "peer-review",
-        tag2: tag2 || "hackathon"
+        tag2: tag2 || ""
       },
       reputationRegistry: erc8004Service.getReputationRegistryAddress()
     });
   } catch (error: any) {
     console.error("[selfclaw] reputation feedback error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Session-based feedback — for browser UI (verified users can rate agents they don't own)
+router.post("/v1/reputation/web-feedback", feedbackLimiter, async (req: any, res: Response) => {
+  try {
+    if (!req.session?.isAuthenticated || !req.session?.humanId) {
+      return res.status(401).json({
+        error: "Login required",
+        hint: "You must be logged in with Self.xyz passport to submit feedback."
+      });
+    }
+
+    const humanId = req.session.humanId;
+    const { targetAgentPublicKey, value, valueDecimals, tag1, tag2, reasoning } = req.body;
+
+    const feedbackValue = Number(value);
+    const feedbackDecimals = valueDecimals !== undefined ? Number(valueDecimals) : 0;
+
+    if (!targetAgentPublicKey || isNaN(feedbackValue)) {
+      return res.status(400).json({ error: "targetAgentPublicKey and value are required" });
+    }
+
+    if (feedbackValue < 0 || feedbackValue > 100) {
+      return res.status(400).json({ error: "value must be between 0 and 100" });
+    }
+
+    const myAgents = await db.select()
+      .from(verifiedBots)
+      .where(sql`${verifiedBots.humanId} = ${humanId}`);
+
+    if (myAgents.length === 0) {
+      return res.status(403).json({ error: "You need at least one verified agent to submit feedback" });
+    }
+
+    const isOwnAgent = myAgents.some(a => a.publicKey === targetAgentPublicKey);
+    if (isOwnAgent) {
+      return res.status(400).json({ error: "Cannot submit feedback for your own agent" });
+    }
+
+    const cooldownKey = `session:${humanId}:${targetAgentPublicKey}`;
+    const lastFeedback = feedbackCooldowns.get(cooldownKey);
+    if (lastFeedback && Date.now() - lastFeedback < 24 * 60 * 60 * 1000) {
+      const hoursLeft = Math.ceil((24 * 60 * 60 * 1000 - (Date.now() - lastFeedback)) / (60 * 60 * 1000));
+      return res.status(429).json({
+        error: `You already submitted feedback for this agent. Try again in ~${hoursLeft} hour(s).`
+      });
+    }
+
+    const targetRecords = await db.select()
+      .from(verifiedBots)
+      .where(sql`${verifiedBots.publicKey} = ${targetAgentPublicKey}`)
+      .limit(1);
+
+    if (targetRecords.length === 0) {
+      return res.status(404).json({ error: "Target agent not found" });
+    }
+
+    const targetMeta = targetRecords[0].metadata as any || {};
+    const targetTokenId = targetMeta.erc8004TokenId;
+
+    if (!targetTokenId) {
+      return res.status(400).json({ error: "This agent does not have an ERC-8004 identity yet" });
+    }
+
+    if (!erc8004Service.isReady()) {
+      return res.status(503).json({ error: "ERC-8004 contracts not available" });
+    }
+
+    const result = await submitOnchainFeedback({
+      targetAgentPublicKey,
+      targetTokenId,
+      value: feedbackValue,
+      valueDecimals: feedbackDecimals,
+      tag1: tag1 || "peer-review",
+      tag2: tag2 || "",
+      reasoning: reasoning || undefined,
+      endpoint: `https://selfclaw.ai/agent?id=${encodeURIComponent(targetAgentPublicKey)}`,
+      fromLabel: `session:${humanId.substring(0, 8)}...`,
+      fromHumanId: humanId,
+    });
+
+    feedbackCooldowns.set(cooldownKey, Date.now());
+
+    logActivity("feedback_submitted", humanId, targetAgentPublicKey, targetRecords[0].deviceId || undefined, {
+      value: feedbackValue,
+      tag1: tag1 || "peer-review",
+      txHash: result.txHash,
+    });
+
+    res.json({
+      success: true,
+      txHash: result.txHash,
+      explorerUrl: result.explorerUrl,
+      message: "Feedback submitted onchain successfully"
+    });
+  } catch (error: any) {
+    console.error("[selfclaw] web feedback error:", error);
     res.status(500).json({ error: error.message });
   }
 });

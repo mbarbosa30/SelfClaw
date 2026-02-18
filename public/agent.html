@@ -640,6 +640,95 @@
       text-align: center;
       border-top: 1px solid var(--border);
     }
+    .ap-give-fb-btn {
+      display: inline-block;
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      font-weight: 600;
+      padding: 0.45rem 1rem;
+      border: 2px solid var(--accent);
+      color: var(--accent);
+      background: transparent;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+      margin-top: 0.75rem;
+      margin-right: 0.5rem;
+    }
+    .ap-give-fb-btn:hover { background: var(--accent); color: #fff; }
+    .ap-fb-form {
+      border: 2px solid var(--border-heavy);
+      padding: 1rem;
+      margin-top: 1rem;
+      display: none;
+    }
+    .ap-fb-form.visible { display: block; }
+    .ap-fb-form label {
+      display: block;
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+      margin-bottom: 0.25rem;
+      margin-top: 0.75rem;
+    }
+    .ap-fb-form label:first-child { margin-top: 0; }
+    .ap-fb-form input[type="range"] {
+      width: 100%;
+      accent-color: var(--accent);
+    }
+    .ap-fb-score-display {
+      font-family: var(--font-mono);
+      font-size: 1.2rem;
+      font-weight: 700;
+      text-align: center;
+      margin: 0.25rem 0;
+    }
+    .ap-fb-form select, .ap-fb-form textarea {
+      width: 100%;
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      padding: 0.4rem 0.5rem;
+      border: 2px solid var(--border);
+      background: var(--bg);
+      color: var(--text);
+      resize: vertical;
+    }
+    .ap-fb-form textarea { min-height: 60px; }
+    .ap-fb-form select:focus, .ap-fb-form textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+    .ap-fb-tags {
+      display: flex;
+      gap: 0.5rem;
+    }
+    .ap-fb-tags select { flex: 1; }
+    .ap-fb-submit {
+      display: block;
+      width: 100%;
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 0.6rem 1rem;
+      border: 2px solid var(--border-heavy);
+      background: var(--border-heavy);
+      color: var(--bg);
+      cursor: pointer;
+      margin-top: 1rem;
+      transition: opacity 0.15s;
+    }
+    .ap-fb-submit:hover { opacity: 0.85; }
+    .ap-fb-submit:disabled { opacity: 0.4; cursor: not-allowed; }
+    .ap-fb-status {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      margin-top: 0.5rem;
+      padding: 0.4rem 0.5rem;
+    }
+    .ap-fb-status.success { color: #22c55e; border: 2px solid #22c55e; }
+    .ap-fb-status.error { color: #ef4444; border: 2px solid #ef4444; }
 
     @media (max-width: 480px) {
       .ap-price-usd { font-size: 1.5rem; }
@@ -884,12 +973,15 @@
           var fbMax = Math.min(fbArr.length, 10);
           for (var fi = 0; fi < fbMax; fi++) {
             var fb = fbArr[fi];
-            var fbScore = fb.score != null ? Number(fb.score) : null;
-            var fbColor = fbScore == null ? 'var(--text-muted)' : (fbScore > 70 ? '#22c55e' : (fbScore >= 40 ? '#F59E0B' : '#ef4444'));
+            var fbVal = fb.score != null ? Number(fb.score) : null;
+            var fbDec = fb.decimals ? Number(fb.decimals) : 0;
+            var fbDisplay = fbVal != null ? (fbDec > 0 ? (fbVal / Math.pow(10, fbDec)).toFixed(fbDec) : String(fbVal)) : '--';
+            var fbColor = fbVal == null ? 'var(--text-muted)' : (fbVal > 70 ? '#22c55e' : (fbVal >= 40 ? '#F59E0B' : '#ef4444'));
             h += '<div class="ap-feedback-item">';
             h += '<span class="ap-feedback-rater"><a href="https://celoscan.io/address/' + esc(fb.rater) + '" target="_blank">' + trunc(fb.rater) + '</a></span>';
-            h += '<span class="ap-feedback-score" style="color:' + fbColor + ';border-color:' + fbColor + ';">' + (fbScore != null ? fbScore : '--') + '</span>';
+            h += '<span class="ap-feedback-score" style="color:' + fbColor + ';border-color:' + fbColor + ';">' + fbDisplay + '</span>';
             if (fb.tag1) h += '<span class="ap-feedback-tag">' + esc(fb.tag1) + '</span>';
+            if (fb.tag2) h += '<span class="ap-feedback-tag">' + esc(fb.tag2) + '</span>';
             h += '</div>';
           }
           if (fbArr.length > 10) {
@@ -898,7 +990,25 @@
           h += '</div>';
         }
 
-        h += '<a href="' + esc(a.erc8004.scanUrl) + '" target="_blank" rel="noopener" class="ap-erc-link-btn">View full profile on 8004scan &rarr;</a>';
+        h += '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:0.5rem;">';
+        h += '<button class="ap-give-fb-btn" id="give-feedback-btn" onclick="toggleFeedbackForm()">Give Feedback</button>';
+        h += '<a href="' + esc(a.erc8004.scanUrl) + '" target="_blank" rel="noopener" class="ap-erc-link-btn" style="margin-top:0.75rem;">View on 8004scan &rarr;</a>';
+        h += '</div>';
+
+        h += '<div class="ap-fb-form" id="feedback-form">';
+        h += '<label>Score (0-100)</label>';
+        h += '<input type="range" id="fb-score" min="0" max="100" value="75" oninput="document.getElementById(\'fb-score-val\').textContent=this.value">';
+        h += '<div class="ap-fb-score-display" id="fb-score-val">75</div>';
+        h += '<label>Tags</label>';
+        h += '<div class="ap-fb-tags">';
+        h += '<select id="fb-tag1"><option value="peer-review">peer-review</option><option value="service-quality">service-quality</option><option value="reliability">reliability</option><option value="responsiveness">responsiveness</option><option value="expertise">expertise</option><option value="defi">defi</option><option value="analytics">analytics</option><option value="general">general</option></select>';
+        h += '<select id="fb-tag2"><option value="">-- optional --</option><option value="excellent">excellent</option><option value="good">good</option><option value="average">average</option><option value="needs-improvement">needs-improvement</option><option value="blockchain">blockchain</option><option value="ai">ai</option></select>';
+        h += '</div>';
+        h += '<label>Reasoning (optional)</label>';
+        h += '<textarea id="fb-reasoning" placeholder="Why are you giving this score?"></textarea>';
+        h += '<button class="ap-fb-submit" id="fb-submit-btn" onclick="submitFeedback()">Submit Onchain Feedback</button>';
+        h += '<div id="fb-status"></div>';
+        h += '</div>';
 
         if (a.erc8004.lastOnchainSync) {
           h += '<div class="ap-sync-info">Last synced: ' + fmtDate(a.erc8004.lastOnchainSync) + '</div>';
@@ -1093,6 +1203,7 @@
       document.getElementById('profile-root').innerHTML = h;
 
       if (a.publicKey) {
+        _agentPublicKey = a.publicKey;
         fetchReputationProfile(a.publicKey);
       }
     }
@@ -1213,6 +1324,65 @@
       });
       h += '</div>';
       return h;
+    }
+
+    var _agentPublicKey = null;
+
+    function toggleFeedbackForm() {
+      var form = document.getElementById('feedback-form');
+      if (!form) return;
+      form.classList.toggle('visible');
+    }
+
+    function submitFeedback() {
+      if (!_agentPublicKey) return;
+      var btn = document.getElementById('fb-submit-btn');
+      var status = document.getElementById('fb-status');
+      var score = document.getElementById('fb-score').value;
+      var tag1 = document.getElementById('fb-tag1').value;
+      var tag2 = document.getElementById('fb-tag2').value;
+      var reasoning = document.getElementById('fb-reasoning').value;
+
+      btn.disabled = true;
+      btn.textContent = 'Submitting onchain...';
+      status.innerHTML = '';
+
+      fetch('/api/selfclaw/v1/reputation/web-feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          targetAgentPublicKey: _agentPublicKey,
+          value: Number(score),
+          valueDecimals: 0,
+          tag1: tag1,
+          tag2: tag2,
+          reasoning: reasoning || undefined
+        })
+      })
+      .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, data: d }; }); })
+      .then(function(res) {
+        btn.disabled = false;
+        btn.textContent = 'Submit Onchain Feedback';
+        if (res.ok) {
+          status.className = 'ap-fb-status success';
+          status.innerHTML = 'Feedback submitted onchain! <a href="' + esc(res.data.explorerUrl || '#') + '" target="_blank">View tx &rarr;</a>';
+          document.getElementById('feedback-form').classList.remove('visible');
+          setTimeout(function() { location.reload(); }, 3000);
+        } else {
+          status.className = 'ap-fb-status error';
+          status.textContent = res.data.error || 'Failed to submit feedback';
+          if (res.data.error && res.data.error.indexOf('Login required') !== -1) {
+            status.textContent = 'You must be logged in with Self.xyz passport to submit feedback.';
+          }
+        }
+      })
+      .catch(function(e) {
+        btn.disabled = false;
+        btn.textContent = 'Submit Onchain Feedback';
+        status.className = 'ap-fb-status error';
+        status.textContent = 'Network error: ' + e.message;
+      });
     }
 
     loadProfile();
