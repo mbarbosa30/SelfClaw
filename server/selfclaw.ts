@@ -8,7 +8,7 @@ import crypto from "crypto";
 import { createAgentWallet, getAgentWallet, getAgentWalletByHumanId, sendGasSubsidy, getGasWalletInfo, switchWallet } from "../lib/secure-wallet.js";
 import { erc8004Service } from "../lib/erc8004.js";
 import { getReferencePrices, getAgentTokenPrice, getAllAgentTokenPrices, formatPrice, formatMarketCap, getSelfclawCeloPrice, getCeloUsdPrice } from "../lib/price-oracle.js";
-import { generateRegistrationFile } from "../lib/erc8004-config.js";
+import { generateRegistrationFile, ERC8004_CONFIG } from "../lib/erc8004-config.js";
 import { createPublicClient, http, parseUnits, formatUnits, encodeFunctionData, getContractAddress } from 'viem';
 import { celo } from 'viem/chains';
 import { TOKEN_FACTORY_BYTECODE } from '../lib/constants.js';
@@ -921,9 +921,19 @@ router.get("/v1/agent/:identifier/registration.json", publicApiLimiter, async (r
       return res.status(404).json({ error: "No ERC-8004 registration file generated yet" });
     }
     
+    const regJson = { ...regMetadata.erc8004RegistrationJson };
+
+    if (regMetadata.erc8004TokenId != null && !regJson.registrations) {
+      const config = ERC8004_CONFIG.active;
+      regJson.registrations = [{
+        agentId: Number(regMetadata.erc8004TokenId),
+        agentRegistry: `eip155:${config.chainId}:${config.identityRegistry}`,
+      }];
+    }
+
     res.setHeader("Content-Type", "application/json");
     res.setHeader("Cache-Control", "public, max-age=300");
-    res.json(regMetadata.erc8004RegistrationJson);
+    res.json(regJson);
   } catch (error: any) {
     console.error("[selfclaw] registration.json error:", error);
     res.status(500).json({ error: error.message });
@@ -1791,7 +1801,7 @@ router.post("/v1/request-selfclaw-sponsorship", verificationLimiter, async (req:
 
     logActivity("selfclaw_sponsorship", humanId, auth.publicKey, undefined, {
       tokenAddress,
-      tokenSymbol: tokenSymbol || 'TOKEN',
+      tokenSymbol: resolvedSymbol,
       tokenAmount,
       selfclawAmount: selfclawForPool,
       v4PoolId,
@@ -5665,7 +5675,7 @@ router.post("/v1/my-agents/:publicKey/request-sponsorship", verificationLimiter,
     }
 
     logActivity("selfclaw_sponsorship", auth.humanId, req.params.publicKey, auth.agent.deviceId, {
-      tokenAddress, selfclawAmount: selfclawForPool, v4PoolId, positionTokenId, poolVersion: 'v4', method: "dashboard"
+      tokenAddress, tokenSymbol: resolvedSymbol, selfclawAmount: selfclawForPool, v4PoolId, positionTokenId, poolVersion: 'v4', method: "dashboard"
     });
 
     res.json({
@@ -6892,7 +6902,7 @@ router.post("/v1/miniclaws/:id/request-sponsorship", verificationLimiter, async 
     }
 
     logActivity("selfclaw_sponsorship", auth.humanId, mcPublicKey, "miniclaw", {
-      tokenAddress, selfclawAmount: selfclawForPool, v4PoolId, positionTokenId, poolVersion: 'v4', method: "miniclaw-dashboard", miniclawId: req.params.id
+      tokenAddress, tokenSymbol: resolvedSymbol, selfclawAmount: selfclawForPool, v4PoolId, positionTokenId, poolVersion: 'v4', method: "miniclaw-dashboard", miniclawId: req.params.id
     });
 
     res.json({

@@ -1098,44 +1098,53 @@
     }
 
     function fetchReputationProfile(publicKey) {
-      fetch('/api/selfclaw/v1/reputation/' + encodeURIComponent(publicKey) + '/full-profile', { credentials: 'include' })
-        .then(function(res) { return res.ok ? res.json() : null; })
-        .then(function(rp) {
-          if (!rp) return;
+      Promise.all([
+        fetch('/api/selfclaw/v1/agent-score/' + encodeURIComponent(publicKey), { credentials: 'include' }).then(function(r) { return r.ok ? r.json() : null; }),
+        fetch('/api/selfclaw/v1/reputation/' + encodeURIComponent(publicKey) + '/full-profile', { credentials: 'include' }).then(function(r) { return r.ok ? r.json() : null; })
+      ]).then(function(results) {
+          var sc = results[0];
+          var rp = results[1];
           var el = document.getElementById('rep-profile-card');
           if (!el) return;
-          var score = rp.reputationScore || 0;
-          var bd = rp.scoreBreakdown || {};
-          var st = rp.staking || {};
-          var sk = rp.skills || {};
-          var cm = rp.commerce || {};
-          var badges = rp.badges || [];
+          if (!sc && !rp) return;
+
+          var score = sc ? sc.total : (rp ? rp.reputationScore : 0);
+          var grade = sc ? sc.grade : '';
+          var bd = sc ? sc.breakdown : {};
+          var pctl = sc ? sc.percentile : 0;
+          var st = rp ? (rp.staking || {}) : {};
+          var sk = rp ? (rp.skills || {}) : {};
+          var cm = rp ? (rp.commerce || {}) : {};
+          var badges = rp ? (rp.badges || []) : [];
 
           var cls = score > 70 ? 'rep-good' : score >= 40 ? 'rep-mid' : 'rep-low';
 
           var h = '<div class="ap-card ap-full">';
-          h += '<div class="ap-card-head"><span class="ap-card-title">Reputation Profile</span><span class="ap-card-meta">ERC-8004 Linked</span></div>';
+          h += '<div class="ap-card-head"><span class="ap-card-title">SelfClaw Score</span>';
+          if (grade) h += '<span class="ap-badge" style="margin:0;background:var(--accent);color:#fff;">' + grade + '</span>';
+          h += '</div>';
           h += '<div class="ap-card-body">';
 
           h += '<div class="ap-rep-circle ' + cls + '">';
           h += '<div class="ap-rep-circle-num">' + score + '</div>';
           h += '<div class="ap-rep-circle-max">/100</div>';
           h += '</div>';
+          if (pctl > 0) h += '<div style="text-align:center;font-size:0.75rem;color:var(--text-muted);margin-top:0.25rem;">Top ' + Math.max(1, 100 - pctl) + '% of agents</div>';
 
           h += '<div class="ap-breakdown">';
           var cats = [
-            { label: 'ERC-8004', pts: bd.erc8004 || 0, max: 20 },
-            { label: 'Staking', pts: bd.staking || 0, max: 30 },
-            { label: 'Commerce', pts: bd.commerce || 0, max: 20 },
-            { label: 'Skills', pts: bd.skills || 0, max: 15 },
-            { label: 'Badges', pts: bd.badges || 0, max: 15 }
+            { label: 'Identity', pts: bd.identity || 0, max: 100, weight: 15 },
+            { label: 'Social', pts: bd.social || 0, max: 100, weight: 20 },
+            { label: 'Economy', pts: bd.economy || 0, max: 100, weight: 25 },
+            { label: 'Skills & Services', pts: bd.skills || 0, max: 100, weight: 20 },
+            { label: 'Reputation', pts: bd.reputation || 0, max: 100, weight: 20 }
           ];
           cats.forEach(function(c) {
-            var pct = c.max > 0 ? (c.pts / c.max * 100) : 0;
+            var pct = c.pts;
             h += '<div class="ap-breakdown-row">';
-            h += '<div class="ap-breakdown-label">' + c.label + '</div>';
+            h += '<div class="ap-breakdown-label">' + c.label + ' <span style="color:var(--text-muted);font-size:0.65rem;">(' + c.weight + '%)</span></div>';
             h += '<div class="ap-breakdown-bar"><div class="ap-breakdown-fill" style="width:' + pct + '%;"></div></div>';
-            h += '<div class="ap-breakdown-pts">' + c.pts + '/' + c.max + '</div>';
+            h += '<div class="ap-breakdown-pts">' + c.pts + '</div>';
             h += '</div>';
           });
           h += '</div>';
@@ -1158,7 +1167,7 @@
           h += '<div class="ap-kv-label">Total Staked</div><div class="ap-kv-value">' + esc(st.totalStaked || '0') + '</div>';
           h += '<div class="ap-kv-label">Skills Published</div><div class="ap-kv-value">' + (sk.published || 0) + ' (avg: ' + (sk.avgRating || '--') + ')</div>';
           h += '<div class="ap-kv-label">Commerce Done</div><div class="ap-kv-value">' + (cm.completed || 0) + ' (avg: ' + (cm.avgRating || '--') + ')</div>';
-          if (rp.lastActivity) {
+          if (rp && rp.lastActivity) {
             h += '<div class="ap-kv-label">Last Activity</div><div class="ap-kv-value">' + fmtDate(rp.lastActivity) + '</div>';
           }
           h += '</div>';

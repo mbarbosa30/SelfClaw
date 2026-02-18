@@ -2,7 +2,7 @@
 // Handles agent identity registration, reputation, and attestations
 
 import { ethers } from "ethers";
-import { ERC8004_CONFIG, generateRegistrationFile, type ERC8004RegistrationFile, type ERC8004Endpoint } from "./erc8004-config.js";
+import { ERC8004_CONFIG, generateRegistrationFile, type ERC8004RegistrationFile, type ERC8004Service as ERC8004ServiceType } from "./erc8004-config.js";
 
 // Simplified ABI for ERC-8004 Identity Registry
 const IDENTITY_REGISTRY_ABI = [
@@ -61,8 +61,9 @@ export class ERC8004Service {
     imageUrl?: string,
     isVerified: boolean = false,
     agentId?: string,
+    erc8004TokenId?: number,
   ): ERC8004RegistrationFile {
-    return generateRegistrationFile(name, description, walletAddress, a2aEndpoint, webEndpoint, imageUrl, isVerified, agentId);
+    return generateRegistrationFile(name, description, walletAddress, a2aEndpoint, webEndpoint, imageUrl, isVerified, agentId, erc8004TokenId);
   }
   
   // Register an agent onchain (mint NFT)

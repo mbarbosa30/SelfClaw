@@ -1,11 +1,11 @@
 import { db } from "./db.js";
-import { verifiedBots, agentWallets, sponsoredAgents, trackedPools, agentPosts, postLikes, postComments, marketSkills, skillPurchases, agentRequests, reputationStakes, reputationBadges, tokenPriceSnapshots } from "../shared/schema.js";
+import { verifiedBots, agentWallets, sponsoredAgents, trackedPools, agentPosts, postLikes, postComments, marketSkills, skillPurchases, agentRequests, reputationStakes, reputationBadges, tokenPriceSnapshots, agentServices } from "../shared/schema.js";
 import { eq, and, sql, count, desc, isNotNull, gt } from "drizzle-orm";
 
 export interface ScoreBreakdown {
   identity: number;
+  social: number;
   economy: number;
-  engagement: number;
   skills: number;
   reputation: number;
 }
@@ -18,12 +18,14 @@ export interface SelfClawScore {
 }
 
 const WEIGHTS = {
-  identity: 0.25,
-  economy: 0.25,
-  engagement: 0.20,
-  skills: 0.15,
-  reputation: 0.15,
+  identity: 15,
+  social: 20,
+  economy: 25,
+  skills: 20,
+  reputation: 20,
 };
+
+const TOTAL_WEIGHT = Object.values(WEIGHTS).reduce((a, b) => a + b, 0);
 
 function letterGrade(score: number): string {
   if (score >= 90) return "S";
@@ -48,12 +50,12 @@ async function computeIdentityScore(publicKey: string): Promise<number> {
 
   if (!bot) return 0;
 
-  if (bot.verificationLevel === "passport+signature") score += 30;
-  else if (bot.verificationLevel === "passport") score += 20;
+  if (bot.verificationLevel === "passport+signature") score += 25;
+  else if (bot.verificationLevel === "passport") score += 15;
 
   const [wallet] = await db.select({ id: agentWallets.id })
     .from(agentWallets).where(eq(agentWallets.publicKey, publicKey)).limit(1);
-  if (wallet) score += 20;
+  if (wallet) score += 15;
 
   const meta = bot.metadata as any;
   const hasErc8004 = meta?.erc8004TokenId != null;
@@ -69,64 +71,13 @@ async function computeIdentityScore(publicKey: string): Promise<number> {
   const hasName = meta?.agentName && meta.agentName.length > 0;
   if (hasName) score += 10;
 
-  return clamp(score);
-}
-
-async function computeEconomyScore(publicKey: string): Promise<number> {
-  let score = 0;
-
-  const [sponsored] = await db.select({
-    tokenAddress: sponsoredAgents.tokenAddress,
-    tokenSymbol: sponsoredAgents.tokenSymbol,
-  }).from(sponsoredAgents).where(eq(sponsoredAgents.publicKey, publicKey)).limit(1);
-
-  if (!sponsored?.tokenAddress) return 0;
-
-  score += 25;
-
-  const pools = await db.select({
-    id: trackedPools.id,
-    currentPriceCelo: trackedPools.currentPriceCelo,
-  }).from(trackedPools).where(
-    eq(trackedPools.tokenAddress, sponsored.tokenAddress)
-  );
-
-  if (pools.length > 0) {
-    score += 25;
-
-    const hasLivePrice = pools.some(p => p.currentPriceCelo && Number(p.currentPriceCelo) > 0);
-    if (hasLivePrice) score += 15;
-  }
-
-  const snapshots = await db.select({
-    priceUsd: tokenPriceSnapshots.priceUsd,
-    createdAt: tokenPriceSnapshots.createdAt,
-  }).from(tokenPriceSnapshots)
-    .where(eq(tokenPriceSnapshots.tokenAddress, sponsored.tokenAddress))
-    .orderBy(desc(tokenPriceSnapshots.createdAt))
-    .limit(48);
-
-  if (snapshots.length >= 2) {
-    score += 10;
-
-    const latest = Number(snapshots[0].priceUsd || 0);
-    const oldest = Number(snapshots[snapshots.length - 1].priceUsd || 0);
-    if (oldest > 0 && latest > 0) {
-      const change = ((latest - oldest) / oldest) * 100;
-      if (change > 10) score += 15;
-      else if (change > 0) score += 10;
-      else if (change > -10) score += 5;
-    }
-  }
-
-  const [wallet] = await db.select({ gasReceived: agentWallets.gasReceived })
-    .from(agentWallets).where(eq(agentWallets.publicKey, publicKey)).limit(1);
-  if (wallet?.gasReceived) score += 10;
+  const hasDescription = meta?.description && meta.description.length > 20;
+  if (hasDescription) score += 10;
 
   return clamp(score);
 }
 
-async function computeEngagementScore(publicKey: string): Promise<number> {
+async function computeSocialScore(publicKey: string): Promise<number> {
   let score = 0;
 
   const [postCount] = await db.select({ count: count() })
@@ -134,10 +85,10 @@ async function computeEngagementScore(publicKey: string): Promise<number> {
     .where(and(eq(agentPosts.agentPublicKey, publicKey), eq(agentPosts.active, true)));
 
   const posts = Number(postCount?.count || 0);
-  if (posts >= 20) score += 30;
-  else if (posts >= 10) score += 25;
-  else if (posts >= 5) score += 20;
-  else if (posts >= 1) score += 10;
+  if (posts >= 20) score += 25;
+  else if (posts >= 10) score += 20;
+  else if (posts >= 5) score += 15;
+  else if (posts >= 1) score += 8;
 
   const [likeStats] = await db.select({
     totalLikes: sql<number>`COALESCE(SUM(${agentPosts.likesCount}), 0)`,
@@ -148,14 +99,14 @@ async function computeEngagementScore(publicKey: string): Promise<number> {
   const totalLikes = Number(likeStats?.totalLikes || 0);
   const totalComments = Number(likeStats?.totalComments || 0);
 
-  if (totalLikes >= 50) score += 20;
-  else if (totalLikes >= 20) score += 15;
-  else if (totalLikes >= 5) score += 10;
-  else if (totalLikes >= 1) score += 5;
+  if (totalLikes >= 50) score += 15;
+  else if (totalLikes >= 20) score += 10;
+  else if (totalLikes >= 5) score += 7;
+  else if (totalLikes >= 1) score += 3;
 
-  if (totalComments >= 20) score += 15;
-  else if (totalComments >= 10) score += 10;
-  else if (totalComments >= 1) score += 5;
+  if (totalComments >= 20) score += 10;
+  else if (totalComments >= 10) score += 7;
+  else if (totalComments >= 1) score += 3;
 
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
   const [recentPosts] = await db.select({ count: count() })
@@ -183,6 +134,79 @@ async function computeEngagementScore(publicKey: string): Promise<number> {
   else if (interaction >= 10) score += 10;
   else if (interaction >= 1) score += 5;
 
+  const [digestCount] = await db.select({ count: count() })
+    .from(agentPosts)
+    .where(and(
+      eq(agentPosts.agentPublicKey, publicKey),
+      eq(agentPosts.active, true),
+      sql`${agentPosts.metadata}->>'source' = 'feed_digest'`
+    ));
+
+  const digests = Number(digestCount?.count || 0);
+  if (digests >= 5) score += 15;
+  else if (digests >= 1) score += 8;
+
+  return clamp(score);
+}
+
+async function computeEconomyScore(publicKey: string): Promise<number> {
+  let score = 0;
+
+  const [sponsored] = await db.select({
+    tokenAddress: sponsoredAgents.tokenAddress,
+    tokenSymbol: sponsoredAgents.tokenSymbol,
+  }).from(sponsoredAgents).where(eq(sponsoredAgents.publicKey, publicKey)).limit(1);
+
+  if (sponsored?.tokenAddress) score += 20;
+
+  const [wallet] = await db.select({ gasReceived: agentWallets.gasReceived })
+    .from(agentWallets).where(eq(agentWallets.publicKey, publicKey)).limit(1);
+  if (wallet?.gasReceived) score += 10;
+
+  if (sponsored?.tokenAddress) {
+    const pools = await db.select({
+      id: trackedPools.id,
+      currentPriceCelo: trackedPools.currentPriceCelo,
+    }).from(trackedPools).where(
+      eq(trackedPools.tokenAddress, sponsored.tokenAddress)
+    );
+
+    if (pools.length > 0) {
+      score += 20;
+
+      const hasLivePrice = pools.some(p => p.currentPriceCelo && Number(p.currentPriceCelo) > 0);
+      if (hasLivePrice) score += 15;
+    }
+
+    const snapshots = await db.select({
+      priceUsd: tokenPriceSnapshots.priceUsd,
+      createdAt: tokenPriceSnapshots.createdAt,
+    }).from(tokenPriceSnapshots)
+      .where(eq(tokenPriceSnapshots.tokenAddress, sponsored.tokenAddress))
+      .orderBy(desc(tokenPriceSnapshots.createdAt))
+      .limit(48);
+
+    if (snapshots.length >= 2) {
+      score += 10;
+
+      const latest = Number(snapshots[0].priceUsd || 0);
+      const oldest = Number(snapshots[snapshots.length - 1].priceUsd || 0);
+      if (oldest > 0 && latest > 0) {
+        const change = ((latest - oldest) / oldest) * 100;
+        if (change > 10) score += 15;
+        else if (change > 0) score += 10;
+        else if (change > -10) score += 5;
+      }
+    }
+  }
+
+  const [commerceRevenue] = await db.select({ count: count() })
+    .from(agentRequests)
+    .where(and(eq(agentRequests.providerPublicKey, publicKey), eq(agentRequests.status, "completed")));
+  const revenue = Number(commerceRevenue?.count || 0);
+  if (revenue >= 5) score += 10;
+  else if (revenue >= 1) score += 5;
+
   return clamp(score);
 }
 
@@ -194,9 +218,9 @@ async function computeSkillsScore(publicKey: string): Promise<number> {
     .where(and(eq(marketSkills.agentPublicKey, publicKey), eq(marketSkills.active, true)));
 
   const skills = Number(skillCount?.count || 0);
-  if (skills >= 5) score += 25;
-  else if (skills >= 3) score += 20;
-  else if (skills >= 1) score += 15;
+  if (skills >= 5) score += 20;
+  else if (skills >= 3) score += 15;
+  else if (skills >= 1) score += 10;
 
   const [purchaseStats] = await db.select({
     totalSales: count(),
@@ -204,9 +228,9 @@ async function computeSkillsScore(publicKey: string): Promise<number> {
     .where(eq(skillPurchases.sellerPublicKey, publicKey));
 
   const sales = Number(purchaseStats?.totalSales || 0);
-  if (sales >= 10) score += 25;
-  else if (sales >= 5) score += 20;
-  else if (sales >= 1) score += 15;
+  if (sales >= 10) score += 20;
+  else if (sales >= 5) score += 15;
+  else if (sales >= 1) score += 10;
 
   const skillRatings = await db.select({
     ratingSum: marketSkills.ratingSum,
@@ -221,20 +245,31 @@ async function computeSkillsScore(publicKey: string): Promise<number> {
   }
   if (totalRatingCount > 0) {
     const avg = totalRating / totalRatingCount;
-    if (avg >= 4.5) score += 20;
-    else if (avg >= 4.0) score += 15;
-    else if (avg >= 3.0) score += 10;
-    else score += 5;
+    if (avg >= 4.5) score += 15;
+    else if (avg >= 4.0) score += 10;
+    else if (avg >= 3.0) score += 7;
+    else score += 3;
   }
+
+  let serviceCount = 0;
+  try {
+    const [svcCount] = await db.select({ count: count() })
+      .from(agentServices)
+      .where(and(eq(agentServices.agentPublicKey, publicKey), eq(agentServices.active, true)));
+    serviceCount = Number(svcCount?.count || 0);
+  } catch (_e) {}
+
+  if (serviceCount >= 3) score += 15;
+  else if (serviceCount >= 1) score += 10;
 
   const [providedCount] = await db.select({ count: count() })
     .from(agentRequests)
     .where(and(eq(agentRequests.providerPublicKey, publicKey), eq(agentRequests.status, "completed")));
 
   const provided = Number(providedCount?.count || 0);
-  if (provided >= 5) score += 20;
-  else if (provided >= 3) score += 15;
-  else if (provided >= 1) score += 10;
+  if (provided >= 5) score += 15;
+  else if (provided >= 3) score += 10;
+  else if (provided >= 1) score += 7;
 
   const [requestRatings] = await db.select({
     avgRating: sql<number>`COALESCE(AVG(${agentRequests.rating}), 0)`,
@@ -242,8 +277,9 @@ async function computeSkillsScore(publicKey: string): Promise<number> {
     .where(and(eq(agentRequests.providerPublicKey, publicKey), isNotNull(agentRequests.rating)));
 
   const avgCommerceRating = Number(requestRatings?.avgRating || 0);
-  if (avgCommerceRating >= 4.5) score += 10;
-  else if (avgCommerceRating >= 3.5) score += 5;
+  if (avgCommerceRating >= 4.5) score += 15;
+  else if (avgCommerceRating >= 3.5) score += 10;
+  else if (avgCommerceRating >= 2.0) score += 5;
 
   return clamp(score);
 }
@@ -263,7 +299,7 @@ async function computeReputationScore(publicKey: string): Promise<number> {
   const slashed = stakes.filter(s => s.resolution === "slashed").length;
 
   if (totalStakes > 0) {
-    score += 15;
+    score += 10;
     const validationRate = validated / totalStakes;
     if (validationRate >= 0.9) score += 25;
     else if (validationRate >= 0.7) score += 20;
@@ -292,8 +328,8 @@ async function computeReputationScore(publicKey: string): Promise<number> {
     else score += 5;
   }
 
-  if (totalStakes >= 10) score += 15;
-  else if (totalStakes >= 5) score += 10;
+  if (totalStakes >= 10) score += 20;
+  else if (totalStakes >= 5) score += 15;
   else if (totalStakes >= 1) score += 5;
 
   return clamp(score);
@@ -307,22 +343,22 @@ export async function computeSelfClawScore(publicKey: string): Promise<SelfClawS
   if (!bot) return null;
   if (bot.verificationLevel === "hosted") return null;
 
-  const [identity, economy, engagement, skills, reputation] = await Promise.all([
+  const [identity, social, economy, skills, reputation] = await Promise.all([
     computeIdentityScore(publicKey),
+    computeSocialScore(publicKey),
     computeEconomyScore(publicKey),
-    computeEngagementScore(publicKey),
     computeSkillsScore(publicKey),
     computeReputationScore(publicKey),
   ]);
 
-  const breakdown: ScoreBreakdown = { identity, economy, engagement, skills, reputation };
+  const breakdown: ScoreBreakdown = { identity, social, economy, skills, reputation };
 
   const total = Math.round(
-    identity * WEIGHTS.identity +
+    (identity * WEIGHTS.identity +
+    social * WEIGHTS.social +
     economy * WEIGHTS.economy +
-    engagement * WEIGHTS.engagement +
     skills * WEIGHTS.skills +
-    reputation * WEIGHTS.reputation
+    reputation * WEIGHTS.reputation) / TOTAL_WEIGHT
   );
 
   const grade = letterGrade(total);
