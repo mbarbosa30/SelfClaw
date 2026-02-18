@@ -44,6 +44,25 @@ async function authenticateAgent(req: Request, res: Response, next: NextFunction
   }
 }
 
+async function optionalAuthenticateAgent(req: Request, res: Response, next: NextFunction) {
+  try {
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      const apiKey = authHeader.slice(7).trim();
+      if (apiKey) {
+        const [agent] = await db.select()
+          .from(verifiedBots)
+          .where(eq(verifiedBots.apiKey, apiKey))
+          .limit(1);
+        if (agent) {
+          (req as any).agent = agent;
+        }
+      }
+    }
+  } catch {}
+  next();
+}
+
 router.get("/v1/agent-api/me", agentApiLimiter, authenticateAgent, async (req: Request, res: Response) => {
   try {
     const agent = (req as any).agent;
@@ -506,8 +525,8 @@ router.get("/v1/agent-api/briefing", agentApiLimiter, authenticateAgent, async (
     lines.push(`  POST   ${BASE}/v1/agent-api/tool-call   — Execute a tool: { "tool": "browse_marketplace_skills", "arguments": { "category": "research" } }`);
     lines.push(``);
     lines.push(`  Available tools: check_balances, browse_marketplace_skills, browse_marketplace_services, browse_agents,`);
-    lines.push(`    inspect_agent, purchase_skill, post_to_feed, read_feed, like_post, comment_on_post, publish_skill,`);
-    lines.push(`    register_service, request_service, get_swap_quote, get_swap_pools, get_reputation, get_my_status`);
+    lines.push(`    inspect_agent, purchase_skill, confirm_purchase, refund_purchase, post_to_feed, read_feed, like_post, comment_on_post, publish_skill,`);
+    lines.push(`    register_service, request_service, get_swap_quote, get_swap_pools, get_reputation, get_briefing, get_my_status`);
     lines.push(``);
     lines.push(`  This is the RECOMMENDED way for AI agents to interact with SelfClaw. Instead of parsing curl examples,`);
     lines.push(`  register the tools from GET /v1/agent-api/tools in your function-calling setup, then call them naturally.`);
@@ -966,18 +985,25 @@ router.delete("/v1/agent-api/revoke-key/:publicKey", async (req: Request, res: R
   }
 });
 
-router.get("/v1/agent-api/marketplace/skills", agentApiLimiter, authenticateAgent, async (req: Request, res: Response) => {
+router.get("/v1/agent-api/marketplace/skills", agentApiLimiter, optionalAuthenticateAgent, async (req: Request, res: Response) => {
   try {
-    const agent = (req as any).agent;
+    const agent = (req as any).agent || {};
     const { category, search, limit: limitStr } = req.query as any;
     const limit = Math.min(parseInt(limitStr) || 50, 100);
 
-    let query = sql`SELECT ms.*, vb.device_id as seller_name, vb.verification_level,
-      (SELECT COUNT(*) FROM skill_purchases sp WHERE sp.skill_id = ms.id) as purchase_count,
-      (SELECT COALESCE(AVG(sp.rating), 0) FROM skill_purchases sp WHERE sp.skill_id = ms.id AND sp.rating IS NOT NULL) as avg_rating
-      FROM market_skills ms
-      LEFT JOIN verified_bots vb ON vb.public_key = ms.agent_public_key
-      WHERE ms.active = true AND ms.agent_public_key != ${agent.publicKey}`;
+    let query = agent.publicKey
+      ? sql`SELECT ms.*, vb.device_id as seller_name, vb.verification_level,
+        (SELECT COUNT(*) FROM skill_purchases sp WHERE sp.skill_id = ms.id) as purchase_count,
+        (SELECT COALESCE(AVG(sp.rating), 0) FROM skill_purchases sp WHERE sp.skill_id = ms.id AND sp.rating IS NOT NULL) as avg_rating
+        FROM market_skills ms
+        LEFT JOIN verified_bots vb ON vb.public_key = ms.agent_public_key
+        WHERE ms.active = true AND ms.agent_public_key != ${agent.publicKey}`
+      : sql`SELECT ms.*, vb.device_id as seller_name, vb.verification_level,
+        (SELECT COUNT(*) FROM skill_purchases sp WHERE sp.skill_id = ms.id) as purchase_count,
+        (SELECT COALESCE(AVG(sp.rating), 0) FROM skill_purchases sp WHERE sp.skill_id = ms.id AND sp.rating IS NOT NULL) as avg_rating
+        FROM market_skills ms
+        LEFT JOIN verified_bots vb ON vb.public_key = ms.agent_public_key
+        WHERE ms.active = true`;
 
     if (category) {
       query = sql`${query} AND ms.category = ${category}`;
@@ -994,11 +1020,15 @@ router.get("/v1/agent-api/marketplace/skills", agentApiLimiter, authenticateAgen
   }
 });
 
-router.get("/v1/agent-api/marketplace/services", agentApiLimiter, authenticateAgent, async (req: Request, res: Response) => {
+router.get("/v1/agent-api/marketplace/services", agentApiLimiter, optionalAuthenticateAgent, async (req: Request, res: Response) => {
   try {
-    const agent = (req as any).agent;
+    const agent = (req as any).agent || {};
     const { search, limit: limitStr } = req.query as any;
     const limit = Math.min(parseInt(limitStr) || 50, 100);
+
+    const whereCondition = agent.publicKey
+      ? and(eq(agentServices.active, true), sql`${agentServices.agentPublicKey} != ${agent.publicKey}`)
+      : eq(agentServices.active, true);
 
     const services = await db.select({
       id: agentServices.id,
@@ -1011,10 +1041,7 @@ router.get("/v1/agent-api/marketplace/services", agentApiLimiter, authenticateAg
       agentName: agentServices.agentName,
     })
       .from(agentServices)
-      .where(and(
-        eq(agentServices.active, true),
-        sql`${agentServices.agentPublicKey} != ${agent.publicKey}`
-      ))
+      .where(whereCondition)
       .orderBy(desc(agentServices.createdAt))
       .limit(limit);
 
@@ -1024,9 +1051,20 @@ router.get("/v1/agent-api/marketplace/services", agentApiLimiter, authenticateAg
   }
 });
 
-router.get("/v1/agent-api/marketplace/agents", agentApiLimiter, authenticateAgent, async (req: Request, res: Response) => {
+router.get("/v1/agent-api/marketplace/agents", agentApiLimiter, optionalAuthenticateAgent, async (req: Request, res: Response) => {
   try {
-    const agent = (req as any).agent;
+    const agent = (req as any).agent || {};
+
+    const whereConditions = agent.publicKey
+      ? and(
+          sql`${verifiedBots.publicKey} != ${agent.publicKey}`,
+          sql`${verifiedBots.verificationLevel} != 'hosted'`,
+          sql`${verifiedBots.hidden} IS NOT TRUE`
+        )
+      : and(
+          sql`${verifiedBots.verificationLevel} != 'hosted'`,
+          sql`${verifiedBots.hidden} IS NOT TRUE`
+        );
 
     const agents = await db.select({
       publicKey: verifiedBots.publicKey,
@@ -1036,11 +1074,7 @@ router.get("/v1/agent-api/marketplace/agents", agentApiLimiter, authenticateAgen
       verifiedAt: verifiedBots.verifiedAt,
     })
       .from(verifiedBots)
-      .where(and(
-        sql`${verifiedBots.publicKey} != ${agent.publicKey}`,
-        sql`${verifiedBots.verificationLevel} != 'hosted'`,
-        sql`${verifiedBots.hidden} IS NOT TRUE`
-      ))
+      .where(whereConditions)
       .limit(100);
 
     const agentsWithServices = await Promise.all(agents.map(async (a) => {
@@ -1062,7 +1096,7 @@ router.get("/v1/agent-api/marketplace/agents", agentApiLimiter, authenticateAgen
   }
 });
 
-router.get("/v1/agent-api/marketplace/agent/:publicKey", agentApiLimiter, authenticateAgent, async (req: Request, res: Response) => {
+router.get("/v1/agent-api/marketplace/agent/:publicKey", agentApiLimiter, optionalAuthenticateAgent, async (req: Request, res: Response) => {
   try {
     const targetPublicKey = req.params.publicKey as string;
 
@@ -1951,11 +1985,11 @@ const TOOL_DEFINITIONS = [
     type: "function" as const,
     function: {
       name: "get_reputation",
-      description: "Check your reputation score, badges, and leaderboard position.",
+      description: "Get the reputation score and details for any agent on the network.",
       parameters: {
         type: "object",
         properties: {
-          agentPublicKey: { type: "string", description: "Public key to check (defaults to your own)" },
+          publicKey: { type: "string", description: "The agent's public key to check reputation for. Omit to check your own." },
         },
         required: [],
       },
@@ -1966,6 +2000,42 @@ const TOOL_DEFINITIONS = [
     function: {
       name: "get_my_status",
       description: "Get your current agent profile, wallet, token, and pipeline status — a quick self-check.",
+      parameters: { type: "object", properties: {}, required: [] },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "confirm_purchase",
+      description: "Confirm delivery of a purchased skill, releasing escrow payment to the seller. Only the buyer can confirm.",
+      parameters: {
+        type: "object",
+        properties: {
+          purchaseId: { type: "string", description: "The purchase ID to confirm delivery for" },
+        },
+        required: ["purchaseId"],
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "refund_purchase",
+      description: "Refund a skill purchase, returning escrow payment to the buyer. Only the seller can issue refunds.",
+      parameters: {
+        type: "object",
+        properties: {
+          purchaseId: { type: "string", description: "The purchase ID to refund" },
+        },
+        required: ["purchaseId"],
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "get_briefing",
+      description: "Get your full status briefing: pipeline progress, economy, reputation, updates, and next steps.",
       parameters: { type: "object", properties: {}, required: [] },
     },
   },
@@ -2081,6 +2151,46 @@ async function handleToolCall(agent: any, toolName: string, args: Record<string,
         return handleAction(agent, { type: "request_service", params: args });
       }
 
+      case "confirm_purchase": {
+        if (!args.purchaseId) return { success: false, error: "purchaseId is required" };
+        try {
+          const resp = await fetch(`${BASE}/v1/agent-api/marketplace/purchases/${encodeURIComponent(args.purchaseId)}/confirm`, {
+            method: "POST",
+            headers: { Authorization: `Bearer ${agent.apiKey}` },
+          });
+          const data = await resp.json();
+          return { success: resp.ok, data };
+        } catch (e: any) {
+          return { success: false, error: `Confirm failed: ${e.message}` };
+        }
+      }
+
+      case "refund_purchase": {
+        if (!args.purchaseId) return { success: false, error: "purchaseId is required" };
+        try {
+          const resp = await fetch(`${BASE}/v1/agent-api/marketplace/purchases/${encodeURIComponent(args.purchaseId)}/refund`, {
+            method: "POST",
+            headers: { Authorization: `Bearer ${agent.apiKey}` },
+          });
+          const data = await resp.json();
+          return { success: resp.ok, data };
+        } catch (e: any) {
+          return { success: false, error: `Refund failed: ${e.message}` };
+        }
+      }
+
+      case "get_briefing": {
+        try {
+          const resp = await fetch(`${BASE}/v1/agent-api/briefing`, {
+            headers: { Authorization: `Bearer ${agent.apiKey}` },
+          });
+          const data = await resp.json();
+          return { success: resp.ok, data };
+        } catch (e: any) {
+          return { success: false, error: `Failed to get briefing: ${e.message}` };
+        }
+      }
+
       case "get_swap_quote": {
         if (!args.tokenIn || !args.tokenOut || !args.amountIn) {
           return { success: false, error: "tokenIn, tokenOut, and amountIn are required" };
@@ -2114,13 +2224,15 @@ async function handleToolCall(agent: any, toolName: string, args: Record<string,
       }
 
       case "get_reputation": {
-        const target = args.agentPublicKey || pk;
         try {
-          const resp = await fetch(`${BASE}/v1/reputation/${encodeURIComponent(target)}/full-profile`);
+          const targetKey = args.publicKey || pk;
+          const resp = await fetch(`${BASE}/v1/reputation/${encodeURIComponent(targetKey)}`, {
+            headers: { Authorization: `Bearer ${agent.apiKey}` },
+          });
           const data = await resp.json();
-          return { success: true, data };
+          return { success: resp.ok, data };
         } catch (e: any) {
-          return { success: false, error: `Failed to fetch reputation: ${e.message}` };
+          return { success: false, error: `Failed to get reputation: ${e.message}` };
         }
       }
 
