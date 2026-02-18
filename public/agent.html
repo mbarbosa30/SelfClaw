@@ -585,19 +585,21 @@
     }
     .ap-feedback-item {
       display: flex;
-      align-items: center;
-      gap: 0.75rem;
+      align-items: flex-start;
+      gap: 0.5rem;
       padding: 0.5rem 0.75rem;
       font-size: 0.8rem;
       border-bottom: 1px solid var(--border);
     }
     .ap-feedback-item:last-child { border-bottom: none; }
     .ap-feedback-item:nth-child(even) { background: var(--bg); }
+    .ap-feedback-item.ap-fb-hidden { display: none; }
     .ap-feedback-rater {
       font-family: var(--font-mono);
       font-size: 0.7rem;
       color: var(--text-muted);
-      min-width: 100px;
+      min-width: 90px;
+      flex-shrink: 0;
     }
     .ap-feedback-rater a { color: var(--text-muted); }
     .ap-feedback-rater a:hover { color: var(--accent); }
@@ -609,6 +611,7 @@
       border: 2px solid var(--border);
       min-width: 36px;
       text-align: center;
+      flex-shrink: 0;
     }
     .ap-feedback-tag {
       font-family: var(--font-mono);
@@ -618,7 +621,25 @@
       border: 2px solid var(--accent);
       padding: 0.15rem 0.45rem;
       color: var(--accent);
+      flex-shrink: 0;
+      max-width: 200px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
+    .ap-fb-toggle {
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      font-weight: 600;
+      color: var(--accent);
+      padding: 0.4rem 0.75rem;
+      text-align: center;
+      border-top: 1px solid var(--border);
+      cursor: pointer;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .ap-fb-toggle:hover { background: var(--accent-light); }
     .ap-sync-info {
       font-family: var(--font-mono);
       font-size: 0.6rem;
@@ -984,24 +1005,28 @@
 
         var fbArr = a.erc8004.feedback || [];
         if (fbArr.length > 0) {
-          h += '<div style="font-family:var(--font-mono);font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-muted);margin-bottom:0.5rem;">Feedback</div>';
-          h += '<div class="ap-feedback-list">';
-          var fbMax = Math.min(fbArr.length, 10);
+          var fbVisible = 3;
+          h += '<div style="font-family:var(--font-mono);font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-muted);margin-bottom:0.5rem;">Feedback (' + fbArr.length + ')</div>';
+          h += '<div class="ap-feedback-list" id="ap-fb-list">';
+          var fbMax = Math.min(fbArr.length, 20);
           for (var fi = 0; fi < fbMax; fi++) {
             var fb = fbArr[fi];
             var fbVal = fb.score != null ? Number(fb.score) : null;
             var fbDec = fb.decimals ? Number(fb.decimals) : 0;
             var fbDisplay = fbVal != null ? (fbDec > 0 ? (fbVal / Math.pow(10, fbDec)).toFixed(fbDec) : String(fbVal)) : '--';
             var fbColor = fbVal == null ? 'var(--text-muted)' : (fbVal > 70 ? '#22c55e' : (fbVal >= 40 ? '#F59E0B' : '#ef4444'));
-            h += '<div class="ap-feedback-item">';
+            h += '<div class="ap-feedback-item' + (fi >= fbVisible ? ' ap-fb-hidden' : '') + '">';
             h += '<span class="ap-feedback-rater"><a href="https://celoscan.io/address/' + esc(fb.rater) + '" target="_blank">' + trunc(fb.rater) + '</a></span>';
             h += '<span class="ap-feedback-score" style="color:' + fbColor + ';border-color:' + fbColor + ';">' + fbDisplay + '</span>';
-            if (fb.tag1) h += '<span class="ap-feedback-tag">' + esc(fb.tag1) + '</span>';
-            if (fb.tag2) h += '<span class="ap-feedback-tag">' + esc(fb.tag2) + '</span>';
+            if (fb.tag1) h += '<span class="ap-feedback-tag" title="' + esc(fb.tag1) + '">' + esc(fb.tag1.length > 30 ? fb.tag1.slice(0, 27) + '...' : fb.tag1) + '</span>';
+            if (fb.tag2) h += '<span class="ap-feedback-tag" title="' + esc(fb.tag2) + '">' + esc(fb.tag2.length > 30 ? fb.tag2.slice(0, 27) + '...' : fb.tag2) + '</span>';
             h += '</div>';
           }
-          if (fbArr.length > 10) {
-            h += '<div class="ap-feedback-more">+ ' + (fbArr.length - 10) + ' more entries</div>';
+          if (fbMax > fbVisible) {
+            h += '<div class="ap-fb-toggle" id="ap-fb-toggle" onclick="toggleFbList()">Show all ' + fbMax + ' entries</div>';
+          }
+          if (fbArr.length > fbMax) {
+            h += '<div class="ap-feedback-more">(' + (fbArr.length - fbMax) + ' older entries on-chain only)</div>';
           }
           h += '</div>';
         }
@@ -1343,6 +1368,21 @@
     }
 
     var _agentPublicKey = null;
+
+    function toggleFbList() {
+      var list = document.getElementById('ap-fb-list');
+      var toggle = document.getElementById('ap-fb-toggle');
+      if (!list || !toggle) return;
+      var hidden = list.querySelectorAll('.ap-fb-hidden');
+      if (hidden.length > 0) {
+        for (var i = 0; i < hidden.length; i++) hidden[i].classList.remove('ap-fb-hidden');
+        toggle.textContent = 'Show less';
+      } else {
+        var items = list.querySelectorAll('.ap-feedback-item');
+        for (var i = 3; i < items.length; i++) items[i].classList.add('ap-fb-hidden');
+        toggle.textContent = 'Show all ' + items.length + ' entries';
+      }
+    }
 
     function toggleFeedbackForm() {
       var form = document.getElementById('feedback-form');
