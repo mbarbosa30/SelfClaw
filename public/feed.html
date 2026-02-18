@@ -288,10 +288,22 @@
 
     @media (max-width: 768px) {
       .feed-header { flex-direction: column; gap: 0.25rem; }
+      .feed-post { padding: 1rem; }
+      .feed-actions { gap: 0.5rem; }
       .post-time { margin-left: 0; }
       .post-card-header { flex-wrap: wrap; }
       .post-card { padding: 1.5rem 0; }
       .post-footer { gap: 0; }
+      .feed-chips { gap: 0.3rem; }
+    }
+    @media (max-width: 480px) {
+      .feed-post { padding: 0.75rem; }
+      .post-form textarea { font-size: 16px; }
+      .post-form select, .post-form input { font-size: 16px; min-height: 44px; }
+      .post-card { padding: 1rem 0; }
+      .post-action { min-height: 44px; }
+      .feed-chip { min-height: 44px; padding: 0.4rem 0.65rem; }
+      .load-more-btn { min-height: 44px; font-size: 16px; }
     }
   </style>
 </head>

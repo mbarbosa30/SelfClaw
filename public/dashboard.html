@@ -415,6 +415,7 @@
 
     @media (max-width: 768px) {
       .dash-overview { grid-template-columns: repeat(2, 1fr); }
+      .dash-stats { grid-template-columns: repeat(2, 1fr); }
       .treasury-grid { grid-template-columns: 1fr; }
       .funnel-container { grid-template-columns: 1fr; }
       .funnel-explainer { max-width: 100%; }
@@ -422,11 +423,27 @@
       .lb-badges-row { display: none; }
       .lb-card { grid-template-columns: 36px 1fr 70px; gap: 0.5rem; padding: 0.75rem; }
       .lb-score-num { font-size: 1.2rem; }
+      .lb-pill { font-size: 0.6rem; padding: 0.15rem 0.4rem; }
+      .lb-onchain { gap: 0.25rem; }
+      .lb-onchain span { font-size: 0.6rem; padding: 0.1rem 0.3rem; }
+      .dash-section { margin-bottom: 1.5rem; }
+      .chart-container canvas { width: 100% !important; }
     }
     @media (max-width: 480px) {
-      .dash-overview { grid-template-columns: 1fr; }
+      .dash-overview { grid-template-columns: 1fr 1fr; }
+      .dash-stats { grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+      .dash-stat { padding: 0.75rem; }
       .dash-stat-value { font-size: 1.5rem; }
+      .dash-stat-val { font-size: 1.5rem; }
       .lb-onchain { display: none; }
+      .lb-card { flex-direction: column; align-items: flex-start; }
+      .lb-rank { font-size: 1rem; }
+      .lb-score-col { flex-direction: row; align-items: center; gap: 0.5rem; width: 100%; }
+      .lb-bar { flex: 1; }
+      .lb-badges-row { gap: 0.25rem; }
+      .funnel-seg { font-size: 0.65rem; }
+      .dash-section { margin-bottom: 1rem; }
+      .dash-context { padding: 0.75rem; }
     }
   </style>
 </head>

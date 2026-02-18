@@ -426,6 +426,9 @@
       .explainer-grid { grid-template-columns: repeat(2, 1fr); }
       .recent-agents-grid { grid-template-columns: repeat(2, 1fr); }
       .skill-grid { grid-template-columns: repeat(2, 1fr); }
+      .registry-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+      .registry-search { flex-direction: column; }
+      .skill-search-row input { font-size: 16px; min-height: 44px; }
     }
     @media (max-width: 600px) {
       .token-table th:nth-child(4),
@@ -439,6 +442,12 @@
       .explainer-grid { grid-template-columns: 1fr; }
       .recent-agents-grid { grid-template-columns: 1fr; }
       .skill-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 480px) {
+      .registry-search input, .registry-search button { width: 100%; }
+      .selfclaw-ref { flex-direction: column; gap: 0.5rem; padding: 0.5rem 0.75rem; }
+      .skill-chip { min-height: 44px; display: inline-flex; align-items: center; }
+      .recent-agent-card { padding: 0.75rem; }
     }
   </style>
 </head>
