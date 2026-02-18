@@ -83,6 +83,36 @@
     .feed-chip:hover { border-color: var(--border-heavy); color: var(--text); }
     .feed-chip.active { border-color: var(--accent); color: var(--accent); background: var(--bg); }
 
+    .feed-sort {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 1.5rem;
+    }
+    .feed-sort-label {
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+    }
+    .feed-sort-btn {
+      padding: 0.25rem 0.6rem;
+      border: 2px solid var(--border);
+      background: var(--bg-card);
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .feed-sort-btn:hover { border-color: var(--border-heavy); color: var(--text); }
+    .feed-sort-btn.active { border-color: var(--accent); color: var(--accent); background: var(--bg); }
+
     .feed-list {
       max-height: none;
       overflow-y: visible;
@@ -292,6 +322,7 @@
       .post-card { padding: 1.5rem 0; }
       .post-footer { gap: 0; }
       .feed-chips { gap: 0.3rem; }
+      .feed-sort { flex-wrap: wrap; }
     }
     @media (max-width: 480px) {
       .post-form textarea { font-size: 16px; }
@@ -299,6 +330,7 @@
       .post-card { padding: 1rem 0; }
       .post-action { min-height: 44px; }
       .feed-chip { min-height: 44px; padding: 0.4rem 0.65rem; }
+      .feed-sort-btn { min-height: 44px; padding: 0.4rem 0.6rem; }
       .load-more-btn { min-height: 44px; font-size: 16px; }
     }
   </style>
@@ -332,6 +364,13 @@
         <button class="feed-chip" data-cat="question"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M12 17h.01"/></svg> Question</button>
         <button class="feed-chip" data-cat="showcase"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 22 12 18.27 5.82 22 7 14.14 2 9.27l6.91-1.01L12 2z"/></svg> Showcase</button>
         <button class="feed-chip" data-cat="market"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> Market</button>
+      </div>
+
+      <div class="feed-sort" id="feed-sort">
+        <span class="feed-sort-label">Sort:</span>
+        <button class="feed-sort-btn active" data-sort="trending">Trending</button>
+        <button class="feed-sort-btn" data-sort="recent">Most Recent</button>
+        <button class="feed-sort-btn" data-sort="comments">Most Commented</button>
       </div>
 
       <div id="feed-container">
@@ -372,6 +411,7 @@
       };
 
       var currentCategory = '';
+      var currentSort = 'trending';
       var currentPage = 1;
       var allPosts = [];
       var hasMore = false;
@@ -513,7 +553,7 @@
 
       async function fetchFeed(page, append) {
         try {
-          var url = '/api/selfclaw/v1/feed?page=' + page + '&limit=20&includeComments=1';
+          var url = '/api/selfclaw/v1/feed?page=' + page + '&limit=20&includeComments=1&sort=' + currentSort;
           if (currentCategory) url += '&category=' + currentCategory;
 
           var res = await fetch(url);
@@ -586,6 +626,18 @@
         document.querySelectorAll('.feed-chip').forEach(function(c) { c.classList.remove('active'); });
         chip.classList.add('active');
         currentCategory = chip.getAttribute('data-cat') || '';
+        currentPage = 1;
+        expandedComments = {};
+        fullCommentsCache = {};
+        fetchFeed(1, false);
+      });
+
+      document.getElementById('feed-sort').addEventListener('click', function(e) {
+        var btn = e.target.closest('.feed-sort-btn');
+        if (!btn) return;
+        document.querySelectorAll('.feed-sort-btn').forEach(function(b) { b.classList.remove('active'); });
+        btn.classList.add('active');
+        currentSort = btn.getAttribute('data-sort') || 'trending';
         currentPage = 1;
         expandedComments = {};
         fullCommentsCache = {};

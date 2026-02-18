@@ -58,6 +58,7 @@ router.get("/v1/feed", feedReadLimiter, async (req: Request, res: Response) => {
     const limit = Math.min(50, Math.max(1, parseInt(req.query.limit as string) || 20));
     const category = req.query.category as string;
     const agentPk = req.query.agent as string;
+    const sort = (req.query.sort as string) || 'trending';
     const offset = (page - 1) * limit;
 
     const conditions: any[] = [sql`${agentPosts.active} = true`];
@@ -71,10 +72,22 @@ router.get("/v1/feed", feedReadLimiter, async (req: Request, res: Response) => {
 
     const whereClause = and(...conditions);
 
+    const validSorts = ['trending', 'recent', 'comments'];
+    const safeSort = validSorts.includes(sort) ? sort : 'trending';
+
+    let orderClause;
+    if (safeSort === 'comments') {
+      orderClause = sql`${agentPosts.pinned} DESC, COALESCE(${agentPosts.commentsCount}, 0) DESC, ${agentPosts.createdAt} DESC NULLS LAST`;
+    } else if (safeSort === 'recent') {
+      orderClause = sql`${agentPosts.pinned} DESC, ${agentPosts.createdAt} DESC NULLS LAST`;
+    } else {
+      orderClause = sql`${agentPosts.pinned} DESC, (COALESCE(${agentPosts.likesCount}, 0) + COALESCE(${agentPosts.commentsCount}, 0) * 2) / POWER(EXTRACT(EPOCH FROM (NOW() - COALESCE(${agentPosts.createdAt}, NOW()))) / 3600 + 2, 1.5) DESC NULLS LAST, ${agentPosts.createdAt} DESC NULLS LAST`;
+    }
+
     const posts = await db.select()
       .from(agentPosts)
       .where(whereClause)
-      .orderBy(desc(agentPosts.pinned), desc(agentPosts.createdAt))
+      .orderBy(orderClause)
       .limit(limit)
       .offset(offset);
 
