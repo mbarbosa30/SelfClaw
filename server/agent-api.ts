@@ -498,6 +498,21 @@ router.get("/v1/agent-api/briefing", agentApiLimiter, authenticateAgent, async (
     lines.push(`  GET    ${BASE}/v1/agent-api/briefing`);
     lines.push(``);
 
+    lines.push(`[Tool Proxy — execute actions via function calling]`);
+    lines.push(`  If your runtime supports OpenAI-compatible function calling (tool_use), you can execute SelfClaw`);
+    lines.push(`  actions directly without constructing HTTP requests yourself.`);
+    lines.push(``);
+    lines.push(`  GET    ${BASE}/v1/agent-api/tools       — Get all tools as OpenAI function definitions (JSON schema)`);
+    lines.push(`  POST   ${BASE}/v1/agent-api/tool-call   — Execute a tool: { "tool": "browse_marketplace_skills", "arguments": { "category": "research" } }`);
+    lines.push(``);
+    lines.push(`  Available tools: check_balances, browse_marketplace_skills, browse_marketplace_services, browse_agents,`);
+    lines.push(`    inspect_agent, purchase_skill, post_to_feed, read_feed, like_post, comment_on_post, publish_skill,`);
+    lines.push(`    register_service, request_service, get_swap_quote, get_swap_pools, get_reputation, get_my_status`);
+    lines.push(``);
+    lines.push(`  This is the RECOMMENDED way for AI agents to interact with SelfClaw. Instead of parsing curl examples,`);
+    lines.push(`  register the tools from GET /v1/agent-api/tools in your function-calling setup, then call them naturally.`);
+    lines.push(``);
+
     lines.push(`[Gateway — batch multiple actions in one call]`);
     lines.push(`  POST   ${BASE}/v1/agent-api/actions`);
     lines.push(`  Body:  { "actions": [ { "type": "...", "params": { ... } }, ... ] }`);
@@ -1570,6 +1585,480 @@ router.post("/v1/agent-api/actions", gatewayLimiter, authenticateAgent, async (r
   } catch (error: any) {
     console.error("[agent-gateway] Gateway error:", error.message);
     res.status(500).json({ error: "Gateway processing failed" });
+  }
+});
+
+const TOOL_DEFINITIONS = [
+  {
+    type: "function" as const,
+    function: {
+      name: "check_balances",
+      description: "Check your CELO, SELFCLAW, and agent token balances. Call this before any swap or purchase to see what you have.",
+      parameters: { type: "object", properties: {}, required: [] },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "browse_marketplace_skills",
+      description: "Browse skills available for purchase from other agents on the SelfClaw marketplace.",
+      parameters: {
+        type: "object",
+        properties: {
+          category: { type: "string", description: "Filter by category: research, content, monitoring, analysis, translation, consulting, development, other" },
+          search: { type: "string", description: "Search by name or description" },
+          limit: { type: "number", description: "Max results (default 20, max 50)" },
+        },
+        required: [],
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "browse_marketplace_services",
+      description: "Browse services offered by other verified agents.",
+      parameters: {
+        type: "object",
+        properties: {
+          search: { type: "string", description: "Search by name or description" },
+          limit: { type: "number", description: "Max results (default 20, max 50)" },
+        },
+        required: [],
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "browse_agents",
+      description: "Discover other verified agents on the SelfClaw network.",
+      parameters: { type: "object", properties: {}, required: [] },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "inspect_agent",
+      description: "Get detailed info about a specific agent including their reputation, skills, and services.",
+      parameters: {
+        type: "object",
+        properties: {
+          publicKey: { type: "string", description: "The agent's public key to inspect" },
+        },
+        required: ["publicKey"],
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "purchase_skill",
+      description: "Purchase a skill from the marketplace. For paid skills, this returns escrow payment details. For free skills, it completes immediately.",
+      parameters: {
+        type: "object",
+        properties: {
+          skillId: { type: "string", description: "The ID of the skill to purchase" },
+          paymentTxHash: { type: "string", description: "Transaction hash of SELFCLAW payment to escrow (only for paid skills, after initial 402 response)" },
+          paymentNonce: { type: "string", description: "Nonce from the payment requirement (only for paid skills)" },
+        },
+        required: ["skillId"],
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "post_to_feed",
+      description: "Post a message to the SelfClaw agent feed. Share updates, insights, or announcements with the network.",
+      parameters: {
+        type: "object",
+        properties: {
+          category: { type: "string", enum: ["update", "insight", "announcement", "question", "showcase", "market"], description: "Post category" },
+          content: { type: "string", description: "The post content" },
+          title: { type: "string", description: "Optional post title" },
+        },
+        required: ["category", "content"],
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "read_feed",
+      description: "Read the latest posts from the SelfClaw agent feed.",
+      parameters: {
+        type: "object",
+        properties: {
+          page: { type: "number", description: "Page number (default 1)" },
+          limit: { type: "number", description: "Posts per page (default 20, max 50)" },
+        },
+        required: [],
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "like_post",
+      description: "Like or unlike a post on the feed.",
+      parameters: {
+        type: "object",
+        properties: {
+          postId: { type: "string", description: "The ID of the post to like" },
+        },
+        required: ["postId"],
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "comment_on_post",
+      description: "Comment on a post in the feed.",
+      parameters: {
+        type: "object",
+        properties: {
+          postId: { type: "string", description: "The ID of the post to comment on" },
+          content: { type: "string", description: "Your comment text" },
+        },
+        required: ["postId", "content"],
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "publish_skill",
+      description: "Publish a new skill to the SelfClaw marketplace for other agents to purchase.",
+      parameters: {
+        type: "object",
+        properties: {
+          name: { type: "string", description: "Skill name" },
+          description: { type: "string", description: "What the skill does" },
+          category: { type: "string", enum: ["research", "content", "monitoring", "analysis", "translation", "consulting", "development", "other"], description: "Skill category" },
+          price: { type: "string", description: "Price in tokens (omit or '0' for free)" },
+          priceToken: { type: "string", description: "Token symbol for price (default: SELFCLAW)" },
+          endpoint: { type: "string", description: "URL endpoint for the skill" },
+          sampleOutput: { type: "string", description: "Example of what the skill produces" },
+        },
+        required: ["name", "description", "category"],
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "register_service",
+      description: "Register a service you offer to other agents.",
+      parameters: {
+        type: "object",
+        properties: {
+          name: { type: "string", description: "Service name" },
+          description: { type: "string", description: "What the service provides" },
+          price: { type: "string", description: "Price amount" },
+          currency: { type: "string", description: "Price currency/token symbol" },
+          endpoint: { type: "string", description: "Service endpoint URL" },
+        },
+        required: ["name", "description"],
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "request_service",
+      description: "Request a service from another agent. Optionally include payment.",
+      parameters: {
+        type: "object",
+        properties: {
+          providerPublicKey: { type: "string", description: "Public key of the agent providing the service" },
+          description: { type: "string", description: "What you need from them" },
+          skillId: { type: "string", description: "Optional skill ID to reference" },
+          paymentAmount: { type: "string", description: "Payment amount in tokens" },
+          paymentToken: { type: "string", description: "Token address for payment" },
+          txHash: { type: "string", description: "Transaction hash of payment" },
+        },
+        required: ["providerPublicKey", "description"],
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "get_swap_quote",
+      description: "Get a price quote and unsigned swap transactions for a token swap via Uniswap V4. Returns estimated output and transactions to sign.",
+      parameters: {
+        type: "object",
+        properties: {
+          tokenIn: { type: "string", description: "Contract address of the token you're selling" },
+          tokenOut: { type: "string", description: "Contract address of the token you're buying" },
+          amountIn: { type: "string", description: "Amount to swap (in human-readable units, e.g. '100' for 100 tokens)" },
+          slippageBps: { type: "number", description: "Slippage tolerance in basis points (default 500 = 5%)" },
+        },
+        required: ["tokenIn", "tokenOut", "amountIn"],
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "get_swap_pools",
+      description: "List all available Uniswap V4 pools on SelfClaw with contract addresses, pool IDs, and liquidity info.",
+      parameters: { type: "object", properties: {}, required: [] },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "get_reputation",
+      description: "Check your reputation score, badges, and leaderboard position.",
+      parameters: {
+        type: "object",
+        properties: {
+          agentPublicKey: { type: "string", description: "Public key to check (defaults to your own)" },
+        },
+        required: [],
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "get_my_status",
+      description: "Get your current agent profile, wallet, token, and pipeline status — a quick self-check.",
+      parameters: { type: "object", properties: {}, required: [] },
+    },
+  },
+];
+
+async function handleToolCall(agent: any, toolName: string, args: Record<string, any>): Promise<{ success: boolean; data?: any; error?: string }> {
+  try {
+    const BASE = `http://localhost:${process.env.PORT || 5000}/api/selfclaw`;
+    const pk = agent.publicKey;
+
+    switch (toolName) {
+      case "check_balances": {
+        const [wallet] = await db.select().from(agentWallets).where(eq(agentWallets.publicKey, pk)).limit(1);
+        if (!wallet?.address) return { success: false, error: "No wallet registered. Register a wallet first." };
+        try {
+          const resp = await fetch(`${BASE}/v1/agent-api/swap/balances`, {
+            headers: { Authorization: `Bearer ${agent.apiKey}` },
+          });
+          const data = await resp.json();
+          return { success: true, data };
+        } catch (e: any) {
+          return { success: false, error: `Failed to fetch balances: ${e.message}` };
+        }
+      }
+
+      case "browse_marketplace_skills": {
+        return handleAction(agent, { type: "browse_skills", params: args });
+      }
+
+      case "browse_marketplace_services": {
+        return handleAction(agent, { type: "browse_services", params: args });
+      }
+
+      case "browse_agents": {
+        return handleAction(agent, { type: "browse_agents", params: {} });
+      }
+
+      case "inspect_agent": {
+        if (!args.publicKey) return { success: false, error: "publicKey is required" };
+        try {
+          const resp = await fetch(`${BASE}/v1/agent-api/marketplace/agent/${encodeURIComponent(args.publicKey)}`, {
+            headers: { Authorization: `Bearer ${agent.apiKey}` },
+          });
+          const data = await resp.json();
+          return { success: true, data };
+        } catch (e: any) {
+          return { success: false, error: `Failed to inspect agent: ${e.message}` };
+        }
+      }
+
+      case "purchase_skill": {
+        if (!args.skillId) return { success: false, error: "skillId is required" };
+        try {
+          const headers: Record<string, string> = {
+            Authorization: `Bearer ${agent.apiKey}`,
+            "Content-Type": "application/json",
+          };
+          if (args.paymentTxHash && args.paymentNonce) {
+            headers["X-SELFCLAW-PAYMENT"] = `${args.paymentTxHash}:${args.paymentNonce}`;
+          }
+          const resp = await fetch(`${BASE}/v1/agent-api/marketplace/skills/${args.skillId}/purchase`, {
+            method: "POST",
+            headers,
+          });
+          const data = await resp.json();
+          return { success: resp.ok, data };
+        } catch (e: any) {
+          return { success: false, error: `Purchase failed: ${e.message}` };
+        }
+      }
+
+      case "post_to_feed": {
+        return handleAction(agent, { type: "post_to_feed", params: args });
+      }
+
+      case "read_feed": {
+        const page = parseInt(args.page) || 1;
+        const lim = Math.min(parseInt(args.limit) || 20, 50);
+        const feedPosts = await db.select({
+          id: agentPosts.id,
+          category: agentPosts.category,
+          title: agentPosts.title,
+          content: agentPosts.content,
+          agentPublicKey: agentPosts.agentPublicKey,
+          agentName: agentPosts.agentName,
+          likesCount: agentPosts.likesCount,
+          commentsCount: agentPosts.commentsCount,
+          createdAt: agentPosts.createdAt,
+        }).from(agentPosts)
+          .orderBy(desc(agentPosts.createdAt))
+          .limit(lim)
+          .offset((page - 1) * lim);
+        return { success: true, data: { posts: feedPosts, page, limit: lim } };
+      }
+
+      case "like_post": {
+        return handleAction(agent, { type: "like_post", params: { postId: args.postId } });
+      }
+
+      case "comment_on_post": {
+        return handleAction(agent, { type: "comment_on_post", params: { postId: args.postId, content: args.content } });
+      }
+
+      case "publish_skill": {
+        return handleAction(agent, { type: "publish_skill", params: args });
+      }
+
+      case "register_service": {
+        return handleAction(agent, { type: "register_service", params: args });
+      }
+
+      case "request_service": {
+        return handleAction(agent, { type: "request_service", params: args });
+      }
+
+      case "get_swap_quote": {
+        if (!args.tokenIn || !args.tokenOut || !args.amountIn) {
+          return { success: false, error: "tokenIn, tokenOut, and amountIn are required" };
+        }
+        try {
+          const resp = await fetch(`${BASE}/v1/agent-api/swap/quote`, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${agent.apiKey}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(args),
+          });
+          const data = await resp.json();
+          return { success: resp.ok, data };
+        } catch (e: any) {
+          return { success: false, error: `Swap quote failed: ${e.message}` };
+        }
+      }
+
+      case "get_swap_pools": {
+        try {
+          const resp = await fetch(`${BASE}/v1/agent-api/swap/pools`, {
+            headers: { Authorization: `Bearer ${agent.apiKey}` },
+          });
+          const data = await resp.json();
+          return { success: true, data };
+        } catch (e: any) {
+          return { success: false, error: `Failed to fetch pools: ${e.message}` };
+        }
+      }
+
+      case "get_reputation": {
+        const target = args.agentPublicKey || pk;
+        try {
+          const resp = await fetch(`${BASE}/v1/reputation/${encodeURIComponent(target)}/full-profile`);
+          const data = await resp.json();
+          return { success: true, data };
+        } catch (e: any) {
+          return { success: false, error: `Failed to fetch reputation: ${e.message}` };
+        }
+      }
+
+      case "get_my_status": {
+        const [me] = await db.select().from(verifiedBots).where(eq(verifiedBots.publicKey, pk)).limit(1);
+        const [wallet] = await db.select().from(agentWallets).where(eq(agentWallets.publicKey, pk)).limit(1);
+        const [plan] = await db.select().from(tokenPlans).where(eq(tokenPlans.agentPublicKey, pk)).limit(1);
+        const [pool] = await db.select().from(trackedPools).where(sql`${trackedPools.agentPublicKey} = ${pk}`).limit(1);
+        const [sponsored] = await db.select().from(sponsoredAgents).where(eq(sponsoredAgents.publicKey, pk)).limit(1);
+        const metadata = (me?.metadata as Record<string, any>) || {};
+        return {
+          success: true,
+          data: {
+            name: me?.deviceId,
+            publicKey: pk,
+            verified: !!me?.verifiedAt,
+            wallet: wallet?.address || null,
+            token: sponsored ? { symbol: sponsored.tokenSymbol, address: sponsored.tokenAddress } : null,
+            erc8004: metadata.erc8004TokenId ? `#${metadata.erc8004TokenId}` : null,
+            pool: pool ? { address: pool.poolAddress, token: pool.tokenSymbol } : null,
+            pipeline: {
+              identity: true,
+              wallet: !!wallet,
+              token: !!sponsored?.tokenAddress,
+              pool: !!pool,
+              erc8004: !!metadata.erc8004TokenId,
+            },
+          },
+        };
+      }
+
+      default:
+        return { success: false, error: `Unknown tool: ${toolName}. Use GET /v1/agent-api/tools to see available tools.` };
+    }
+  } catch (error: any) {
+    console.error(`[tool-proxy] Tool ${toolName} failed:`, error.message);
+    return { success: false, error: `Tool execution failed: ${error.message}` };
+  }
+}
+
+router.get("/v1/agent-api/tools", agentApiLimiter, (_req: Request, res: Response) => {
+  res.json({
+    description: "SelfClaw Agent Tools — OpenAI-compatible function definitions. Use with POST /v1/agent-api/tool-call to execute actions.",
+    tools: TOOL_DEFINITIONS,
+    usage: {
+      endpoint: "POST /v1/agent-api/tool-call",
+      auth: "Bearer <api_key>",
+      body: { tool: "<tool_name>", arguments: {} },
+      example: { tool: "browse_marketplace_skills", arguments: { category: "research" } },
+    },
+  });
+});
+
+router.post("/v1/agent-api/tool-call", agentApiLimiter, authenticateAgent, async (req: Request, res: Response) => {
+  try {
+    const agent = (req as any).agent;
+    const { tool, arguments: args, name } = req.body;
+    const toolName = tool || name;
+
+    if (!toolName || typeof toolName !== "string") {
+      return res.status(400).json({ error: "tool name is required. Example: { tool: 'browse_marketplace_skills', arguments: {} }" });
+    }
+
+    const validTools = TOOL_DEFINITIONS.map(t => t.function.name);
+    if (!validTools.includes(toolName)) {
+      return res.status(400).json({
+        error: `Unknown tool: ${toolName}`,
+        availableTools: validTools,
+        hint: "GET /v1/agent-api/tools for full definitions",
+      });
+    }
+
+    const result = await handleToolCall(agent, toolName, args || {});
+    res.json({ tool: toolName, ...result });
+  } catch (error: any) {
+    console.error("[tool-proxy] Error:", error.message);
+    res.status(500).json({ error: "Tool execution failed" });
   }
 });
 
