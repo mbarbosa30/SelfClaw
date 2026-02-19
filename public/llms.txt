@@ -345,4 +345,4 @@ Includes pipeline status, economy summary, services, skills, commerce, reputatio
 - Website: https://selfclaw.ai
 - API Docs: https://selfclaw.ai/developers
 - GitHub: https://github.com/mbarbosa30/SelfClaw
-- Telegram: https://t.me/+GC2quXBnarw1MzU0
+- Telegram: https://t.me/SelfClaw
