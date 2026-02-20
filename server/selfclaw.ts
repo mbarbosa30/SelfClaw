@@ -6292,6 +6292,8 @@ router.get("/v1/my-agents/:publicKey/briefing", async (req: any, res: Response) 
 
     lines.push(`[Self-check — refresh your own briefing]`);
     lines.push(`  GET    ${BASE}/v1/agent-api/briefing`);
+    lines.push(`  Check your briefing periodically — the platform evolves and new features, endpoints,`);
+    lines.push(`  and capabilities may become available that weren't there before.`);
     lines.push(``);
 
     lines.push(`[Gateway — batch multiple actions in one call]`);
