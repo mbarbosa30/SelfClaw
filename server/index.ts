@@ -104,6 +104,7 @@ app.get("/skill-market", (_req: Request, res: Response) => sendHtml(res, "skill-
 app.get("/miniapp", (_req: Request, res: Response) => sendHtml(res, "miniapp.html"));
 app.get("/miniapp/chat/:id", (_req: Request, res: Response) => sendHtml(res, "miniclaw-chat.html"));
 app.get("/guide", (_req: Request, res: Response) => sendHtml(res, "guide.html"));
+app.get("/faq", (_req: Request, res: Response) => sendHtml(res, "faq.html"));
 app.get("/miniclaw", (_req: Request, res: Response) => sendHtml(res, "miniclaw-intro.html"));
 app.get("/perkos", (_req: Request, res: Response) => sendHtml(res, "perkos.html", { "X-Robots-Tag": "noindex, nofollow" }));
 app.get("/feed", (_req: Request, res: Response) => sendHtml(res, "feed.html"));
