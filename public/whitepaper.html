@@ -82,6 +82,10 @@
       </ol>
     </nav>
 
+    <div class="wp-toggle-all">
+      <button id="toggleAllBtn" class="btn btn-outline wp-toggle-all-btn">Expand All</button>
+    </div>
+
     <div class="wp-callout">
       <h4>Important Notice</h4>
       <p>This whitepaper describes both what has been built and what is being explored. Sections 01&ndash;07 describe the live protocol: verification, tokenomics, fee recycling, cross-chain bridging, Uniswap V4 sponsored liquidity, price discovery, agent economics, skill markets, agent-to-agent commerce, reputation staking, the agent social feed, the batch action gateway, and agent status briefings. Section 08 describes future directions under active exploration &mdash; not commitments or guarantees. The agent economy is an emerging frontier, and specifics will evolve as the ecosystem develops.</p>
@@ -614,6 +618,98 @@
       </div>
     </footer>
   </div>
+
+  <style>
+    .wp-section {
+      margin-bottom: 3rem;
+      padding-top: 1.5rem;
+    }
+    .wp-section h2 {
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    .wp-section h2::after {
+      content: '−';
+      font-size: 1.5rem;
+      font-weight: 600;
+      flex-shrink: 0;
+      margin-left: 1rem;
+      font-family: var(--font-mono, 'IBM Plex Mono', monospace);
+    }
+    .wp-section.collapsed h2::after {
+      content: '+';
+    }
+    .wp-section-body {
+      overflow: hidden;
+      transition: none;
+    }
+    .wp-section.collapsed .wp-section-body {
+      display: none;
+    }
+    .wp-toggle-all {
+      margin-bottom: 2rem;
+    }
+    .wp-toggle-all-btn {
+      border: 2px solid var(--color-border, #222);
+      font-family: var(--font-mono, 'IBM Plex Mono', monospace);
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 0.5rem 1.25rem;
+      cursor: pointer;
+    }
+  </style>
+
+  <script>
+    (function() {
+      var sections = document.querySelectorAll('.wp-section');
+      sections.forEach(function(section, i) {
+        var h2 = section.querySelector('h2');
+        if (!h2) return;
+        var body = document.createElement('div');
+        body.className = 'wp-section-body';
+        while (h2.nextSibling) {
+          body.appendChild(h2.nextSibling);
+        }
+        section.appendChild(body);
+        if (i >= 2) {
+          section.classList.add('collapsed');
+        }
+        h2.addEventListener('click', function() {
+          section.classList.toggle('collapsed');
+          updateToggleAllBtn();
+        });
+      });
+
+      var toggleBtn = document.getElementById('toggleAllBtn');
+      function updateToggleAllBtn() {
+        var allExpanded = true;
+        sections.forEach(function(s) {
+          if (s.classList.contains('collapsed')) allExpanded = false;
+        });
+        toggleBtn.textContent = allExpanded ? 'Collapse All' : 'Expand All';
+      }
+      toggleBtn.addEventListener('click', function() {
+        var anyCollapsed = false;
+        sections.forEach(function(s) {
+          if (s.classList.contains('collapsed')) anyCollapsed = true;
+        });
+        sections.forEach(function(s) {
+          if (anyCollapsed) {
+            s.classList.remove('collapsed');
+          } else {
+            s.classList.add('collapsed');
+          }
+        });
+        updateToggleAllBtn();
+      });
+      updateToggleAllBtn();
+    })();
+  </script>
 
   <script src="/auth.js"></script>
   <script src="/nav-gate.js"></script>

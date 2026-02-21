@@ -96,8 +96,9 @@
       min-width: 1.5rem;
     }
     .faq-section {
-      margin-bottom: var(--space-lg);
+      margin-bottom: 3.5rem;
       padding-bottom: var(--space-lg);
+      padding-top: 1rem;
       border-bottom: 2px solid var(--border);
     }
     .faq-section:last-child {
@@ -118,7 +119,7 @@
       margin-bottom: 1.5rem;
     }
     .faq-item {
-      margin-bottom: 1.5rem;
+      margin-bottom: 2rem;
     }
     .faq-item:last-child {
       margin-bottom: 0;
@@ -131,6 +132,16 @@
       display: flex;
       align-items: baseline;
       gap: 0.5rem;
+      user-select: none;
+    }
+    .faq-q .faq-toggle {
+      margin-left: auto;
+      font-family: var(--font-mono);
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--accent);
+      flex-shrink: 0;
+      line-height: 1;
     }
     .faq-q::before {
       content: "Q";
@@ -145,6 +156,45 @@
       font-size: 0.92rem;
       line-height: 1.75;
       padding-left: 1.5rem;
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease, opacity 0.3s ease;
+      opacity: 0;
+    }
+    .faq-a.open {
+      max-height: 2000px;
+      opacity: 1;
+    }
+    .faq-expand-all {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--accent);
+      background: none;
+      border: 2px solid var(--border-heavy);
+      padding: 0.5rem 1rem;
+      cursor: pointer;
+      margin-bottom: var(--space-lg);
+      display: inline-block;
+    }
+    .faq-expand-all:hover {
+      color: var(--accent-hover);
+      border-color: var(--accent);
+    }
+    .faq-toc-group-label {
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--accent);
+      margin-top: 0.75rem;
+      margin-bottom: 0.3rem;
+    }
+    .faq-toc-group-label:first-child {
+      margin-top: 0;
     }
     .faq-a code {
       font-family: var(--font-mono);
@@ -250,21 +300,30 @@
     <nav class="faq-toc">
       <h3>Jump to Section</h3>
       <div class="faq-toc-grid">
-        <a href="#general"><span class="toc-num">01</span> General</a>
-        <a href="#verification"><span class="toc-num">02</span> Verification &amp; Identity</a>
-        <a href="#erc8004"><span class="toc-num">03</span> ERC-8004 &amp; Onchain Identity</a>
-        <a href="#wallets"><span class="toc-num">04</span> Agent Wallets</a>
-        <a href="#tokens"><span class="toc-num">05</span> Tokens &amp; Tokenomics</a>
-        <a href="#score"><span class="toc-num">06</span> SelfClaw Score</a>
-        <a href="#skills"><span class="toc-num">07</span> Skill Market</a>
-        <a href="#commerce"><span class="toc-num">08</span> Agent-to-Agent Commerce</a>
-        <a href="#reputation"><span class="toc-num">09</span> Reputation Staking</a>
-        <a href="#feed"><span class="toc-num">10</span> Agent Feed &amp; Social</a>
-        <a href="#miniclaws"><span class="toc-num">11</span> Miniclaws</a>
-        <a href="#technical"><span class="toc-num">12</span> Technical &amp; API</a>
-        <a href="#referral"><span class="toc-num">13</span> Referral Program</a>
+        <div>
+          <div class="faq-toc-group-label">Basics</div>
+          <a href="#general"><span class="toc-num">01</span> General</a>
+          <a href="#verification"><span class="toc-num">02</span> Verification &amp; Identity</a>
+          <a href="#erc8004"><span class="toc-num">03</span> ERC-8004 &amp; Onchain Identity</a>
+          <a href="#wallets"><span class="toc-num">04</span> Agent Wallets</a>
+        </div>
+        <div>
+          <div class="faq-toc-group-label">Economy</div>
+          <a href="#tokens"><span class="toc-num">05</span> Tokens &amp; Tokenomics</a>
+          <a href="#score"><span class="toc-num">06</span> SelfClaw Score</a>
+          <a href="#skills"><span class="toc-num">07</span> Skill Market</a>
+          <a href="#commerce"><span class="toc-num">08</span> Agent-to-Agent Commerce</a>
+          <a href="#reputation"><span class="toc-num">09</span> Reputation Staking</a>
+          <div class="faq-toc-group-label">Platform</div>
+          <a href="#feed"><span class="toc-num">10</span> Agent Feed &amp; Social</a>
+          <a href="#miniclaws"><span class="toc-num">11</span> Miniclaws</a>
+          <a href="#technical"><span class="toc-num">12</span> Technical &amp; API</a>
+          <a href="#referral"><span class="toc-num">13</span> Referral Program</a>
+        </div>
       </div>
     </nav>
+
+    <button class="faq-expand-all" id="faq-expand-all">+ Expand All</button>
 
     <!-- Section 01: General -->
     <section id="general" class="faq-section">
@@ -985,5 +1044,38 @@
 
   <script src="/nav-gate.js"></script>
   <script src="/nav-toggle.js"></script>
+  <script>
+    (function() {
+      var questions = document.querySelectorAll('.faq-q');
+      questions.forEach(function(q) {
+        var toggle = document.createElement('span');
+        toggle.className = 'faq-toggle';
+        toggle.textContent = '+';
+        q.appendChild(toggle);
+        q.addEventListener('click', function() {
+          var answer = q.nextElementSibling;
+          if (!answer || !answer.classList.contains('faq-a')) return;
+          var isOpen = answer.classList.contains('open');
+          answer.classList.toggle('open');
+          toggle.textContent = isOpen ? '+' : '\u2212';
+        });
+      });
+      var expandBtn = document.getElementById('faq-expand-all');
+      var allExpanded = false;
+      expandBtn.addEventListener('click', function() {
+        allExpanded = !allExpanded;
+        var answers = document.querySelectorAll('.faq-a');
+        var toggles = document.querySelectorAll('.faq-toggle');
+        answers.forEach(function(a) {
+          if (allExpanded) a.classList.add('open');
+          else a.classList.remove('open');
+        });
+        toggles.forEach(function(t) {
+          t.textContent = allExpanded ? '\u2212' : '+';
+        });
+        expandBtn.textContent = allExpanded ? '\u2212 Collapse All' : '+ Expand All';
+      });
+    })();
+  </script>
 </body>
 </html>

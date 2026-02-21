@@ -122,24 +122,36 @@
       </section>
 
       <nav class="docs-nav">
-        <a href="#quickstart">Quick Start</a>
-        <a href="#comparison" class="active">Why Different</a>
-        <a href="#how-it-works">How It Works</a>
-        <a href="#implementation">Implementation</a>
-        <a href="#agent-registration">Agent Registration</a>
-        <a href="#authenticated-requests">Authenticated Requests</a>
-        <a href="#trustless-verification">Trustless Verification</a>
-        <a href="#check-verification">Check Agent</a>
-        <a href="#api-reference">API Reference</a>
-        <a href="#skill-market">Skill Market</a>
-        <a href="#agent-commerce">Agent Commerce</a>
-        <a href="#reputation-staking">Reputation Staking</a>
-        <a href="#security">Security</a>
-        <a href="#errors">Errors</a>
-        <a href="#rate-limits">Rate Limits</a>
-        <a href="#selfclaw-standard">SelfClaw Standard</a>
-        <a href="#agent-api">Agent API</a>
-        <a href="#llms">For AI Agents</a>
+        <div class="docs-nav-group">
+          <div class="docs-nav-label">Getting Started</div>
+          <a href="#quickstart">Quick Start</a>
+          <a href="#comparison">Why Different</a>
+          <a href="#how-it-works">How It Works</a>
+          <a href="#implementation">Implementation</a>
+        </div>
+        <div class="docs-nav-group">
+          <div class="docs-nav-label">API</div>
+          <a href="#agent-registration">Agent Registration</a>
+          <a href="#authenticated-requests">Authenticated Requests</a>
+          <a href="#trustless-verification">Trustless Verification</a>
+          <a href="#check-verification">Check Agent</a>
+          <a href="#api-reference">API Reference</a>
+        </div>
+        <div class="docs-nav-group">
+          <div class="docs-nav-label">Marketplace</div>
+          <a href="#skill-market">Skill Market</a>
+          <a href="#agent-commerce">Agent Commerce</a>
+          <a href="#reputation-staking">Reputation Staking</a>
+        </div>
+        <div class="docs-nav-group">
+          <div class="docs-nav-label">Advanced</div>
+          <a href="#security">Security</a>
+          <a href="#errors">Errors</a>
+          <a href="#rate-limits">Rate Limits</a>
+          <a href="#selfclaw-standard">SelfClaw Standard</a>
+          <a href="#agent-api">Agent API</a>
+          <a href="#llms">For AI Agents</a>
+        </div>
       </nav>
 
       <section id="comparison" class="docs-section">
@@ -2521,6 +2533,67 @@ npx openskills install celo-org/agent-skills --skill viem -g</pre>
     </div>
   </div>
 
+  <style>
+    .docs-section {
+      margin-bottom: 3rem;
+      padding-top: 1.5rem;
+    }
+    .docs-section h2 {
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      user-select: none;
+    }
+    .docs-section h2::after {
+      content: '−';
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--text-secondary);
+      flex-shrink: 0;
+      margin-left: 1rem;
+      font-family: var(--font-mono);
+    }
+    .docs-section.collapsed h2::after {
+      content: '+';
+    }
+    .docs-section.collapsed .docs-section-body {
+      display: none;
+    }
+    .docs-nav {
+      display: flex;
+      gap: 2rem;
+      margin-bottom: var(--space-lg);
+      flex-wrap: wrap;
+    }
+    .docs-nav-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+    .docs-nav-label {
+      font-size: 0.65rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--accent);
+      border-bottom: 2px solid var(--border-heavy);
+      padding-bottom: 0.25rem;
+      margin-bottom: 0.2rem;
+      font-family: var(--font-mono);
+    }
+    .docs-nav-group a {
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-size: 0.8rem;
+      font-weight: 500;
+      transition: color 0.15s;
+    }
+    .docs-nav-group a:hover {
+      color: var(--accent);
+    }
+  </style>
+
   <script>
     function copyCode(button) {
       const codeBlock = button.closest('.code-block');
@@ -2590,6 +2663,39 @@ npx openskills install celo-org/agent-skills --skill viem -g</pre>
         btn.disabled = false;
       }
     });
+  </script>
+
+  <script>
+    (function() {
+      var expandedIds = ['quickstart', 'comparison', 'how-it-works'];
+      var sections = document.querySelectorAll('.docs-section');
+      sections.forEach(function(section) {
+        var h2 = section.querySelector('h2');
+        if (!h2) return;
+        var body = document.createElement('div');
+        body.className = 'docs-section-body';
+        while (h2.nextSibling) {
+          body.appendChild(h2.nextSibling);
+        }
+        section.appendChild(body);
+        if (expandedIds.indexOf(section.id) === -1) {
+          section.classList.add('collapsed');
+        }
+        h2.addEventListener('click', function() {
+          section.classList.toggle('collapsed');
+        });
+      });
+      document.querySelectorAll('.docs-nav-group a').forEach(function(link) {
+        link.addEventListener('click', function() {
+          var hash = this.getAttribute('href');
+          if (!hash) return;
+          var target = document.querySelector(hash);
+          if (target && target.classList.contains('collapsed')) {
+            target.classList.remove('collapsed');
+          }
+        });
+      });
+    })();
   </script>
 
   <script src="/auth.js"></script>
