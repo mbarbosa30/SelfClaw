@@ -1,6 +1,6 @@
 import { Router, Request, Response } from "express";
 import { db } from "./db.js";
-import { verifiedBots, verificationSessions, sponsoredAgents, sponsorshipRequests, trackedPools, agentWallets, agentActivity, tokenPlans, revenueEvents, agentServices, costEvents, tokenPriceSnapshots, hostedAgents, users, agentPosts, reputationStakes, reputationBadges, marketSkills, agentRequests, conversations, messages, agentMemories, type InsertVerifiedBot, type InsertVerificationSession, type UpsertUser } from "../shared/schema.js";
+import { verifiedBots, verificationSessions, sponsoredAgents, sponsorshipRequests, trackedPools, agentWallets, agentActivity, tokenPlans, revenueEvents, agentServices, costEvents, tokenPriceSnapshots, hostedAgents, users, agentPosts, reputationStakes, reputationBadges, marketSkills, agentRequests, conversations, messages, agentMemories, referralCodes, referralCompletions, type InsertVerifiedBot, type InsertVerificationSession, type UpsertUser } from "../shared/schema.js";
 import { eq, and, gt, lt, sql, desc, count, isNotNull, inArray } from "drizzle-orm";
 import { SelfBackendVerifier, AllIds, DefaultConfigStore } from "@selfxyz/core";
 import { SelfAppBuilder } from "@selfxyz/qrcode";
@@ -43,6 +43,8 @@ const router = Router();
 
 console.log(`[selfclaw] Callback endpoint: ${SELFCLAW_ENDPOINT}`);
 console.log(`[selfclaw] Staging mode: ${SELFCLAW_STAGING}`);
+
+const pendingReferrals = new Map<string, string>();
 
 const selfBackendVerifier = new SelfBackendVerifier(
   SELFCLAW_SCOPE,
@@ -97,11 +99,19 @@ router.get("/v1/config", (_req: Request, res: Response) => {
 
 router.post("/v1/start-verification", verificationLimiter, async (req: Request, res: Response) => {
   try {
-    const { agentPublicKey, agentName, signature } = req.body;
+    const { agentPublicKey, agentName, signature, referralCode } = req.body;
     
     if (!agentPublicKey) {
       logActivity("verification_failed", undefined, undefined, undefined, { error: "agentPublicKey is required", endpoint: "/v1/start-verification", statusCode: 400 });
       return res.status(400).json({ error: "agentPublicKey is required" });
+    }
+
+    let referralInfo: { code: string; ownerAgentName?: string | null } | null = null;
+    if (referralCode) {
+      const [refCode] = await db.select().from(referralCodes).where(and(eq(referralCodes.code, referralCode), eq(referralCodes.active, true))).limit(1);
+      if (refCode) {
+        referralInfo = { code: refCode.code, ownerAgentName: refCode.ownerAgentName };
+      }
     }
 
     if (agentName) {
@@ -153,6 +163,10 @@ router.post("/v1/start-verification", verificationLimiter, async (req: Request, 
     }
 
     await db.insert(verificationSessions).values(newSession);
+
+    if (referralInfo) {
+      pendingReferrals.set(sessionId, referralInfo.code);
+    }
     
     // Build properly formatted Self app config using the official SDK
     const userDefinedData = agentKeyHash.padEnd(128, '0');
@@ -181,6 +195,7 @@ router.post("/v1/start-verification", verificationLimiter, async (req: Request, 
       signatureRequired: !signatureVerified,
       signatureVerified,
       selfApp,
+      referral: referralInfo ? { code: referralInfo.code, referredBy: referralInfo.ownerAgentName || 'A SelfClaw agent' } : null,
       config: {
         scope: SELFCLAW_SCOPE,
         endpoint: SELFCLAW_ENDPOINT,
@@ -577,6 +592,38 @@ async function handleCallback(req: Request, res: Response) {
     debugState.lastVerificationAttempt.finalStatus = "success";
     debugState.lastVerificationAttempt.finalReason = "Agent verified and registered";
     logActivity("verification", humanId, session.agentPublicKey, session.agentName || undefined);
+
+    const pendingRefCode = pendingReferrals.get(sessionId);
+    if (pendingRefCode) {
+      pendingReferrals.delete(sessionId);
+      try {
+        const [refCode] = await db.select().from(referralCodes).where(and(eq(referralCodes.code, pendingRefCode), eq(referralCodes.active, true))).limit(1);
+        if (refCode && refCode.ownerHumanId !== humanId) {
+          const [existingCompletion] = await db.select({ id: referralCompletions.id }).from(referralCompletions).where(and(eq(referralCompletions.referralCodeId, refCode.id), eq(referralCompletions.referredPublicKey, session.agentPublicKey))).limit(1);
+          if (!existingCompletion) {
+            await db.insert(referralCompletions).values({
+              referralCodeId: refCode.id,
+              referrerHumanId: refCode.ownerHumanId,
+              referrerPublicKey: refCode.ownerPublicKey,
+              referredHumanId: humanId,
+              referredPublicKey: session.agentPublicKey,
+              referredAgentName: session.agentName || null,
+              rewardAmount: refCode.rewardPerReferral || "100",
+              rewardStatus: "credited",
+            });
+            await db.update(referralCodes).set({
+              totalReferrals: sql`${referralCodes.totalReferrals} + 1`,
+              totalRewardsPaid: sql`(COALESCE(${referralCodes.totalRewardsPaid}::numeric, 0) + ${refCode.rewardPerReferral || "100"})::text`,
+            }).where(eq(referralCodes.id, refCode.id));
+            logActivity("referral_completed", humanId, session.agentPublicKey, session.agentName || undefined, { referralCode: pendingRefCode, referrerHumanId: refCode.ownerHumanId, reward: refCode.rewardPerReferral || "100" });
+            console.log(`[selfclaw] Referral completed: ${pendingRefCode} → ${session.agentName || session.agentPublicKey.substring(0, 12)}`);
+          }
+        }
+      } catch (refError: any) {
+        console.error("[selfclaw] Referral crediting error (non-blocking):", refError.message);
+      }
+    }
+
     res.status(200).json({
       status: "success",
       result: true
@@ -593,6 +640,127 @@ async function handleCallback(req: Request, res: Response) {
 // Register callback for both with and without trailing slash (avoid redirects which break Self.xyz app)
 router.post("/v1/callback", handleCallback);
 router.post("/v1/callback/", handleCallback);
+
+async function authenticateAgentFlexible(req: Request): Promise<{ publicKey: string; humanId: string; agentName: string | null } | null> {
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith("Bearer ")) {
+    const apiKey = authHeader.slice(7).trim();
+    if (apiKey) {
+      const [agent] = await db.select().from(verifiedBots).where(eq(verifiedBots.apiKey, apiKey)).limit(1);
+      if (agent) return { publicKey: agent.publicKey, humanId: agent.humanId || '', agentName: agent.deviceId || null };
+    }
+  }
+  if (req.body?.agentPublicKey && req.body?.signature) {
+    const { agentPublicKey, signature, timestamp, nonce } = req.body;
+    const ts = Number(timestamp);
+    if (isNaN(ts) || Math.abs(Date.now() - ts) > 5 * 60 * 1000) return null;
+    const messageToSign = JSON.stringify({ agentPublicKey, timestamp: ts, nonce: String(nonce) });
+    const isValid = await verifyEd25519Signature(agentPublicKey, signature, messageToSign);
+    if (!isValid) return null;
+    const [agent] = await db.select().from(verifiedBots).where(eq(verifiedBots.publicKey, agentPublicKey)).limit(1);
+    if (agent) return { publicKey: agent.publicKey, humanId: agent.humanId || '', agentName: agent.deviceId || null };
+  }
+  return null;
+}
+
+router.post("/v1/referral/generate", publicApiLimiter, async (req: Request, res: Response) => {
+  try {
+    const auth = await authenticateAgentFlexible(req);
+    if (!auth) return res.status(401).json({ error: "Authentication required. Provide agentPublicKey + signature or Bearer API key." });
+    const { humanId, publicKey, agentName } = auth;
+
+    const [existing] = await db.select().from(referralCodes).where(eq(referralCodes.ownerPublicKey, publicKey)).limit(1);
+    if (existing) {
+      return res.json({
+        success: true,
+        referralCode: existing.code,
+        referralLink: `https://selfclaw.ai/?ref=${existing.code}`,
+        stats: { totalReferrals: existing.totalReferrals, totalRewardsPaid: existing.totalRewardsPaid, rewardPerReferral: existing.rewardPerReferral },
+        message: "Your existing referral code"
+      });
+    }
+
+    const code = (agentName || "agent").toLowerCase().replace(/[^a-z0-9]/g, '') + "-" + crypto.randomBytes(4).toString("hex");
+    await db.insert(referralCodes).values({
+      code,
+      ownerHumanId: humanId,
+      ownerPublicKey: publicKey,
+      ownerAgentName: agentName || null,
+      rewardPerReferral: "100",
+    });
+
+    logActivity("referral_code_created", humanId, publicKey, agentName || undefined, { code });
+    res.json({
+      success: true,
+      referralCode: code,
+      referralLink: `https://selfclaw.ai/?ref=${code}`,
+      stats: { totalReferrals: 0, totalRewardsPaid: "0", rewardPerReferral: "100" },
+      message: "Share this link with other agents. You earn 100 SELFCLAW for each new agent that verifies through your referral."
+    });
+  } catch (error: any) {
+    console.error("[selfclaw] referral generate error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get("/v1/referral/stats", publicApiLimiter, async (req: Request, res: Response) => {
+  try {
+    const auth = await authenticateAgentFlexible(req);
+    if (!auth) return res.status(401).json({ error: "Authentication required" });
+    const { publicKey } = auth;
+
+    const [refCode] = await db.select().from(referralCodes).where(eq(referralCodes.ownerPublicKey, publicKey)).limit(1);
+    if (!refCode) {
+      return res.json({ success: true, hasReferralCode: false, message: "No referral code yet. POST /v1/referral/generate to create one." });
+    }
+
+    const completions = await db.select().from(referralCompletions).where(eq(referralCompletions.referralCodeId, refCode.id)).orderBy(desc(referralCompletions.completedAt));
+
+    res.json({
+      success: true,
+      hasReferralCode: true,
+      referralCode: refCode.code,
+      referralLink: `https://selfclaw.ai/?ref=${refCode.code}`,
+      stats: {
+        totalReferrals: refCode.totalReferrals,
+        totalRewardsPaid: refCode.totalRewardsPaid,
+        rewardPerReferral: refCode.rewardPerReferral,
+        active: refCode.active,
+      },
+      completions: completions.map(c => ({
+        referredAgentName: c.referredAgentName,
+        referredPublicKey: c.referredPublicKey?.substring(0, 20) + '...',
+        rewardAmount: c.rewardAmount,
+        rewardStatus: c.rewardStatus,
+        completedAt: c.completedAt,
+      })),
+    });
+  } catch (error: any) {
+    console.error("[selfclaw] referral stats error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get("/v1/referral/validate/:code", publicApiLimiter, async (req: Request, res: Response) => {
+  try {
+    const code = String(req.params.code || '');
+    if (!code) return res.status(400).json({ error: "Referral code is required" });
+
+    const [refCode] = await db.select().from(referralCodes).where(and(eq(referralCodes.code, code), eq(referralCodes.active, true))).limit(1);
+    if (!refCode) {
+      return res.json({ valid: false, message: "Invalid or inactive referral code" });
+    }
+
+    res.json({
+      valid: true,
+      referredBy: refCode.ownerAgentName || "A verified SelfClaw agent",
+      rewardForReferrer: refCode.rewardPerReferral + " SELFCLAW",
+      message: `You were referred by ${refCode.ownerAgentName || 'a verified agent'}. Complete verification to activate the referral.`
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
 
 // Polling endpoint for frontend to check verification status
 router.get("/v1/status/:sessionId", publicApiLimiter, async (req: Request, res: Response) => {
@@ -6254,6 +6422,26 @@ router.get("/v1/my-agents/:publicKey/briefing", async (req: any, res: Response) 
     lines.push(`Posts published: ${feedPostCount}`);
     lines.push(``);
 
+    let referralStats = { hasCode: false, code: '', totalReferrals: 0, totalRewardsPaid: '0' };
+    try {
+      const [refCode] = await db.select().from(referralCodes).where(eq(referralCodes.ownerPublicKey, pk)).limit(1);
+      if (refCode) {
+        referralStats = { hasCode: true, code: refCode.code, totalReferrals: refCode.totalReferrals || 0, totalRewardsPaid: refCode.totalRewardsPaid || '0' };
+      }
+    } catch(e) {}
+
+    lines.push(`--- REFERRAL PROGRAM ---`);
+    if (referralStats.hasCode) {
+      lines.push(`Your referral code: ${referralStats.code}`);
+      lines.push(`Referral link: https://selfclaw.ai/?ref=${referralStats.code}`);
+      lines.push(`Agents referred: ${referralStats.totalReferrals} | Rewards earned: ${referralStats.totalRewardsPaid} SELFCLAW`);
+    } else {
+      lines.push(`You don't have a referral code yet. Generate one to earn 100 SELFCLAW per agent that verifies through your link.`);
+      lines.push(`  POST ${BASE}/v1/referral/generate`);
+    }
+    lines.push(`Share your referral link with other agents and platforms. Each new verified agent earns you 100 SELFCLAW.`);
+    lines.push(``);
+
     lines.push(`=== AVAILABLE ACTIONS ===`);
     lines.push(``);
     lines.push(`All endpoints below use base URL: ${BASE}`);
@@ -6288,6 +6476,14 @@ router.get("/v1/my-agents/:publicKey/briefing", async (req: any, res: Response) 
     lines.push(`  GET    ${BASE}/v1/reputation/${pk}/stakes`);
     lines.push(`  GET    ${BASE}/v1/reputation/${pk}/full-profile`);
     lines.push(`  GET    ${BASE}/v1/reputation/leaderboard`);
+    lines.push(``);
+
+    lines.push(`[Referral Program — earn SELFCLAW by inviting other agents]`);
+    lines.push(`  POST   ${BASE}/v1/referral/generate                   — Generate your referral code (or get existing one)`);
+    lines.push(`  GET    ${BASE}/v1/referral/stats                      — View your referral stats and completions`);
+    lines.push(`  GET    ${BASE}/v1/referral/validate/:code             — Validate a referral code (public, no auth)`);
+    lines.push(`  Earn 100 SELFCLAW for each new agent verified through your referral link.`);
+    lines.push(`  Include referralCode in POST /v1/start-verification to attribute the referral.`);
     lines.push(``);
 
     lines.push(`[Self-check — refresh your own briefing]`);

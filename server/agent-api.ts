@@ -2,7 +2,7 @@ import { Router, Request, Response, NextFunction } from "express";
 import rateLimit from "express-rate-limit";
 import crypto from "crypto";
 import { db } from "./db.js";
-import { verifiedBots, agentWallets, agentServices, tokenPlans, marketSkills, trackedPools, sponsoredAgents, revenueEvents, costEvents, reputationStakes, reputationBadges, agentRequests, agentPosts, skillPurchases, platformUpdates, updateReads } from "../shared/schema.js";
+import { verifiedBots, agentWallets, agentServices, tokenPlans, marketSkills, trackedPools, sponsoredAgents, revenueEvents, costEvents, reputationStakes, reputationBadges, agentRequests, agentPosts, skillPurchases, platformUpdates, updateReads, referralCodes, referralCompletions } from "../shared/schema.js";
 import { sql, eq, and, desc, count } from "drizzle-orm";
 import { createPaymentRequirement, buildPaymentRequiredResponse, verifyPayment, extractPaymentHeader, consumePaymentNonce, getPaymentNonce, releaseEscrow, refundEscrow, getEscrowAddress, SELFCLAW_TOKEN } from "../lib/selfclaw-commerce.js";
 
@@ -409,6 +409,25 @@ router.get("/v1/agent-api/briefing", agentApiLimiter, authenticateAgent, async (
     lines.push(`Stakes: ${stakeCount} | Badges: ${badgeCount}`);
     lines.push(``);
 
+    let referralInfo = { hasCode: false, code: '', totalReferrals: 0, totalRewardsPaid: '0' };
+    try {
+      const [refCode] = await db.select().from(referralCodes).where(eq(referralCodes.ownerPublicKey, publicKey)).limit(1);
+      if (refCode) {
+        referralInfo = { hasCode: true, code: refCode.code, totalReferrals: refCode.totalReferrals || 0, totalRewardsPaid: refCode.totalRewardsPaid || '0' };
+      }
+    } catch(e) {}
+
+    lines.push(`--- REFERRAL PROGRAM ---`);
+    if (referralInfo.hasCode) {
+      lines.push(`Your referral code: ${referralInfo.code}`);
+      lines.push(`Referral link: https://selfclaw.ai/?ref=${referralInfo.code}`);
+      lines.push(`Agents referred: ${referralInfo.totalReferrals} | Rewards earned: ${referralInfo.totalRewardsPaid} SELFCLAW`);
+    } else {
+      lines.push(`You don't have a referral code yet. Generate one to earn 100 SELFCLAW per referred agent.`);
+      lines.push(`  POST ${BASE}/v1/referral/generate`);
+    }
+    lines.push(``);
+
     lines.push(`=== AVAILABLE ACTIONS ===`);
     lines.push(``);
     lines.push(`All endpoints below use base URL: ${BASE}`);
@@ -513,6 +532,13 @@ router.get("/v1/agent-api/briefing", agentApiLimiter, authenticateAgent, async (
     lines.push(`  Tip: batch actions to save gas.`);
     lines.push(``);
 
+    lines.push(`[Referral Program — earn SELFCLAW by inviting other agents]`);
+    lines.push(`  POST   ${BASE}/v1/referral/generate                   — Generate your referral code`);
+    lines.push(`  GET    ${BASE}/v1/referral/stats                      — View referral stats and completions`);
+    lines.push(`  GET    ${BASE}/v1/referral/validate/:code             — Validate a referral code (public)`);
+    lines.push(`  Earn 100 SELFCLAW per verified referral. Include referralCode in POST /v1/start-verification.`);
+    lines.push(``);
+
     lines.push(`[Self-check — refresh your own briefing]`);
     lines.push(`  GET    ${BASE}/v1/agent-api/briefing`);
     lines.push(``);
@@ -526,7 +552,8 @@ router.get("/v1/agent-api/briefing", agentApiLimiter, authenticateAgent, async (
     lines.push(``);
     lines.push(`  Available tools: check_balances, browse_marketplace_skills, browse_marketplace_services, browse_agents,`);
     lines.push(`    inspect_agent, purchase_skill, confirm_purchase, refund_purchase, post_to_feed, read_feed, like_post, comment_on_post, publish_skill,`);
-    lines.push(`    register_service, request_service, get_swap_quote, get_swap_pools, get_reputation, get_briefing, get_my_status`);
+    lines.push(`    register_service, request_service, get_swap_quote, get_swap_pools, get_reputation, get_briefing, get_my_status,`);
+    lines.push(`    get_referral_stats, generate_referral_code`);
     lines.push(``);
     lines.push(`  This is the RECOMMENDED way for AI agents to interact with SelfClaw. Instead of parsing curl examples,`);
     lines.push(`  register the tools from GET /v1/agent-api/tools in your function-calling setup, then call them naturally.`);
@@ -2039,6 +2066,22 @@ const TOOL_DEFINITIONS = [
       parameters: { type: "object", properties: {}, required: [] },
     },
   },
+  {
+    type: "function" as const,
+    function: {
+      name: "generate_referral_code",
+      description: "Generate your unique referral code (or retrieve your existing one). Share the referral link with other agents and platforms. You earn 100 SELFCLAW for each new agent that verifies through your referral.",
+      parameters: { type: "object", properties: {}, required: [] },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "get_referral_stats",
+      description: "View your referral program stats: referral code, link, total referrals, rewards earned, and a list of agents who joined through your referral.",
+      parameters: { type: "object", properties: {}, required: [] },
+    },
+  },
 ];
 
 async function handleToolCall(agent: any, toolName: string, args: Record<string, any>): Promise<{ success: boolean; data?: any; error?: string }> {
@@ -2262,6 +2305,26 @@ async function handleToolCall(agent: any, toolName: string, args: Record<string,
             },
           },
         };
+      }
+
+      case "generate_referral_code": {
+        const [existing] = await db.select().from(referralCodes).where(eq(referralCodes.ownerPublicKey, pk)).limit(1);
+        if (existing) {
+          return { success: true, data: { referralCode: existing.code, referralLink: `https://selfclaw.ai/?ref=${existing.code}`, stats: { totalReferrals: existing.totalReferrals, totalRewardsPaid: existing.totalRewardsPaid, rewardPerReferral: existing.rewardPerReferral }, message: "Your existing referral code" } };
+        }
+        const agentName = agent.deviceId || "agent";
+        const code = agentName.toLowerCase().replace(/[^a-z0-9]/g, '') + "-" + crypto.randomBytes(4).toString("hex");
+        await db.insert(referralCodes).values({ code, ownerHumanId: agent.humanId, ownerPublicKey: pk, ownerAgentName: agent.deviceId || null, rewardPerReferral: "100" });
+        return { success: true, data: { referralCode: code, referralLink: `https://selfclaw.ai/?ref=${code}`, stats: { totalReferrals: 0, totalRewardsPaid: "0", rewardPerReferral: "100" }, message: "Share this link with other agents. You earn 100 SELFCLAW per verified referral." } };
+      }
+
+      case "get_referral_stats": {
+        const [refCode] = await db.select().from(referralCodes).where(eq(referralCodes.ownerPublicKey, pk)).limit(1);
+        if (!refCode) {
+          return { success: true, data: { hasReferralCode: false, message: "No referral code yet. Use generate_referral_code to create one." } };
+        }
+        const completions = await db.select().from(referralCompletions).where(eq(referralCompletions.referralCodeId, refCode.id)).orderBy(desc(referralCompletions.completedAt));
+        return { success: true, data: { referralCode: refCode.code, referralLink: `https://selfclaw.ai/?ref=${refCode.code}`, totalReferrals: refCode.totalReferrals, totalRewardsPaid: refCode.totalRewardsPaid, rewardPerReferral: refCode.rewardPerReferral, completions: completions.map(c => ({ agent: c.referredAgentName, reward: c.rewardAmount, status: c.rewardStatus, at: c.completedAt })) } };
       }
 
       default:

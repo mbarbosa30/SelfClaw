@@ -3,7 +3,7 @@ import rateLimit from "express-rate-limit";
 import crypto from "crypto";
 import * as ed from "@noble/ed25519";
 import { db } from "../db.js";
-import { verifiedBots, verificationSessions, agentWallets, agentServices, tokenPlans, trackedPools, revenueEvents, agentActivity } from "../../shared/schema.js";
+import { verifiedBots, verificationSessions, agentWallets, agentServices, tokenPlans, trackedPools, revenueEvents, agentActivity, referralCodes } from "../../shared/schema.js";
 import { eq, and, gt, lt, sql, desc } from "drizzle-orm";
 
 export const SELFCLAW_SCOPE = "selfclaw-verify";
@@ -354,6 +354,18 @@ export async function buildAgentContext(publicKey: string, humanId: string, dept
         'POST /v1/agent-api/marketplace/purchases/:id/rate — rate a purchase',
       ],
       paymentInfo: 'Payments use SELFCLAW tokens via escrow. Buyer pays escrow wallet, platform releases to seller after delivery.',
+    };
+
+    const [refCode] = await db.select().from(referralCodes).where(eq(referralCodes.ownerPublicKey, publicKey)).limit(1);
+    context.referral = refCode ? {
+      code: refCode.code,
+      link: `https://selfclaw.ai/?ref=${refCode.code}`,
+      totalReferrals: refCode.totalReferrals || 0,
+      totalRewardsPaid: refCode.totalRewardsPaid || '0',
+      rewardPerReferral: refCode.rewardPerReferral || '100',
+    } : {
+      available: true,
+      message: 'Generate a referral code via POST /v1/referral/generate to earn 100 SELFCLAW per referred agent.',
     };
   } catch (e: any) {
     console.error('[selfclaw] buildAgentContext error:', e.message);

@@ -938,3 +938,43 @@ export const updateReads = pgTable("update_reads", {
   index("idx_update_reads_reader").on(table.readerId),
   index("idx_update_reads_update").on(table.updateId),
 ]);
+
+export const referralCodes = pgTable("referral_codes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  code: varchar("code").notNull().unique(),
+  ownerHumanId: varchar("owner_human_id"),
+  ownerPublicKey: text("owner_public_key"),
+  ownerAgentName: varchar("owner_agent_name"),
+  rewardPerReferral: varchar("reward_per_referral").default("100"),
+  totalReferrals: integer("total_referrals").default(0),
+  totalRewardsPaid: varchar("total_rewards_paid").default("0"),
+  active: boolean("active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_referral_codes_owner_human").on(table.ownerHumanId),
+  index("idx_referral_codes_owner_pk").on(table.ownerPublicKey),
+  index("idx_referral_codes_code").on(table.code),
+]);
+
+export type ReferralCode = typeof referralCodes.$inferSelect;
+export type InsertReferralCode = typeof referralCodes.$inferInsert;
+
+export const referralCompletions = pgTable("referral_completions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  referralCodeId: varchar("referral_code_id").notNull(),
+  referrerHumanId: varchar("referrer_human_id"),
+  referrerPublicKey: text("referrer_public_key"),
+  referredHumanId: varchar("referred_human_id").notNull(),
+  referredPublicKey: text("referred_public_key").notNull(),
+  referredAgentName: varchar("referred_agent_name"),
+  rewardAmount: varchar("reward_amount").default("100"),
+  rewardStatus: varchar("reward_status").default("pending"),
+  completedAt: timestamp("completed_at").defaultNow(),
+}, (table) => [
+  index("idx_referral_completions_code").on(table.referralCodeId),
+  index("idx_referral_completions_referrer").on(table.referrerHumanId),
+  index("idx_referral_completions_referred").on(table.referredHumanId),
+]);
+
+export type ReferralCompletion = typeof referralCompletions.$inferSelect;
+export type InsertReferralCompletion = typeof referralCompletions.$inferInsert;
