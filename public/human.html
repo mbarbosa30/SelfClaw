@@ -28,24 +28,25 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/styles.css">
+  <script src="/dark-mode.js"></script>
   <style>
     .swarm-hero {
       padding: 3rem 0 2rem;
       text-align: center;
-      border-bottom: 1px solid #222;
+      border-bottom: 1px solid var(--border);
     }
     
     .swarm-hero h1 {
       font-size: 1.5rem;
       margin-bottom: 0.5rem;
-      color: #fff;
+      color: var(--text);
     }
     
     .human-id {
       font-family: 'IBM Plex Mono', monospace;
       font-size: 0.85rem;
-      color: #888;
-      background: #111;
+      color: var(--text-muted);
+      background: var(--bg-card);
       padding: 0.5rem 1rem;
       border-radius: 6px;
       display: inline-block;
@@ -55,18 +56,18 @@
     .swarm-stats {
       text-align: center;
       padding: 1.5rem 0;
-      border-bottom: 1px solid #222;
+      border-bottom: 1px solid var(--border);
     }
     
     .agent-count {
       font-size: 2rem;
       font-weight: 600;
-      color: #fff;
+      color: var(--text);
     }
     
     .agent-count-label {
       font-size: 0.75rem;
-      color: #666;
+      color: var(--text-muted);
       text-transform: uppercase;
       letter-spacing: 0.05em;
     }
@@ -82,20 +83,20 @@
       align-items: center;
       gap: 1rem;
       padding: 1rem;
-      background: #111;
-      border: 1px solid #222;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
       border-radius: 8px;
       margin-bottom: 0.75rem;
     }
     
     .swarm-item:hover {
-      border-color: #333;
+      border-color: var(--border-heavy);
     }
     
     .agent-icon {
       width: 40px;
       height: 40px;
-      background: #1a1a1a;
+      background: var(--bg);
       border-radius: 8px;
       display: flex;
       align-items: center;
@@ -110,37 +111,37 @@
     .agent-key {
       font-family: 'IBM Plex Mono', monospace;
       font-size: 0.85rem;
-      color: #ccc;
+      color: var(--text-secondary);
     }
     
     .agent-meta {
       font-size: 0.7rem;
-      color: #666;
+      color: var(--text-muted);
       margin-top: 0.25rem;
     }
     
     .swarm-empty {
       text-align: center;
       padding: 3rem;
-      color: #666;
+      color: var(--text-muted);
     }
     
     .swarm-loading {
       text-align: center;
       padding: 3rem;
-      color: #888;
+      color: var(--text-muted);
     }
     
     .back-link {
       display: inline-block;
       margin-top: 2rem;
-      color: #888;
+      color: var(--text-muted);
       text-decoration: none;
       font-size: 0.85rem;
     }
     
     .back-link:hover {
-      color: #fff;
+      color: var(--text);
     }
 
     @media (max-width: 768px) {
@@ -174,11 +175,12 @@
         <a href="/registry" class="nav-link">REGISTRY</a>
         <a href="/feed" class="nav-link">FEED</a>
       </nav>
+      <button id="theme-toggle" class="theme-toggle" aria-label="Toggle dark mode"></button>
     </header>
 
     <section class="swarm-hero">
       <h1>Agent Swarm</h1>
-      <p style="color: #888;">All verified agents belonging to this human</p>
+      <p style="color: var(--text-muted);">All verified agents belonging to this human</p>
       <div class="human-id" id="human-id-display">Loading...</div>
     </section>
 

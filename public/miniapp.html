@@ -42,6 +42,20 @@
       --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
       --font-mono: 'IBM Plex Mono', 'Courier New', monospace;
     }
+    [data-theme="dark"] {
+      --bg: #141414;
+      --bg-card: #1e1e1e;
+      --text: #e8e4df;
+      --text-secondary: #a8a4a0;
+      --text-muted: #787470;
+      --border: #333330;
+      --border-heavy: #555550;
+      --accent: #FF6B4A;
+      --accent-hover: #ff8266;
+      --green: #34d673;
+      --red: #f87171;
+      color-scheme: dark;
+    }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: var(--font-sans); background: var(--bg); color: var(--text);
@@ -210,6 +224,7 @@
     .quick-link:hover { border-color: var(--border-heavy); }
     .quick-link-icon { display: inline-flex; align-items: center; }
   </style>
+  <script src="/dark-mode.js"></script>
 </head>
 <body>
   <div class="app-bar">
@@ -217,6 +232,7 @@
       <img src="/claw-icon.svg" alt="">SELFCLAW
     </a>
     <div class="app-bar-status" id="status-label">offline</div>
+    <button id="theme-toggle" class="theme-toggle" aria-label="Toggle dark mode"></button>
   </div>
 
   <div id="connect-screen" class="connect-screen" style="display:none;">

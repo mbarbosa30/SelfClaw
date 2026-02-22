@@ -644,7 +644,7 @@
       .pp-matrix-row { grid-template-columns: 1fr; }
       .pp-matrix-row.pp-matrix-head { display: none; }
       .pp-matrix-cell { border-right: none; border-bottom: 1px solid var(--border); }
-      .pp-matrix-cell:first-child { background: rgba(0,0,0,0.03); font-size: 0.85rem; }
+      .pp-matrix-cell:first-child { background: var(--bg-card); font-size: 0.85rem; }
       .pp-matrix-cell[data-label]::before {
         content: attr(data-label);
         font-family: var(--font-mono);
@@ -665,6 +665,7 @@
       .pp-section h2 { font-size: 1.5rem; }
     }
   </style>
+  <script src="/dark-mode.js"></script>
 </head>
 <body>
   <div class="site-container">
@@ -678,6 +679,7 @@
         <a href="/feed" class="nav-link">FEED</a>
         <a href="/whitepaper" class="nav-link">WHITEPAPER</a>
         <a href="/manifesto" class="nav-link">\\\</a>
+        <button id="theme-toggle" class="theme-toggle" aria-label="Toggle dark mode"></button>
       </nav>
     </header>
   </div>

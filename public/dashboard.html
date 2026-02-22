@@ -444,6 +444,7 @@
       .dash-context { padding: 0.75rem; }
     }
   </style>
+  <script src="/dark-mode.js"></script>
 </head>
 <body>
   <div class="site-container">
@@ -457,15 +458,16 @@
         <a href="/feed" class="nav-link">FEED</a>
         <a href="/whitepaper" class="nav-link">WHITEPAPER</a>
         <a href="/manifesto" class="nav-link">\\\</a>
+        <button id="theme-toggle" class="theme-toggle" aria-label="Toggle dark mode"></button>
       </nav>
     </header>
 
-    <div id="platform-updates-banner" style="display:none;margin:0 auto;max-width:1100px;padding:0.75rem 1rem;background:#1a1a1a;border:2px solid #FF6B4A;font-family:var(--mono);font-size:0.8rem;color:#f2f0ec;cursor:pointer;position:relative;" onclick="toggleUpdatesList()">
-      <span id="updates-badge" style="background:#FF6B4A;color:#1a1a1a;padding:0.15rem 0.5rem;font-weight:700;margin-right:0.5rem;"></span>
+    <div id="platform-updates-banner" style="display:none;margin:0 auto;max-width:1100px;padding:0.75rem 1rem;background:var(--text);border:2px solid var(--accent);font-family:var(--mono);font-size:0.8rem;color:var(--bg);cursor:pointer;position:relative;" onclick="toggleUpdatesList()">
+      <span id="updates-badge" style="background:var(--accent);color:var(--bg);padding:0.15rem 0.5rem;font-weight:700;margin-right:0.5rem;"></span>
       <span id="updates-summary"></span>
       <span style="float:right;font-size:0.7rem;opacity:0.6;">CLICK TO EXPAND</span>
     </div>
-    <div id="platform-updates-list" style="display:none;margin:0 auto;max-width:1100px;border:2px solid #d4d0ca;border-top:none;background:#fff;padding:1rem;font-family:var(--mono);font-size:0.75rem;">
+    <div id="platform-updates-list" style="display:none;margin:0 auto;max-width:1100px;border:2px solid var(--border);border-top:none;background:var(--bg-card);padding:1rem;font-family:var(--mono);font-size:0.75rem;">
     </div>
 
     <section class="hero" style="padding-bottom:1rem;">
@@ -655,7 +657,7 @@
       bar.innerHTML = '';
       legend.innerHTML = '';
       if (total === 0) {
-        bar.innerHTML = '<div class="funnel-seg" style="flex:1;background:#ddd;color:#999;">No data</div>';
+        bar.innerHTML = '<div class="funnel-seg" style="flex:1;background:var(--border);color:var(--text-muted);">No data</div>';
         return;
       }
       var keys = ['verified', 'pending', 'expired', 'failed'];
@@ -709,7 +711,7 @@
             legend: {
               position: 'bottom',
               labels: {
-                color: '#5a5a5a',
+                color: getComputedStyle(document.documentElement).getPropertyValue('--text-muted').trim() || '#5a5a5a',
                 font: { family: 'IBM Plex Mono', size: 10 },
                 boxWidth: 12,
                 padding: 16
@@ -719,14 +721,14 @@
           scales: {
             x: {
               stacked: true,
-              ticks: { color: '#8a8a8a', font: { family: 'IBM Plex Mono', size: 9 }, maxRotation: 45 },
-              grid: { color: 'rgba(0,0,0,0.05)' }
+              ticks: { color: getComputedStyle(document.documentElement).getPropertyValue('--text-muted').trim() || '#8a8a8a', font: { family: 'IBM Plex Mono', size: 9 }, maxRotation: 45 },
+              grid: { color: getComputedStyle(document.documentElement).getPropertyValue('--border').trim() || 'rgba(0,0,0,0.05)' }
             },
             y: {
               stacked: true,
               beginAtZero: true,
-              ticks: { color: '#8a8a8a', font: { family: 'IBM Plex Mono', size: 10 }, stepSize: 1 },
-              grid: { color: 'rgba(0,0,0,0.05)' }
+              ticks: { color: getComputedStyle(document.documentElement).getPropertyValue('--text-muted').trim() || '#8a8a8a', font: { family: 'IBM Plex Mono', size: 10 }, stepSize: 1 },
+              grid: { color: getComputedStyle(document.documentElement).getPropertyValue('--border').trim() || 'rgba(0,0,0,0.05)' }
             }
           }
         }
@@ -911,12 +913,12 @@
           document.getElementById('updates-summary').textContent = latest ? latest.title : 'Platform updates available';
           var listEl = document.getElementById('platform-updates-list');
           listEl.innerHTML = data.updates.map(function(u) {
-            var badge = u.read ? '<span style="color:#999;">[read]</span>' : '<span style="color:#FF6B4A;font-weight:700;">[NEW]</span>';
+            var badge = u.read ? '<span style="color:var(--text-muted);">[read]</span>' : '<span style="color:var(--accent);font-weight:700;">[NEW]</span>';
             var type = (u.type || 'update').toUpperCase();
-            var action = u.actionRequired ? ' <span style="background:#FF6B4A;color:#1a1a1a;padding:0 0.3rem;font-weight:700;">ACTION REQUIRED</span>' : '';
-            return '<div style="padding:0.5rem 0;border-bottom:1px solid #d4d0ca;">' + badge + ' <strong>[' + type + ']</strong>' + action + ' ' + esc(u.title) + '<br><span style="color:#666;">' + esc(u.content) + '</span>' + (u.version ? '<br><span style="color:#999;">v' + esc(u.version) + '</span>' : '') + '</div>';
+            var action = u.actionRequired ? ' <span style="background:var(--accent);color:var(--bg);padding:0 0.3rem;font-weight:700;">ACTION REQUIRED</span>' : '';
+            return '<div style="padding:0.5rem 0;border-bottom:1px solid var(--border);">' + badge + ' <strong>[' + type + ']</strong>' + action + ' ' + esc(u.title) + '<br><span style="color:var(--text-muted);">' + esc(u.content) + '</span>' + (u.version ? '<br><span style="color:var(--text-muted);">v' + esc(u.version) + '</span>' : '') + '</div>';
           }).join('');
-          listEl.innerHTML += '<div style="margin-top:0.75rem;"><button onclick="markAllRead()" style="background:#1a1a1a;color:#f2f0ec;border:2px solid #1a1a1a;padding:0.4rem 1rem;font-family:var(--mono);font-size:0.75rem;cursor:pointer;">MARK ALL READ</button></div>';
+          listEl.innerHTML += '<div style="margin-top:0.75rem;"><button onclick="markAllRead()" style="background:var(--text);color:var(--bg);border:2px solid var(--text);padding:0.4rem 1rem;font-family:var(--mono);font-size:0.75rem;cursor:pointer;">MARK ALL READ</button></div>';
         }).catch(function() {});
     }
     function markAllRead() {

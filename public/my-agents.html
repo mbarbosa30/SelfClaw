@@ -103,7 +103,7 @@
     }
     .badge-profitable { background: var(--green-light); color: var(--green-verify); border: 1px solid var(--green-verify); }
     .badge-deficit { background: rgba(239,68,68,0.08); color: var(--red); border: 1px solid var(--red); }
-    .badge-neutral { background: rgba(0,0,0,0.04); color: var(--text-muted); border: 1px solid var(--border); }
+    .badge-neutral { background: var(--bg-card); color: var(--text-muted); border: 1px solid var(--border); }
 
     .agent-card-stats {
       display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.75rem;
@@ -133,7 +133,7 @@
     .agent-status-summary {
       display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem 1rem;
       padding: 1rem; margin-bottom: 1rem;
-      border: 2px solid var(--border-heavy); background: rgba(0,0,0,0.02);
+      border: 2px solid var(--border-heavy); background: var(--bg-card);
     }
     @media (max-width: 600px) { .agent-status-summary { grid-template-columns: repeat(2, 1fr); } }
     .status-item {}
@@ -274,11 +274,11 @@
     }
     .pipeline-msg.error { color: var(--red); background: rgba(239,68,68,0.06); }
     .pipeline-msg.success { color: var(--green-verify); background: var(--green-light); }
-    .pipeline-msg.info { color: var(--text-secondary); background: rgba(0,0,0,0.03); }
+    .pipeline-msg.info { color: var(--text-secondary); background: var(--bg-card); }
 
     .token-economy-panel {
       border: 2px solid var(--border-heavy); padding: 1rem; margin-top: 0.75rem;
-      background: rgba(0,0,0,0.015);
+      background: var(--bg-card);
     }
     .token-economy-title {
       font-family: var(--font-mono); font-size: 0.7rem; font-weight: 600;
@@ -311,7 +311,7 @@
     .health-overview {
       display: grid; grid-template-columns: auto 1fr; gap: 0 1.25rem;
       margin-bottom: 1rem; padding: 1rem;
-      border: 2px solid var(--border-heavy); background: rgba(0,0,0,0.015);
+      border: 2px solid var(--border-heavy); background: var(--bg-card);
     }
     .health-indicator {
       display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -365,7 +365,7 @@
     .score-card {
       display: flex; align-items: center; gap: 1rem;
       margin-bottom: 1rem; padding: 1rem;
-      border: 2px solid var(--border-heavy); background: rgba(0,0,0,0.015);
+      border: 2px solid var(--border-heavy); background: var(--bg-card);
     }
     .score-badge {
       display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -378,7 +378,7 @@
       font-family: var(--font-mono); font-size: 0.75rem; font-weight: 700;
       text-transform: uppercase; letter-spacing: 0.08em; margin-top: 0.2rem;
     }
-    .score-grade.S { color: #FFD700; }
+    .score-grade.S { color: var(--yellow); }
     .score-grade.A { color: var(--green-verify); }
     .score-grade.B { color: var(--accent); }
     .score-grade.C { color: var(--text-muted); }
@@ -417,7 +417,7 @@
 
     .briefing-panel {
       border: 2px solid var(--border); margin-top: 0.75rem;
-      background: rgba(26,26,26,0.02);
+      background: var(--bg-card);
     }
     .briefing-header {
       display: flex; justify-content: space-between; align-items: center;
@@ -452,7 +452,7 @@
 
     .api-key-panel {
       border: 2px solid var(--border); padding: 0.75rem; margin-top: 0.75rem;
-      background: rgba(26,26,26,0.02);
+      background: var(--bg-card);
     }
     .api-key-label {
       font-family: var(--font-mono); font-size: 0.7rem; font-weight: 600;
@@ -540,6 +540,7 @@
     .setup-guide-step.done .setup-guide-num { color: var(--green-verify); }
 
   </style>
+  <script src="/dark-mode.js"></script>
 </head>
 <body>
   <div class="site-container">
@@ -553,15 +554,16 @@
         <a href="/feed" class="nav-link">FEED</a>
         <a href="/whitepaper" class="nav-link">WHITEPAPER</a>
         <a href="/manifesto" class="nav-link">\\\</a>
+        <button id="theme-toggle" class="theme-toggle" aria-label="Toggle dark mode"></button>
       </nav>
     </header>
 
-    <div id="platform-updates-banner" style="display:none;margin:0 auto;max-width:1100px;padding:0.75rem 1rem;background:#1a1a1a;border:2px solid #FF6B4A;font-family:var(--mono);font-size:0.8rem;color:#f2f0ec;cursor:pointer;position:relative;" onclick="toggleUpdatesList()">
-      <span id="updates-badge" style="background:#FF6B4A;color:#1a1a1a;padding:0.15rem 0.5rem;font-weight:700;margin-right:0.5rem;"></span>
+    <div id="platform-updates-banner" style="display:none;margin:0 auto;max-width:1100px;padding:0.75rem 1rem;background:var(--text);border:2px solid var(--accent);font-family:var(--mono);font-size:0.8rem;color:var(--bg);cursor:pointer;position:relative;" onclick="toggleUpdatesList()">
+      <span id="updates-badge" style="background:var(--accent);color:var(--bg);padding:0.15rem 0.5rem;font-weight:700;margin-right:0.5rem;"></span>
       <span id="updates-summary"></span>
       <span style="float:right;font-size:0.7rem;opacity:0.6;">CLICK TO EXPAND</span>
     </div>
-    <div id="platform-updates-list" style="display:none;margin:0 auto;max-width:1100px;border:2px solid #d4d0ca;border-top:none;background:#fff;padding:1rem;font-family:var(--mono);font-size:0.75rem;">
+    <div id="platform-updates-list" style="display:none;margin:0 auto;max-width:1100px;border:2px solid var(--border);border-top:none;background:var(--bg-card);padding:1rem;font-family:var(--mono);font-size:0.75rem;">
     </div>
 
     <section class="hero" id="hero-section">
@@ -990,11 +992,11 @@
           } else if (agent.sponsorshipRequest) {
             var sr = agent.sponsorshipRequest;
             if (sr.status === 'processing') {
-              html += '<div class="pipeline-step-info" style="color:#6B4AFF;">Processing...</div>';
+              html += '<div class="pipeline-step-info" style="color:var(--accent);">Processing...</div>';
             } else if (sr.status === 'failed') {
-              html += '<div class="pipeline-step-info" style="color:#FF4A4A;">Failed' + (sr.retryCount > 0 ? ' (retry ' + sr.retryCount + ')' : '') + '</div>';
-              html += '<div class="pipeline-step-info" style="font-size:0.7rem;color:#999;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + esc(sr.errorMessage || '') + '">' + esc(sr.errorMessage || 'Unknown error') + '</div>';
-              html += '<div class="pipeline-step-info" style="font-size:0.7rem;color:#999;">Admin will retry</div>';
+              html += '<div class="pipeline-step-info" style="color:var(--red);">Failed' + (sr.retryCount > 0 ? ' (retry ' + sr.retryCount + ')' : '') + '</div>';
+              html += '<div class="pipeline-step-info" style="font-size:0.7rem;color:var(--text-muted);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + esc(sr.errorMessage || '') + '">' + esc(sr.errorMessage || 'Unknown error') + '</div>';
+              html += '<div class="pipeline-step-info" style="font-size:0.7rem;color:var(--text-muted);">Admin will retry</div>';
             } else if (sr.status === 'pending') {
               html += '<div class="pipeline-step-info" style="color:var(--accent);">Pending...</div>';
             }
@@ -1427,7 +1429,7 @@
         html += '</div>';
 
         html += '<div class="agent-card-actions">';
-        html += '<a href="' + buildShareOnXUrl(name, agent.publicKey) + '" target="_blank" rel="noopener" class="action-btn" style="background:#1a1a1a;color:#fff;border-color:#1a1a1a;display:inline-flex;align-items:center;gap:0.35rem;"><svg width="12" height="12" viewBox="0 0 24 24" fill="white"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>Share on X</a>';
+        html += '<a href="' + buildShareOnXUrl(name, agent.publicKey) + '" target="_blank" rel="noopener" class="action-btn" style="background:var(--text);color:var(--bg);border-color:var(--text);display:inline-flex;align-items:center;gap:0.35rem;"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>Share on X</a>';
         html += '<button class="action-btn" onclick="showAgentPromptPanel(' + idx + ')" style="background:var(--accent);color:#fff;border-color:var(--accent);">Share with Agent</button>';
         html += '<a href="' + profileUrl + '" class="action-btn">View Profile</a>';
         if (agent.wallet) {
@@ -1476,10 +1478,10 @@
         { key: 'economy', label: 'Economy', color: 'var(--green-verify)' },
         { key: 'social', label: 'Social', color: 'var(--accent)' },
         { key: 'skills', label: 'Skills', color: '#00BCD4' },
-        { key: 'reputation', label: 'Repute', color: '#FFD700' }
+        { key: 'reputation', label: 'Repute', color: 'var(--yellow)' }
       ];
 
-      var gradeColor = s.grade === 'S' ? '#FFD700' : s.grade === 'A' ? 'var(--green-verify)' : s.grade === 'B' ? 'var(--accent)' : s.grade === 'C' ? 'var(--text-muted)' : 'var(--red)';
+      var gradeColor = s.grade === 'S' ? 'var(--yellow)' : s.grade === 'A' ? 'var(--green-verify)' : s.grade === 'B' ? 'var(--accent)' : s.grade === 'C' ? 'var(--text-muted)' : 'var(--red)';
 
       var html = '<div class="score-badge">';
       html += '<div class="score-number" style="color:' + gradeColor + '">' + s.total + '</div>';
@@ -2541,12 +2543,12 @@
           document.getElementById('updates-summary').textContent = latest ? latest.title : 'Platform updates available';
           var listEl = document.getElementById('platform-updates-list');
           listEl.innerHTML = data.updates.map(function(u) {
-            var badge = u.read ? '<span style="color:#999;">[read]</span>' : '<span style="color:#FF6B4A;font-weight:700;">[NEW]</span>';
+            var badge = u.read ? '<span style="color:var(--text-muted);">[read]</span>' : '<span style="color:var(--accent);font-weight:700;">[NEW]</span>';
             var type = (u.type || 'update').toUpperCase();
-            var action = u.actionRequired ? ' <span style="background:#FF6B4A;color:#1a1a1a;padding:0 0.3rem;font-weight:700;">ACTION REQUIRED</span>' : '';
-            return '<div style="padding:0.5rem 0;border-bottom:1px solid #d4d0ca;">' + badge + ' <strong>[' + type + ']</strong>' + action + ' ' + esc(u.title) + '<br><span style="color:#666;">' + esc(u.content) + '</span>' + (u.version ? '<br><span style="color:#999;">v' + esc(u.version) + '</span>' : '') + '</div>';
+            var action = u.actionRequired ? ' <span style="background:var(--accent);color:var(--bg);padding:0 0.3rem;font-weight:700;">ACTION REQUIRED</span>' : '';
+            return '<div style="padding:0.5rem 0;border-bottom:1px solid var(--border);">' + badge + ' <strong>[' + type + ']</strong>' + action + ' ' + esc(u.title) + '<br><span style="color:var(--text-secondary);">' + esc(u.content) + '</span>' + (u.version ? '<br><span style="color:var(--text-muted);">v' + esc(u.version) + '</span>' : '') + '</div>';
           }).join('');
-          listEl.innerHTML += '<div style="margin-top:0.75rem;"><button onclick="markAllRead()" style="background:#1a1a1a;color:#f2f0ec;border:2px solid #1a1a1a;padding:0.4rem 1rem;font-family:var(--mono);font-size:0.75rem;cursor:pointer;">MARK ALL READ</button></div>';
+          listEl.innerHTML += '<div style="margin-top:0.75rem;"><button onclick="markAllRead()" style="background:var(--text);color:var(--bg);border:2px solid var(--text);padding:0.4rem 1rem;font-family:var(--mono);font-size:0.75rem;cursor:pointer;">MARK ALL READ</button></div>';
         }).catch(function() {});
     }
     function markAllRead() {

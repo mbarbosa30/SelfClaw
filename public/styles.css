@@ -7,6 +7,7 @@
   --text-muted: #6b6b6b;
   --border: #d4d0ca;
   --border-heavy: #1a1a1a;
+  --border-light: #d4d0ca;
   --accent: #FF6B4A;
   --accent-light: rgba(255, 107, 74, 0.08);
   --accent-hover: #e85d3d;
@@ -24,6 +25,48 @@
   --space-md: 2rem;
   --space-lg: 3rem;
   --space-xl: 5rem;
+}
+
+[data-theme="dark"] {
+  --bg: #141414;
+  --bg-card: #1e1e1e;
+  --bg-code: #0d0d0d;
+  --text: #e8e4df;
+  --text-secondary: #a8a4a0;
+  --text-muted: #787470;
+  --border: #333330;
+  --border-heavy: #555550;
+  --border-light: #333330;
+  --accent: #FF6B4A;
+  --accent-light: rgba(255, 107, 74, 0.12);
+  --accent-hover: #ff8266;
+  --green-verify: #34d673;
+  --green-light: rgba(52, 214, 115, 0.1);
+  --red: #f87171;
+  --yellow: #facc15;
+  color-scheme: dark;
+}
+
+.theme-toggle {
+  background: none;
+  border: 2px solid var(--border);
+  color: var(--text-muted);
+  padding: 0.35rem 0.5rem;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  line-height: 1;
+  transition: border-color 0.15s, color 0.15s;
+  min-width: 36px;
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.theme-toggle:hover {
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 * {

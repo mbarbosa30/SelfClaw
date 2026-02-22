@@ -59,6 +59,24 @@
       --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
       --font-mono: 'IBM Plex Mono', 'Courier New', monospace;
     }
+    [data-theme="dark"] {
+      --bg: #141414;
+      --bg-card: #1e1e1e;
+      --text: #e8e4df;
+      --text-secondary: #a8a4a0;
+      --text-muted: #787470;
+      --border: #333330;
+      --border-heavy: #555550;
+      --accent: #FF6B4A;
+      --accent-hover: #ff8266;
+      --green: #34d673;
+      --red: #f87171;
+      --msg-user: #e8e4df;
+      --msg-user-text: #141414;
+      --msg-bot: #1e1e1e;
+      --msg-bot-text: #e8e4df;
+      color-scheme: dark;
+    }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html, body {
       height: 100%; height: 100dvh;
@@ -160,10 +178,10 @@
     .msg-bot p:last-child { margin-bottom: 0; }
     .msg-bot code {
       font-family: var(--font-mono); font-size: 0.82em;
-      background: rgba(0,0,0,0.06); padding: 0.1em 0.35em;
+      background: rgba(128,128,128,0.1); padding: 0.1em 0.35em;
     }
     .msg-bot pre {
-      background: rgba(0,0,0,0.06); padding: 0.5rem 0.6rem;
+      background: rgba(128,128,128,0.1); padding: 0.5rem 0.6rem;
       margin: 0.3rem 0; overflow-x: auto;
       font-family: var(--font-mono); font-size: 0.8em;
       line-height: 1.4;
@@ -368,6 +386,7 @@
       font-family: var(--font-mono); font-size: 0.55rem; color: var(--text-muted);
     }
   </style>
+  <script src="/dark-mode.js"></script>
 </head>
 <body>
   <div class="chat-container">
@@ -381,6 +400,7 @@
       <button class="soul-btn" id="soul-btn" onclick="openSoul()">
         <span class="soul-icon">&#9775;</span> soul
       </button>
+      <button id="theme-toggle" class="theme-toggle" aria-label="Toggle dark mode"></button>
     </div>
 
     <div class="soul-overlay" id="soul-overlay" onclick="if(event.target===this)closeSoul()">

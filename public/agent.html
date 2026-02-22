@@ -29,6 +29,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/styles.css">
+  <script src="/dark-mode.js"></script>
   <style>
     .ap-loading {
       text-align: center;
@@ -454,9 +455,9 @@
       justify-content: center;
       margin: 0 auto 1rem;
     }
-    .ap-rep-circle.rep-good { border-color: #22c55e; }
-    .ap-rep-circle.rep-mid { border-color: #eab308; }
-    .ap-rep-circle.rep-low { border-color: #dc2626; }
+    .ap-rep-circle.rep-good { border-color: var(--green-verify); }
+    .ap-rep-circle.rep-mid { border-color: var(--yellow); }
+    .ap-rep-circle.rep-low { border-color: var(--red); }
     .ap-rep-circle-num {
       font-size: 1.4rem;
       font-weight: 700;
@@ -754,8 +755,8 @@
       margin-top: 0.5rem;
       padding: 0.4rem 0.5rem;
     }
-    .ap-fb-status.success { color: #22c55e; border: 2px solid #22c55e; }
-    .ap-fb-status.error { color: #ef4444; border: 2px solid #ef4444; }
+    .ap-fb-status.success { color: var(--green-verify); border: 2px solid var(--green-verify); }
+    .ap-fb-status.error { color: var(--red); border: 2px solid var(--red); }
 
     @media (max-width: 480px) {
       .ap-price-usd { font-size: 1.5rem; }
@@ -787,6 +788,7 @@
         <a href="/feed" class="nav-link">FEED</a>
         <a href="/whitepaper" class="nav-link">WHITEPAPER</a>
         <a href="/manifesto" class="nav-link">\\\</a>
+        <button id="theme-toggle" class="theme-toggle" aria-label="Toggle dark mode"></button>
       </nav>
     </header>
 
@@ -990,7 +992,7 @@
         if (hasRep) {
           var rep = a.erc8004.reputation;
           var avgScore = rep.averageScore != null ? Number(rep.averageScore) : null;
-          var scoreColor = avgScore == null ? 'var(--text-muted)' : (avgScore > 70 ? '#22c55e' : (avgScore >= 40 ? '#F59E0B' : '#ef4444'));
+          var scoreColor = avgScore == null ? 'var(--text-muted)' : (avgScore > 70 ? 'var(--green-verify)' : (avgScore >= 40 ? 'var(--yellow)' : 'var(--red)'));
           var ringBorder = avgScore == null ? 'var(--border)' : scoreColor;
           h += '<div class="ap-erc-score-hero">';
           h += '<div class="ap-erc-score-ring" style="border-color:' + ringBorder + ';">';
@@ -1026,7 +1028,7 @@
             var fbVal = fb.score != null ? Number(fb.score) : null;
             var fbDec = fb.decimals ? Number(fb.decimals) : 0;
             var fbDisplay = fbVal != null ? (fbDec > 0 ? (fbVal / Math.pow(10, fbDec)).toFixed(fbDec) : String(fbVal)) : '--';
-            var fbColor = fbVal == null ? 'var(--text-muted)' : (fbVal > 70 ? '#22c55e' : (fbVal >= 40 ? '#F59E0B' : '#ef4444'));
+            var fbColor = fbVal == null ? 'var(--text-muted)' : (fbVal > 70 ? 'var(--green-verify)' : (fbVal >= 40 ? 'var(--yellow)' : 'var(--red)'));
             h += '<div class="ap-feedback-item' + (fi >= fbVisible ? ' ap-fb-hidden' : '') + '">';
             h += '<span class="ap-feedback-rater"><a href="https://celoscan.io/address/' + esc(fb.rater) + '" target="_blank">' + trunc(fb.rater) + '</a></span>';
             h += '<span class="ap-feedback-score" style="color:' + fbColor + ';border-color:' + fbColor + ';">' + fbDisplay + '</span>';
@@ -1216,7 +1218,7 @@
         h += '<div class="ap-card-body">';
         h += '<ul class="ap-timeline">';
         activity.forEach(function(ev) {
-          var color = EVT_COLORS[ev.eventType] || '#8a8a8a';
+          var color = EVT_COLORS[ev.eventType] || 'var(--text-muted)';
           var typeLabel = (ev.eventType || '').replace(/_/g, ' ');
           var meta = '';
           if (ev.metadata) {

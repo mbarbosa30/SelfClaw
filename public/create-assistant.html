@@ -115,7 +115,7 @@
     .next-btn:hover { background: var(--accent-hover); }
     .next-btn:disabled, .create-btn:disabled { opacity: 0.5; cursor: not-allowed; }
     .create-btn { background: var(--green-verify); color: #fff; }
-    .create-btn:hover { background: #1aab4d; }
+    .create-btn:hover { background: var(--green-verify); }
 
     .skills-heading {
       font-family: var(--font-mono); font-size: 0.75rem; font-weight: 600;
@@ -151,7 +151,7 @@
     .skill-toggle.on { background: var(--green-verify); }
     .skill-toggle-knob {
       position: absolute; top: 2px; left: 2px;
-      width: 14px; height: 14px; background: #fff;
+      width: 14px; height: 14px; background: var(--bg-card);
       transition: left 0.2s;
     }
     .skill-toggle.on .skill-toggle-knob { left: 16px; }
@@ -245,6 +245,7 @@
       .emoji-option { padding: 0.35rem; font-size: 1.15rem; }
     }
   </style>
+  <script src="/dark-mode.js"></script>
 </head>
 <body>
   <div class="miniapp-bar">
@@ -262,6 +263,7 @@
         <a href="/feed" class="nav-link">FEED</a>
         <a href="/whitepaper" class="nav-link">WHITEPAPER</a>
         <a href="/manifesto" class="nav-link">\\\</a>
+        <button id="theme-toggle" class="theme-toggle" aria-label="Toggle dark mode"></button>
       </nav>
     </header>
   </div>

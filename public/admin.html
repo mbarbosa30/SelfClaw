@@ -58,7 +58,7 @@
       text-align: center;
     }
     .admin-login-error {
-      color: #ef4444;
+      color: var(--red);
       font-size: 0.8rem;
       margin-bottom: 1rem;
       font-family: 'IBM Plex Mono', monospace;
@@ -92,8 +92,8 @@
       letter-spacing: 0.05em;
     }
     .logout-btn:hover {
-      border-color: #ef4444;
-      color: #ef4444;
+      border-color: var(--red);
+      color: var(--red);
     }
     .admin-section {
       margin-bottom: 2.5rem;
@@ -125,7 +125,7 @@
       font-weight: 600;
       text-transform: uppercase;
       letter-spacing: 0.08em;
-      color: #FF6B4A;
+      color: var(--accent);
       margin-bottom: 1rem;
     }
     .wallet-addr {
@@ -144,7 +144,7 @@
       text-decoration: none;
     }
     .wallet-addr a:hover {
-      color: #FF6B4A;
+      color: var(--accent);
     }
     .copy-btn {
       background: transparent;
@@ -158,15 +158,15 @@
       flex-shrink: 0;
     }
     .copy-btn:hover {
-      border-color: #FF6B4A;
-      color: #FF6B4A;
+      border-color: var(--accent);
+      color: var(--accent);
     }
     .balance-row {
       display: flex;
       justify-content: space-between;
       align-items: center;
       padding: 0.5rem 0;
-      border-bottom: 1px solid var(--border-light, #d4d0ca);
+      border-bottom: 1px solid var(--border-light);
     }
     .balance-row:last-child {
       border-bottom: none;
@@ -215,8 +215,8 @@
       flex-shrink: 0;
     }
     .status-dot.green { background: var(--green-verify); }
-    .status-dot.red { background: #ef4444; }
-    .status-dot.yellow { background: #FFD700; }
+    .status-dot.red { background: var(--red); }
+    .status-dot.yellow { background: var(--yellow); }
     .wrapped-addr {
       font-family: 'IBM Plex Mono', monospace;
       font-size: 0.65rem;
@@ -259,7 +259,7 @@
     .action-btn {
       width: 100%;
       padding: 0.5rem 1rem;
-      background: #FF6B4A;
+      background: var(--accent);
       color: #000;
       border: none;
       font-family: 'IBM Plex Mono', monospace;
@@ -271,7 +271,7 @@
       letter-spacing: 0.05em;
     }
     .action-btn:hover {
-      background: #fff;
+      background: var(--bg-card);
     }
     .action-btn:disabled {
       opacity: 0.5;
@@ -287,7 +287,7 @@
       overflow-y: auto;
     }
     .action-result.success { color: var(--green-verify); }
-    .action-result.error { color: var(--red, #ef4444); }
+    .action-result.error { color: var(--red); }
     .action-result.loading { color: var(--accent); }
     .stats-grid {
       display: grid;
@@ -328,7 +328,7 @@
       align-items: center;
       gap: 0.75rem;
       padding: 0.75rem 1.25rem;
-      border-bottom: 1px solid var(--border-light, #d4d0ca);
+      border-bottom: 1px solid var(--border-light);
       font-size: 0.8rem;
     }
     .log-item:last-child {
@@ -339,7 +339,7 @@
       font-size: 0.65rem;
       font-weight: 600;
       text-transform: uppercase;
-      color: #FF6B4A;
+      color: var(--accent);
       min-width: 100px;
       flex-shrink: 0;
     }
@@ -368,7 +368,7 @@
       display: inline-block;
       width: 12px;
       height: 12px;
-      border: 2px solid var(--border-light, #d4d0ca);
+      border: 2px solid var(--border-light);
       border-top-color: var(--accent);
       border-radius: 50%;
       animation: spin 0.6s linear infinite;
@@ -407,8 +407,8 @@
       letter-spacing: 0.05em;
     }
     .refresh-btn:hover {
-      border-color: #FF6B4A;
-      color: #FF6B4A;
+      border-color: var(--accent);
+      color: var(--accent);
     }
     @media (max-width: 768px) {
       .wallet-overview,
@@ -423,6 +423,7 @@
       }
     }
   </style>
+  <script src="/dark-mode.js"></script>
 </head>
 <body>
   <div class="site-container">
@@ -436,6 +437,7 @@
         <a href="/feed" class="nav-link">FEED</a>
         <a href="/whitepaper" class="nav-link">WHITEPAPER</a>
         <a href="/manifesto" class="nav-link">\\\</a>
+        <button id="theme-toggle" class="theme-toggle" aria-label="Toggle dark mode"></button>
       </nav>
     </header>
 
@@ -505,11 +507,11 @@
         <div style="display:flex;flex-direction:column;gap:0.75rem;max-width:520px;">
           <div>
             <label style="font-family:var(--mono);font-size:0.7rem;text-transform:uppercase;color:var(--text-muted);display:block;margin-bottom:0.25rem;">Agent Number (ID)</label>
-            <input id="relink-agentid" type="number" placeholder="e.g. 42" style="width:100%;padding:0.5rem;border:2px solid var(--border-light);font-family:var(--mono);font-size:0.8rem;background:#fff;">
+            <input id="relink-agentid" type="number" placeholder="e.g. 42" style="width:100%;padding:0.5rem;border:2px solid var(--border-light);font-family:var(--mono);font-size:0.8rem;background:var(--bg-card);">
           </div>
           <div>
             <label style="font-family:var(--mono);font-size:0.7rem;text-transform:uppercase;color:var(--text-muted);display:block;margin-bottom:0.25rem;">New Human ID</label>
-            <input id="relink-humanid" type="text" placeholder="humanId of the new owner" style="width:100%;padding:0.5rem;border:2px solid var(--border-light);font-family:var(--mono);font-size:0.8rem;background:#fff;">
+            <input id="relink-humanid" type="text" placeholder="humanId of the new owner" style="width:100%;padding:0.5rem;border:2px solid var(--border-light);font-family:var(--mono);font-size:0.8rem;background:var(--bg-card);">
           </div>
           <button onclick="relinkAgent()" style="align-self:flex-start;padding:0.5rem 1.5rem;background:var(--accent);color:#fff;border:2px solid var(--text);font-family:var(--mono);font-size:0.75rem;text-transform:uppercase;cursor:pointer;font-weight:700;">Re-link Agent</button>
           <div id="relink-result" style="display:none;padding:0.75rem;border:2px solid var(--border-light);font-family:var(--mono);font-size:0.8rem;line-height:1.5;"></div>
@@ -522,11 +524,11 @@
         <div style="display:flex;flex-direction:column;gap:0.75rem;max-width:520px;">
           <div>
             <label style="font-family:var(--mono);font-size:0.7rem;text-transform:uppercase;color:var(--text-muted);display:block;margin-bottom:0.25rem;">Agent Public Key</label>
-            <input id="erc8004-pubkey" type="text" placeholder="Ed25519 public key of the agent" style="width:100%;padding:0.5rem;border:2px solid var(--border-light);font-family:var(--mono);font-size:0.8rem;background:#fff;">
+            <input id="erc8004-pubkey" type="text" placeholder="Ed25519 public key of the agent" style="width:100%;padding:0.5rem;border:2px solid var(--border-light);font-family:var(--mono);font-size:0.8rem;background:var(--bg-card);">
           </div>
           <div>
             <label style="font-family:var(--mono);font-size:0.7rem;text-transform:uppercase;color:var(--text-muted);display:block;margin-bottom:0.25rem;">New ERC-8004 Token ID</label>
-            <input id="erc8004-tokenid" type="number" min="0" placeholder="e.g. 10" style="width:100%;padding:0.5rem;border:2px solid var(--border-light);font-family:var(--mono);font-size:0.8rem;background:#fff;">
+            <input id="erc8004-tokenid" type="number" min="0" placeholder="e.g. 10" style="width:100%;padding:0.5rem;border:2px solid var(--border-light);font-family:var(--mono);font-size:0.8rem;background:var(--bg-card);">
           </div>
           <button onclick="updateErc8004()" style="align-self:flex-start;padding:0.5rem 1.5rem;background:var(--accent);color:#fff;border:2px solid var(--text);font-family:var(--mono);font-size:0.75rem;text-transform:uppercase;cursor:pointer;font-weight:700;">Update Token ID</button>
           <div id="erc8004-result" style="display:none;padding:0.75rem;border:2px solid var(--border-light);font-family:var(--mono);font-size:0.8rem;line-height:1.5;"></div>
@@ -539,11 +541,11 @@
         <div style="display:flex;flex-direction:column;gap:0.75rem;max-width:520px;">
           <div>
             <label style="font-family:var(--mono);font-size:0.7rem;text-transform:uppercase;color:var(--text-muted);display:block;margin-bottom:0.25rem;">Agent Public Key</label>
-            <input id="hide-pubkey" type="text" placeholder="Ed25519 public key of the agent" style="width:100%;padding:0.5rem;border:2px solid var(--border-light);font-family:var(--mono);font-size:0.8rem;background:#fff;">
+            <input id="hide-pubkey" type="text" placeholder="Ed25519 public key of the agent" style="width:100%;padding:0.5rem;border:2px solid var(--border-light);font-family:var(--mono);font-size:0.8rem;background:var(--bg-card);">
           </div>
           <div style="display:flex;gap:0.75rem;">
             <button onclick="hideAgent(true)" style="padding:0.5rem 1.5rem;background:var(--text);color:#fff;border:2px solid var(--text);font-family:var(--mono);font-size:0.75rem;text-transform:uppercase;cursor:pointer;font-weight:700;">Hide</button>
-            <button onclick="hideAgent(false)" style="padding:0.5rem 1.5rem;background:#fff;color:var(--text);border:2px solid var(--text);font-family:var(--mono);font-size:0.75rem;text-transform:uppercase;cursor:pointer;font-weight:700;">Unhide</button>
+            <button onclick="hideAgent(false)" style="padding:0.5rem 1.5rem;background:var(--bg-card);color:var(--text);border:2px solid var(--text);font-family:var(--mono);font-size:0.75rem;text-transform:uppercase;cursor:pointer;font-weight:700;">Unhide</button>
           </div>
           <div id="hide-result" style="display:none;padding:0.75rem;border:2px solid var(--border-light);font-family:var(--mono);font-size:0.8rem;line-height:1.5;"></div>
         </div>
@@ -554,7 +556,7 @@
         <div id="prices-loading" style="text-align:center;padding:2rem;color:var(--text-muted);"><span class="spinner"></span> Loading prices...</div>
         <div id="prices-content" style="display:none;">
           <div class="wallet-overview">
-            <div class="wallet-panel" style="border-bottom:2px solid #FF6B4A;">
+            <div class="wallet-panel" style="border-bottom:2px solid var(--accent);">
               <div class="wallet-panel-title">SELFCLAW on Base</div>
               <div style="display:flex;align-items:baseline;gap:0.5rem;margin-bottom:0.5rem;">
                 <span style="font-size:1.8rem;font-weight:700;color:var(--text);" id="price-base-usd">--</span>
@@ -1045,7 +1047,7 @@
           content.style.display = 'grid';
 
           if (data.error && !data.base) {
-            content.innerHTML = '<div class="wallet-panel" style="grid-column:1/-1;text-align:center;color:#ef4444;">' + data.error + '</div>';
+            content.innerHTML = '<div class="wallet-panel" style="grid-column:1/-1;text-align:center;color:var(--red);">' + data.error + '</div>';
             return;
           }
 
@@ -1086,7 +1088,7 @@
           if (e.message === 'auth') return;
           loading.style.display = 'none';
           content.style.display = 'grid';
-          content.innerHTML = '<div class="wallet-panel" style="grid-column:1/-1;text-align:center;color:#ef4444;">Failed to load wallet balances</div>';
+          content.innerHTML = '<div class="wallet-panel" style="grid-column:1/-1;text-align:center;color:var(--red);">Failed to load wallet balances</div>';
         });
     }
 
@@ -1107,7 +1109,7 @@
           content.style.display = 'grid';
 
           if (data.error && data.selfclawAttested == null) {
-            content.innerHTML = '<div class="bridge-status-card" style="grid-column:1/-1;text-align:center;color:#ef4444;">' + data.error + '</div>';
+            content.innerHTML = '<div class="bridge-status-card" style="grid-column:1/-1;text-align:center;color:var(--red);">' + data.error + '</div>';
             return;
           }
 
@@ -1123,7 +1125,7 @@
           if (e.message === 'auth') return;
           loading.style.display = 'none';
           content.style.display = 'grid';
-          content.innerHTML = '<div class="bridge-status-card" style="grid-column:1/-1;text-align:center;color:#ef4444;">Failed to load bridge status</div>';
+          content.innerHTML = '<div class="bridge-status-card" style="grid-column:1/-1;text-align:center;color:var(--red);">Failed to load bridge status</div>';
         });
     }
 
@@ -1134,7 +1136,7 @@
         '<div class="bridge-token-name">' + name + '</div>' +
         '<div class="bridge-attested">' +
           '<span class="status-dot ' + (attested ? 'green' : 'red') + '"></span>' +
-          '<span style="color:' + (attested ? 'var(--green-verify)' : '#ef4444') + '">' + (attested ? 'Attested on Celo' : 'Not attested') + '</span>' +
+          '<span style="color:' + (attested ? 'var(--green-verify)' : 'var(--red)') + '">' + (attested ? 'Attested on Celo' : 'Not attested') + '</span>' +
         '</div>';
       if (wrappedAddr) {
         html += '<div class="wrapped-addr">' +
@@ -1258,10 +1260,10 @@
       var phaseOrder = { transfer: 0, polling: 1, completing: 2, done: 3 };
       var currentIdx = phaseOrder[phase] || 0;
 
-      var html = '<div style="background:rgba(0,0,0,0.03);border:2px solid var(--border-heavy);padding:0.75rem;">';
+      var html = '<div style="background:var(--bg-card);border:2px solid var(--border-heavy);padding:0.75rem;">';
       html += '<div style="display:flex;gap:0.5rem;margin-bottom:0.5rem;">';
       phases.forEach(function(p, i) {
-        var color = i < currentIdx ? 'var(--green-verify)' : (i === currentIdx ? '#f59e0b' : 'var(--text-muted)');
+        var color = i < currentIdx ? 'var(--green-verify)' : (i === currentIdx ? 'var(--yellow)' : 'var(--text-muted)');
         var icon = i < currentIdx ? '\u2713' : (i === currentIdx ? '\u25CF' : '\u25CB');
         html += '<span style="font-size:0.65rem;color:' + color + ';">' + icon + ' ' + p.label + '</span>';
         if (i < phases.length - 1) html += '<span style="color:var(--border-heavy);font-size:0.65rem;">\u2192</span>';
@@ -1269,8 +1271,8 @@
       html += '</div>';
       html += '<div style="font-size:0.7rem;color:var(--text-secondary);">' + message + '</div>';
       if (phase === 'polling') {
-        html += '<div style="margin-top:0.4rem;height:3px;background:var(--border-light, #d4d0ca);overflow:hidden;">';
-        html += '<div style="height:100%;background:#f59e0b;width:0%;animation:bridgePulse 2s ease-in-out infinite;"></div>';
+        html += '<div style="margin-top:0.4rem;height:3px;background:var(--border-light);overflow:hidden;">';
+        html += '<div style="height:100%;background:var(--yellow);width:0%;animation:bridgePulse 2s ease-in-out infinite;"></div>';
         html += '</div>';
       }
       html += '</div>';
@@ -1375,18 +1377,18 @@
           if (tx.status === 'vaa_ready') {
             statusColor = 'var(--green-verify)'; statusLabel = 'READY TO CLAIM';
           } else if (tx.status === 'polling') {
-            statusColor = '#f59e0b'; statusLabel = 'AUTO-COMPLETING...';
+            statusColor = 'var(--yellow)'; statusLabel = 'AUTO-COMPLETING...';
             hasPending = true;
           } else {
-            statusColor = '#f59e0b'; statusLabel = 'WAITING FOR GUARDIANS';
+            statusColor = 'var(--yellow)'; statusLabel = 'WAITING FOR GUARDIANS';
             hasPending = true;
           }
           var age = tx.createdAt ? getTimeAgo(new Date(tx.createdAt)) : '';
-          html += '<div style="background:rgba(0,0,0,0.03);border:2px solid var(--border-heavy);padding:1rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;">';
+          html += '<div style="background:var(--bg-card);border:2px solid var(--border-heavy);padding:1rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;">';
           html += '<div style="flex:1;min-width:200px;">';
           html += '<div style="font-size:0.85rem;color:var(--text);margin-bottom:0.3rem;">' + (tx.type === 'transfer' ? 'Bridge Transfer' : tx.type) + ' — ' + tx.amount + ' SELFCLAW</div>';
           html += '<div style="font-size:0.65rem;color:var(--text-muted);word-break:break-all;">Tx: ' + tx.sourceTxHash + '</div>';
-          if (tx.error) html += '<div style="font-size:0.6rem;color:#ef4444;margin-top:0.2rem;">' + tx.error + '</div>';
+          if (tx.error) html += '<div style="font-size:0.6rem;color:var(--red);margin-top:0.2rem;">' + tx.error + '</div>';
           if (age) html += '<div style="font-size:0.6rem;color:var(--text-muted);margin-top:0.2rem;">' + age + '</div>';
           html += '</div>';
           html += '<div style="display:flex;align-items:center;gap:0.75rem;">';
@@ -1413,7 +1415,7 @@
         loading.style.display = 'none';
         if (e.message === 'auth') return;
         content.style.display = 'block';
-        content.innerHTML = '<div style="text-align:center;color:#ef4444;padding:1rem;">Failed to load pending claims</div>';
+        content.innerHTML = '<div style="text-align:center;color:var(--red);padding:1rem;">Failed to load pending claims</div>';
       });
     }
 
@@ -1442,7 +1444,7 @@
         btn.disabled = false;
         if (data.error) {
           btn.textContent = 'Failed';
-          btn.style.background = '#ef4444';
+          btn.style.background = 'var(--red)';
           setTimeout(function() {
             btn.textContent = 'Claim Tokens';
             btn.style.background = '';
@@ -1568,14 +1570,14 @@
           if (b.priceChange24h != null) {
             var ch = parseFloat(b.priceChange24h);
             changeEl.textContent = (ch >= 0 ? '+' : '') + ch.toFixed(2) + '% (24h)';
-            changeEl.style.color = ch >= 0 ? 'var(--green-verify)' : '#ef4444';
+            changeEl.style.color = ch >= 0 ? 'var(--green-verify)' : 'var(--red)';
           } else {
             changeEl.textContent = '';
           }
 
           var baseLinkEl = document.getElementById('price-base-link');
           if (b.pairUrl) {
-            baseLinkEl.innerHTML = '<a href="' + b.pairUrl + '" target="_blank" style="color:#FF6B4A;font-size:0.7rem;text-decoration:none;">View on DexScreener</a>';
+            baseLinkEl.innerHTML = '<a href="' + b.pairUrl + '" target="_blank" style="color:var(--accent);font-size:0.7rem;text-decoration:none;">View on DexScreener</a>';
           } else {
             baseLinkEl.innerHTML = '';
           }
@@ -1598,7 +1600,7 @@
           if (c.priceChange24h != null) {
             var cch = parseFloat(c.priceChange24h);
             celoChangeEl.textContent = (cch >= 0 ? '+' : '') + cch.toFixed(2) + '% (24h)';
-            celoChangeEl.style.color = cch >= 0 ? 'var(--green-verify)' : '#ef4444';
+            celoChangeEl.style.color = cch >= 0 ? 'var(--green-verify)' : 'var(--red)';
           } else {
             celoChangeEl.textContent = '';
           }
@@ -1613,7 +1615,7 @@
           var gapBanner = document.getElementById('price-gap-banner');
           if (data.priceGapPercent != null) {
             var gap = parseFloat(data.priceGapPercent);
-            var gapColor = Math.abs(gap) > 10 ? '#ef4444' : (Math.abs(gap) > 5 ? '#f59e0b' : 'var(--green-verify)');
+            var gapColor = Math.abs(gap) > 10 ? 'var(--red)' : (Math.abs(gap) > 5 ? 'var(--yellow)' : 'var(--green-verify)');
             var arrow = gap > 0 ? 'Celo premium' : 'Celo discount';
             gapBanner.style.display = 'block';
             gapBanner.innerHTML = '<span style="color:' + gapColor + ';font-weight:700;">' + (gap >= 0 ? '+' : '') + gap + '%</span> <span style="color:var(--text-muted);">cross-chain price gap (' + arrow + ' vs Base)</span>';
@@ -1886,7 +1888,7 @@
           content.style.display = 'block';
           var tbody = document.getElementById('sponsorship-tbody');
           var html = '';
-          var statusColors = { pending: '#d4d0ca', processing: '#6B4AFF', completed: '#00C853', failed: '#FF4A4A' };
+          var statusColors = { pending: 'var(--border)', processing: '#6B4AFF', completed: '#00C853', failed: 'var(--red)' };
           function fmtAmt(val) {
             if (!val || val === '--') return '--';
             var n = parseFloat(val);
@@ -1894,14 +1896,14 @@
             return n.toLocaleString('en-US', { maximumFractionDigits: 0 });
           }
           items.forEach(function(req) {
-            var sc = statusColors[req.status] || '#d4d0ca';
+            var sc = statusColors[req.status] || 'var(--border)';
             var humanRaw = req.humanId || '';
             var humanShort = humanRaw.length > 12 ? humanRaw.slice(0, 12) + '...' : humanRaw;
             var errRaw = req.errorMessage || '';
             var errShort = errRaw.length > 30 ? errRaw.slice(0, 30) + '...' : errRaw;
             var created = req.createdAt ? getTimeAgo(new Date(req.createdAt)) : '--';
             var sym = req.tokenSymbol && req.tokenSymbol !== 'TOKEN' ? '$' + req.tokenSymbol : (req.tokenSymbol || '--');
-            html += '<tr style="border-bottom:1px solid var(--border-light, #d4d0ca);">';
+            html += '<tr style="border-bottom:1px solid var(--border-light);">';
             html += '<td style="padding:0.5rem;"><span style="display:inline-block;padding:0.15rem 0.5rem;font-family:\'IBM Plex Mono\',monospace;font-size:0.6rem;font-weight:600;text-transform:uppercase;color:#fff;background:' + sc + ';">' + esc(req.status || 'unknown') + '</span></td>';
             html += '<td style="padding:0.5rem;font-family:\'IBM Plex Mono\',monospace;font-size:0.65rem;" title="' + esc(humanRaw) + '">' + esc(humanShort || '--') + '</td>';
             html += '<td style="padding:0.5rem;font-family:\'IBM Plex Mono\',monospace;font-size:0.65rem;font-weight:600;">' + esc(sym) + '</td>';
@@ -1909,7 +1911,7 @@
             html += '<td style="padding:0.5rem;font-size:0.75rem;">' + fmtAmt(req.selfclawAmount) + '</td>';
             html += '<td style="padding:0.5rem;font-family:\'IBM Plex Mono\',monospace;font-size:0.65rem;">' + esc(req.source || '--') + '</td>';
             html += '<td style="padding:0.5rem;font-size:0.75rem;text-align:center;">' + (req.retryCount || 0) + '/' + (req.maxRetries || 3) + '</td>';
-            html += '<td style="padding:0.5rem;font-size:0.65rem;color:#FF4A4A;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + esc(errRaw) + '">' + esc(errShort || '--') + '</td>';
+            html += '<td style="padding:0.5rem;font-size:0.65rem;color:var(--red);max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + esc(errRaw) + '">' + esc(errShort || '--') + '</td>';
             html += '<td style="padding:0.5rem;font-family:\'IBM Plex Mono\',monospace;font-size:0.6rem;color:var(--text-muted);">' + created + '</td>';
             html += '<td style="padding:0.5rem;">';
             if (req.status === 'failed' && (req.retryCount || 0) < (req.maxRetries || 3)) {
@@ -1943,7 +1945,7 @@
         btn.disabled = false;
         if (data.error) {
           btn.textContent = 'Failed';
-          btn.style.background = '#FF4A4A';
+          btn.style.background = 'var(--red)';
           alert('Retry failed: ' + data.error);
           setTimeout(function() { btn.textContent = 'Retry'; btn.style.background = ''; }, 3000);
           return;
@@ -1989,7 +1991,7 @@
         })
         .catch(function(e) {
           if (e.message === 'auth') return;
-          el.innerHTML = '<div class="log-empty" style="color:#ef4444;">Failed to load activity log</div>';
+          el.innerHTML = '<div class="log-empty" style="color:var(--red);">Failed to load activity log</div>';
         });
     }
 
@@ -2025,7 +2027,7 @@
           pools.forEach(function(pool) {
             var isPlatform = pool.humanId === 'platform';
             var rowBg = pool.hiddenFromRegistry ? 'rgba(239,68,68,0.05)' : '';
-            html += '<tr data-pool-id="' + pool.id + '" style="border-bottom:1px solid var(--border-light, #d4d0ca);background:' + rowBg + ';">';
+            html += '<tr data-pool-id="' + pool.id + '" style="border-bottom:1px solid var(--border-light);background:' + rowBg + ';">';
             html += '<td style="padding:0.6rem 0.5rem;">';
             html += '<div style="font-weight:600;">' + (pool.tokenName || pool.tokenSymbol) + '</div>';
             html += '<div style="font-family:IBM Plex Mono,monospace;font-size:0.65rem;color:var(--text-muted);">$' + pool.tokenSymbol + (isPlatform ? ' (PLATFORM)' : '') + '</div>';
@@ -2033,17 +2035,17 @@
             html += '</td>';
             html += '<td style="padding:0.6rem 0.5rem;font-size:0.7rem;color:var(--text-muted);">' + (pool.agentName || pool.humanId || '-') + '</td>';
             html += '<td style="padding:0.6rem 0.5rem;text-align:center;">';
-            html += '<button onclick="togglePoolVisibility(\'' + pool.id + '\', ' + (pool.hiddenFromRegistry ? 'false' : 'true') + ', this)" style="background:none;border:2px solid ' + (pool.hiddenFromRegistry ? '#ef4444' : 'var(--green-verify)') + ';padding:0.25rem 0.6rem;cursor:pointer;font-family:IBM Plex Mono,monospace;font-size:0.6rem;color:' + (pool.hiddenFromRegistry ? '#ef4444' : 'var(--green-verify)') + ';">' + (pool.hiddenFromRegistry ? 'HIDDEN' : 'VISIBLE') + '</button>';
+            html += '<button onclick="togglePoolVisibility(\'' + pool.id + '\', ' + (pool.hiddenFromRegistry ? 'false' : 'true') + ', this)" style="background:none;border:2px solid ' + (pool.hiddenFromRegistry ? 'var(--red)' : 'var(--green-verify)') + ';padding:0.25rem 0.6rem;cursor:pointer;font-family:IBM Plex Mono,monospace;font-size:0.6rem;color:' + (pool.hiddenFromRegistry ? 'var(--red)' : 'var(--green-verify)') + ';">' + (pool.hiddenFromRegistry ? 'HIDDEN' : 'VISIBLE') + '</button>';
             html += '</td>';
             html += '<td style="padding:0.6rem 0.5rem;">';
-            html += '<input type="text" data-field="name" placeholder="Name override" value="' + (pool.displayNameOverride || '') + '" style="width:100%;max-width:120px;padding:0.25rem 0.4rem;border:1px solid var(--border-light, #d4d0ca);font-size:0.7rem;font-family:inherit;background:var(--bg);margin-bottom:0.2rem;display:block;">';
-            html += '<input type="text" data-field="symbol" placeholder="Symbol override" value="' + (pool.displaySymbolOverride || '') + '" style="width:100%;max-width:120px;padding:0.25rem 0.4rem;border:1px solid var(--border-light, #d4d0ca);font-size:0.7rem;font-family:inherit;background:var(--bg);display:block;">';
+            html += '<input type="text" data-field="name" placeholder="Name override" value="' + (pool.displayNameOverride || '') + '" style="width:100%;max-width:120px;padding:0.25rem 0.4rem;border:1px solid var(--border-light);font-size:0.7rem;font-family:inherit;background:var(--bg);margin-bottom:0.2rem;display:block;">';
+            html += '<input type="text" data-field="symbol" placeholder="Symbol override" value="' + (pool.displaySymbolOverride || '') + '" style="width:100%;max-width:120px;padding:0.25rem 0.4rem;border:1px solid var(--border-light);font-size:0.7rem;font-family:inherit;background:var(--bg);display:block;">';
             html += '</td>';
             html += '<td style="padding:0.6rem 0.5rem;">';
-            html += '<textarea data-field="notes" placeholder="Admin notes..." style="width:100%;max-width:180px;min-height:36px;padding:0.25rem 0.4rem;border:1px solid var(--border-light, #d4d0ca);font-size:0.65rem;font-family:IBM Plex Mono,monospace;background:var(--bg);resize:vertical;">' + (pool.adminNotes || '') + '</textarea>';
+            html += '<textarea data-field="notes" placeholder="Admin notes..." style="width:100%;max-width:180px;min-height:36px;padding:0.25rem 0.4rem;border:1px solid var(--border-light);font-size:0.65rem;font-family:IBM Plex Mono,monospace;background:var(--bg);resize:vertical;">' + (pool.adminNotes || '') + '</textarea>';
             html += '</td>';
             html += '<td style="padding:0.6rem 0.5rem;text-align:center;">';
-            html += '<button onclick="savePoolOverrides(\'' + pool.id + '\', this)" style="background:#FF6B4A;border:none;color:#000;padding:0.3rem 0.6rem;cursor:pointer;font-family:IBM Plex Mono,monospace;font-size:0.6rem;font-weight:600;text-transform:uppercase;">Save</button>';
+            html += '<button onclick="savePoolOverrides(\'' + pool.id + '\', this)" style="background:var(--accent);border:none;color:#000;padding:0.3rem 0.6rem;cursor:pointer;font-family:IBM Plex Mono,monospace;font-size:0.6rem;font-weight:600;text-transform:uppercase;">Save</button>';
             html += '</td>';
             html += '</tr>';
           });
@@ -2055,7 +2057,7 @@
           if (e.message === 'auth') return;
           loading.style.display = 'none';
           content.style.display = 'block';
-          content.innerHTML = '<div style="text-align:center;color:#ef4444;padding:1rem;">Failed to load token management</div>';
+          content.innerHTML = '<div style="text-align:center;color:var(--red);padding:1rem;">Failed to load token management</div>';
         });
     }
 
@@ -2108,7 +2110,7 @@
           btn.style.background = 'var(--green-verify)';
           setTimeout(function() {
             btn.textContent = 'SAVE';
-            btn.style.background = '#FF6B4A';
+            btn.style.background = 'var(--accent)';
           }, 1500);
         } else {
           btn.textContent = 'SAVE';
@@ -2174,11 +2176,11 @@
 
           agents.forEach(function(agent) {
             var rowOpacity = agent.hidden ? 'opacity:0.5;' : '';
-            html += '<tr data-pk="' + encodeURIComponent(agent.publicKey) + '" data-agenttype="' + (agent.agentType || 'verified') + '" data-hidden="' + (agent.hidden ? '1' : '0') + '" style="border-bottom:1px solid var(--border-light, #d4d0ca);' + rowOpacity + '">';
+            html += '<tr data-pk="' + encodeURIComponent(agent.publicKey) + '" data-agenttype="' + (agent.agentType || 'verified') + '" data-hidden="' + (agent.hidden ? '1' : '0') + '" style="border-bottom:1px solid var(--border-light);' + rowOpacity + '">';
 
             html += '<td style="padding:0.6rem 0.5rem;text-align:center;">';
             if (agent.hidden) {
-              html += '<span title="Hidden from public" style="display:inline-block;padding:2px 6px;font-family:IBM Plex Mono,monospace;font-size:0.5rem;font-weight:600;background:#ef4444;color:#fff;text-transform:uppercase;letter-spacing:0.03em;">HIDDEN</span>';
+              html += '<span title="Hidden from public" style="display:inline-block;padding:2px 6px;font-family:IBM Plex Mono,monospace;font-size:0.5rem;font-weight:600;background:var(--red);color:#fff;text-transform:uppercase;letter-spacing:0.03em;">HIDDEN</span>';
             } else {
               html += '<span title="Visible publicly" style="display:inline-block;padding:2px 6px;font-family:IBM Plex Mono,monospace;font-size:0.5rem;font-weight:600;background:var(--green-verify);color:#fff;text-transform:uppercase;letter-spacing:0.03em;">LIVE</span>';
             }
@@ -2194,7 +2196,7 @@
             html += '<div style="font-weight:600;">' + (displayName ? esc(displayName) : '<span style="color:var(--text-muted);font-style:italic;">unnamed</span>') + '</div>';
             if (agent.hostedName && agent.agentName) html += '<div style="font-family:IBM Plex Mono,monospace;font-size:0.55rem;color:var(--text-muted);">id: ' + esc(agent.agentName) + '</div>';
             html += '<div style="font-family:IBM Plex Mono,monospace;font-size:0.55rem;color:var(--text-muted);">' + esc(agent.publicKey.slice(0, 20)) + '...</div>';
-            if (agent.tokenSymbol) html += '<div style="font-family:IBM Plex Mono,monospace;font-size:0.6rem;color:#FF6B4A;">$' + esc(agent.tokenSymbol) + '</div>';
+            if (agent.tokenSymbol) html += '<div style="font-family:IBM Plex Mono,monospace;font-size:0.6rem;color:var(--accent);">$' + esc(agent.tokenSymbol) + '</div>';
             html += '</td>';
 
             html += '<td style="padding:0.6rem 0.5rem;font-family:IBM Plex Mono,monospace;font-size:0.65rem;color:var(--text-muted);">' + (agent.humanId ? esc(agent.humanId.slice(0, 10)) + '...' : '-') + '</td>';
@@ -2206,13 +2208,13 @@
             html += '<div style="display:flex;gap:3px;flex-wrap:wrap;">';
             allStages.forEach(function(stage) {
               var active = agent.pipelineStages.indexOf(stage) !== -1;
-              var bg = active ? 'var(--green-verify)' : 'var(--border-light, #d4d0ca)';
+              var bg = active ? 'var(--green-verify)' : 'var(--border-light)';
               var color = active ? '#fff' : 'var(--text-muted)';
               html += '<span title="' + stageTitles[stage] + '" style="display:inline-block;padding:2px 4px;font-family:IBM Plex Mono,monospace;font-size:0.5rem;font-weight:600;background:' + bg + ';color:' + color + ';letter-spacing:0.02em;">' + stageLabels[stage] + '</span>';
             });
             html += '</div></td>';
 
-            html += '<td style="padding:0.6rem 0.5rem;font-family:IBM Plex Mono,monospace;font-size:0.65rem;font-weight:600;color:' + (agent.pipelineProgress === 100 ? 'var(--green-verify)' : '#FF6B4A') + ';">' + agent.pipelineProgress + '%</td>';
+            html += '<td style="padding:0.6rem 0.5rem;font-family:IBM Plex Mono,monospace;font-size:0.65rem;font-weight:600;color:' + (agent.pipelineProgress === 100 ? 'var(--green-verify)' : 'var(--accent)') + ';">' + agent.pipelineProgress + '%</td>';
 
             var nextLabel = agent.nextStage === 'complete' ? '<span style="color:var(--green-verify);">Complete</span>' : stageTitles[agent.nextStage] || agent.nextStage;
             html += '<td style="padding:0.6rem 0.5rem;font-size:0.7rem;">' + nextLabel + '</td>';
@@ -2221,13 +2223,13 @@
             html += '<div style="display:flex;gap:0.4rem;flex-wrap:wrap;">';
 
             var hideLabel = agent.hidden ? 'Show' : 'Hide';
-            var hideBorder = agent.hidden ? 'var(--green-verify)' : '#FFD700';
-            var hideColor = agent.hidden ? 'var(--green-verify)' : '#b8860b';
+            var hideBorder = agent.hidden ? 'var(--green-verify)' : 'var(--yellow)';
+            var hideColor = agent.hidden ? 'var(--green-verify)' : 'var(--yellow)';
             html += '<button data-toggle-visibility="' + encodeURIComponent(agent.publicKey) + '" data-currently-hidden="' + (agent.hidden ? '1' : '0') + '" data-agent-name="' + esc(agent.agentName || agent.publicKey.slice(0, 16)) + '" style="background:none;border:2px solid ' + hideBorder + ';color:' + hideColor + ';padding:0.25rem 0.6rem;cursor:pointer;font-family:IBM Plex Mono,monospace;font-size:0.55rem;font-weight:600;text-transform:uppercase;letter-spacing:0.03em;">' + hideLabel + '</button>';
 
             html += '<button data-rename-agent="' + encodeURIComponent(agent.publicKey) + '" data-agent-name="' + esc(agent.agentName || '') + '" style="background:none;border:2px solid #3B82F6;color:#3B82F6;padding:0.25rem 0.6rem;cursor:pointer;font-family:IBM Plex Mono,monospace;font-size:0.55rem;font-weight:600;text-transform:uppercase;letter-spacing:0.03em;">Rename</button>';
 
-            html += '<button data-remove-agent="' + encodeURIComponent(agent.publicKey) + '" data-agent-name="' + esc(agent.agentName || agent.publicKey.slice(0, 16)) + '" style="background:none;border:2px solid #ef4444;color:#ef4444;padding:0.25rem 0.6rem;cursor:pointer;font-family:IBM Plex Mono,monospace;font-size:0.55rem;font-weight:600;text-transform:uppercase;letter-spacing:0.03em;">Remove</button>';
+            html += '<button data-remove-agent="' + encodeURIComponent(agent.publicKey) + '" data-agent-name="' + esc(agent.agentName || agent.publicKey.slice(0, 16)) + '" style="background:none;border:2px solid var(--red);color:var(--red);padding:0.25rem 0.6rem;cursor:pointer;font-family:IBM Plex Mono,monospace;font-size:0.55rem;font-weight:600;text-transform:uppercase;letter-spacing:0.03em;">Remove</button>';
 
             html += '</div></td>';
             html += '</tr>';
@@ -2245,7 +2247,7 @@
           console.error('[admin] Failed to load agents:', e);
           loading.style.display = 'none';
           content.style.display = 'block';
-          content.innerHTML = '<div style="text-align:center;color:#ef4444;padding:1rem;">Failed to load agents: ' + esc(e.message || 'Unknown error') + '</div>';
+          content.innerHTML = '<div style="text-align:center;color:var(--red);padding:1rem;">Failed to load agents: ' + esc(e.message || 'Unknown error') + '</div>';
         });
     }
 
@@ -2349,7 +2351,7 @@
       var resultEl = document.getElementById('erc8004-result');
       if (!pk || !tid) {
         resultEl.style.display = 'block';
-        resultEl.style.borderColor = '#c00';
+        resultEl.style.borderColor = 'var(--red)';
         resultEl.innerHTML = 'Both fields are required.';
         return;
       }
@@ -2369,12 +2371,12 @@
             '<br><a href="' + esc(data.scanUrl) + '" target="_blank" style="color:var(--accent);">' + esc(data.scanUrl) + '</a>';
           loadAgentManagement();
         } else {
-          resultEl.style.borderColor = '#c00';
+          resultEl.style.borderColor = 'var(--red)';
           resultEl.innerHTML = 'Error: ' + esc(data.error || 'Unknown error');
         }
       })
       .catch(function(e) {
-        resultEl.style.borderColor = '#c00';
+        resultEl.style.borderColor = 'var(--red)';
         resultEl.innerHTML = 'Error: ' + esc(e.message);
       });
     }
@@ -2384,7 +2386,7 @@
       var resultEl = document.getElementById('hide-result');
       if (!pk) {
         resultEl.style.display = 'block';
-        resultEl.style.borderColor = '#c00';
+        resultEl.style.borderColor = 'var(--red)';
         resultEl.innerHTML = 'Public key is required.';
         return;
       }
@@ -2403,12 +2405,12 @@
           resultEl.innerHTML = '<strong>Done.</strong> ' + esc(data.message);
           loadAgentManagement();
         } else {
-          resultEl.style.borderColor = '#c00';
+          resultEl.style.borderColor = 'var(--red)';
           resultEl.innerHTML = 'Error: ' + esc(data.error || 'Unknown error');
         }
       })
       .catch(function(e) {
-        resultEl.style.borderColor = '#c00';
+        resultEl.style.borderColor = 'var(--red)';
         resultEl.innerHTML = 'Error: ' + esc(e.message);
       });
     }
@@ -2419,7 +2421,7 @@
       var resultEl = document.getElementById('relink-result');
       if (!aid || !hid) {
         resultEl.style.display = 'block';
-        resultEl.style.borderColor = '#c00';
+        resultEl.style.borderColor = 'var(--red)';
         resultEl.innerHTML = 'Both fields are required.';
         return;
       }
@@ -2439,12 +2441,12 @@
             (data.walletUpdated ? '<br>Wallet record also updated.' : '<br>No wallet record found to update.');
           loadAgentManagement();
         } else {
-          resultEl.style.borderColor = '#c00';
+          resultEl.style.borderColor = 'var(--red)';
           resultEl.innerHTML = 'Error: ' + esc(data.error || 'Unknown error');
         }
       })
       .catch(function(e) {
-        resultEl.style.borderColor = '#c00';
+        resultEl.style.borderColor = 'var(--red)';
         resultEl.innerHTML = 'Error: ' + esc(e.message);
       });
     }
