@@ -69,6 +69,10 @@
   color: var(--accent);
 }
 
+.theme-label {
+  display: none;
+}
+
 * {
   box-sizing: border-box;
   margin: 0;
@@ -1597,6 +1601,24 @@ h4 {
     width: 100%;
   }
   .site-nav .nav-link:last-child { border-bottom: none; }
+  .site-nav .theme-toggle {
+    width: 100%;
+    padding: 0.6rem 0;
+    border: none;
+    border-top: 1px solid var(--border);
+    text-align: left;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .site-nav .theme-toggle .theme-label {
+    display: inline;
+  }
   .site-header {
     flex-wrap: wrap;
   }

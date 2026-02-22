@@ -22,7 +22,7 @@ function initThemeToggle() {
 
   function updateIcon() {
     var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-    btn.textContent = isDark ? '\u263C' : '\u263E';
+    btn.innerHTML = isDark ? '\u263C <span class="theme-label">LIGHT</span>' : '\u263E <span class="theme-label">DARK</span>';
     btn.title = isDark ? 'Switch to light mode' : 'Switch to dark mode';
   }
 
