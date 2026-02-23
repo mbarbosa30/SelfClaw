@@ -109,6 +109,7 @@ app.get("/miniclaw", (_req: Request, res: Response) => sendHtml(res, "miniclaw-i
 app.get("/perkos", (_req: Request, res: Response) => sendHtml(res, "perkos.html", { "X-Robots-Tag": "noindex, nofollow" }));
 app.get("/feed", (_req: Request, res: Response) => sendHtml(res, "feed.html"));
 app.get("/poc", (_req: Request, res: Response) => sendHtml(res, "poc.html"));
+app.get("/trust-thesis", (_req: Request, res: Response) => sendHtml(res, "trust-thesis.html", { "X-Robots-Tag": "noindex, nofollow" }));
 
 app.get("/skills", (_req: Request, res: Response) => res.redirect(301, "/skill-market"));
 app.get("/how-it-works", (_req: Request, res: Response) => res.redirect(301, "/"));
