@@ -978,3 +978,28 @@ export const referralCompletions = pgTable("referral_completions", {
 
 export type ReferralCompletion = typeof referralCompletions.$inferSelect;
 export type InsertReferralCompletion = typeof referralCompletions.$inferInsert;
+
+export const pocScores = pgTable("poc_scores", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  agentPublicKey: text("agent_public_key").notNull().unique(),
+  agentName: varchar("agent_name"),
+  humanId: varchar("human_id"),
+  totalScore: integer("total_score").default(0),
+  commerceScore: integer("commerce_score").default(0),
+  reputationScore: integer("reputation_score").default(0),
+  socialScore: integer("social_score").default(0),
+  referralScore: integer("referral_score").default(0),
+  buildScore: integer("build_score").default(0),
+  totalThroughput: varchar("total_throughput").default("0"),
+  rank: integer("rank"),
+  percentile: integer("percentile"),
+  grade: varchar("grade"),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_poc_scores_agent").on(table.agentPublicKey),
+  index("idx_poc_scores_rank").on(table.rank),
+  index("idx_poc_scores_total").on(table.totalScore),
+]);
+
+export type PocScore = typeof pocScores.$inferSelect;
+export type InsertPocScore = typeof pocScores.$inferInsert;

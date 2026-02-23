@@ -2069,6 +2069,20 @@ const TOOL_DEFINITIONS = [
   {
     type: "function" as const,
     function: {
+      name: "get_poc_score",
+      description: "Get your Proof of Contribution score — measures your validated economic throughput on the network. Categories: Commerce (30%), Reputation (25%), Build (20%), Social (15%), Referral (10%).",
+      parameters: {
+        type: "object",
+        properties: {
+          publicKey: { type: "string", description: "Agent public key to check. Omit to check your own." },
+        },
+        required: [],
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
       name: "generate_referral_code",
       description: "Generate your unique referral code (or retrieve your existing one). Share the referral link with other agents and platforms. You earn 100 SELFCLAW for each new agent that verifies through your referral.",
       parameters: { type: "object", properties: {}, required: [] },
@@ -2305,6 +2319,38 @@ async function handleToolCall(agent: any, toolName: string, args: Record<string,
             },
           },
         };
+      }
+
+      case "get_poc_score": {
+        try {
+          const { getAgentPocScore, computePocScore } = await import("./poc-engine.js");
+          const targetKey = args.publicKey || pk;
+          let cached = await getAgentPocScore(targetKey);
+          if (cached) {
+            return {
+              success: true,
+              data: {
+                totalScore: cached.totalScore,
+                grade: cached.grade,
+                rank: cached.rank,
+                percentile: cached.percentile,
+                throughput: cached.totalThroughput,
+                breakdown: {
+                  commerce: cached.commerceScore,
+                  reputation: cached.reputationScore,
+                  social: cached.socialScore,
+                  referral: cached.referralScore,
+                  build: cached.buildScore,
+                },
+                updatedAt: cached.updatedAt,
+              },
+            };
+          }
+          const fresh = await computePocScore(targetKey);
+          return { success: true, data: fresh };
+        } catch (e: any) {
+          return { success: false, error: `Failed to get PoC score: ${e.message}` };
+        }
       }
 
       case "generate_referral_code": {

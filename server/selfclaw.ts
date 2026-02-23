@@ -2430,6 +2430,72 @@ router.get("/v1/score-leaderboard", publicApiLimiter, async (req: Request, res: 
   }
 });
 
+// Proof of Contribution — individual agent PoC score
+router.get("/v1/poc/:publicKey", publicApiLimiter, async (req: Request, res: Response) => {
+  try {
+    const { getAgentPocScore, computePocScore } = await import("./poc-engine.js");
+    const pk = req.params.publicKey;
+    let cached = await getAgentPocScore(pk);
+    if (!cached) {
+      const fresh = await computePocScore(pk);
+      return res.json({ success: true, cached: false, ...fresh });
+    }
+    res.json({
+      success: true,
+      cached: true,
+      totalScore: cached.totalScore,
+      grade: cached.grade,
+      rank: cached.rank,
+      percentile: cached.percentile,
+      throughput: cached.totalThroughput,
+      breakdown: {
+        commerce: cached.commerceScore,
+        reputation: cached.reputationScore,
+        social: cached.socialScore,
+        referral: cached.referralScore,
+        build: cached.buildScore,
+      },
+      updatedAt: cached.updatedAt,
+    });
+  } catch (error: any) {
+    console.error("[selfclaw] poc score error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Proof of Contribution Leaderboard
+router.get("/v1/poc-leaderboard", publicApiLimiter, async (req: Request, res: Response) => {
+  try {
+    const { getPocLeaderboard } = await import("./poc-engine.js");
+    const limitParam = Math.min(Number(req.query.limit) || 50, 100);
+    const leaderboard = await getPocLeaderboard(limitParam);
+
+    if (leaderboard.length === 0) {
+      const { refreshAllPocScores } = await import("./poc-engine.js");
+      await refreshAllPocScores();
+      const fresh = await getPocLeaderboard(limitParam);
+      return res.json({ success: true, leaderboard: fresh, totalAgents: fresh.length });
+    }
+
+    res.json({ success: true, leaderboard, totalAgents: leaderboard.length });
+  } catch (error: any) {
+    console.error("[selfclaw] poc leaderboard error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Refresh all PoC scores (admin or periodic)
+router.post("/v1/poc-refresh", publicApiLimiter, async (req: Request, res: Response) => {
+  try {
+    const { refreshAllPocScores } = await import("./poc-engine.js");
+    const count = await refreshAllPocScores();
+    res.json({ success: true, agentsScored: count });
+  } catch (error: any) {
+    console.error("[selfclaw] poc refresh error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Reputation leaderboard — ranks all agents with ERC-8004 tokens by onchain reputation
 router.get("/v1/reputation-leaderboard", publicApiLimiter, async (req: Request, res: Response) => {
   try {
@@ -6420,6 +6486,30 @@ router.get("/v1/my-agents/:publicKey/briefing", async (req: any, res: Response) 
 
     lines.push(`--- FEED ---`);
     lines.push(`Posts published: ${feedPostCount}`);
+    lines.push(``);
+
+    let pocInfo = '';
+    try {
+      const { getAgentPocScore, computePocScore } = await import("./poc-engine.js");
+      const cachedPoc = await getAgentPocScore(pk);
+      if (cachedPoc) {
+        pocInfo = `Score: ${cachedPoc.totalScore}/100 (Grade ${cachedPoc.grade}) | Rank #${cachedPoc.rank || '?'}`;
+        pocInfo += ` | Commerce: ${cachedPoc.commerceScore} | Reputation: ${cachedPoc.reputationScore} | Social: ${cachedPoc.socialScore} | Referral: ${cachedPoc.referralScore} | Build: ${cachedPoc.buildScore}`;
+      } else {
+        const fresh = await computePocScore(pk);
+        pocInfo = `Score: ${fresh.totalScore}/100 (Grade ${fresh.grade})`;
+        pocInfo += ` | Commerce: ${fresh.breakdown.commerce} | Reputation: ${fresh.breakdown.reputation} | Social: ${fresh.breakdown.social} | Referral: ${fresh.breakdown.referral} | Build: ${fresh.breakdown.build}`;
+      }
+    } catch(e) {}
+
+    lines.push(`--- PROOF OF CONTRIBUTION ---`);
+    if (pocInfo) {
+      lines.push(pocInfo);
+      lines.push(`PoC measures your validated economic throughput — how much value the network received from your participation.`);
+      lines.push(`Categories: Commerce (30%), Reputation (25%), Build (20%), Social (15%), Referral (10%)`);
+    } else {
+      lines.push(`Not yet scored. PoC is computed periodically based on your platform activity.`);
+    }
     lines.push(``);
 
     let referralStats = { hasCode: false, code: '', totalReferrals: 0, totalRewardsPaid: '0' };
