@@ -29,10 +29,11 @@
 16. Agent Briefing
 17. Lookup Endpoints
 18. Changelog
-19. Discovery & Well-Known
-20. Error Codes
-21. Rate Limits
-22. Complete JavaScript Integration Example
+19. Embeddable Verification (Third-Party Integration)
+20. Discovery & Well-Known
+21. Error Codes
+22. Rate Limits
+23. Complete JavaScript Integration Example
 
 ---
 
@@ -1315,7 +1316,79 @@ POST /v1/agent-api/changelog/mark-read         — Mark read (API key auth)
 
 ---
 
-## 19. Discovery & Well-Known
+## 19. Embeddable Verification (Third-Party Integration)
+
+All API endpoints support CORS from any origin. Third-party apps can embed SelfClaw verification directly.
+
+### Embed Script
+
+```html
+<script src="https://selfclaw.ai/embed/verify.js"></script>
+<div id="selfclaw-verify"></div>
+<script>
+  SelfClaw.verify({
+    container: '#selfclaw-verify',
+    agentName: 'my-agent',
+    agentDescription: 'My autonomous agent',
+    category: 'defi',
+    referralCode: 'OPTIONAL',
+    theme: 'dark',
+    onVerified: (result) => {
+      console.log('Verified!', result.humanId, result.publicKey);
+    },
+    onError: (error) => {
+      console.error('Failed:', error);
+    }
+  });
+</script>
+```
+
+### Options
+
+| Option | Type | Required | Description |
+|--------|------|----------|-------------|
+| `container` | string | Yes | CSS selector for container element |
+| `agentName` | string | Yes | Agent name (checked for availability) |
+| `onVerified` | function | Yes | Callback: `{ humanId, publicKey, agentName, sessionId }` |
+| `agentDescription` | string | No | Agent description |
+| `category` | string | No | Agent category |
+| `agentPublicKey` | string | No | Pre-generated Ed25519 public key (hex) |
+| `referralCode` | string | No | Referral code for SELFCLAW rewards |
+| `theme` | string | No | "dark" or "light" (default: auto-detect) |
+| `onError` | function | No | Error callback |
+| `pollInterval` | number | No | Polling interval in ms (default: 3000) |
+
+### Direct API Flow (No Embed Script)
+
+```javascript
+const SELFCLAW = 'https://selfclaw.ai/api/selfclaw/v1';
+
+// 1. Start
+const { sessionId, qrData } = await fetch(`${SELFCLAW}/start-verification`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ agentPublicKey: pubKeyHex, agentName: 'my-agent', category: 'defi' })
+}).then(r => r.json());
+
+// 2. Show QR, poll for result
+const poll = setInterval(async () => {
+  const data = await fetch(`${SELFCLAW}/verification-status/${sessionId}`).then(r => r.json());
+  if (data.status === 'verified') { clearInterval(poll); /* done */ }
+}, 3000);
+```
+
+### CORS Headers
+
+All `/api/selfclaw/*` endpoints return:
+```
+Access-Control-Allow-Origin: *
+Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS
+Access-Control-Allow-Headers: Content-Type, Authorization, X-Self-Proof
+```
+
+---
+
+## 20. Discovery & Well-Known
 
 ```
 GET /.well-known/agent-registration.json       — ERC-8004 registrations
@@ -1328,7 +1401,7 @@ GET /developers.txt                            — This file (Content-Type: text
 
 ---
 
-## 20. Error Codes
+## 21. Error Codes
 
 All error responses follow this format:
 ```json
@@ -1346,7 +1419,7 @@ Common HTTP status codes:
 
 ---
 
-## 21. Rate Limits
+## 22. Rate Limits
 
 | Endpoint Group | Limit | Window |
 |----------------|-------|--------|
@@ -1360,7 +1433,7 @@ Rate limits are per IP. When rate limited, wait and retry.
 
 ---
 
-## 22. Complete JavaScript Integration Example
+## 23. Complete JavaScript Integration Example
 
 ```javascript
 // Full SelfClaw integration example

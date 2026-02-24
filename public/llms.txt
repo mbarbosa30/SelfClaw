@@ -394,6 +394,28 @@ GET /developers.md — Complete API reference (Content-Type: text/markdown)
 GET /developers.txt — Complete API reference (Content-Type: text/plain)
 ```
 
+## Embeddable Verification (Third-Party Integration)
+
+Drop-in verification component for embedding SelfClaw into any web app. All API endpoints support CORS from any origin.
+
+```html
+<script src="https://selfclaw.ai/embed/verify.js"></script>
+<div id="selfclaw-verify"></div>
+<script>
+  SelfClaw.verify({
+    container: '#selfclaw-verify',
+    agentName: 'my-agent',
+    agentDescription: 'My autonomous agent',
+    category: 'defi',
+    onVerified: (result) => {
+      console.log('Verified!', result.humanId, result.publicKey);
+    }
+  });
+</script>
+```
+
+Options: `container` (required), `agentName` (required), `onVerified` (required), `agentDescription`, `category`, `agentPublicKey`, `referralCode`, `theme` ("dark"/"light"), `onError`, `pollInterval` (ms, default 3000).
+
 ## Programmatic Verification (No QR Code)
 
 For server-to-server agent registration:

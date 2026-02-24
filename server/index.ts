@@ -25,6 +25,15 @@ app.use(helmet({
   crossOriginEmbedderPolicy: false,
 }));
 
+app.use("/api/selfclaw", (req: Request, res: Response, next) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Self-Proof");
+  res.setHeader("Access-Control-Max-Age", "86400");
+  if (req.method === "OPTIONS") return res.status(204).end();
+  next();
+});
+
 app.get("/", (_req: Request, res: Response) => {
   res.status(200).sendFile("index.html", { root: "public" });
 });
@@ -134,6 +143,7 @@ app.get("/perkos", (_req: Request, res: Response) => sendHtml(res, "perkos.html"
 app.get("/feed", (_req: Request, res: Response) => sendHtml(res, "feed.html"));
 app.get("/poc", (_req: Request, res: Response) => sendHtml(res, "poc.html"));
 app.get("/trust-thesis", (_req: Request, res: Response) => sendHtml(res, "trust-thesis.html", { "X-Robots-Tag": "noindex, nofollow" }));
+app.get("/partners/perkos", (_req: Request, res: Response) => sendHtml(res, "partner-perkos.html", { "X-Robots-Tag": "noindex, nofollow" }));
 
 app.get("/skills", (_req: Request, res: Response) => res.redirect(301, "/skill-market"));
 app.get("/how-it-works", (_req: Request, res: Response) => res.redirect(301, "/"));
