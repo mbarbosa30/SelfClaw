@@ -509,6 +509,21 @@ async function initializeApp() {
     console.error('[onchain-sync] Failed to load module:', err.message);
   }
 
+  try {
+    const pocMod = await import("./poc-engine.js");
+    setTimeout(() => {
+      pocMod.refreshAllPocScores().catch((err: any) =>
+        console.error('[poc] Initial refresh failed:', err.message));
+    }, 20000);
+    setInterval(() => {
+      pocMod.refreshAllPocScores().catch((err: any) =>
+        console.error('[poc] Periodic refresh failed:', err.message));
+    }, 2 * 60 * 60 * 1000);
+    console.log('[poc] Periodic PoC score refresh scheduled (every 2h)');
+  } catch (err: any) {
+    console.error('[poc] Failed to load module:', err.message);
+  }
+
   console.log('[startup] Async initialization complete');
 }
 
