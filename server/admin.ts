@@ -13,6 +13,7 @@ import {
   getBridgeStatus,
   getWalletBalances,
   fetchVaaForTx,
+  getTokenInfo,
 } from "../lib/wormhole-bridge.js";
 import {
   collectFees,
@@ -118,10 +119,66 @@ router.get("/bridge-status", async (req: Request, res: Response) => {
 
 const SELFCLAW_TOKEN = "0x9ae5f51d81ff510bf961218f833f79d57bfbab07";
 
+router.get("/bridge/token-info/:address", async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    const address = req.params.address;
+    if (!address || !/^0x[0-9a-fA-F]{40}$/.test(address)) {
+      return res.status(400).json({ error: "Valid ERC20 token address required" });
+    }
+    const result = await getTokenInfo(address);
+    if (!result.success) {
+      return res.status(400).json({ error: result.error });
+    }
+    res.json(result.token);
+  } catch (error: any) {
+    console.error("[admin] bridge/token-info error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get("/bridge/known-tokens", async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    const agents = await db.select({
+      tokenAddress: sponsoredAgents.tokenAddress,
+      tokenSymbol: sponsoredAgents.tokenSymbol,
+      agentId: sponsoredAgents.agentId,
+    })
+    .from(sponsoredAgents)
+    .where(sql`${sponsoredAgents.tokenAddress} IS NOT NULL`);
+
+    const tokens = [
+      { address: SELFCLAW_TOKEN, symbol: "SELFCLAW", label: "SELFCLAW (Platform)" },
+      ...agents
+        .filter(a => a.tokenAddress && a.tokenAddress.toLowerCase() !== SELFCLAW_TOKEN.toLowerCase())
+        .map(a => ({
+          address: a.tokenAddress!,
+          symbol: a.tokenSymbol || "TOKEN",
+          label: `${a.tokenSymbol || "TOKEN"} (${a.agentId || "agent"})`,
+        })),
+    ];
+
+    const seen = new Set<string>();
+    const unique = tokens.filter(t => {
+      const key = t.address.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+
+    res.json({ tokens: unique });
+  } catch (error: any) {
+    console.error("[admin] bridge/known-tokens error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 router.post("/bridge/attest", async (req: Request, res: Response) => {
   if (!requireAdmin(req, res)) return;
   try {
-    const result = await attestToken(SELFCLAW_TOKEN);
+    const tokenAddress = req.body.tokenAddress || SELFCLAW_TOKEN;
+    const result = await attestToken(tokenAddress);
     res.json(result);
   } catch (error: any) {
     console.error("[admin] bridge/attest error:", error);
@@ -132,11 +189,11 @@ router.post("/bridge/attest", async (req: Request, res: Response) => {
 router.post("/bridge/complete-attestation", async (req: Request, res: Response) => {
   if (!requireAdmin(req, res)) return;
   try {
-    const { vaaBytes } = req.body;
+    const { vaaBytes, tokenAddress } = req.body;
     if (!vaaBytes) {
       return res.status(400).json({ error: "vaaBytes required" });
     }
-    const result = await completeAttestation(vaaBytes);
+    const result = await completeAttestation(vaaBytes, tokenAddress || SELFCLAW_TOKEN);
     res.json(result);
   } catch (error: any) {
     console.error("[admin] bridge/complete-attestation error:", error);
@@ -147,7 +204,8 @@ router.post("/bridge/complete-attestation", async (req: Request, res: Response) 
 router.post("/bridge/complete-attestation-by-tx", async (req: Request, res: Response) => {
   if (!requireAdmin(req, res)) return;
   try {
-    const { txHash } = req.body;
+    const { txHash, tokenAddress: reqToken } = req.body;
+    const tokenAddress = reqToken || SELFCLAW_TOKEN;
     if (!txHash) {
       return res.status(400).json({ error: "txHash required" });
     }
@@ -163,7 +221,7 @@ router.post("/bridge/complete-attestation-by-tx", async (req: Request, res: Resp
     }
 
     console.log(`[admin] VAA fetched, completing attestation on Celo...`);
-    const result = await completeAttestation(vaaResult.vaaBytes);
+    const result = await completeAttestation(vaaResult.vaaBytes, tokenAddress);
     res.json(result);
   } catch (error: any) {
     console.error("[admin] bridge/complete-attestation-by-tx error:", error);
@@ -174,17 +232,18 @@ router.post("/bridge/complete-attestation-by-tx", async (req: Request, res: Resp
 router.post("/bridge/transfer", async (req: Request, res: Response) => {
   if (!requireAdmin(req, res)) return;
   try {
-    const { amount } = req.body;
+    const { amount, tokenAddress: reqToken } = req.body;
+    const tokenAddress = reqToken || SELFCLAW_TOKEN;
     if (!amount) {
       return res.status(400).json({ error: "amount required" });
     }
-    const result = await bridgeTokens(SELFCLAW_TOKEN, amount);
+    const result = await bridgeTokens(tokenAddress, amount);
 
     if (result.success && result.sourceTxHash) {
       await db.insert(bridgeTransactions).values({
         type: 'transfer',
         sourceTxHash: result.sourceTxHash,
-        tokenAddress: SELFCLAW_TOKEN,
+        tokenAddress,
         amount,
         status: 'submitted',
       });
@@ -200,14 +259,15 @@ router.post("/bridge/transfer", async (req: Request, res: Response) => {
 router.post("/bridge/auto-bridge", async (req: Request, res: Response) => {
   if (!requireAdmin(req, res)) return;
   try {
-    const { amount } = req.body;
+    const { amount, tokenAddress: reqToken } = req.body;
+    const tokenAddress = reqToken || SELFCLAW_TOKEN;
     if (!amount) {
       return res.status(400).json({ error: "amount required" });
     }
 
-    console.log(`[admin] Auto-bridge: starting full bridge flow for ${amount} SELFCLAW`);
+    console.log(`[admin] Auto-bridge: starting full bridge flow for ${amount} of ${tokenAddress}`);
 
-    const transferResult = await bridgeTokens(SELFCLAW_TOKEN, amount);
+    const transferResult = await bridgeTokens(tokenAddress, amount);
     if (!transferResult.success || !transferResult.sourceTxHash) {
       return res.status(400).json({
         error: transferResult.error || "Transfer failed on Base",
@@ -218,7 +278,7 @@ router.post("/bridge/auto-bridge", async (req: Request, res: Response) => {
     const [record] = await db.insert(bridgeTransactions).values({
       type: 'transfer',
       sourceTxHash: transferResult.sourceTxHash,
-      tokenAddress: SELFCLAW_TOKEN,
+      tokenAddress,
       amount,
       status: 'polling',
     }).returning();

@@ -270,7 +270,7 @@ export async function attestToken(tokenAddress: string): Promise<BridgeResult> {
   }
 }
 
-export async function completeAttestation(vaaBytes: string): Promise<BridgeResult> {
+export async function completeAttestation(vaaBytes: string, tokenAddress?: string): Promise<BridgeResult> {
   try {
     if (!PRIVATE_KEY) {
       return { success: false, error: 'CELO_PRIVATE_KEY not configured' };
@@ -297,7 +297,7 @@ export async function completeAttestation(vaaBytes: string): Promise<BridgeResul
       return { success: false, error: 'createWrapped transaction reverted', txHash };
     }
 
-    const wrappedAddress = await getWrappedTokenAddress(SELFCLAW_TOKEN_BASE);
+    const wrappedAddress = await getWrappedTokenAddress(tokenAddress || SELFCLAW_TOKEN_BASE);
 
     console.log(`[wormhole-bridge] Attestation complete. Wrapped address: ${wrappedAddress.wrappedAddress}`);
 
@@ -603,5 +603,52 @@ export async function getWalletBalances(): Promise<WalletBalances> {
   } catch (error: any) {
     console.error('[wormhole-bridge] getWalletBalances error:', error);
     return { ...defaultBalances, error: error.message || 'Failed to get wallet balances' };
+  }
+}
+
+export interface TokenInfo {
+  address: string;
+  name: string;
+  symbol: string;
+  decimals: number;
+  balance: string;
+  attested: boolean;
+  wrappedAddress: string | null;
+}
+
+export async function getTokenInfo(tokenAddress: string): Promise<{ success: boolean; token?: TokenInfo; error?: string }> {
+  try {
+    if (!PRIVATE_KEY) {
+      return { success: false, error: 'CELO_PRIVATE_KEY not configured' };
+    }
+
+    const account = getAccount();
+    const addr = tokenAddress as `0x${string}`;
+
+    const [name, symbol, decimals, balance] = await Promise.all([
+      baseClient.readContract({ address: addr, abi: ERC20_ABI, functionName: 'name' }).catch(() => 'Unknown'),
+      baseClient.readContract({ address: addr, abi: ERC20_ABI, functionName: 'symbol' }).catch(() => '???'),
+      baseClient.readContract({ address: addr, abi: ERC20_ABI, functionName: 'decimals' }).catch(() => 18),
+      baseClient.readContract({ address: addr, abi: ERC20_ABI, functionName: 'balanceOf', args: [account.address] }).catch(() => BigInt(0)),
+    ]);
+
+    const wrappedResult = await getWrappedTokenAddress(tokenAddress);
+    const attested = !!wrappedResult.data?.isAttested;
+
+    return {
+      success: true,
+      token: {
+        address: tokenAddress,
+        name: name as string,
+        symbol: symbol as string,
+        decimals: decimals as number,
+        balance: formatUnits(balance as bigint, decimals as number),
+        attested,
+        wrappedAddress: wrappedResult.wrappedAddress || null,
+      },
+    };
+  } catch (error: any) {
+    console.error('[wormhole-bridge] getTokenInfo error:', error);
+    return { success: false, error: error.message || 'Failed to get token info' };
   }
 }

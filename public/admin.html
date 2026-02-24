@@ -674,9 +674,47 @@
       </section>
 
       <section class="admin-section">
-        <h2 class="admin-section-title">Bridge Status</h2>
-        <div id="bridge-loading" style="text-align:center;padding:2rem;color:var(--text-muted);"><span class="spinner"></span> Loading bridge status...</div>
-        <div id="bridge-content" class="bridge-status-grid" style="display:none;"></div>
+        <h2 class="admin-section-title">Bridge Token Selector</h2>
+        <div style="display:flex;gap:0.75rem;flex-wrap:wrap;align-items:flex-end;">
+          <div style="flex:1;min-width:200px;">
+            <label style="font-size:0.7rem;color:var(--text-muted);display:block;margin-bottom:0.3rem;">Known Tokens</label>
+            <select class="input" id="bridge-token-select" onchange="onTokenSelectChange()" style="width:100%;">
+              <option value="">Loading...</option>
+            </select>
+          </div>
+          <div id="custom-token-row" style="flex:2;min-width:250px;display:none;">
+            <label style="font-size:0.7rem;color:var(--text-muted);display:block;margin-bottom:0.3rem;">Token Address (Base)</label>
+            <div style="display:flex;gap:0.5rem;">
+              <input type="text" class="input" id="bridge-custom-token" placeholder="0x... ERC20 address on Base" style="flex:1;">
+              <button class="action-btn" onclick="loadCustomToken()">Load</button>
+            </div>
+          </div>
+        </div>
+        <div id="selected-token-info" style="display:none;margin-top:0.75rem;padding:0.75rem;border:2px solid var(--border-heavy);background:var(--bg-card);">
+          <div style="display:flex;gap:1.5rem;flex-wrap:wrap;align-items:center;">
+            <div>
+              <span style="font-size:0.65rem;color:var(--text-muted);">Token</span>
+              <div style="font-weight:bold;" id="token-info-name">—</div>
+            </div>
+            <div>
+              <span style="font-size:0.65rem;color:var(--text-muted);">Symbol</span>
+              <div style="font-weight:bold;font-family:'IBM Plex Mono',monospace;" id="token-info-symbol">—</div>
+            </div>
+            <div>
+              <span style="font-size:0.65rem;color:var(--text-muted);">Your Balance (Base)</span>
+              <div style="font-weight:bold;color:var(--green-verify);" id="token-info-balance">—</div>
+            </div>
+            <div>
+              <span style="font-size:0.65rem;color:var(--text-muted);">Attested on Celo</span>
+              <div id="token-info-attested">—</div>
+            </div>
+            <div id="token-info-wrapped-row" style="display:none;">
+              <span style="font-size:0.65rem;color:var(--text-muted);">Wrapped Address</span>
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:0.75rem;" id="token-info-wrapped">—</div>
+            </div>
+          </div>
+        </div>
+        <div class="action-result" id="result-token-load" style="margin-top:0.5rem;"></div>
       </section>
 
       <section class="admin-section">
@@ -684,8 +722,8 @@
         <div class="actions-grid">
 
           <div class="action-card">
-            <h4>Attest SELFCLAW</h4>
-            <p style="color:var(--text-muted);font-size:0.7rem;margin-bottom:0.75rem;line-height:1.4;">One-time: registers SELFCLAW with Wormhole on Celo. After submitting, the system will automatically wait for guardian signatures and finalize on Celo.</p>
+            <h4 id="attest-card-title">Attest Token</h4>
+            <p style="color:var(--text-muted);font-size:0.7rem;margin-bottom:0.75rem;line-height:1.4;">One-time per token: registers the selected token with Wormhole on Celo. After submitting, the system will automatically wait for guardian signatures and finalize on Celo.</p>
             <button class="action-btn" id="btn-attest" onclick="doFullAttest(this)">Attest on Celo</button>
             <div class="action-result" id="result-attest"></div>
           </div>
@@ -699,8 +737,8 @@
           </div>
 
           <div class="action-card">
-            <h4>Bridge SELFCLAW</h4>
-            <p style="color:var(--text-muted);font-size:0.7rem;margin-bottom:0.75rem;line-height:1.4;">Fully automatic: locks SELFCLAW on Base, waits for guardian signatures, and completes transfer on Celo. No manual steps needed.</p>
+            <h4 id="bridge-card-title">Bridge Token</h4>
+            <p style="color:var(--text-muted);font-size:0.7rem;margin-bottom:0.75rem;line-height:1.4;">Fully automatic: locks the selected token on Base, waits for guardian signatures, and completes transfer on Celo. No manual steps needed.</p>
             <input type="text" class="input" id="bridge-selfclaw-amount" placeholder="Amount (e.g. 1000)">
             <button class="action-btn" id="btn-bridge" onclick="doAutoBridge(this)">Bridge to Celo</button>
             <div class="action-result" id="result-bridge"></div>
@@ -978,7 +1016,7 @@
       loadTokenPrices();
       loadPoolInfo();
       loadWalletBalances();
-      loadBridgeStatus();
+      loadKnownTokens();
       loadPendingClaims();
       loadSelfclawBalance();
       loadSponsorshipRequests();
@@ -1093,60 +1131,121 @@
         });
     }
 
-    function loadBridgeStatus() {
-      var loading = document.getElementById('bridge-loading');
-      var content = document.getElementById('bridge-content');
-      loading.style.display = 'block';
-      content.style.display = 'none';
+    var selectedBridgeToken = {
+      address: '0x9ae5f51d81ff510bf961218f833f79d57bfbab07',
+      symbol: 'SELFCLAW',
+      name: 'SELFCLAW',
+      balance: '0',
+      attested: false,
+      wrappedAddress: null
+    };
 
-      fetch('/api/admin/bridge-status', { headers: authHeaders() })
+    function getSelectedTokenAddress() {
+      return selectedBridgeToken.address;
+    }
+
+    function getSelectedTokenSymbol() {
+      return selectedBridgeToken.symbol || 'TOKEN';
+    }
+
+    function loadKnownTokens() {
+      fetch('/api/admin/bridge/known-tokens', { headers: authHeaders() })
         .then(function(r) {
           if (handleAuthError(r)) throw new Error('auth');
-          if (!r.ok) throw new Error('Server error (' + r.status + ')');
           return r.json();
         })
         .then(function(data) {
-          loading.style.display = 'none';
-          content.style.display = 'grid';
+          var select = document.getElementById('bridge-token-select');
+          select.innerHTML = '';
+          (data.tokens || []).forEach(function(t) {
+            var opt = document.createElement('option');
+            opt.value = t.address;
+            opt.textContent = t.label || (t.symbol + ' (' + truncateAddr(t.address) + ')');
+            select.appendChild(opt);
+          });
+          var customOpt = document.createElement('option');
+          customOpt.value = '__custom__';
+          customOpt.textContent = 'Custom address...';
+          select.appendChild(customOpt);
 
-          if (data.error && data.selfclawAttested == null) {
-            content.innerHTML = '<div class="bridge-status-card" style="grid-column:1/-1;text-align:center;color:var(--red);">' + data.error + '</div>';
-            return;
+          if (data.tokens && data.tokens.length > 0) {
+            select.value = data.tokens[0].address;
+            loadTokenInfo(data.tokens[0].address);
           }
-
-          var selfclaw = {
-            attested: data.selfclawAttested || false,
-            wrappedAddress: data.selfclawWrappedAddress || ''
-          };
-
-          content.innerHTML =
-            renderBridgeCard('SELFCLAW', selfclaw);
         })
         .catch(function(e) {
           if (e.message === 'auth') return;
-          loading.style.display = 'none';
-          content.style.display = 'grid';
-          content.innerHTML = '<div class="bridge-status-card" style="grid-column:1/-1;text-align:center;color:var(--red);">Failed to load bridge status</div>';
+          var select = document.getElementById('bridge-token-select');
+          select.innerHTML = '<option value="">Failed to load</option>';
         });
     }
 
-    function renderBridgeCard(name, info) {
-      var attested = info.attested || info.isAttested || false;
-      var wrappedAddr = info.wrappedAddress || info.wrapped_address || '';
-      var html = '<div class="bridge-status-card">' +
-        '<div class="bridge-token-name">' + name + '</div>' +
-        '<div class="bridge-attested">' +
-          '<span class="status-dot ' + (attested ? 'green' : 'red') + '"></span>' +
-          '<span style="color:' + (attested ? 'var(--green-verify)' : 'var(--red)') + '">' + (attested ? 'Attested on Celo' : 'Not attested') + '</span>' +
-        '</div>';
-      if (wrappedAddr) {
-        html += '<div class="wrapped-addr">' +
-          '<a href="https://celoscan.io/address/' + wrappedAddr + '" target="_blank" rel="noopener" style="color:var(--text-muted);text-decoration:none;">' + truncateAddr(wrappedAddr) + '</a>' +
-          '<button class="copy-btn" onclick="copyToClipboard(\'' + wrappedAddr + '\', this)">Copy</button>' +
-        '</div>';
+    function onTokenSelectChange() {
+      var select = document.getElementById('bridge-token-select');
+      var customRow = document.getElementById('custom-token-row');
+      if (select.value === '__custom__') {
+        customRow.style.display = 'block';
+        document.getElementById('selected-token-info').style.display = 'none';
+      } else {
+        customRow.style.display = 'none';
+        if (select.value) {
+          loadTokenInfo(select.value);
+        }
       }
-      html += '</div>';
-      return html;
+    }
+
+    function loadCustomToken() {
+      var addr = document.getElementById('bridge-custom-token').value.trim();
+      if (!addr || !/^0x[0-9a-fA-F]{40}$/.test(addr)) {
+        setActionResult('result-token-load', 'Enter a valid ERC20 address (0x...)', 'error');
+        return;
+      }
+      loadTokenInfo(addr);
+    }
+
+    function loadTokenInfo(address) {
+      setActionResult('result-token-load', 'Loading token info from Base...', 'loading');
+      document.getElementById('selected-token-info').style.display = 'none';
+
+      fetch('/api/admin/bridge/token-info/' + address, { headers: authHeaders() })
+        .then(function(r) {
+          if (handleAuthError(r)) throw new Error('auth');
+          if (!r.ok) return r.json().then(function(d) { throw new Error(d.error || 'Failed'); });
+          return r.json();
+        })
+        .then(function(token) {
+          selectedBridgeToken = token;
+          setActionResult('result-token-load', '', '');
+
+          document.getElementById('token-info-name').textContent = token.name;
+          document.getElementById('token-info-symbol').textContent = token.symbol;
+          document.getElementById('token-info-balance').textContent = parseFloat(token.balance).toLocaleString(undefined, { maximumFractionDigits: 4 });
+          document.getElementById('token-info-attested').innerHTML =
+            '<span class="status-dot ' + (token.attested ? 'green' : 'red') + '"></span>' +
+            '<span style="color:' + (token.attested ? 'var(--green-verify)' : 'var(--red)') + '">' +
+            (token.attested ? 'Yes' : 'No') + '</span>';
+
+          var wrappedRow = document.getElementById('token-info-wrapped-row');
+          if (token.wrappedAddress) {
+            wrappedRow.style.display = 'block';
+            document.getElementById('token-info-wrapped').innerHTML =
+              '<a href="https://celoscan.io/address/' + token.wrappedAddress + '" target="_blank" rel="noopener" style="color:var(--text-muted);text-decoration:none;">' +
+              truncateAddr(token.wrappedAddress) + '</a>' +
+              '<button class="copy-btn" onclick="copyToClipboard(\'' + token.wrappedAddress + '\', this)">Copy</button>';
+          } else {
+            wrappedRow.style.display = 'none';
+          }
+
+          document.getElementById('selected-token-info').style.display = 'block';
+
+          var sym = token.symbol || 'Token';
+          document.getElementById('attest-card-title').textContent = 'Attest ' + sym;
+          document.getElementById('bridge-card-title').textContent = 'Bridge ' + sym;
+        })
+        .catch(function(e) {
+          if (e.message === 'auth') return;
+          setActionResult('result-token-load', e.message || 'Failed to load token', 'error');
+        });
     }
 
     function setActionResult(id, msg, type) {
@@ -1164,7 +1263,7 @@
       fetch('/api/admin/bridge/complete-attestation-by-tx', {
         method: 'POST',
         headers: authHeaders(),
-        body: JSON.stringify({ txHash: txHash })
+        body: JSON.stringify({ txHash: txHash, tokenAddress: getSelectedTokenAddress() })
       })
       .then(function(r) {
         if (handleAuthError(r)) throw new Error('auth');
@@ -1191,13 +1290,15 @@
     }
 
     function doFullAttest(btn) {
-      if (!confirm('Attest SELFCLAW on Celo via Wormhole? This submits an irreversible onchain transaction.')) return;
+      var sym = getSelectedTokenSymbol();
+      if (!confirm('Attest ' + sym + ' on Celo via Wormhole? This submits an irreversible onchain transaction.')) return;
       btn.disabled = true;
       setActionResult('result-attest', 'Step 1/3: Submitting attestation on Base...', 'loading');
 
       fetch('/api/admin/bridge/attest', {
         method: 'POST',
-        headers: authHeaders()
+        headers: authHeaders(),
+        body: JSON.stringify({ tokenAddress: getSelectedTokenAddress() })
       })
       .then(function(r) { return r.json(); })
       .then(function(data) {
@@ -1219,17 +1320,18 @@
     function doAutoBridge(btn) {
       var amount = document.getElementById('bridge-selfclaw-amount').value.trim();
       if (!amount) return;
-      if (!confirm('Bridge ' + amount + ' SELFCLAW from Base to Celo? This is an irreversible blockchain transaction.')) return;
+      var sym = getSelectedTokenSymbol();
+      if (!confirm('Bridge ' + amount + ' ' + sym + ' from Base to Celo? This is an irreversible blockchain transaction.')) return;
       btn.disabled = true;
       var progressDiv = document.getElementById('bridge-progress');
       progressDiv.style.display = 'block';
-      setActionResult('result-bridge', 'Locking SELFCLAW on Base...', 'loading');
+      setActionResult('result-bridge', 'Locking ' + sym + ' on Base...', 'loading');
       updateBridgeProgress('transfer', 'Submitting transfer on Base...');
 
       fetch('/api/admin/bridge/auto-bridge', {
         method: 'POST',
         headers: authHeaders(),
-        body: JSON.stringify({ amount: amount })
+        body: JSON.stringify({ amount: amount, tokenAddress: getSelectedTokenAddress() })
       })
       .then(function(r) { return r.json(); })
       .then(function(data) {
@@ -1387,7 +1489,8 @@
           var age = tx.createdAt ? getTimeAgo(new Date(tx.createdAt)) : '';
           html += '<div style="background:var(--bg-card);border:2px solid var(--border-heavy);padding:1rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;">';
           html += '<div style="flex:1;min-width:200px;">';
-          html += '<div style="font-size:0.85rem;color:var(--text);margin-bottom:0.3rem;">' + (tx.type === 'transfer' ? 'Bridge Transfer' : tx.type) + ' — ' + tx.amount + ' SELFCLAW</div>';
+          var txSymbol = tx.tokenAddress === '0x9ae5f51d81ff510bf961218f833f79d57bfbab07' ? 'SELFCLAW' : truncateAddr(tx.tokenAddress || '');
+          html += '<div style="font-size:0.85rem;color:var(--text);margin-bottom:0.3rem;">' + (tx.type === 'transfer' ? 'Bridge Transfer' : tx.type) + ' — ' + tx.amount + ' ' + txSymbol + '</div>';
           html += '<div style="font-size:0.65rem;color:var(--text-muted);word-break:break-all;">Tx: ' + tx.sourceTxHash + '</div>';
           if (tx.error) html += '<div style="font-size:0.6rem;color:var(--red);margin-top:0.2rem;">' + tx.error + '</div>';
           if (age) html += '<div style="font-size:0.6rem;color:var(--text-muted);margin-top:0.2rem;">' + age + '</div>';
@@ -1489,7 +1592,7 @@
             fetch(completeUrl, {
               method: 'POST',
               headers: authHeaders(),
-              body: JSON.stringify({ vaaBytes: data.vaaBytes })
+              body: JSON.stringify({ vaaBytes: data.vaaBytes, tokenAddress: getSelectedTokenAddress() })
             })
             .then(function(r) { return r.json(); })
             .then(function(result) {

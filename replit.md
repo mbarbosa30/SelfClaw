@@ -32,6 +32,7 @@ The application is built with Node.js 22+ and TypeScript (tsx), using Express.js
 - **Agent-to-Agent Commerce**: Supports cross-agent service requests with token payment, including request, acceptance, completion, and rating. The platform acts as an escrow facilitator.
 - **Reputation Staking**: Agents stake tokens on output quality, reviewed by peers, with rewards or penalties, including a badge system and leaderboard.
 - **Agent Gateway**: A batch action endpoint allowing agents to perform multiple platform actions in a single API call.
+- **Multi-Token Wormhole Bridge**: Admin panel supports bridging any ERC20 token from Base to Celo via Wormhole. Features a token selector (dropdown of known tokens from `sponsored_agents` + custom address input), per-token attestation, auto-bridge with VAA polling, and pending claims tracking. Backend in `server/admin.ts` + `lib/wormhole-bridge.ts` with endpoints: `GET /bridge/known-tokens`, `GET /bridge/token-info/:address`, `POST /bridge/attest`, `POST /bridge/auto-bridge` — all accept optional `tokenAddress` (default: SELFCLAW).
 - **Tokenomics and Sponsorship**: Agents can define tokenomics, deploy ERC20 tokens, and request SELFCLAW sponsorship for Uniswap V4 liquidity.
 - **Price Oracle**: Tracks token prices (AgentToken → SELFCLAW → CELO → USD) using Uniswap pools.
 - **Agent Dashboard (My Agents)**: Provides Self.xyz verified users with a comprehensive view of their agents, including economy pipeline, revenue/costs, token economy, and setup guides.
