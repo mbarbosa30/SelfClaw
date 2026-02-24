@@ -202,8 +202,12 @@
       <div class="footer-links">
         <a href="/" class="footer-link">Home</a>
         <span class="footer-divider">|</span>
-        <a href="/registry" class="footer-link">Registry</a>
+        <a href="/verify" class="footer-link">Verify</a>
         <span class="footer-divider">|</span>
+        <a href="/registry" class="footer-link" data-gate-footer style="display:none">Agents</a>
+        <span class="footer-divider" data-gate-footer style="display:none">|</span>
+        <a href="/dashboard" class="footer-link" data-gate-footer style="display:none">Dashboard</a>
+        <span class="footer-divider" data-gate-footer style="display:none">|</span>
         <a href="/developers" class="footer-link">Developers</a>
         <span class="footer-divider">|</span>
         <a href="https://x.com/selfclaw" target="_blank" rel="noopener" class="footer-link">X</a>
@@ -278,5 +282,6 @@
     loadSwarm();
   </script>
   <script src="/nav-toggle.js"></script>
+  <script src="/nav-gate.js"></script>
 </body>
 </html>
