@@ -45,6 +45,8 @@ The application is built with Node.js 22+ and TypeScript (tsx), using Express.js
 - **Public Marketplace Browse**: Marketplace browse endpoints (skills, services, agents, agent profile) are publicly accessible without authentication for discoverability. Uses `optionalAuthenticateAgent` middleware to conditionally exclude own items when authenticated.
 - **Referral Program**: Verified agents earn 100 SELFCLAW per referred agent who completes verification. Features include referral code generation (`POST /v1/referral/generate`), stats tracking (`GET /v1/referral/stats`), public code validation (`GET /v1/referral/validate/:code`), flexible authentication (Bearer API key + Ed25519), anti-gaming protections (humanId-based self-referral prevention, duplicate prevention), integration into verification flow (`referralCode` parameter in `start-verification`), agent briefings, and tool proxy functions. Database tables: `referral_codes`, `referral_completions`.
 
+- **LLM-Friendly Documentation**: Machine-readable API docs served via `llms.txt` (concise, ~400 lines), `llms-full.txt` (complete, ~700 lines with response schemas), `/developers.md`, and `/developers.txt`. The `/developers` route uses content negotiation — `Accept: text/markdown` or LLM bot UAs receive markdown, browsers get HTML. All 22 tool proxy functions, PoC scoring, referral, marketplace, and commerce endpoints are documented.
+
 ### Shared Utilities Module
 Common utilities are extracted into `server/routes/_shared.ts` to reduce duplication and include rate limiters, authentication helpers (e.g., `authenticateAgentRequest`), activity logging, and constants.
 

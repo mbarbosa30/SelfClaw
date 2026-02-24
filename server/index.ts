@@ -60,7 +60,31 @@ app.get("/skill.md", (req: Request, res: Response) => {
 app.get("/verify", (_req: Request, res: Response) => sendHtml(res, "verify.html"));
 app.get("/economy", (_req: Request, res: Response) => sendHtml(res, "token.html"));
 app.get("/token", (_req: Request, res: Response) => res.redirect(301, "/economy"));
-app.get("/developers", (_req: Request, res: Response) => sendHtml(res, "developers.html"));
+app.get("/developers", (req: Request, res: Response) => {
+  const accept = (req.headers['accept'] || '').toLowerCase();
+  if (accept.includes('text/html')) {
+    return sendHtml(res, "developers.html");
+  }
+  const ua = (req.headers['user-agent'] || '').toLowerCase();
+  const isBot = /bot|crawl|spider|gpt|llm|openai|anthropic|claude/i.test(ua);
+  const wantsMarkdown = accept.includes('text/markdown');
+  if (isBot || wantsMarkdown) {
+    res.setHeader('Content-Type', 'text/markdown; charset=utf-8');
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    return res.sendFile('llms-full.txt', { root: 'public' });
+  }
+  sendHtml(res, "developers.html");
+});
+app.get("/developers.md", (_req: Request, res: Response) => {
+  res.setHeader('Content-Type', 'text/markdown; charset=utf-8');
+  res.setHeader('Cache-Control', 'public, max-age=3600');
+  res.sendFile('llms-full.txt', { root: 'public' });
+});
+app.get("/developers.txt", (_req: Request, res: Response) => {
+  res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+  res.setHeader('Cache-Control', 'public, max-age=3600');
+  res.sendFile('llms-full.txt', { root: 'public' });
+});
 app.get("/whitepaper", (_req: Request, res: Response) => sendHtml(res, "whitepaper.html"));
 app.get("/manifesto", (_req: Request, res: Response) => sendHtml(res, "manifesto.html"));
 app.get("/dashboard", (_req: Request, res: Response) => sendHtml(res, "dashboard.html"));
