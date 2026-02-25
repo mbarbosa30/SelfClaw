@@ -426,6 +426,15 @@
     statusEl.textContent = 'Opening wallet...';
 
     try {
+      if (!window.selfclawWaaP) {
+        await new Promise(function(resolve, reject) {
+          var s = document.createElement('script');
+          s.src = '/waap.js';
+          s.onload = function() { resolve(); };
+          s.onerror = function() { reject(new Error('Failed to load wallet SDK')); };
+          document.head.appendChild(s);
+        });
+      }
       if (!window.selfclawWaaP) throw new Error('Wallet SDK not loaded. Please refresh.');
       var walletResult = await window.selfclawWaaP.connectWallet();
       var address = walletResult.address;

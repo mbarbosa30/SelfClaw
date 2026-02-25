@@ -52,12 +52,6 @@ function sendHtml(res: Response, file: string, extraHeaders?: Record<string, str
   res.sendFile(file, { root: "public" });
 }
 
-app.get("/waap-sdk.js", (_req: Request, res: Response) => {
-  res.setHeader("Content-Type", "application/javascript");
-  res.setHeader("Cache-Control", "public, max-age=86400");
-  res.sendFile("waap-sdk-bundle.js", { root: path.resolve("public") });
-});
-
 app.use(express.static("public", {
   setHeaders: (res, filePath) => {
     if (filePath.endsWith('.html')) {

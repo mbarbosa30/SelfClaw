@@ -1,110 +1,167 @@
 (function() {
-  var waapState = {
+  var state = {
     initialized: false,
     connected: false,
     address: null,
-    provider: null
+    provider: null,
+    modal: null,
+    initPromise: null
   };
 
-  function loadWaaPSDK() {
-    return new Promise(function(resolve, reject) {
-      if (typeof window.initWaaP === 'function') {
-        resolve(true);
-        return;
+  var REOWN_PROJECT_ID = '096df07199db5fd480157215d0fd2e9f';
+
+  var celoChain = {
+    id: 'eip155:42220',
+    chainId: 42220,
+    name: 'Celo',
+    currency: 'CELO',
+    explorerUrl: 'https://celoscan.io',
+    rpcUrl: 'https://forno.celo.org',
+    chainNamespace: 'eip155'
+  };
+
+  function ensureInit() {
+    if (state.initPromise) return state.initPromise;
+
+    state.initPromise = new Promise(function(resolve, reject) {
+      var script = document.createElement('script');
+      script.type = 'module';
+
+      var code = 'import{createAppKit}from"https://cdn.jsdelivr.net/npm/@reown/appkit-cdn@1.8.18/+esm";' +
+        'window._reownCreateAppKit=createAppKit;' +
+        'window.dispatchEvent(new Event("reown-ready"));';
+
+      script.textContent = code;
+      document.head.appendChild(script);
+
+      function onReady() {
+        window.removeEventListener('reown-ready', onReady);
+        try {
+          state.modal = window._reownCreateAppKit({
+            projectId: REOWN_PROJECT_ID,
+            networks: [celoChain],
+            themeMode: document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light',
+            themeVariables: {
+              '--w3m-accent': '#FF6B4A',
+              '--w3m-border-radius-master': '0px'
+            },
+            features: {
+              analytics: false
+            },
+            metadata: {
+              name: 'SelfClaw',
+              description: 'Agent Verification Registry',
+              url: 'https://selfclaw.ai',
+              icons: ['https://selfclaw.ai/claw-icon.svg']
+            }
+          });
+          state.initialized = true;
+          resolve(state.modal);
+        } catch (e) {
+          reject(e);
+        }
       }
 
-      var script = document.createElement('script');
-      script.src = '/waap-sdk.js';
-      script.onload = function() {
-        if (typeof window.initWaaP === 'function') {
-          resolve(true);
-        } else {
-          reject(new Error('WaaP SDK loaded but initWaaP not found'));
+      window.addEventListener('reown-ready', onReady);
+
+      setTimeout(function() {
+        window.removeEventListener('reown-ready', onReady);
+        if (!state.initialized) {
+          reject(new Error('Reown AppKit failed to load from CDN'));
         }
-      };
-      script.onerror = function() {
-        reject(new Error('Failed to load WaaP SDK script'));
-      };
-      document.head.appendChild(script);
+      }, 15000);
     });
-  }
 
-  async function initWaaP() {
-    if (waapState.initialized && waapState.provider) {
-      return waapState.provider;
-    }
-
-    await loadWaaPSDK();
-
-    window.initWaaP();
-
-    var maxWait = 3000;
-    var elapsed = 0;
-    var interval = 100;
-    while (!window.waap && elapsed < maxWait) {
-      await new Promise(function(r) { setTimeout(r, interval); });
-      elapsed += interval;
-    }
-
-    if (window.waap && typeof window.waap.request === 'function') {
-      waapState.provider = window.waap;
-      waapState.initialized = true;
-      return window.waap;
-    }
-
-    throw new Error('WaaP SDK initialized but provider not available');
+    return state.initPromise;
   }
 
   async function connectWallet() {
-    var provider = await initWaaP();
+    var modal = await ensureInit();
 
-    var accounts = await provider.request({ method: 'eth_requestAccounts' });
+    modal.open();
 
-    if (!accounts || accounts.length === 0) {
-      throw new Error('No accounts returned from WaaP');
-    }
+    var address = await new Promise(function(resolve, reject) {
+      var timeout = setTimeout(function() {
+        reject(new Error('Wallet connection timed out'));
+      }, 120000);
 
-    var address = accounts[0];
-    waapState.connected = true;
-    waapState.address = address;
+      var checkInterval = setInterval(function() {
+        try {
+          var addr = modal.getAddress();
+          if (addr) {
+            clearTimeout(timeout);
+            clearInterval(checkInterval);
+            resolve(addr);
+          }
+        } catch (e) {}
+      }, 500);
+
+      var handleClose = function() {
+        if (!modal.getAddress()) {
+          clearTimeout(timeout);
+          clearInterval(checkInterval);
+          reject(new Error('Wallet connection cancelled'));
+        }
+      };
+
+      var closeCheck = setInterval(function() {
+        try {
+          if (!modal.getIsConnected() && !document.querySelector('w3m-modal[open]')) {
+            clearInterval(closeCheck);
+          }
+        } catch(e) {}
+      }, 1000);
+    });
+
+    state.connected = true;
+    state.address = address;
+    state.provider = modal.getWalletProvider();
 
     return {
       address: address,
-      provider: provider
+      provider: state.provider
     };
   }
 
   async function signMessage(message) {
-    if (!waapState.connected || !waapState.address) {
+    if (!state.connected || !state.address) {
       throw new Error('Wallet not connected. Call connectWallet() first.');
     }
 
-    var provider = waapState.provider;
+    await ensureInit();
+
+    var provider = state.modal.getWalletProvider();
+    if (!provider) {
+      throw new Error('Wallet provider not available');
+    }
+
     var hexMessage = '0x' + Array.from(new TextEncoder().encode(message))
       .map(function(b) { return b.toString(16).padStart(2, '0'); })
       .join('');
 
     var signature = await provider.request({
       method: 'personal_sign',
-      params: [hexMessage, waapState.address]
+      params: [hexMessage, state.address]
     });
 
     return signature;
   }
 
   function getAddress() {
-    return waapState.address;
+    return state.address;
   }
 
   function isConnected() {
-    return waapState.connected;
+    return state.connected;
   }
 
   function disconnect() {
-    waapState.connected = false;
-    waapState.address = null;
-    waapState.provider = null;
-    waapState.initialized = false;
+    if (state.modal) {
+      try { state.modal.disconnect(); } catch(e) {}
+    }
+    state.connected = false;
+    state.address = null;
+    state.provider = null;
   }
 
   window.selfclawWaaP = {
