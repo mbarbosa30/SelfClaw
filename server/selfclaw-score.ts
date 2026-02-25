@@ -56,6 +56,8 @@ async function computeIdentityScore(publicKey: string): Promise<number> {
   else if (bot.verificationLevel === "passport") score += 15;
   else if (bot.verificationLevel === "talent-human+signature") score += 22;
   else if (bot.verificationLevel === "talent-human") score += 12;
+  else if (bot.verificationLevel === "talent-passport+signature") score += 18;
+  else if (bot.verificationLevel === "talent-passport") score += 8;
 
   if (bot.talentScore && bot.talentScore > 0) {
     score += Math.min(10, Math.round(bot.talentScore / 10));

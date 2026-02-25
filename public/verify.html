@@ -90,13 +90,13 @@
 
       <div id="verify-panel-talent" style="display:none;">
         <div style="font-size: 0.8rem; color: var(--text-secondary); line-height: 1.5; padding: 0.75rem 1rem; border: 1px solid var(--border); margin-bottom: 1.5rem; font-family: var(--font-mono);">
-          <strong style="color: var(--text);">Talent Protocol</strong> — Verify using your Talent Protocol Human Checkmark. Connect your wallet and prove you're a verified builder.
+          <strong style="color: var(--text);">Talent Protocol</strong> — Verify using your Talent Protocol passport. Connect your wallet to prove you're a real builder. Human Checkmark holders get a higher verification level.
         </div>
         <div class="card" style="max-width: 540px;">
           <div class="card-title">CONNECT WALLET</div>
 
           <div id="talent-step-wallet">
-            <p style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:1rem;line-height:1.5;font-family:var(--font-mono);">Connect your wallet to check your Talent Protocol Human Checkmark status. Supports social login (Google, Twitter, GitHub) or direct wallet connect.</p>
+            <p style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:1rem;line-height:1.5;font-family:var(--font-mono);">Connect your wallet to verify your Talent Protocol passport. Supports direct wallet connect (MetaMask, Coinbase, etc).</p>
             <button id="talent-connect-btn" class="btn btn-accent btn-full btn-lg" onclick="talentConnectWallet()">Connect Wallet</button>
             <div id="talent-connect-error" style="display:none;margin-top:1rem;padding:0.75rem 1rem;border:2px solid var(--red, #ef4444);font-family:var(--font-mono);font-size:0.8rem;color:var(--red, #ef4444);"></div>
             <div id="talent-connect-status" style="display:none;margin-top:1rem;padding:0.75rem 1rem;border:2px solid var(--border-heavy);">
@@ -106,7 +106,7 @@
                   <div id="talent-wallet-addr" style="font-family:var(--font-mono);font-size:0.85rem;font-weight:600;"></div>
                 </div>
                 <div>
-                  <div style="font-size:0.65rem;color:var(--text-secondary);font-family:var(--font-mono);">HUMAN CHECKMARK</div>
+                  <div style="font-size:0.65rem;color:var(--text-secondary);font-family:var(--font-mono);">PASSPORT STATUS</div>
                   <div id="talent-human-status" style="font-family:var(--font-mono);font-size:0.85rem;font-weight:600;"></div>
                 </div>
                 <div id="talent-score-box" style="display:none;">
@@ -246,16 +246,25 @@
         });
         var data = await resp.json();
 
-        if (resp.ok && (data.humanCheckmark || data.found !== false)) {
-          document.getElementById('talent-human-status').innerHTML = '<span style="color:var(--green-verify);">&#10003; Verified</span>';
+        if (resp.ok && data.found !== false) {
+          var statusHtml;
+          if (data.source === 'wallet') {
+            statusHtml = '<span style="color:var(--green-verify);">&#10003; Wallet Verified</span>';
+          } else {
+            statusHtml = '<span style="color:var(--green-verify);">&#10003; Passport Found</span>';
+            if (data.humanCheckmark) {
+              statusHtml += ' <span style="color:var(--accent);font-size:0.7rem;">+ HUMAN CHECKMARK</span>';
+            }
+          }
+          document.getElementById('talent-human-status').innerHTML = statusHtml;
           if (data.builderScore) {
             document.getElementById('talent-builder-score').textContent = data.builderScore + '/100';
             document.getElementById('talent-score-box').style.display = 'block';
           }
           document.getElementById('talent-step-agent').style.display = 'block';
         } else {
-          var errMsg = data.details || data.error || 'Human Checkmark not found for this wallet';
-          document.getElementById('talent-human-status').innerHTML = '<span style="color:var(--red, #ef4444);">&#10007; Not verified</span>';
+          var errMsg = data.details || data.error || 'No Talent Protocol passport found for this wallet';
+          document.getElementById('talent-human-status').innerHTML = '<span style="color:var(--red, #ef4444);">&#10007; Not found</span>';
           errorEl.textContent = errMsg;
           errorEl.style.display = 'block';
           btn.disabled = false;
@@ -306,7 +315,7 @@
         var startData = await startResp.json();
         if (startData.error) { throw new Error(startData.error); }
 
-        statusEl.innerHTML = '<span style="color:var(--accent);">Human Checkmark verified. Completing registration...</span>';
+        statusEl.innerHTML = '<span style="color:var(--accent);">Talent Protocol passport verified. Completing registration...</span>';
 
         var completeResp = await fetch('/api/selfclaw/v1/talent/complete', {
           method: 'POST',

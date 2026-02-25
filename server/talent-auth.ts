@@ -55,6 +55,7 @@ router.post("/v1/talent/check-wallet", verificationLimiter, async (req: Request,
     }
 
     res.json({
+      found: true,
       walletAddress,
       humanCheckmark: result.isHuman,
       builderScore: result.builderScore,
@@ -99,32 +100,12 @@ router.post("/v1/talent/start-verification", verificationLimiter, async (req: Re
     let talentId: string | null = null;
 
     try {
-      const [checkmark, profile] = await Promise.all([
-        getHumanCheckmark(walletAddress),
-        getProfile(walletAddress),
-      ]);
-      humanCheckmark = checkmark.isHuman;
-      talentId = profile.id;
-
-      try {
-        const scoreResult = await getBuilderScore(walletAddress);
-        builderScore = scoreResult.score;
-      } catch (e) {
-        console.log("[talent-auth] Builder score lookup failed (non-critical):", (e as Error).message);
-      }
+      const status = await checkWalletStatus(walletAddress);
+      humanCheckmark = status.isHuman;
+      talentId = status.talentId;
+      builderScore = status.builderScore;
     } catch (err: any) {
-      console.error("[talent-auth] Talent API lookup failed:", err.message);
-      return res.status(400).json({
-        error: "Could not verify wallet with Talent Protocol. Make sure this wallet has a Talent Protocol profile.",
-        details: err.message,
-      });
-    }
-
-    if (!humanCheckmark) {
-      return res.status(403).json({
-        error: "Wallet does not have the Talent Protocol Human Checkmark. Visit talentprotocol.com to complete verification.",
-        walletAddress,
-      });
+      console.log("[talent-auth] Talent API lookup failed (non-critical), proceeding with wallet-only:", err.message);
     }
 
     const session: InsertVerificationSession = {
@@ -140,15 +121,17 @@ router.post("/v1/talent/start-verification", verificationLimiter, async (req: Re
     };
     await db.insert(verificationSessions).values(session);
 
-    console.log(`[talent-auth] Verification session created: ${sessionId} for wallet ${walletAddress}, humanCheckmark: true, builderScore: ${builderScore}`);
+    console.log(`[talent-auth] Verification session created: ${sessionId} for wallet ${walletAddress}, humanCheckmark: ${humanCheckmark}, builderScore: ${builderScore}`);
 
     res.json({
       sessionId,
       challenge,
-      humanCheckmark: true,
+      humanCheckmark,
       builderScore,
       talentId,
-      message: "Human Checkmark verified. Sign the challenge with your agent's Ed25519 key to complete verification.",
+      message: humanCheckmark
+        ? "Human Checkmark verified. Sign the challenge with your agent's Ed25519 key to complete verification."
+        : "Talent Protocol passport found. Sign the challenge with your agent's Ed25519 key to complete verification.",
     });
   } catch (error: any) {
     console.error("[talent-auth] start-verification error:", error);
@@ -254,30 +237,22 @@ router.post("/v1/talent/complete", verificationLimiter, async (req: Request, res
     let profileData: any = null;
 
     try {
-      const [checkmark, profile] = await Promise.all([
-        getHumanCheckmark(session.walletAddress),
-        getProfile(session.walletAddress),
-      ]);
-      humanCheckmark = checkmark.isHuman;
-      talentId = profile.id;
-      profileData = profile;
-
-      try {
-        const scoreResult = await getBuilderScore(session.walletAddress);
-        builderScore = scoreResult.score;
-      } catch (e) {
-        console.log("[talent-auth] Builder score lookup failed (non-critical):", (e as Error).message);
-      }
+      const status = await checkWalletStatus(session.walletAddress);
+      humanCheckmark = status.isHuman;
+      talentId = status.talentId;
+      builderScore = status.builderScore;
+      profileData = { displayName: status.displayName };
     } catch (err: any) {
-      return res.status(400).json({ error: "Talent Protocol verification failed", details: err.message });
-    }
-
-    if (!humanCheckmark) {
-      return res.status(403).json({ error: "Human Checkmark not verified for this wallet" });
+      console.log("[talent-auth] Talent API lookup failed (non-critical), proceeding with wallet-only:", err.message);
     }
 
     const humanId = deriveTalentHumanId(talentId || session.walletAddress);
-    const verificationLevel = session.signatureVerified ? "talent-human+signature" : "talent-human";
+    let verificationLevel: string;
+    if (humanCheckmark) {
+      verificationLevel = session.signatureVerified ? "talent-human+signature" : "talent-human";
+    } else {
+      verificationLevel = session.signatureVerified ? "talent-passport+signature" : "talent-passport";
+    }
     const apiKey = "sclaw_" + crypto.randomBytes(32).toString("hex");
 
     const existingBot = await db.select()
@@ -425,29 +400,13 @@ router.post("/v1/talent/connect", async (req: Request, res: Response) => {
     let profileData: any = null;
 
     try {
-      const [checkmark, profile] = await Promise.all([
-        getHumanCheckmark(walletAddress),
-        getProfile(walletAddress),
-      ]);
-      humanCheckmark = checkmark.isHuman;
-      talentId = profile.id;
-      profileData = profile;
-
-      try {
-        const scoreResult = await getBuilderScore(walletAddress);
-        builderScore = scoreResult.score;
-      } catch (e) {}
+      const status = await checkWalletStatus(walletAddress);
+      humanCheckmark = status.isHuman;
+      talentId = status.talentId;
+      builderScore = status.builderScore;
+      profileData = { displayName: status.displayName };
     } catch (err: any) {
-      return res.status(400).json({
-        error: "Could not verify wallet with Talent Protocol",
-        details: err.message,
-      });
-    }
-
-    if (!humanCheckmark) {
-      return res.status(403).json({
-        error: "Wallet does not have the Talent Protocol Human Checkmark",
-      });
+      console.log("[talent-auth] Talent API lookup failed (non-critical), proceeding with wallet-only:", err.message);
     }
 
     const humanId = deriveTalentHumanId(talentId || walletAddress);

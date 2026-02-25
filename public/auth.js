@@ -216,7 +216,7 @@
       '<div id="login-status" style="text-align:center;font-family:var(--font-mono);font-size:0.75rem;color:var(--text-muted);margin-top:1rem;"></div>' +
       '</div>' +
       '<div id="login-panel-talent" style="display:none;">' +
-      '<p style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:1.25rem;line-height:1.5;">Connect your wallet and verify your Talent Protocol Human Checkmark to sign in.</p>' +
+      '<p style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:1.25rem;line-height:1.5;">Connect your wallet to sign in with your Talent Protocol passport.</p>' +
       '<button id="login-talent-connect" style="width:100%;padding:0.75rem 1rem;font-family:var(--font-mono);font-size:0.85rem;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;border:2px solid var(--border-heavy);background:var(--accent);color:#fff;cursor:pointer;">Connect Wallet</button>' +
       '<div id="login-talent-status" style="display:none;margin-top:1rem;text-align:center;font-family:var(--font-mono);font-size:0.75rem;color:var(--text-muted);"></div>' +
       '</div>';
@@ -447,7 +447,7 @@
       statusEl.textContent = 'Please sign the message...';
       var signature = await window.selfclawWaaP.signMessage(nonceData.message);
 
-      statusEl.textContent = 'Verifying Human Checkmark...';
+      statusEl.textContent = 'Verifying Talent Protocol passport...';
 
       var connectRes = await fetch('/api/selfclaw/v1/talent/connect', {
         method: 'POST',
