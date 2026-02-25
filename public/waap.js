@@ -10,25 +10,34 @@
 
   var REOWN_PROJECT_ID = '096df07199db5fd480157215d0fd2e9f';
 
-  var celoChain = {
-    id: 42220,
-    chainId: 42220,
-    name: 'Celo',
-    currency: 'CELO',
-    explorerUrl: 'https://celoscan.io',
-    rpcUrl: 'https://forno.celo.org',
-    chainNamespace: 'eip155'
-  };
-
   function ensureInit() {
     if (state.initPromise) return state.initPromise;
 
     state.initPromise = (async function() {
       var mod = await import('https://cdn.jsdelivr.net/npm/@reown/appkit-cdn@1.8.18/dist/appkit.js');
 
-      state.modal = mod.createAppKit({
+      var celoNetwork = {
+        id: 42220,
+        name: 'Celo',
+        nativeCurrency: { name: 'CELO', symbol: 'CELO', decimals: 18 },
+        rpcUrls: {
+          default: { http: ['https://forno.celo.org'] }
+        },
+        blockExplorers: {
+          default: { name: 'Celoscan', url: 'https://celoscan.io' }
+        }
+      };
+
+      var wagmiAdapter = new mod.WagmiAdapter({
         projectId: REOWN_PROJECT_ID,
-        networks: [celoChain],
+        networks: [celoNetwork]
+      });
+
+      state.modal = mod.createAppKit({
+        adapters: [wagmiAdapter],
+        projectId: REOWN_PROJECT_ID,
+        networks: [celoNetwork],
+        defaultNetwork: celoNetwork,
         enableInjected: true,
         enableCoinbase: true,
         themeMode: document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light',
@@ -83,15 +92,6 @@
             clearTimeout(timeout);
             clearInterval(checkInterval);
             resolve(addr);
-          }
-          if (!resolved && !modal.getIsConnected() && !document.querySelector('w3m-modal[open]')) {
-            var stillOpen = document.querySelector('w3m-modal');
-            if (!stillOpen) {
-              resolved = true;
-              clearTimeout(timeout);
-              clearInterval(checkInterval);
-              reject(new Error('Wallet connection cancelled'));
-            }
           }
         } catch (e) {}
       }, 500);
