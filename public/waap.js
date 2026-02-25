@@ -8,23 +8,22 @@
 
   function loadWaaPSDK() {
     return new Promise(function(resolve, reject) {
-      if (window.waapSDK) {
-        resolve(window.waapSDK);
-        return;
-      }
-
-      if (window.waap) {
-        resolve(window.waap);
+      if (typeof window.initWaaP === 'function') {
+        resolve(true);
         return;
       }
 
       var script = document.createElement('script');
       script.src = '/waap-sdk.js';
       script.onload = function() {
-        resolve(window.waap || window.waapSDK);
+        if (typeof window.initWaaP === 'function') {
+          resolve(true);
+        } else {
+          reject(new Error('WaaP SDK loaded but initWaaP not found'));
+        }
       };
       script.onerror = function() {
-        reject(new Error('Failed to load WaaP SDK'));
+        reject(new Error('Failed to load WaaP SDK script'));
       };
       document.head.appendChild(script);
     });
@@ -37,11 +36,14 @@
 
     await loadWaaPSDK();
 
-    if (typeof window.initWaaP === 'function') {
-      var provider = await window.initWaaP();
-      waapState.provider = provider;
-      waapState.initialized = true;
-      return provider;
+    window.initWaaP();
+
+    var maxWait = 3000;
+    var elapsed = 0;
+    var interval = 100;
+    while (!window.waap && elapsed < maxWait) {
+      await new Promise(function(r) { setTimeout(r, interval); });
+      elapsed += interval;
     }
 
     if (window.waap && typeof window.waap.request === 'function') {
@@ -50,7 +52,7 @@
       return window.waap;
     }
 
-    throw new Error('WaaP SDK not available after loading');
+    throw new Error('WaaP SDK initialized but provider not available');
   }
 
   async function connectWallet() {
