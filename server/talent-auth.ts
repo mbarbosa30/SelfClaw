@@ -4,7 +4,7 @@ import { verifyMessage } from "viem";
 import { db } from "./db.js";
 import { verifiedBots, verificationSessions, users, type InsertVerifiedBot, type InsertVerificationSession } from "../shared/schema.js";
 import { eq, and } from "drizzle-orm";
-import { getHumanCheckmark, getBuilderScore, getProfile } from "../lib/talent-protocol.js";
+import { getHumanCheckmark, getBuilderScore, getProfile, checkWalletStatus } from "../lib/talent-protocol.js";
 import {
   verificationLimiter,
   generateChallenge,
@@ -30,6 +30,44 @@ router.get("/v1/talent/nonce", (_req: Request, res: Response) => {
   const sessionKey = crypto.randomBytes(16).toString("hex");
   talentNonces.set(sessionKey, { nonce, expires: Date.now() + 5 * 60 * 1000 });
   res.json({ nonce, sessionKey, message: `Sign in with SelfClaw\nnonce: ${nonce}` });
+});
+
+router.post("/v1/talent/check-wallet", verificationLimiter, async (req: Request, res: Response) => {
+  try {
+    const { walletAddress } = req.body;
+
+    if (!walletAddress || !/^0x[0-9a-fA-F]{40}$/.test(walletAddress)) {
+      return res.status(400).json({ error: "Valid EVM wallet address required (0x...)" });
+    }
+
+    console.log(`[talent-auth] Checking wallet status: ${walletAddress}`);
+
+    const result = await checkWalletStatus(walletAddress);
+
+    console.log(`[talent-auth] Wallet check result: found=${result.found}, isHuman=${result.isHuman}, score=${result.builderScore}, source=${result.source}`);
+
+    if (!result.found) {
+      return res.status(404).json({
+        error: "No Talent Protocol Passport found for this wallet",
+        details: `Wallet ${walletAddress} is not registered on Talent Protocol. Create a passport at talentprotocol.com`,
+        walletAddress,
+      });
+    }
+
+    res.json({
+      walletAddress,
+      humanCheckmark: result.isHuman,
+      builderScore: result.builderScore,
+      displayName: result.displayName,
+      source: result.source,
+    });
+  } catch (err: any) {
+    console.error("[talent-auth] check-wallet failed:", err.message);
+    res.status(400).json({
+      error: "Could not verify wallet with Talent Protocol",
+      details: err.message,
+    });
+  }
 });
 
 router.post("/v1/talent/start-verification", verificationLimiter, async (req: Request, res: Response) => {

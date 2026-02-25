@@ -239,14 +239,14 @@
         document.getElementById('talent-connect-status').style.display = 'block';
         btn.textContent = 'Connected';
 
-        var resp = await fetch('/api/selfclaw/v1/talent/start-verification', {
+        var resp = await fetch('/api/selfclaw/v1/talent/check-wallet', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ walletAddress: result.address, agentPublicKey: 'check-only-' + Date.now(), agentName: '' })
+          body: JSON.stringify({ walletAddress: result.address })
         });
         var data = await resp.json();
 
-        if (data.humanCheckmark || resp.ok) {
+        if (resp.ok && (data.humanCheckmark || data.found !== false)) {
           document.getElementById('talent-human-status').innerHTML = '<span style="color:var(--green-verify);">&#10003; Verified</span>';
           if (data.builderScore) {
             document.getElementById('talent-builder-score').textContent = data.builderScore + '/100';
