@@ -143,7 +143,7 @@ Errors:
 
 ### Alternative: Talent Protocol verification
 
-Uses Talent Protocol wallet verification instead of Self.xyz passport. Requires a wallet address with a Talent Protocol profile. Human Checkmark is a bonus but not required.
+Uses Talent Protocol builder profile verification instead of Self.xyz passport. Requires a wallet address with a Talent Protocol builder profile. Human Checkmark is a bonus but not required.
 
 ```
 POST /v1/talent/start-verification
@@ -1618,7 +1618,7 @@ console.log("Share this code:", referral);
 ## Key Concepts
 
 - **Self-custody**: SelfClaw never stores private keys. Agents manage their own EVM wallets.
-- **Zero-knowledge proofs**: Human identity verified via passport NFC + Self.xyz ZK proofs, or via Talent Protocol wallet signatures. No personal data stored.
+- **Zero-knowledge proofs**: Human identity verified via passport NFC + Self.xyz ZK proofs, or via Talent Protocol builder profile credentials. No personal data stored.
 - **Sybil resistance**: One unique humanId per passport or Talent Protocol profile. One sponsorship per human.
 - **ERC-8004**: Onchain agent identity NFTs on Celo.
 - **Agent tokens**: ERC20 tokens deployed by agents with optional SELFCLAW-sponsored liquidity.

@@ -335,7 +335,7 @@
       <div class="faq-item">
         <div class="faq-q">What is SelfClaw?</div>
         <div class="faq-a">
-          SelfClaw is the trust layer for AI agent economies. It is a verification registry that binds AI agents to verified human identities through two methods: zero-knowledge proofs from passport NFC chips via <a href="https://self.xyz" target="_blank" rel="noopener">Self.xyz</a>, or wallet-based verification through <a href="https://passport.talentprotocol.com" target="_blank" rel="noopener">Talent Protocol</a>. This creates sybil-resistant agent identities &mdash; ensuring every agent is backed by a real, verified person &mdash; without exposing any personal data.
+          SelfClaw is the trust layer for AI agent economies. It is a verification registry that binds AI agents to verified human identities through two methods: zero-knowledge proofs from passport NFC chips via <a href="https://self.xyz" target="_blank" rel="noopener">Self.xyz</a>, or builder profile verification through <a href="https://passport.talentprotocol.com" target="_blank" rel="noopener">Talent Protocol</a>. This creates sybil-resistant agent identities &mdash; ensuring every agent is backed by a real, verified person &mdash; without exposing any personal data.
         </div>
       </div>
 
@@ -395,13 +395,13 @@
             <li>Self.xyz generates a zero-knowledge proof that you are a real human, without revealing any personal data</li>
             <li>The proof is submitted to SelfClaw, which verifies it and marks your agent as verified</li>
           </ol>
-          <strong>Path 2: Talent Protocol Wallet Verification</strong>
+          <strong>Path 2: Talent Protocol Builder Verification</strong>
           <div class="faq-diagram">
             <span class="faq-diagram-step">Agent (Ed25519 Key)</span>
             <span class="faq-diagram-arrow">&rarr;</span>
             <span class="faq-diagram-step">SelfClaw (Challenge)</span>
             <span class="faq-diagram-arrow">&rarr;</span>
-            <span class="faq-diagram-step">Talent Passport (Wallet Signature)</span>
+            <span class="faq-diagram-step">Talent Protocol (Builder Profile)</span>
             <span class="faq-diagram-arrow">&rarr;</span>
             <span class="faq-diagram-step">Verified Agent</span>
           </div>
@@ -433,7 +433,7 @@
             <li>A smartphone with NFC capability</li>
             <li>The <a href="https://self.xyz" target="_blank" rel="noopener">Self.xyz</a> mobile app</li>
           </ul>
-          <strong>Option B: Talent Protocol Wallet Verification</strong>
+          <strong>Option B: Talent Protocol Builder Verification</strong>
           <ul>
             <li>A <a href="https://passport.talentprotocol.com" target="_blank" rel="noopener">Talent Protocol Passport</a></li>
             <li>An EVM-compatible wallet (e.g., MetaMask, Rainbow, Coinbase Wallet)</li>
@@ -458,7 +458,7 @@
           </ul>
           <strong>Talent Protocol Levels:</strong>
           <ul>
-            <li><strong>talent-passport</strong> &mdash; Verification via Talent Protocol wallet signature, confirming a valid Talent Passport</li>
+            <li><strong>talent-passport</strong> &mdash; Verification via Talent Protocol builder profile, confirming valid credentials and Builder Rank</li>
             <li><strong>talent-human</strong> &mdash; Enhanced Talent Protocol verification where the wallet holder also has a Human Checkmark on their Talent Passport, providing stronger sybil resistance</li>
           </ul>
           Higher verification levels contribute more to your <a href="#score">SelfClaw Score</a>.
@@ -475,7 +475,7 @@
       <div class="faq-item">
         <div class="faq-q">My country's passport is not supported by Self.xyz. What do I do?</div>
         <div class="faq-a">
-          Self.xyz is expanding passport support over time, but some countries are not yet covered. If your passport is not supported, you can use <strong>Talent Protocol wallet verification</strong> as an alternative. Simply connect your Talent Protocol wallet to verify your agent without needing a passport. You can also check <a href="https://self.xyz" target="_blank" rel="noopener">Self.xyz's documentation</a> for the latest list of supported passports.
+          Self.xyz is expanding passport support over time, but some countries are not yet covered. If your passport is not supported, you can use <strong>Talent Protocol builder verification</strong> as an alternative. Simply sign in with your Talent Protocol builder profile to verify your agent without needing a passport. You can also check <a href="https://self.xyz" target="_blank" rel="noopener">Self.xyz's documentation</a> for the latest list of supported passports.
         </div>
       </div>
     </section>
