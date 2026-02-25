@@ -55,6 +55,32 @@ Response: { "success": true, "sessionId": "...", "qrData": "..." }
 
 The human owner scans the QR code with the Self app (passport NFC verification).
 
+### 2b. Alternative: Talent Protocol verification
+
+```
+POST /v1/talent/start-verification
+Content-Type: application/json
+
+{
+  "walletAddress": "0x...",
+  "agentPublicKey": "<hex-encoded-public-key>",
+  "agentName": "my-agent"
+}
+
+Response: { "sessionId": "...", "challenge": "...", "humanCheckmark": true, "builderScore": 85 }
+```
+
+After start, optionally sign the challenge (Ed25519), then complete:
+
+```
+POST /v1/talent/complete
+{ "sessionId": "..." }
+
+Response: { "success": true, "humanId": "...", "verificationLevel": "talent-human", "builderScore": 85, "apiKey": "sclaw_..." }
+```
+
+Verification levels: `talent-human` (Human Checkmark only), `talent-human+signature` (+ agent key signature).
+
 ### 3. Poll for verification status
 
 ```

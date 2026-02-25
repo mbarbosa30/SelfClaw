@@ -200,15 +200,26 @@
     var box = document.createElement('div');
     box.style.cssText = 'background:var(--bg);border:2px solid var(--border-heavy);padding:2rem;max-width:420px;width:90%;position:relative;';
 
-    box.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;">' +
-      '<div style="font-family:var(--font-mono);font-size:0.75rem;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;color:var(--accent);">Login with Self</div>' +
+    box.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">' +
+      '<div style="font-family:var(--font-mono);font-size:0.75rem;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;color:var(--accent);">Sign In</div>' +
       '<button id="login-modal-close" style="background:none;border:none;font-size:1.2rem;cursor:pointer;color:var(--text);padding:0.25rem;">&times;</button>' +
       '</div>' +
+      '<div style="display:flex;gap:0;margin-bottom:1.25rem;border:2px solid var(--border-heavy);">' +
+      '<button id="login-tab-self" onclick="window._switchLoginTab(\'self\')" style="flex:1;padding:0.6rem 0.75rem;font-family:var(--font-mono);font-size:0.7rem;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;border:none;cursor:pointer;background:var(--accent);color:#fff;">Self.xyz</button>' +
+      '<button id="login-tab-talent" onclick="window._switchLoginTab(\'talent\')" style="flex:1;padding:0.6rem 0.75rem;font-family:var(--font-mono);font-size:0.7rem;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;border:none;border-left:2px solid var(--border-heavy);cursor:pointer;background:var(--bg-card);color:var(--text);">Talent Protocol</button>' +
+      '</div>' +
+      '<div id="login-panel-self">' +
       '<p style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:1.5rem;line-height:1.5;">Scan the QR code with your Self app to authenticate. No passwords, no email — just your verified identity.</p>' +
       '<div id="login-qr-area" style="text-align:center;padding:1rem 0;">' +
       '<div style="color:var(--text-muted);font-size:0.8rem;">Loading...</div>' +
       '</div>' +
-      '<div id="login-status" style="text-align:center;font-family:var(--font-mono);font-size:0.75rem;color:var(--text-muted);margin-top:1rem;"></div>';
+      '<div id="login-status" style="text-align:center;font-family:var(--font-mono);font-size:0.75rem;color:var(--text-muted);margin-top:1rem;"></div>' +
+      '</div>' +
+      '<div id="login-panel-talent" style="display:none;">' +
+      '<p style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:1.25rem;line-height:1.5;">Connect your wallet and verify your Talent Protocol Human Checkmark to sign in.</p>' +
+      '<button id="login-talent-connect" style="width:100%;padding:0.75rem 1rem;font-family:var(--font-mono);font-size:0.85rem;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;border:2px solid var(--border-heavy);background:var(--accent);color:#fff;cursor:pointer;">Connect Wallet</button>' +
+      '<div id="login-talent-status" style="display:none;margin-top:1rem;text-align:center;font-family:var(--font-mono);font-size:0.75rem;color:var(--text-muted);"></div>' +
+      '</div>';
 
     overlay.appendChild(box);
     document.body.appendChild(overlay);
@@ -375,6 +386,104 @@
 
     poll();
     loginPollInterval = setInterval(poll, 2000);
+  }
+
+  window._switchLoginTab = function(tab) {
+    var selfPanel = document.getElementById('login-panel-self');
+    var talentPanel = document.getElementById('login-panel-talent');
+    var tabSelf = document.getElementById('login-tab-self');
+    var tabTalent = document.getElementById('login-tab-talent');
+    if (!selfPanel || !talentPanel) return;
+    if (tab === 'talent') {
+      selfPanel.style.display = 'none';
+      talentPanel.style.display = 'block';
+      tabSelf.style.background = 'var(--bg-card)';
+      tabSelf.style.color = 'var(--text)';
+      tabTalent.style.background = 'var(--accent)';
+      tabTalent.style.color = '#fff';
+      var connectBtn = document.getElementById('login-talent-connect');
+      if (connectBtn && !connectBtn._bound) {
+        connectBtn._bound = true;
+        connectBtn.addEventListener('click', loginWithTalent);
+      }
+    } else {
+      selfPanel.style.display = 'block';
+      talentPanel.style.display = 'none';
+      tabSelf.style.background = 'var(--accent)';
+      tabSelf.style.color = '#fff';
+      tabTalent.style.background = 'var(--bg-card)';
+      tabTalent.style.color = 'var(--text)';
+    }
+  };
+
+  async function loginWithTalent() {
+    var btn = document.getElementById('login-talent-connect');
+    var statusEl = document.getElementById('login-talent-status');
+    btn.disabled = true;
+    btn.textContent = 'Connecting...';
+    statusEl.style.display = 'block';
+    statusEl.style.color = 'var(--text-muted)';
+    statusEl.textContent = 'Opening wallet...';
+
+    try {
+      if (!window.selfclawWaaP) throw new Error('Wallet SDK not loaded. Please refresh.');
+      var walletResult = await window.selfclawWaaP.connectWallet();
+      var address = walletResult.address;
+
+      statusEl.textContent = 'Wallet connected. Getting nonce...';
+
+      var nonceRes = await fetch('/api/selfclaw/v1/talent/nonce', { credentials: 'include' });
+      var nonceData = await nonceRes.json();
+
+      statusEl.textContent = 'Please sign the message...';
+      var signature = await window.selfclawWaaP.signMessage(nonceData.message);
+
+      statusEl.textContent = 'Verifying Human Checkmark...';
+
+      var connectRes = await fetch('/api/selfclaw/v1/talent/connect', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          walletAddress: address,
+          signature: signature,
+          sessionKey: nonceData.sessionKey
+        })
+      });
+      var connectData = await connectRes.json();
+
+      if (!connectData.success) {
+        throw new Error(connectData.error || 'Login failed');
+      }
+
+      statusEl.style.color = 'var(--green-verify)';
+      statusEl.textContent = 'Verified! Logging in...';
+
+      authState.user = {
+        humanId: connectData.humanId,
+        walletAddress: connectData.walletAddress,
+        authMethod: 'talent',
+        displayName: connectData.displayName,
+        builderScore: connectData.builderScore,
+      };
+      authState.checking = false;
+      renderAuthUI();
+      closeLoginModal();
+
+      if (window.onAuthLogin) window.onAuthLogin(authState.user);
+
+      var stayPages = ['/my-agents', '/create-agent', '/verify'];
+      var currentPath = window.location.pathname;
+      var shouldStay = stayPages.some(function(p) { return currentPath.startsWith(p); });
+      if (!shouldStay) {
+        window.location.href = '/my-agents';
+      }
+    } catch (e) {
+      btn.disabled = false;
+      btn.textContent = 'Connect Wallet';
+      statusEl.style.color = 'var(--red, #ef4444)';
+      statusEl.textContent = e.message || 'Connection failed';
+    }
   }
 
   function closeLoginModal() {

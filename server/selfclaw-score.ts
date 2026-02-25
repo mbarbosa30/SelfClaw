@@ -46,12 +46,20 @@ async function computeIdentityScore(publicKey: string): Promise<number> {
     verificationLevel: verifiedBots.verificationLevel,
     verifiedAt: verifiedBots.verifiedAt,
     metadata: verifiedBots.metadata,
+    talentScore: verifiedBots.talentScore,
+    verificationProvider: verifiedBots.verificationProvider,
   }).from(verifiedBots).where(eq(verifiedBots.publicKey, publicKey)).limit(1);
 
   if (!bot) return 0;
 
   if (bot.verificationLevel === "passport+signature") score += 25;
   else if (bot.verificationLevel === "passport") score += 15;
+  else if (bot.verificationLevel === "talent-human+signature") score += 22;
+  else if (bot.verificationLevel === "talent-human") score += 12;
+
+  if (bot.talentScore && bot.talentScore > 0) {
+    score += Math.min(10, Math.round(bot.talentScore / 10));
+  }
 
   const [wallet] = await db.select({ id: agentWallets.id })
     .from(agentWallets).where(eq(agentWallets.publicKey, publicKey)).limit(1);

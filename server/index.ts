@@ -52,6 +52,12 @@ function sendHtml(res: Response, file: string, extraHeaders?: Record<string, str
   res.sendFile(file, { root: "public" });
 }
 
+app.get("/waap-sdk.js", (_req: Request, res: Response) => {
+  res.setHeader("Content-Type", "application/javascript");
+  res.setHeader("Cache-Control", "public, max-age=86400");
+  res.sendFile("dist/index.umd.js", { root: path.resolve("node_modules/@human.tech/waap-sdk") });
+});
+
 app.use(express.static("public", {
   setHeaders: (res, filePath) => {
     if (filePath.endsWith('.html')) {
@@ -253,6 +259,7 @@ async function initializeApp() {
     { path: "/api/selfclaw", name: "agent-api", importFn: () => import("./agent-api.js"), key: "default" },
     { path: "/api/selfclaw", name: "swap-api", importFn: () => import("./swap-api.js"), key: "default" },
     { path: "/api/selfclaw", name: "agent-feed", importFn: () => import("./agent-feed.js"), key: "default" },
+    { path: "/api/selfclaw", name: "talent-auth", importFn: () => import("./talent-auth.js"), key: "default" },
   ];
 
   for (const r of routers) {

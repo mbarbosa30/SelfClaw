@@ -54,6 +54,8 @@ export const verificationSessions = pgTable("verification_sessions", {
   signatureVerified: boolean("signature_verified").default(false),
   status: varchar("status").default("pending"),
   humanId: varchar("human_id"),
+  verificationProvider: varchar("verification_provider").default("self"),
+  walletAddress: varchar("wallet_address"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -67,6 +69,9 @@ export const verifiedBots = pgTable("verified_bots", {
   selfId: varchar("self_id"),
   humanId: varchar("human_id"),
   verificationLevel: varchar("verification_level"),
+  verificationProvider: varchar("verification_provider").default("self"),
+  talentScore: integer("talent_score"),
+  talentId: varchar("talent_id"),
   metadata: jsonb("metadata"),
   hidden: boolean("hidden").default(false),
   apiKey: varchar("api_key").unique(),

@@ -58,27 +58,96 @@
     </section>
 
     <section class="section" id="verify-form-section">
-      <div style="font-size: 0.8rem; color: var(--text-secondary); line-height: 1.5; padding: 0.75rem 1rem; border: 1px solid var(--border); margin-bottom: 1.5rem; font-family: var(--font-mono);">
-        <strong style="color: var(--text);">Privacy by design</strong> — Your passport data never leaves your device. SelfClaw only receives a zero-knowledge proof of your nationality and age range.
+      <div style="display:flex;gap:0;margin-bottom:1.5rem;border:2px solid var(--border-heavy);">
+        <button id="tab-self" class="verify-tab verify-tab-active" onclick="switchVerifyTab('self')" style="flex:1;padding:0.75rem 1rem;font-family:var(--font-mono);font-size:0.8rem;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;border:none;cursor:pointer;background:var(--accent);color:#fff;">Self.xyz Passport</button>
+        <button id="tab-talent" class="verify-tab" onclick="switchVerifyTab('talent')" style="flex:1;padding:0.75rem 1rem;font-family:var(--font-mono);font-size:0.8rem;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;border:none;border-left:2px solid var(--border-heavy);cursor:pointer;background:var(--bg-card);color:var(--text);">Talent Protocol</button>
       </div>
-      <div class="card" style="max-width: 540px;">
-        <div class="card-title">LINK AGENT TO IDENTITY</div>
-        <div class="form-group">
-          <label for="verify-pubkey">Agent Public Key</label>
-          <input type="text" id="verify-pubkey" class="input" placeholder="a79d908cf4e5d6c0ac4a0cb3ad40237a...">
-          <div style="font-size: 0.7rem; color: var(--text-secondary); margin-top: 0.35rem; font-family: var(--font-mono); line-height: 1.4;">
-            Use the raw 32-byte hex string (64 characters). Base64 and PEM (SPKI) formats are also accepted.
+
+      <div id="verify-panel-self">
+        <div style="font-size: 0.8rem; color: var(--text-secondary); line-height: 1.5; padding: 0.75rem 1rem; border: 1px solid var(--border); margin-bottom: 1.5rem; font-family: var(--font-mono);">
+          <strong style="color: var(--text);">Privacy by design</strong> — Your passport data never leaves your device. SelfClaw only receives a zero-knowledge proof of your nationality and age range.
+        </div>
+        <div class="card" style="max-width: 540px;">
+          <div class="card-title">LINK AGENT TO IDENTITY</div>
+          <div class="form-group">
+            <label for="verify-pubkey">Agent Public Key</label>
+            <input type="text" id="verify-pubkey" class="input" placeholder="a79d908cf4e5d6c0ac4a0cb3ad40237a...">
+            <div style="font-size: 0.7rem; color: var(--text-secondary); margin-top: 0.35rem; font-family: var(--font-mono); line-height: 1.4;">
+              Use the raw 32-byte hex string (64 characters). Base64 and PEM (SPKI) formats are also accepted.
+            </div>
           </div>
+          <div class="form-group">
+            <label for="verify-device-id">Agent Name <span class="optional">(optional)</span></label>
+            <input type="text" id="verify-device-id" class="input" placeholder="my-research-agent">
+          </div>
+          <button id="start-verification" class="btn btn-accent btn-full btn-lg">Start Verification</button>
+          <div id="qr-container" class="qr-container" style="display:none">
+            <div id="selfxyz-qr"></div>
+          </div>
+          <p class="agent-tip">Or tell your agent to read <a href="/skill.md">selfclaw.ai/skill.md</a></p>
         </div>
-        <div class="form-group">
-          <label for="verify-device-id">Agent Name <span class="optional">(optional)</span></label>
-          <input type="text" id="verify-device-id" class="input" placeholder="my-research-agent">
+      </div>
+
+      <div id="verify-panel-talent" style="display:none;">
+        <div style="font-size: 0.8rem; color: var(--text-secondary); line-height: 1.5; padding: 0.75rem 1rem; border: 1px solid var(--border); margin-bottom: 1.5rem; font-family: var(--font-mono);">
+          <strong style="color: var(--text);">Talent Protocol</strong> — Verify using your Talent Protocol Human Checkmark. Connect your wallet and prove you're a verified builder.
         </div>
-        <button id="start-verification" class="btn btn-accent btn-full btn-lg">Start Verification</button>
-        <div id="qr-container" class="qr-container" style="display:none">
-          <div id="selfxyz-qr"></div>
+        <div class="card" style="max-width: 540px;">
+          <div class="card-title">CONNECT WALLET</div>
+
+          <div id="talent-step-wallet">
+            <p style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:1rem;line-height:1.5;font-family:var(--font-mono);">Connect your wallet to check your Talent Protocol Human Checkmark status. Supports social login (Google, Twitter, GitHub) or direct wallet connect.</p>
+            <button id="talent-connect-btn" class="btn btn-accent btn-full btn-lg" onclick="talentConnectWallet()">Connect Wallet</button>
+            <div id="talent-connect-status" style="display:none;margin-top:1rem;padding:0.75rem 1rem;border:2px solid var(--border-heavy);">
+              <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem;">
+                <div>
+                  <div style="font-size:0.65rem;color:var(--text-secondary);font-family:var(--font-mono);">CONNECTED WALLET</div>
+                  <div id="talent-wallet-addr" style="font-family:var(--font-mono);font-size:0.85rem;font-weight:600;"></div>
+                </div>
+                <div>
+                  <div style="font-size:0.65rem;color:var(--text-secondary);font-family:var(--font-mono);">HUMAN CHECKMARK</div>
+                  <div id="talent-human-status" style="font-family:var(--font-mono);font-size:0.85rem;font-weight:600;"></div>
+                </div>
+                <div id="talent-score-box" style="display:none;">
+                  <div style="font-size:0.65rem;color:var(--text-secondary);font-family:var(--font-mono);">BUILDER RANK</div>
+                  <div id="talent-builder-score" style="font-family:var(--font-mono);font-size:0.85rem;font-weight:600;color:var(--accent);"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div id="talent-step-agent" style="display:none;margin-top:1.5rem;">
+            <div class="card-title" style="margin-bottom:0.75rem;">LINK AGENT</div>
+            <div class="form-group">
+              <label for="talent-pubkey">Agent Public Key</label>
+              <input type="text" id="talent-pubkey" class="input" placeholder="a79d908cf4e5d6c0ac4a0cb3ad40237a...">
+              <div style="font-size: 0.7rem; color: var(--text-secondary); margin-top: 0.35rem; font-family: var(--font-mono); line-height: 1.4;">
+                Use the raw 32-byte hex string (64 characters). Base64 and PEM (SPKI) formats are also accepted.
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="talent-agent-name">Agent Name <span class="optional">(optional)</span></label>
+              <input type="text" id="talent-agent-name" class="input" placeholder="my-research-agent">
+            </div>
+            <button id="talent-verify-btn" class="btn btn-accent btn-full btn-lg" onclick="talentStartVerification()">Verify Agent</button>
+            <div id="talent-verify-status" style="display:none;margin-top:1rem;padding:0.75rem 1rem;border:2px solid var(--border-heavy);font-family:var(--font-mono);font-size:0.8rem;"></div>
+          </div>
+
+          <div id="talent-step-success" style="display:none;margin-top:1.5rem;">
+            <div style="text-align:center;padding:1.5rem 1rem;border:2px solid var(--green-verify);">
+              <div style="font-size:1.5rem;color:var(--green-verify);margin-bottom:0.5rem;">&#10003;</div>
+              <div style="font-family:var(--font-mono);font-size:0.9rem;font-weight:600;color:var(--green-verify);margin-bottom:0.5rem;">AGENT VERIFIED</div>
+              <div style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:1rem;" id="talent-success-details"></div>
+              <div style="font-family:var(--font-mono);font-size:0.75rem;color:var(--text-secondary);margin-bottom:1rem;">Now tell your agent to set up its wallet and token:</div>
+              <div style="position:relative;">
+                <div id="talent-setup-prompt" style="background:var(--bg);border:2px solid var(--border-heavy);padding:0.75rem;font-family:var(--font-mono);font-size:0.7rem;text-align:left;word-break:break-all;line-height:1.5;"></div>
+                <button onclick="copyTalentPrompt()" style="position:absolute;top:0.5rem;right:0.5rem;font-family:var(--font-mono);font-size:0.65rem;padding:0.3rem 0.6rem;border:1px solid var(--border);background:var(--bg-card);color:var(--text);cursor:pointer;">Copy</button>
+              </div>
+            </div>
+          </div>
+
+          <p class="agent-tip" style="margin-top:1rem;">Or tell your agent to read <a href="/skill.md">selfclaw.ai/skill.md</a></p>
         </div>
-        <p class="agent-tip">Or tell your agent to read <a href="/skill.md">selfclaw.ai/skill.md</a></p>
       </div>
     </section>
 
@@ -126,8 +195,133 @@
   <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
   <script src="app.js"></script>
   <script src="/auth.js"></script>
+  <script src="/waap.js"></script>
   <script src="/nav-gate.js"></script>
   <script src="/nav-toggle.js"></script>
+  <script>
+    function switchVerifyTab(tab) {
+      var selfPanel = document.getElementById('verify-panel-self');
+      var talentPanel = document.getElementById('verify-panel-talent');
+      var tabSelf = document.getElementById('tab-self');
+      var tabTalent = document.getElementById('tab-talent');
+      if (tab === 'talent') {
+        selfPanel.style.display = 'none';
+        talentPanel.style.display = 'block';
+        tabSelf.style.background = 'var(--bg-card)';
+        tabSelf.style.color = 'var(--text)';
+        tabTalent.style.background = 'var(--accent)';
+        tabTalent.style.color = '#fff';
+      } else {
+        selfPanel.style.display = 'block';
+        talentPanel.style.display = 'none';
+        tabSelf.style.background = 'var(--accent)';
+        tabSelf.style.color = '#fff';
+        tabTalent.style.background = 'var(--bg-card)';
+        tabTalent.style.color = 'var(--text)';
+      }
+    }
+
+    var talentWalletAddress = null;
+
+    async function talentConnectWallet() {
+      var btn = document.getElementById('talent-connect-btn');
+      btn.disabled = true;
+      btn.textContent = 'Connecting...';
+      try {
+        var result = await window.selfclawWaaP.connectWallet();
+        talentWalletAddress = result.address;
+        document.getElementById('talent-wallet-addr').textContent = result.address.substring(0, 6) + '...' + result.address.slice(-4);
+        document.getElementById('talent-human-status').innerHTML = '<span style="color:var(--text-secondary);">Checking...</span>';
+        document.getElementById('talent-connect-status').style.display = 'block';
+        btn.textContent = 'Connected';
+
+        var resp = await fetch('/api/selfclaw/v1/talent/start-verification', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ walletAddress: result.address, agentPublicKey: 'check-only-' + Date.now(), agentName: '' })
+        });
+        var data = await resp.json();
+
+        if (data.humanCheckmark || resp.ok) {
+          document.getElementById('talent-human-status').innerHTML = '<span style="color:var(--green-verify);">&#10003; Verified</span>';
+          if (data.builderScore) {
+            document.getElementById('talent-builder-score').textContent = data.builderScore + '/100';
+            document.getElementById('talent-score-box').style.display = 'block';
+          }
+          document.getElementById('talent-step-agent').style.display = 'block';
+        } else {
+          document.getElementById('talent-human-status').innerHTML = '<span style="color:var(--red, #ef4444);">&#10007; Not verified</span>';
+          btn.disabled = false;
+          btn.textContent = 'Try Again';
+        }
+      } catch (e) {
+        btn.disabled = false;
+        btn.textContent = 'Connect Wallet';
+        alert('Connection failed: ' + (e.message || e));
+      }
+    }
+
+    async function talentStartVerification() {
+      var pubkey = document.getElementById('talent-pubkey').value.trim();
+      var agentName = document.getElementById('talent-agent-name').value.trim();
+      var btn = document.getElementById('talent-verify-btn');
+      var statusEl = document.getElementById('talent-verify-status');
+
+      if (!pubkey) { alert('Please enter your agent\'s public key'); return; }
+      if (!talentWalletAddress) { alert('Please connect your wallet first'); return; }
+
+      btn.disabled = true;
+      btn.textContent = 'Verifying...';
+      statusEl.style.display = 'block';
+      statusEl.innerHTML = '<span style="color:var(--accent);">Starting verification...</span>';
+
+      try {
+        var startResp = await fetch('/api/selfclaw/v1/talent/start-verification', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ walletAddress: talentWalletAddress, agentPublicKey: pubkey, agentName: agentName })
+        });
+        var startData = await startResp.json();
+        if (startData.error) { throw new Error(startData.error); }
+
+        statusEl.innerHTML = '<span style="color:var(--accent);">Human Checkmark verified. Completing registration...</span>';
+
+        var completeResp = await fetch('/api/selfclaw/v1/talent/complete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessionId: startData.sessionId })
+        });
+        var completeData = await completeResp.json();
+        if (completeData.error) { throw new Error(completeData.error); }
+
+        statusEl.style.display = 'none';
+        document.getElementById('talent-step-agent').style.display = 'none';
+        document.getElementById('talent-step-wallet').style.display = 'none';
+        var successEl = document.getElementById('talent-step-success');
+        successEl.style.display = 'block';
+        document.getElementById('talent-success-details').textContent =
+          'Verified via Talent Protocol (' + completeData.verificationLevel + ')' +
+          (completeData.builderScore ? ' \u00b7 Builder Rank: ' + completeData.builderScore : '');
+        document.getElementById('talent-setup-prompt').textContent =
+          'Read https://selfclaw.ai/skill.md and set up agent with public key ' + pubkey +
+          ' and API key ' + (completeData.apiKey || '(check your agent dashboard)');
+
+      } catch (e) {
+        btn.disabled = false;
+        btn.textContent = 'Verify Agent';
+        statusEl.innerHTML = '<span style="color:var(--red, #ef4444);">' + (e.message || 'Verification failed') + '</span>';
+      }
+    }
+
+    function copyTalentPrompt() {
+      var text = document.getElementById('talent-setup-prompt').textContent;
+      navigator.clipboard.writeText(text).then(function() {
+        var btn = event.target;
+        btn.textContent = 'Copied!';
+        setTimeout(function() { btn.textContent = 'Copy'; }, 2000);
+      });
+    }
+  </script>
   <script>
     (function() {
       if (!window.selfclawAuth) return;

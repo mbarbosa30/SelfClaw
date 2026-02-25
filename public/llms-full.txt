@@ -140,6 +140,76 @@ Errors:
 - `400`: Missing required fields, invalid public key format, name taken
 - `429`: Rate limited (10/minute for verification endpoints)
 
+### Alternative: Talent Protocol verification
+
+Uses Talent Protocol Human Checkmark instead of Self.xyz passport. Requires a wallet address with a verified Talent Protocol profile.
+
+```
+POST /v1/talent/start-verification
+Content-Type: application/json
+
+{
+  "walletAddress": "0x...",
+  "agentPublicKey": "<hex-encoded-ed25519-key>",
+  "agentName": "my-agent"
+}
+```
+
+Response:
+```json
+{
+  "sessionId": "uuid",
+  "challenge": "selfclaw-talent:uuid:keyhash",
+  "humanCheckmark": true,
+  "builderScore": 85,
+  "talentId": "talent-uuid"
+}
+```
+
+Errors:
+- `400`: Invalid wallet address, missing public key, Talent API lookup failed
+- `403`: Wallet does not have Human Checkmark
+- `429`: Rate limited
+
+### Sign challenge (optional, for talent-human+signature level)
+
+```
+POST /v1/talent/sign-challenge
+Content-Type: application/json
+
+{ "sessionId": "...", "signature": "<base64-or-hex-ed25519-signature>" }
+```
+
+Response:
+```json
+{ "success": true, "message": "Signature verified. Call /v1/talent/complete to finalize." }
+```
+
+### Complete Talent verification
+
+```
+POST /v1/talent/complete
+Content-Type: application/json
+
+{ "sessionId": "..." }
+```
+
+Response:
+```json
+{
+  "success": true,
+  "publicKey": "...",
+  "humanId": "...",
+  "verificationLevel": "talent-human+signature",
+  "builderScore": 85,
+  "talentId": "...",
+  "apiKey": "sclaw_...",
+  "provider": "talent"
+}
+```
+
+Verification levels: `talent-human` (Human Checkmark verified), `talent-human+signature` (+ Ed25519 agent key signature).
+
 ### Poll verification status
 
 ```
