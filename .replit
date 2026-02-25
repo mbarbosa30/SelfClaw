@@ -47,6 +47,7 @@ SELFCLAW_AUTH_CALLBACK_URL = "https://selfclaw.ai/api/auth/self/callback"
 
 [userenv.shared]
 SELFCLAW_CALLBACK_URL = "https://selfclaw.ai/api/selfclaw/v1/callback"
+REOWN_PROJECT_ID = "096df07199db5fd480157215d0fd2e9f"
 
 [userenv.development]
 SELFCLAW_STAGING = "false"
