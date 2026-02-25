@@ -1167,6 +1167,23 @@ router.get("/v1/agent/:identifier", publicApiLimiter, async (req: Request, res: 
 
     const { erc8004TokenId: _t, erc8004Attestation: _a, ...cleanMetadata } = publicMetadata;
 
+    let builderContext: any = null;
+    if (meta.provider === 'talent') {
+      builderContext = {
+        displayName: meta.displayName || null,
+        bio: meta.bio || null,
+        imageUrl: meta.imageUrl || null,
+        github: meta.github || null,
+        twitter: meta.twitter || null,
+        linkedin: meta.linkedin || null,
+        location: meta.location || null,
+        builderScore: meta.builderScore ?? null,
+        builderRank: meta.builderRank ?? null,
+        tags: meta.tags || [],
+        credentials: meta.credentials || [],
+      };
+    }
+
     res.json({
       verified: true,
       publicKey: foundAgent.publicKey,
@@ -1182,6 +1199,7 @@ router.get("/v1/agent/:identifier", publicApiLimiter, async (req: Request, res: 
         endpoint: `https://selfclaw.ai/api/selfclaw/v1/agent/${encodeURIComponent(foundAgent.publicKey)}/proof`
       },
       reputation: reputationData,
+      builderContext,
       swarm: foundAgent.humanId ? `https://selfclaw.ai/human/${foundAgent.humanId}` : null,
       metadata: cleanMetadata,
       economy: {
@@ -2247,6 +2265,23 @@ router.get("/v1/agent-profile/:name", publicApiLimiter, async (req: Request, res
       }
     }
 
+    let profileBuilderContext: any = null;
+    if (metadata?.provider === 'talent') {
+      profileBuilderContext = {
+        displayName: metadata.displayName || null,
+        bio: metadata.bio || null,
+        imageUrl: metadata.imageUrl || null,
+        github: metadata.github || null,
+        twitter: metadata.twitter || null,
+        linkedin: metadata.linkedin || null,
+        location: metadata.location || null,
+        builderScore: metadata.builderScore ?? null,
+        builderRank: metadata.builderRank ?? null,
+        tags: metadata.tags || [],
+        credentials: metadata.credentials || [],
+      };
+    }
+
     res.json({
       agent: {
         agentName: agent.deviceId,
@@ -2254,6 +2289,7 @@ router.get("/v1/agent-profile/:name", publicApiLimiter, async (req: Request, res
         humanId: agent.humanId,
         verificationLevel: agent.verificationLevel || 'passport',
         verifiedAt: agent.verifiedAt,
+        builderContext: profileBuilderContext,
         erc8004: metadata?.erc8004TokenId ? {
           tokenId: metadata.erc8004TokenId,
           scanUrl: `https://www.8004scan.io/agents/celo/${metadata.erc8004TokenId}`,

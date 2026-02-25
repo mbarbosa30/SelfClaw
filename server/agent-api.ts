@@ -74,6 +74,23 @@ router.get("/v1/agent-api/me", agentApiLimiter, authenticateAgent, async (req: R
 
     const metadata = (agent.metadata as Record<string, any>) || {};
 
+    let meBuilderContext: any = null;
+    if (metadata.provider === 'talent') {
+      meBuilderContext = {
+        displayName: metadata.displayName || null,
+        bio: metadata.bio || null,
+        imageUrl: metadata.imageUrl || null,
+        github: metadata.github || null,
+        twitter: metadata.twitter || null,
+        linkedin: metadata.linkedin || null,
+        location: metadata.location || null,
+        builderScore: metadata.builderScore ?? null,
+        builderRank: metadata.builderRank ?? null,
+        tags: metadata.tags || [],
+        credentials: metadata.credentials || [],
+      };
+    }
+
     res.json({
       id: agent.id,
       name: agent.deviceId,
@@ -82,6 +99,7 @@ router.get("/v1/agent-api/me", agentApiLimiter, authenticateAgent, async (req: R
       verifiedAt: agent.verifiedAt,
       verificationLevel: agent.verificationLevel,
       description: metadata.description || null,
+      builderContext: meBuilderContext,
       erc8004: metadata.erc8004TokenId ? {
         tokenId: metadata.erc8004TokenId,
         minted: true,

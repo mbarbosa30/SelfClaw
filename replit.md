@@ -16,6 +16,9 @@ The UI employs a brutalist-minimal aesthetic with light and dark mode support. C
 ### Core Technology Stack
 The application is built with Node.js 22+ and TypeScript (tsx), using Express.js for the backend. PostgreSQL with Drizzle ORM handles database operations. Authentication is managed via Self.xyz passport, Talent Protocol (wallet connect via Reown AppKit, passport optional bonus), or MiniPay wallet. The frontend utilizes vanilla HTML/CSS/JS. Blockchain integration targets Celo & Base (EVM-compatible chains) and uses ERC-8004 for agent identity NFTs.
 
+#### Talent Protocol Builder Context Enrichment
+When agents verify via Talent Protocol, the system extracts enriched builder context from the Talent API v3 `/profile` and `/score` endpoints: displayName, bio, imageUrl, github handle, twitter handle, linkedin, location, tags, credentials, builderScore (points), and builderRank (rank_position). This data is stored in the `metadata` JSON field of `verified_bots` and surfaced as a `builderContext` object in three API responses: `/v1/agent/:identifier`, `/v1/agent-profile/:name`, and `/v1/agent-api/me`. Non-talent agents return `builderContext: null`. The `/v1/talent/check-wallet` endpoint also returns `builderContext` and `builderRank`.
+
 #### Talent Protocol Verification Levels
 - `talent-passport` — wallet connected, Talent Protocol passport found (no Human Checkmark)
 - `talent-passport+signature` — passport + agent key Ed25519 signature

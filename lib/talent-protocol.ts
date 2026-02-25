@@ -29,12 +29,26 @@ export interface TalentProfile {
   raw: any;
 }
 
+export interface BuilderContext {
+  displayName: string | null;
+  bio: string | null;
+  imageUrl: string | null;
+  github: string | null;
+  twitter: string | null;
+  linkedin: string | null;
+  location: string | null;
+  tags: string[];
+  credentials: string[];
+}
+
 export interface WalletCheckResult {
   found: boolean;
   isHuman: boolean;
   builderScore: number;
+  builderRank: number;
   talentId: string | null;
   displayName: string | null;
+  builderContext: BuilderContext;
   walletAddress: string;
   source: string;
   raw: any;
@@ -46,7 +60,21 @@ export interface BuilderScoreResult {
   raw: any;
 }
 
-async function fetchProfileV3(walletAddress: string): Promise<{ id: string | null; displayName: string | null; raw: any } | null> {
+interface ProfileExtract {
+  id: string | null;
+  displayName: string | null;
+  bio: string | null;
+  imageUrl: string | null;
+  github: string | null;
+  twitter: string | null;
+  linkedin: string | null;
+  location: string | null;
+  tags: string[];
+  credentials: string[];
+  raw: any;
+}
+
+async function fetchProfileV3(walletAddress: string): Promise<ProfileExtract | null> {
   try {
     const res = await fetch(`${TALENT_API_BASE}/profile?id=${encodeURIComponent(walletAddress)}`, {
       method: 'GET',
@@ -63,9 +91,35 @@ async function fetchProfileV3(walletAddress: string): Promise<{ id: string | nul
 
     const data = await res.json();
     const profile = data.profile || data;
+
+    const tags: string[] = [];
+    if (Array.isArray(profile.tags)) {
+      for (const t of profile.tags) {
+        if (typeof t === 'string') tags.push(t);
+        else if (t?.name) tags.push(t.name);
+      }
+    }
+
+    const credentials: string[] = [];
+    if (Array.isArray(profile.credentials)) {
+      for (const c of profile.credentials) {
+        if (typeof c === 'string') credentials.push(c);
+        else if (c?.name) credentials.push(c.name);
+        else if (c?.type) credentials.push(c.type);
+      }
+    }
+
     return {
       id: profile.id?.toString() || profile.talent_id?.toString() || null,
       displayName: profile.display_name || profile.name || null,
+      bio: profile.bio || profile.about || null,
+      imageUrl: profile.image_url || profile.profile_picture_url || profile.avatar_url || null,
+      github: profile.github || profile.github_handle || null,
+      twitter: profile.twitter || profile.twitter_handle || profile.x_handle || null,
+      linkedin: profile.linkedin || profile.linkedin_handle || null,
+      location: profile.location || null,
+      tags,
+      credentials,
       raw: data,
     };
   } catch (err: any) {
@@ -124,6 +178,18 @@ async function fetchBuilderScoreV3(walletAddress: string): Promise<{ points: num
   }
 }
 
+const emptyBuilderContext: BuilderContext = {
+  displayName: null,
+  bio: null,
+  imageUrl: null,
+  github: null,
+  twitter: null,
+  linkedin: null,
+  location: null,
+  tags: [],
+  credentials: [],
+};
+
 export async function checkWalletStatus(walletAddress: string): Promise<WalletCheckResult> {
   const [profile, humanCheckmark, builderScore] = await Promise.all([
     fetchProfileV3(walletAddress),
@@ -134,15 +200,29 @@ export async function checkWalletStatus(walletAddress: string): Promise<WalletCh
   const profileFound = profile !== null;
   const isHuman = humanCheckmark === true;
   const score = builderScore?.points ?? 0;
+  const rank = builderScore?.rank ?? 0;
 
   if (profileFound) {
-    console.log(`[talent-api] Wallet ${walletAddress}: profile found, human=${isHuman}, score=${score}`);
+    console.log(`[talent-api] Wallet ${walletAddress}: profile found, human=${isHuman}, score=${score}, rank=${rank}`);
+    const context: BuilderContext = {
+      displayName: profile.displayName,
+      bio: profile.bio,
+      imageUrl: profile.imageUrl,
+      github: profile.github,
+      twitter: profile.twitter,
+      linkedin: profile.linkedin,
+      location: profile.location,
+      tags: profile.tags,
+      credentials: profile.credentials,
+    };
     return {
       found: true,
       isHuman,
       builderScore: score,
+      builderRank: rank,
       talentId: profile.id,
       displayName: profile.displayName,
+      builderContext: context,
       walletAddress,
       source: 'talent',
       raw: { profile: profile.raw, humanCheckmark, builderScore },
@@ -155,8 +235,10 @@ export async function checkWalletStatus(walletAddress: string): Promise<WalletCh
       found: true,
       isHuman,
       builderScore: score,
+      builderRank: rank,
       talentId: null,
       displayName: null,
+      builderContext: { ...emptyBuilderContext },
       walletAddress,
       source: 'talent',
       raw: { humanCheckmark, builderScore },
@@ -168,8 +250,10 @@ export async function checkWalletStatus(walletAddress: string): Promise<WalletCh
     found: true,
     isHuman: false,
     builderScore: 0,
+    builderRank: 0,
     talentId: null,
     displayName: null,
+    builderContext: { ...emptyBuilderContext },
     walletAddress,
     source: 'wallet',
     raw: { note: 'Talent Protocol API unavailable, verified by wallet signature' },
@@ -191,7 +275,7 @@ export async function getProfile(walletAddress: string): Promise<TalentProfile &
     id: result.talentId || walletAddress,
     walletAddress,
     displayName: result.displayName,
-    bio: null,
+    bio: result.builderContext.bio,
     score: result.builderScore,
     raw: result.raw,
   };

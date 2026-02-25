@@ -59,7 +59,9 @@ router.post("/v1/talent/check-wallet", verificationLimiter, async (req: Request,
       walletAddress,
       humanCheckmark: result.isHuman,
       builderScore: result.builderScore,
+      builderRank: result.builderRank,
       displayName: result.displayName,
+      builderContext: result.builderContext,
       source: result.source,
     });
   } catch (err: any) {
@@ -233,15 +235,17 @@ router.post("/v1/talent/complete", verificationLimiter, async (req: Request, res
 
     let humanCheckmark = false;
     let builderScore = 0;
+    let builderRank = 0;
     let talentId: string | null = null;
-    let profileData: any = null;
+    let builderContext: any = null;
 
     try {
       const status = await checkWalletStatus(session.walletAddress);
       humanCheckmark = status.isHuman;
       talentId = status.talentId;
       builderScore = status.builderScore;
-      profileData = { displayName: status.displayName };
+      builderRank = status.builderRank;
+      builderContext = status.builderContext;
     } catch (err: any) {
       console.log("[talent-auth] Talent API lookup failed (non-critical), proceeding with wallet-only:", err.message);
     }
@@ -265,7 +269,16 @@ router.post("/v1/talent/complete", verificationLimiter, async (req: Request, res
       walletAddress: session.walletAddress,
       talentId,
       builderScore,
-      displayName: profileData?.displayName || null,
+      builderRank,
+      displayName: builderContext?.displayName || null,
+      bio: builderContext?.bio || null,
+      imageUrl: builderContext?.imageUrl || null,
+      github: builderContext?.github || null,
+      twitter: builderContext?.twitter || null,
+      linkedin: builderContext?.linkedin || null,
+      location: builderContext?.location || null,
+      tags: builderContext?.tags || [],
+      credentials: builderContext?.credentials || [],
       verifiedAt: new Date().toISOString(),
     };
 
@@ -397,14 +410,16 @@ router.post("/v1/talent/connect", async (req: Request, res: Response) => {
     let humanCheckmark = false;
     let talentId: string | null = null;
     let builderScore = 0;
-    let profileData: any = null;
+    let builderRank = 0;
+    let builderContext: any = null;
 
     try {
       const status = await checkWalletStatus(walletAddress);
       humanCheckmark = status.isHuman;
       talentId = status.talentId;
       builderScore = status.builderScore;
-      profileData = { displayName: status.displayName };
+      builderRank = status.builderRank;
+      builderContext = status.builderContext;
     } catch (err: any) {
       console.log("[talent-auth] Talent API lookup failed (non-critical), proceeding with wallet-only:", err.message);
     }
@@ -421,7 +436,7 @@ router.post("/v1/talent/connect", async (req: Request, res: Response) => {
         humanId,
         walletAddress: walletAddress.toLowerCase(),
         authMethod: "talent",
-        firstName: profileData?.displayName || null,
+        firstName: builderContext?.displayName || null,
       });
     }
 
@@ -430,15 +445,17 @@ router.post("/v1/talent/connect", async (req: Request, res: Response) => {
     (req.session as any).authMethod = "talent";
     (req.session as any).talentId = talentId;
     (req.session as any).builderScore = builderScore;
+    (req.session as any).builderRank = builderRank;
 
-    console.log(`[talent-auth] User logged in via Talent Protocol: humanId=${humanId}, wallet=${walletAddress}, builderScore=${builderScore}`);
+    console.log(`[talent-auth] User logged in via Talent Protocol: humanId=${humanId}, wallet=${walletAddress}, builderScore=${builderScore}, rank=${builderRank}`);
 
     res.json({
       success: true,
       humanId,
       walletAddress,
       builderScore,
-      displayName: profileData?.displayName || null,
+      builderRank,
+      displayName: builderContext?.displayName || null,
       provider: "talent",
     });
   } catch (error: any) {
