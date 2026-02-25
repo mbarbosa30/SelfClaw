@@ -23,54 +23,31 @@
   function ensureInit() {
     if (state.initPromise) return state.initPromise;
 
-    state.initPromise = new Promise(function(resolve, reject) {
-      var script = document.createElement('script');
-      script.type = 'module';
+    state.initPromise = (async function() {
+      var mod = await import('https://cdn.jsdelivr.net/npm/@reown/appkit-cdn@1.8.18/+esm');
 
-      var code = 'import{createAppKit}from"https://cdn.jsdelivr.net/npm/@reown/appkit-cdn@1.8.18/+esm";' +
-        'window._reownCreateAppKit=createAppKit;' +
-        'window.dispatchEvent(new Event("reown-ready"));';
-
-      script.textContent = code;
-      document.head.appendChild(script);
-
-      function onReady() {
-        window.removeEventListener('reown-ready', onReady);
-        try {
-          state.modal = window._reownCreateAppKit({
-            projectId: REOWN_PROJECT_ID,
-            networks: [celoChain],
-            themeMode: document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light',
-            themeVariables: {
-              '--w3m-accent': '#FF6B4A',
-              '--w3m-border-radius-master': '0px'
-            },
-            features: {
-              analytics: false
-            },
-            metadata: {
-              name: 'SelfClaw',
-              description: 'Agent Verification Registry',
-              url: 'https://selfclaw.ai',
-              icons: ['https://selfclaw.ai/claw-icon.svg']
-            }
-          });
-          state.initialized = true;
-          resolve(state.modal);
-        } catch (e) {
-          reject(e);
+      state.modal = mod.createAppKit({
+        projectId: REOWN_PROJECT_ID,
+        networks: [celoChain],
+        themeMode: document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light',
+        themeVariables: {
+          '--w3m-accent': '#FF6B4A',
+          '--w3m-border-radius-master': '0px'
+        },
+        features: {
+          analytics: false
+        },
+        metadata: {
+          name: 'SelfClaw',
+          description: 'Agent Verification Registry',
+          url: 'https://selfclaw.ai',
+          icons: ['https://selfclaw.ai/claw-icon.svg']
         }
-      }
+      });
 
-      window.addEventListener('reown-ready', onReady);
-
-      setTimeout(function() {
-        window.removeEventListener('reown-ready', onReady);
-        if (!state.initialized) {
-          reject(new Error('Reown AppKit failed to load from CDN'));
-        }
-      }, 15000);
-    });
+      state.initialized = true;
+      return state.modal;
+    })();
 
     return state.initPromise;
   }
@@ -95,22 +72,6 @@
           }
         } catch (e) {}
       }, 500);
-
-      var handleClose = function() {
-        if (!modal.getAddress()) {
-          clearTimeout(timeout);
-          clearInterval(checkInterval);
-          reject(new Error('Wallet connection cancelled'));
-        }
-      };
-
-      var closeCheck = setInterval(function() {
-        try {
-          if (!modal.getIsConnected() && !document.querySelector('w3m-modal[open]')) {
-            clearInterval(closeCheck);
-          }
-        } catch(e) {}
-      }, 1000);
     });
 
     state.connected = true;
