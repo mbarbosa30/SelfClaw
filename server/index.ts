@@ -52,6 +52,14 @@ function sendHtml(res: Response, file: string, extraHeaders?: Record<string, str
   res.sendFile(file, { root: "public" });
 }
 
+app.use("/reown-cdn", express.static(
+  path.resolve("node_modules/@reown/appkit-cdn/dist"),
+  { setHeaders: (res) => {
+    res.setHeader("Content-Type", "application/javascript");
+    res.setHeader("Cache-Control", "public, max-age=86400");
+  }}
+));
+
 app.use(express.static("public", {
   setHeaders: (res, filePath) => {
     if (filePath.endsWith('.html')) {
