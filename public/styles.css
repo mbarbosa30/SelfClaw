@@ -481,7 +481,7 @@ h4 {
 .hero-sub {
   font-size: 1.15rem;
   color: var(--text-secondary);
-  max-width: 700px;
+  max-width: 850px;
   line-height: 1.7;
   margin-bottom: var(--space-md);
 }
