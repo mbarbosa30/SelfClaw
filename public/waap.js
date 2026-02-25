@@ -29,6 +29,8 @@
       state.modal = mod.createAppKit({
         projectId: REOWN_PROJECT_ID,
         networks: [celoChain],
+        enableInjected: true,
+        enableCoinbase: true,
         themeMode: document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light',
         themeVariables: {
           '--w3m-accent': '#FF6B4A',
