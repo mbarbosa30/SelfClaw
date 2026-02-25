@@ -16,6 +16,18 @@
     state.initPromise = (async function() {
       var mod = await import('https://cdn.jsdelivr.net/npm/@reown/appkit-cdn@1.8.18/dist/appkit.js');
 
+      var baseNetwork = {
+        id: 8453,
+        name: 'Base',
+        nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+        rpcUrls: {
+          default: { http: ['https://mainnet.base.org'] }
+        },
+        blockExplorers: {
+          default: { name: 'Basescan', url: 'https://basescan.org' }
+        }
+      };
+
       var celoNetwork = {
         id: 42220,
         name: 'Celo',
@@ -30,14 +42,14 @@
 
       var wagmiAdapter = new mod.WagmiAdapter({
         projectId: REOWN_PROJECT_ID,
-        networks: [celoNetwork]
+        networks: [baseNetwork, celoNetwork]
       });
 
       state.modal = mod.createAppKit({
         adapters: [wagmiAdapter],
         projectId: REOWN_PROJECT_ID,
-        networks: [celoNetwork],
-        defaultNetwork: celoNetwork,
+        networks: [baseNetwork, celoNetwork],
+        defaultNetwork: baseNetwork,
         enableInjected: true,
         enableCoinbase: true,
         themeMode: document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light',
