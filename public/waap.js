@@ -24,7 +24,7 @@
     if (state.initPromise) return state.initPromise;
 
     state.initPromise = (async function() {
-      var mod = await import('/reown-cdn/appkit.js');
+      var mod = await import('https://cdn.jsdelivr.net/npm/@reown/appkit-cdn@1.8.18/dist/appkit.js');
 
       state.modal = mod.createAppKit({
         projectId: REOWN_PROJECT_ID,
