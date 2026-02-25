@@ -1,4 +1,4 @@
-const TALENT_API_BASE = 'https://api.talentprotocol.com/api/v2';
+const TALENT_API_BASE = 'https://api.talentprotocol.com';
 
 function getApiKey(): string {
   const key = process.env.TALENT_API_KEY;
@@ -46,66 +46,124 @@ export interface BuilderScoreResult {
   raw: any;
 }
 
-async function tryTalentPassportV2(walletAddress: string): Promise<WalletCheckResult | null> {
+async function fetchProfileV3(walletAddress: string): Promise<{ id: string | null; displayName: string | null; raw: any } | null> {
   try {
-    const res = await fetch(`${TALENT_API_BASE}/passports/${encodeURIComponent(walletAddress)}`, {
+    const res = await fetch(`${TALENT_API_BASE}/profile?id=${encodeURIComponent(walletAddress)}`, {
       method: 'GET',
       headers: headers(),
     });
 
-    console.log(`[talent-api] V2 passports for ${walletAddress}: ${res.status}`);
-
-    if (res.status === 410) {
-      console.log(`[talent-api] V2 passports endpoint deprecated`);
-      return null;
-    }
+    console.log(`[talent-api] v3 /profile for ${walletAddress}: ${res.status}`);
 
     if (!res.ok) {
       const text = await res.text();
-      console.log(`[talent-api] V2 passports response: ${text.substring(0, 200)}`);
+      console.log(`[talent-api] v3 /profile response: ${text.substring(0, 200)}`);
       return null;
     }
 
     const data = await res.json();
-    const passport = data.passport || data;
-
-    if (!passport || (!passport.id && !passport.main_wallet)) {
-      return null;
-    }
-
-    let isHuman = false;
-    try {
-      const hcRes = await fetch(`${TALENT_API_BASE}/human_checkmark?id=${encodeURIComponent(walletAddress)}`, {
-        method: 'GET',
-        headers: headers(),
-      });
-      if (hcRes.ok) {
-        const hcData = await hcRes.json();
-        isHuman = hcData.human_checkmark === true;
-      }
-    } catch (e) {}
-
+    const profile = data.profile || data;
     return {
-      found: true,
-      isHuman,
-      builderScore: passport.score ?? passport.builder_score ?? 0,
-      talentId: passport.id?.toString() || null,
-      displayName: passport.display_name || passport.name || null,
-      walletAddress,
-      source: 'v2',
+      id: profile.id?.toString() || profile.talent_id?.toString() || null,
+      displayName: profile.display_name || profile.name || null,
       raw: data,
     };
   } catch (err: any) {
-    console.log(`[talent-api] V2 passports error: ${err.message}`);
+    console.log(`[talent-api] v3 /profile error: ${err.message}`);
+    return null;
+  }
+}
+
+async function fetchHumanCheckmarkV3(walletAddress: string): Promise<boolean | null> {
+  try {
+    const res = await fetch(`${TALENT_API_BASE}/human_checkmark?id=${encodeURIComponent(walletAddress)}`, {
+      method: 'GET',
+      headers: headers(),
+    });
+
+    console.log(`[talent-api] v3 /human_checkmark for ${walletAddress}: ${res.status}`);
+
+    if (!res.ok) {
+      const text = await res.text();
+      console.log(`[talent-api] v3 /human_checkmark response: ${text.substring(0, 200)}`);
+      return null;
+    }
+
+    const data = await res.json();
+    return data.humanity_verified === true;
+  } catch (err: any) {
+    console.log(`[talent-api] v3 /human_checkmark error: ${err.message}`);
+    return null;
+  }
+}
+
+async function fetchBuilderScoreV3(walletAddress: string): Promise<{ points: number; rank: number } | null> {
+  try {
+    const res = await fetch(`${TALENT_API_BASE}/score?id=${encodeURIComponent(walletAddress)}`, {
+      method: 'GET',
+      headers: headers(),
+    });
+
+    console.log(`[talent-api] v3 /score for ${walletAddress}: ${res.status}`);
+
+    if (!res.ok) {
+      const text = await res.text();
+      console.log(`[talent-api] v3 /score response: ${text.substring(0, 200)}`);
+      return null;
+    }
+
+    const data = await res.json();
+    const score = data.score || {};
+    return {
+      points: score.points ?? 0,
+      rank: score.rank_position ?? 0,
+    };
+  } catch (err: any) {
+    console.log(`[talent-api] v3 /score error: ${err.message}`);
     return null;
   }
 }
 
 export async function checkWalletStatus(walletAddress: string): Promise<WalletCheckResult> {
-  const v2Result = await tryTalentPassportV2(walletAddress);
-  if (v2Result) return v2Result;
+  const [profile, humanCheckmark, builderScore] = await Promise.all([
+    fetchProfileV3(walletAddress),
+    fetchHumanCheckmarkV3(walletAddress),
+    fetchBuilderScoreV3(walletAddress),
+  ]);
 
-  console.log(`[talent-api] Talent Protocol API unavailable, using wallet-based verification for ${walletAddress}`);
+  const profileFound = profile !== null;
+  const isHuman = humanCheckmark === true;
+  const score = builderScore?.points ?? 0;
+
+  if (profileFound) {
+    console.log(`[talent-api] Wallet ${walletAddress}: profile found, human=${isHuman}, score=${score}`);
+    return {
+      found: true,
+      isHuman,
+      builderScore: score,
+      talentId: profile.id,
+      displayName: profile.displayName,
+      walletAddress,
+      source: 'talent',
+      raw: { profile: profile.raw, humanCheckmark, builderScore },
+    };
+  }
+
+  if (humanCheckmark !== null || builderScore !== null) {
+    console.log(`[talent-api] Wallet ${walletAddress}: partial data, human=${isHuman}, score=${score}`);
+    return {
+      found: true,
+      isHuman,
+      builderScore: score,
+      talentId: null,
+      displayName: null,
+      walletAddress,
+      source: 'talent',
+      raw: { humanCheckmark, builderScore },
+    };
+  }
+
+  console.log(`[talent-api] Wallet ${walletAddress}: API unavailable, using wallet-only fallback`);
   return {
     found: true,
     isHuman: false,
