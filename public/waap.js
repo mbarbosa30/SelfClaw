@@ -35,7 +35,9 @@
           '--w3m-border-radius-master': '0px'
         },
         features: {
-          analytics: false
+          analytics: false,
+          email: false,
+          socials: false
         },
         metadata: {
           name: 'SelfClaw',
@@ -55,20 +57,39 @@
   async function connectWallet() {
     var modal = await ensureInit();
 
+    if (state.connected && state.address) {
+      return { address: state.address, provider: state.provider };
+    }
+
     modal.open();
 
     var address = await new Promise(function(resolve, reject) {
+      var resolved = false;
       var timeout = setTimeout(function() {
-        reject(new Error('Wallet connection timed out'));
+        if (!resolved) {
+          resolved = true;
+          clearInterval(checkInterval);
+          reject(new Error('Wallet connection timed out after 2 minutes. Please try again.'));
+        }
       }, 120000);
 
       var checkInterval = setInterval(function() {
         try {
           var addr = modal.getAddress();
-          if (addr) {
+          if (addr && !resolved) {
+            resolved = true;
             clearTimeout(timeout);
             clearInterval(checkInterval);
             resolve(addr);
+          }
+          if (!resolved && !modal.getIsConnected() && !document.querySelector('w3m-modal[open]')) {
+            var stillOpen = document.querySelector('w3m-modal');
+            if (!stillOpen) {
+              resolved = true;
+              clearTimeout(timeout);
+              clearInterval(checkInterval);
+              reject(new Error('Wallet connection cancelled'));
+            }
           }
         } catch (e) {}
       }, 500);
@@ -93,7 +114,7 @@
 
     var provider = state.modal.getWalletProvider();
     if (!provider) {
-      throw new Error('Wallet provider not available');
+      throw new Error('Wallet provider not available. Please reconnect your wallet.');
     }
 
     var hexMessage = '0x' + Array.from(new TextEncoder().encode(message))
@@ -116,9 +137,9 @@
     return state.connected;
   }
 
-  function disconnect() {
+  async function disconnect() {
     if (state.modal) {
-      try { state.modal.disconnect(); } catch(e) {}
+      try { await state.modal.disconnect(); } catch(e) {}
     }
     state.connected = false;
     state.address = null;

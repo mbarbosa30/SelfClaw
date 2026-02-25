@@ -42,14 +42,25 @@ export interface TalentProfile {
 }
 
 export async function getHumanCheckmark(walletAddress: string): Promise<HumanCheckmarkResult> {
-  const res = await fetch(`${TALENT_API_BASE}/human_checkmark?id=${encodeURIComponent(walletAddress)}`, {
-    method: 'GET',
-    headers: headers(),
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${TALENT_API_BASE}/human_checkmark?id=${encodeURIComponent(walletAddress)}`, {
+      method: 'GET',
+      headers: headers(),
+    });
+  } catch (netErr: any) {
+    throw new Error(`Cannot reach Talent Protocol API: ${netErr.message}`);
+  }
 
+  if (res.status === 404) {
+    throw new Error(`No Talent Protocol Passport found for wallet ${walletAddress}. Create one at talentprotocol.com`);
+  }
+  if (res.status === 401 || res.status === 403) {
+    throw new Error('Talent Protocol API key is invalid or expired');
+  }
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`Talent API human_checkmark failed (${res.status}): ${text}`);
+    throw new Error(`Talent API error (${res.status}): ${text}`);
   }
 
   const data = await res.json();
@@ -100,14 +111,25 @@ export async function getCredentials(walletAddress: string): Promise<Credentials
 }
 
 export async function getProfile(walletAddress: string): Promise<TalentProfile> {
-  const res = await fetch(`${TALENT_API_BASE}/passports/${encodeURIComponent(walletAddress)}`, {
-    method: 'GET',
-    headers: headers(),
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${TALENT_API_BASE}/passports/${encodeURIComponent(walletAddress)}`, {
+      method: 'GET',
+      headers: headers(),
+    });
+  } catch (netErr: any) {
+    throw new Error(`Cannot reach Talent Protocol API: ${netErr.message}`);
+  }
 
+  if (res.status === 404) {
+    throw new Error(`No Talent Protocol Passport found for wallet ${walletAddress}. Create one at talentprotocol.com`);
+  }
+  if (res.status === 401 || res.status === 403) {
+    throw new Error('Talent Protocol API key is invalid or expired');
+  }
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`Talent API profile failed (${res.status}): ${text}`);
+    throw new Error(`Talent API profile error (${res.status}): ${text}`);
   }
 
   const data = await res.json();

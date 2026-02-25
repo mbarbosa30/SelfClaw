@@ -98,6 +98,7 @@
           <div id="talent-step-wallet">
             <p style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:1rem;line-height:1.5;font-family:var(--font-mono);">Connect your wallet to check your Talent Protocol Human Checkmark status. Supports social login (Google, Twitter, GitHub) or direct wallet connect.</p>
             <button id="talent-connect-btn" class="btn btn-accent btn-full btn-lg" onclick="talentConnectWallet()">Connect Wallet</button>
+            <div id="talent-connect-error" style="display:none;margin-top:1rem;padding:0.75rem 1rem;border:2px solid var(--red, #ef4444);font-family:var(--font-mono);font-size:0.8rem;color:var(--red, #ef4444);"></div>
             <div id="talent-connect-status" style="display:none;margin-top:1rem;padding:0.75rem 1rem;border:2px solid var(--border-heavy);">
               <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem;">
                 <div>
@@ -113,6 +114,7 @@
                   <div id="talent-builder-score" style="font-family:var(--font-mono);font-size:0.85rem;font-weight:600;color:var(--accent);"></div>
                 </div>
               </div>
+              <button id="talent-disconnect-btn" style="margin-top:0.75rem;font-size:0.7rem;font-family:var(--font-mono);background:none;border:1px solid var(--border);color:var(--text-secondary);padding:0.3rem 0.75rem;cursor:pointer;" onclick="talentDisconnectWallet()">Disconnect &amp; Switch Wallet</button>
             </div>
           </div>
 
@@ -225,6 +227,8 @@
 
     async function talentConnectWallet() {
       var btn = document.getElementById('talent-connect-btn');
+      var errorEl = document.getElementById('talent-connect-error');
+      errorEl.style.display = 'none';
       btn.disabled = true;
       btn.textContent = 'Connecting...';
       try {
@@ -250,15 +254,33 @@
           }
           document.getElementById('talent-step-agent').style.display = 'block';
         } else {
+          var errMsg = data.details || data.error || 'Human Checkmark not found for this wallet';
           document.getElementById('talent-human-status').innerHTML = '<span style="color:var(--red, #ef4444);">&#10007; Not verified</span>';
+          errorEl.textContent = errMsg;
+          errorEl.style.display = 'block';
           btn.disabled = false;
           btn.textContent = 'Try Again';
         }
       } catch (e) {
         btn.disabled = false;
         btn.textContent = 'Connect Wallet';
-        alert('Connection failed: ' + (e.message || e));
+        errorEl.textContent = e.message || 'Connection failed';
+        errorEl.style.display = 'block';
       }
+    }
+
+    async function talentDisconnectWallet() {
+      if (window.selfclawWaaP) {
+        await window.selfclawWaaP.disconnect();
+      }
+      talentWalletAddress = null;
+      document.getElementById('talent-connect-status').style.display = 'none';
+      document.getElementById('talent-connect-error').style.display = 'none';
+      document.getElementById('talent-step-agent').style.display = 'none';
+      document.getElementById('talent-score-box').style.display = 'none';
+      var btn = document.getElementById('talent-connect-btn');
+      btn.disabled = false;
+      btn.textContent = 'Connect Wallet';
     }
 
     async function talentStartVerification() {
