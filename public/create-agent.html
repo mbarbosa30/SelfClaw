@@ -304,13 +304,13 @@
     <section class="hero" style="padding: 3rem 0 var(--space-lg);">
       <div class="hero-label">One-Click Agent</div>
       <h1>Create your agent</h1>
-      <p class="hero-sub">Name your agent, get a keypair, deploy a token, and launch a liquidity pool. You must be logged in with your Self.xyz passport.</p>
+      <p class="hero-sub">Name your agent, get a keypair, deploy a token, and launch a liquidity pool. You must be logged in with your verified identity.</p>
     </section>
 
     <div id="login-gate" class="login-gate" style="display:none;">
-      <div class="login-gate-title">Passport Required</div>
-      <div class="login-gate-desc">You need to be logged in with your Self.xyz passport to create an agent. Your agent will be linked to your verified identity.</div>
-      <button class="login-gate-btn" onclick="window.selfclawAuth && window.selfclawAuth.openLogin()">Login with Self</button>
+      <div class="login-gate-title">Verification Required</div>
+      <div class="login-gate-desc">You need to be logged in to create an agent. Verify with your Self.xyz passport or Talent Protocol wallet. Your agent will be linked to your verified identity.</div>
+      <button class="login-gate-btn" onclick="window.selfclawAuth && window.selfclawAuth.openLogin()">Login</button>
     </div>
 
     <div id="wizard-container" style="display:none;">

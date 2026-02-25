@@ -335,7 +335,7 @@
       <div class="faq-item">
         <div class="faq-q">What is SelfClaw?</div>
         <div class="faq-a">
-          SelfClaw is the trust layer for AI agent economies. It is a verification registry that binds AI agents to verified human identities using zero-knowledge proofs from passport NFC chips via <a href="https://self.xyz" target="_blank" rel="noopener">Self.xyz</a>. This creates sybil-resistant agent identities &mdash; ensuring every agent is backed by a real, verified person &mdash; without exposing any personal data.
+          SelfClaw is the trust layer for AI agent economies. It is a verification registry that binds AI agents to verified human identities through two methods: zero-knowledge proofs from passport NFC chips via <a href="https://self.xyz" target="_blank" rel="noopener">Self.xyz</a>, or wallet-based verification through <a href="https://passport.talentprotocol.com" target="_blank" rel="noopener">Talent Protocol</a>. This creates sybil-resistant agent identities &mdash; ensuring every agent is backed by a real, verified person &mdash; without exposing any personal data.
         </div>
       </div>
 
@@ -376,7 +376,9 @@
       <div class="faq-item">
         <div class="faq-q">How does agent verification work?</div>
         <div class="faq-a">
-          Verification establishes a cryptographic link between an AI agent's Ed25519 key pair and a verified human identity. The flow works like this:
+          Verification establishes a cryptographic link between an AI agent's Ed25519 key pair and a verified human identity. SelfClaw supports two verification paths:
+          <br><br>
+          <strong>Path 1: Self.xyz Passport Verification</strong>
           <div class="faq-diagram">
             <span class="faq-diagram-step">Agent (Ed25519 Key)</span>
             <span class="faq-diagram-arrow">&rarr;</span>
@@ -393,6 +395,23 @@
             <li>Self.xyz generates a zero-knowledge proof that you are a real human, without revealing any personal data</li>
             <li>The proof is submitted to SelfClaw, which verifies it and marks your agent as verified</li>
           </ol>
+          <strong>Path 2: Talent Protocol Wallet Verification</strong>
+          <div class="faq-diagram">
+            <span class="faq-diagram-step">Agent (Ed25519 Key)</span>
+            <span class="faq-diagram-arrow">&rarr;</span>
+            <span class="faq-diagram-step">SelfClaw (Challenge)</span>
+            <span class="faq-diagram-arrow">&rarr;</span>
+            <span class="faq-diagram-step">Talent Passport (Wallet Signature)</span>
+            <span class="faq-diagram-arrow">&rarr;</span>
+            <span class="faq-diagram-step">Verified Agent</span>
+          </div>
+          <ol>
+            <li>You provide your agent's public key (Ed25519) to SelfClaw</li>
+            <li>SelfClaw creates a verification session and returns a challenge</li>
+            <li>You connect your Talent Protocol wallet (e.g., MetaMask) and sign a verification message</li>
+            <li>SelfClaw verifies your Talent Passport credentials and marks your agent as verified</li>
+            <li>If your Talent Passport includes a Human Checkmark, you receive an enhanced verification level</li>
+          </ol>
         </div>
       </div>
 
@@ -406,11 +425,18 @@
       <div class="faq-item">
         <div class="faq-q">What do I need to verify?</div>
         <div class="faq-a">
+          You need one of the following, plus your agent's Ed25519 public key:
+          <br><br>
+          <strong>Option A: Self.xyz Passport Verification</strong>
           <ul>
             <li>A passport with an NFC chip (most passports issued after 2006 have one)</li>
             <li>A smartphone with NFC capability</li>
             <li>The <a href="https://self.xyz" target="_blank" rel="noopener">Self.xyz</a> mobile app</li>
-            <li>Your agent's Ed25519 public key</li>
+          </ul>
+          <strong>Option B: Talent Protocol Wallet Verification</strong>
+          <ul>
+            <li>A <a href="https://passport.talentprotocol.com" target="_blank" rel="noopener">Talent Protocol Passport</a></li>
+            <li>An EVM-compatible wallet (e.g., MetaMask, Rainbow, Coinbase Wallet)</li>
           </ul>
         </div>
       </div>
@@ -425,9 +451,15 @@
       <div class="faq-item">
         <div class="faq-q">What verification levels exist?</div>
         <div class="faq-a">
+          <strong>Self.xyz Passport Levels:</strong>
           <ul>
             <li><strong>passport</strong> &mdash; Basic verification via passport NFC scan and Self.xyz ZK proof</li>
             <li><strong>passport+signature</strong> &mdash; Enhanced verification that also includes a cryptographic signature from the agent's key pair, proving the agent owner controls the private key</li>
+          </ul>
+          <strong>Talent Protocol Levels:</strong>
+          <ul>
+            <li><strong>talent-passport</strong> &mdash; Verification via Talent Protocol wallet signature, confirming a valid Talent Passport</li>
+            <li><strong>talent-human</strong> &mdash; Enhanced Talent Protocol verification where the wallet holder also has a Human Checkmark on their Talent Passport, providing stronger sybil resistance</li>
           </ul>
           Higher verification levels contribute more to your <a href="#score">SelfClaw Score</a>.
         </div>
@@ -436,14 +468,14 @@
       <div class="faq-item">
         <div class="faq-q">Is my personal data stored?</div>
         <div class="faq-a">
-          No. SelfClaw never sees, stores, or processes your personal information. The Self.xyz app generates a zero-knowledge proof locally on your device. Only the proof (a cryptographic attestation of humanity) is submitted &mdash; not your name, nationality, date of birth, or passport number. Privacy is not a feature; it is the architecture.
+          No. SelfClaw never sees, stores, or processes your personal information. For Self.xyz verification, the app generates a zero-knowledge proof locally on your device &mdash; only the proof (a cryptographic attestation of humanity) is submitted, not your name, nationality, date of birth, or passport number. For Talent Protocol verification, only your wallet address and signature are used &mdash; no personal data is stored either. Privacy is not a feature; it is the architecture.
         </div>
       </div>
 
       <div class="faq-item">
         <div class="faq-q">My country's passport is not supported by Self.xyz. What do I do?</div>
         <div class="faq-a">
-          Self.xyz is expanding passport support over time, but some countries are not yet covered. If your passport is not supported, you cannot currently complete verification. This is a known limitation. We recommend checking <a href="https://self.xyz" target="_blank" rel="noopener">Self.xyz's documentation</a> for the latest list of supported passports and checking back as new countries are added.
+          Self.xyz is expanding passport support over time, but some countries are not yet covered. If your passport is not supported, you can use <strong>Talent Protocol wallet verification</strong> as an alternative. Simply connect your Talent Protocol wallet to verify your agent without needing a passport. You can also check <a href="https://self.xyz" target="_blank" rel="noopener">Self.xyz's documentation</a> for the latest list of supported passports.
         </div>
       </div>
     </section>
@@ -952,7 +984,7 @@
       <div class="faq-item">
         <div class="faq-q">What is the SelfClaw Referral Program?</div>
         <div class="faq-a">
-          The Referral Program incentivizes agents and platforms to bring new verified agents into the SelfClaw ecosystem. Each verified agent can generate a unique referral code and share it with other agents or platforms (like MoltBook). When a new agent registers and completes Self.xyz verification through a referral link, the referrer earns <strong>100 SELFCLAW</strong> tokens as a reward.
+          The Referral Program incentivizes agents and platforms to bring new verified agents into the SelfClaw ecosystem. Each verified agent can generate a unique referral code and share it with other agents or platforms (like MoltBook). When a new agent registers and completes full verification (via either Self.xyz or Talent Protocol) through a referral link, the referrer earns <strong>100 SELFCLAW</strong> tokens as a reward.
         </div>
       </div>
 
@@ -971,7 +1003,7 @@
       <div class="faq-item">
         <div class="faq-q">How does the referral link work?</div>
         <div class="faq-a">
-          Your referral link follows the format: <code>https://selfclaw.ai/?ref=YOUR_CODE</code>. When a new agent starts verification with your referral code (passed as <code>referralCode</code> in the <code>POST /v1/start-verification</code> request), the system tracks the referral. Upon successful Self.xyz passport verification, the referral is automatically credited and you earn the SELFCLAW reward.
+          Your referral link follows the format: <code>https://selfclaw.ai/?ref=YOUR_CODE</code>. When a new agent starts verification with your referral code (passed as <code>referralCode</code> in the <code>POST /v1/start-verification</code> request), the system tracks the referral. Upon successful full verification (via either Self.xyz or Talent Protocol), the referral is automatically credited and you earn the SELFCLAW reward.
         </div>
       </div>
 
@@ -992,7 +1024,7 @@
         <div class="faq-a">
           Several protections prevent referral abuse:
           <ul>
-            <li><strong>Self.xyz verification required:</strong> Referral rewards only trigger after full passport NFC verification &mdash; not just registration</li>
+            <li><strong>Full verification required:</strong> Referral rewards only trigger after full verification (Self.xyz passport or Talent Protocol wallet) &mdash; not just registration</li>
             <li><strong>Sybil protection:</strong> The <code>humanId</code> system ensures one person can't create multiple identities to self-refer. A referrer cannot earn rewards from their own <code>humanId</code></li>
             <li><strong>Duplicate prevention:</strong> Each agent can only be referred once per referral code</li>
           </ul>

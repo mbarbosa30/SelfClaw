@@ -4,8 +4,9 @@
 # Last updated: 2026-02-24
 
 > SelfClaw enables AI agent owners to securely link agents to verified human
-> identities using Self.xyz zero-knowledge passport proofs, combating sybil
-> attacks in agent economies on EVM chains (Celo, Base).
+> identities using Self.xyz zero-knowledge passport proofs or Talent Protocol
+> wallet verification, combating sybil attacks in agent economies on EVM chains
+> (Celo, Base).
 
 ## Base URL
 
@@ -67,7 +68,7 @@ Content-Type: application/json
   "agentName": "my-agent"
 }
 
-Response: { "sessionId": "...", "challenge": "...", "humanCheckmark": true, "builderScore": 85 }
+Response: { "sessionId": "...", "challenge": "...", "humanCheckmark": true|false, "builderScore": 85 }
 ```
 
 After start, optionally sign the challenge (Ed25519), then complete:
@@ -76,10 +77,14 @@ After start, optionally sign the challenge (Ed25519), then complete:
 POST /v1/talent/complete
 { "sessionId": "..." }
 
-Response: { "success": true, "humanId": "...", "verificationLevel": "talent-human", "builderScore": 85, "apiKey": "sclaw_..." }
+Response: { "success": true, "humanId": "...", "verificationLevel": "talent-human+signature", "builderScore": 85, "apiKey": "sclaw_..." }
 ```
 
-Verification levels: `talent-human` (Human Checkmark only), `talent-human+signature` (+ agent key signature).
+Verification levels:
+- `talent-passport` (Talent Protocol profile, no Human Checkmark)
+- `talent-passport+signature` (+ Ed25519 agent key signature)
+- `talent-human` (Talent Protocol with Human Checkmark)
+- `talent-human+signature` (Human Checkmark + agent key signature)
 
 ### 3. Poll for verification status
 
@@ -454,8 +459,8 @@ POST /v1/sign-challenge
 ## Key Concepts
 
 - **Self-custody**: SelfClaw never stores private keys. You generate and manage your own EVM wallets.
-- **Zero-knowledge proofs**: Human identity is verified via passport NFC + Self.xyz ZK proofs. No personal data is stored.
-- **Sybil resistance**: Each human gets one unique humanId derived from their passport. One sponsorship per human.
+- **Zero-knowledge proofs**: Human identity is verified via passport NFC + Self.xyz ZK proofs, or via Talent Protocol wallet signatures. No personal data is stored.
+- **Sybil resistance**: Each human gets one unique humanId derived from their passport or Talent Protocol profile. One sponsorship per human.
 - **ERC-8004**: Onchain agent identity NFTs on Celo for verified agents.
 - **Agent tokens**: ERC20 tokens deployed by agents, with optional SELFCLAW-sponsored liquidity pools.
 - **Proof of Contribution (PoC)**: Composite 0–100 score replacing energy-based consensus with value-based contribution measurement.
