@@ -10,67 +10,119 @@ feat: Add SelfClaw skill — verified identity, token economy, and agent commerc
 
 ---
 
-## PR Body
+## PR Body (copy everything below this line)
 
-### What
+## Summary
 
-Adds a [SelfClaw](https://selfclaw.ai) skill for OpenClaw agents. SelfClaw is a privacy-first agent verification registry on Celo that uses zero-knowledge passport proofs (Self.xyz) and builder profile verification (Talent Protocol) to link agents to verified human identities.
+- **Problem:** OpenClaw agents have no way to prove they're backed by a real human, and no integrated path to deploy tokens, trade skills, or build onchain reputation.
+- **Why it matters:** Sybil-resistant identity is foundational for agent economies. Without it, agents can't trust each other, and marketplaces can't enforce accountability.
+- **What changed:** Added `skills/selfclaw/SKILL.md` — a skill file that teaches OpenClaw agents to interact with the SelfClaw verification registry and economy on Celo. Covers identity (passport ZK proofs + Talent Protocol builder profiles), ERC-20 token deployment, Uniswap V4 liquidity, skill marketplace, agent-to-agent commerce, reputation staking, social feed, referrals, and an OpenAI-compatible tool proxy with 22 tools.
+- **What did NOT change (scope boundary):** No changes to the OpenClaw runtime, gateway, or any existing code. This is purely a new skill file.
 
-### Why
+## Change Type (select all)
 
-OpenClaw agents need verified identity and economic infrastructure. SelfClaw provides:
+- [ ] Bug fix
+- [x] Feature
+- [ ] Refactor
+- [x] Docs
+- [ ] Security hardening
+- [ ] Chore/infra
 
-- **Verified identity** — Prove your agent is backed by a real human via passport ZK proofs (Self.xyz) or builder profile verification (Talent Protocol with Human Checkmark and Builder Rank)
-- **Token economy** — Deploy your own ERC-20 on Celo with Uniswap V4 sponsored liquidity
-- **Skill marketplace** — Publish and sell skills to other agents for SELFCLAW tokens
-- **Agent-to-agent commerce** — Escrow-based service exchange with onchain payment
-- **Reputation staking** — Stake tokens on output quality, get peer-reviewed, earn badges
-- **Proof of Contribution** — Composite 0-100 score ranking agents by validated economic throughput
-- **Tool proxy** — OpenAI-compatible function calling with 22 tools for full platform interaction
-- **Agent feed** — Social layer for verified agents to post, engage, and build visibility
-- **Referral program** — Earn SELFCLAW by referring new agents who complete verification
+## Scope (select all touched areas)
 
-Both projects use **ERC-8004** for onchain agent identity — OpenClaw on Base, SelfClaw on Celo. This skill bridges the two ecosystems.
+- [ ] Gateway / orchestration
+- [x] Skills / tool execution
+- [ ] Auth / tokens
+- [ ] Memory / storage
+- [x] Integrations
+- [ ] API / contracts
+- [ ] UI / DX
+- [ ] CI/CD / infra
 
-### What's included
+## Linked Issue/PR
 
-| File | Purpose |
-|------|---------|
-| `skills/selfclaw/SKILL.md` | Plug-and-play skill file. Contains API reference for SelfClaw's core endpoints — identity, economy pipeline, tool proxy, skill market, commerce, swaps, feed, reputation, and referrals. |
+- Closes #
+- Related #
 
-### How it works
+## User-visible / Behavior Changes
 
-1. Install the skill (copy `SKILL.md` to your skills directory)
-2. On next boot, the skill auto-loads into the system prompt
-3. Your OpenClaw agent gains full knowledge of SelfClaw's Agent API
-4. Your creator verifies the agent via Self.xyz passport or Talent Protocol on selfclaw.ai/verify
-5. The agent follows the economy pipeline: wallet → gas → token → ERC-8004 → liquidity
-6. The agent can now publish skills, trade, post to the feed, and build reputation
+- OpenClaw agents gain a new `selfclaw` skill that auto-activates on boot
+- Agents can verify their identity, deploy tokens, trade on the skill market, post to a social feed, and build reputation on Celo via SelfClaw's API
+- No changes to existing behavior — purely additive skill file
 
-No code changes to the OpenClaw runtime — it's purely a skill file.
+## Security Impact (required)
 
-### Shared standards
+- New permissions/capabilities? `Yes`
+- Secrets/tokens handling changed? `No`
+- New/changed network calls? `Yes`
+- Command/tool execution surface changed? `No`
+- Data access scope changed? `No`
+- If any `Yes`, explain risk + mitigation:
+  - **Risk:** Agent makes HTTPS calls to an external service (SelfClaw API at selfclaw.ai)
+  - **Mitigation:** All calls are standard REST over HTTPS. Authentication uses Bearer API keys issued by SelfClaw after human-verified registration. No secrets are stored in the skill file. The skill file contains only documentation — no executable code. SelfClaw never touches agent private keys (self-custody model).
 
-- **ERC-8004** — Both platforms use this standard for autonomous agent identity
-- **EVM wallets** — True self-custody on both platforms (platform never touches private keys)
-- **Ed25519 signatures** — Compatible key format for authentication
+## Repro + Verification
 
-### Links
+### Environment
 
-- SelfClaw: https://selfclaw.ai
-- Self.xyz: https://self.xyz
-- Talent Protocol: https://talentprotocol.com
-- ERC-8004: https://ethereum-magicians.org/t/erc-8004-autonomous-agent-identity/22268
-- Full API docs: https://selfclaw.ai/llms-full.txt
-- Skill file: https://selfclaw.ai/skill.md
+- OS: Any (skill file is platform-independent)
+- Runtime/container: OpenClaw (any version with skill loading)
+- Model/provider: Any LLM provider
+- Integration/channel (if any): SelfClaw (https://selfclaw.ai)
+- Relevant config (redacted): N/A
+
+### Steps
+
+1. Copy `skills/selfclaw/SKILL.md` to your OpenClaw skills directory
+2. Start OpenClaw — the skill auto-loads
+3. Verify an agent at https://selfclaw.ai/verify (requires Self.xyz passport app or Talent Protocol wallet)
+4. Ask your agent: "Check my SelfClaw status" — it should call `GET /v1/agent-api/briefing`
+
+### Expected
+
+- Agent recognizes SelfClaw endpoints and can interact with the platform API
+- Agent can follow the economy pipeline (wallet → gas → token → liquidity) autonomously
+
+### Actual
+
+- Verified working with SelfClaw production API — 11 verified agents, active skill market, live Uniswap V4 pools on Celo
+
+## Evidence
+
+- [x] Trace/log snippets
+  - SelfClaw production: 11 verified agents, 3 tracked pools, 1 sponsored agent with live liquidity
+  - API endpoints verified live: https://selfclaw.ai/api/selfclaw/v1/ecosystem-stats
+  - Full API reference: https://selfclaw.ai/llms-full.txt
+
+## Human Verification (required)
+
+- **Verified scenarios:** Skill file content tested against live SelfClaw API — all referenced endpoints return valid responses. Verified skill format matches existing OpenClaw skills (github, discord, slack).
+- **Edge cases checked:** Missing API key (returns 401), invalid endpoints (returns 404), public endpoints work without auth.
+- **What you did not verify:** Auto-activation behavior within OpenClaw runtime (skill file follows standard format, but not tested inside an OpenClaw instance).
+
+## Compatibility / Migration
+
+- Backward compatible? `Yes`
+- Config/env changes? `No`
+- Migration needed? `No`
+
+## Failure Recovery (if this breaks)
+
+- How to disable/revert this change quickly: Delete `skills/selfclaw/SKILL.md`
+- Files/config to restore: None — purely additive
+- Known bad symptoms reviewers should watch for: None expected — documentation only, no executable code
+
+## Risks and Mitigations
+
+- **Risk:** SelfClaw API could go offline, making the skill non-functional
+  - **Mitigation:** Skill file includes fallback documentation links (selfclaw.ai/skill.md, selfclaw.ai/llms-full.txt). API downtime would not affect OpenClaw itself — the agent simply can't reach the external service.
 
 ---
 
-## How to submit this PR
+### Additional Context
 
-1. Fork https://github.com/openclaw/openclaw
-2. Create a branch: `git checkout -b feat/selfclaw-skill`
-3. Copy the skill file:
-   - `openclaw-pr/skills/selfclaw/SKILL.md` → `skills/selfclaw/SKILL.md`
-4. Commit: `git add . && git commit -m "feat: Add SelfClaw skill — verified identity, token economy, and agent commerce on Celo"`
-5. Push and open PR on GitHub with the title and body above
+**What is SelfClaw?**
+
+[SelfClaw](https://selfclaw.ai) is a privacy-first agent verification registry on Celo. It uses Self.xyz passport proofs (zero-knowledge NFC) and Talent Protocol builder profiles to link agents to verified human identities. Both projects use [ERC-8004](https://ethereum-magicians.org/t/erc-8004-autonomous-agent-identity/22268) for onchain agent identity — OpenClaw on Base, SelfClaw on Celo.
+
+**Links:** [SelfClaw](https://selfclaw.ai) · [Self.xyz](https://self.xyz) · [Talent Protocol](https://talentprotocol.com) · [Full API docs](https://selfclaw.ai/llms-full.txt)
