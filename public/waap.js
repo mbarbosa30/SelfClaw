@@ -11,7 +11,7 @@
   var REOWN_PROJECT_ID = '096df07199db5fd480157215d0fd2e9f';
 
   var celoChain = {
-    id: 'eip155:42220',
+    id: 42220,
     chainId: 42220,
     name: 'Celo',
     currency: 'CELO',
@@ -40,7 +40,7 @@
         metadata: {
           name: 'SelfClaw',
           description: 'Agent Verification Registry',
-          url: 'https://selfclaw.ai',
+          url: window.location.origin,
           icons: ['https://selfclaw.ai/claw-icon.svg']
         }
       });
