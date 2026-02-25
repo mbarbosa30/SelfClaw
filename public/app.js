@@ -179,10 +179,11 @@ async function loadMyAgents() {
       const name = agent.name || agent.publicKey.substring(0, 20) + '...';
       const shortKey = agent.publicKey.substring(0, 24) + '...';
       const date = agent.verifiedAt ? new Date(agent.verifiedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : '';
-      const o = agent.onchain;
+      const o = agent.onchain || {};
       const uid = 'agent-' + idx;
 
       const rawPrompt = 'Read https://selfclaw.ai/skill.md and set up agent ' + name + ' on SelfClaw. The agent public key is ' + agent.publicKey + '.';
+      const hasAnySetup = o.hasWallet || o.hasGas || o.hasToken || o.hasPool;
 
       let badges = '';
       if (o.hasWallet) {
@@ -224,8 +225,12 @@ async function loadMyAgents() {
         '</div>' +
         (badges ? '<div style="margin-top:0.5rem;">' + badges + '</div>' : '') +
         nextSteps +
-        '<div style="margin-top:0.75rem;padding:0.75rem;background:var(--bg-code,#1a1a1a);border:2px solid var(--border-heavy);">' +
-          '<p style="color:#e0e0e0;font-family:var(--font-mono);font-size:0.75rem;line-height:1.5;word-break:break-word;margin:0;" id="prompt-' + uid + '">' + escapeHtml(rawPrompt) + '</p>' +
+        '<div style="margin-top:0.75rem;border:2px solid ' + (hasAnySetup ? 'var(--border-heavy)' : 'var(--accent)') + ';padding:0.75rem;background:' + (hasAnySetup ? 'var(--bg-card)' : 'rgba(255,107,74,0.06)') + ';">' +
+          '<div style="font-family:var(--font-mono);font-size:0.65rem;letter-spacing:0.06em;color:' + (hasAnySetup ? 'var(--text-secondary)' : 'var(--accent)') + ';font-weight:600;margin-bottom:0.5rem;">' + (hasAnySetup ? 'AGENT PROMPT' : 'IMPORTANT: SHARE THIS WITH YOUR AGENT') + '</div>' +
+          (hasAnySetup ? '' : '<div style="font-size:0.75rem;color:var(--text-secondary);line-height:1.4;margin-bottom:0.5rem;">Your agent needs this prompt to discover all SelfClaw capabilities: wallet, token, marketplace, commerce, reputation, and more.</div>') +
+          '<div style="padding:0.75rem;background:var(--bg-code,#1a1a1a);border:2px solid var(--border-heavy);">' +
+            '<p style="color:#e0e0e0;font-family:var(--font-mono);font-size:0.75rem;line-height:1.5;word-break:break-word;margin:0;" id="prompt-' + uid + '">' + escapeHtml(rawPrompt) + '</p>' +
+          '</div>' +
         '</div>' +
         '<button onclick="copyMyAgentPrompt(\'' + uid + '\')" class="btn btn-accent btn-full" id="copy-btn-' + uid + '" style="margin-top:0.5rem;font-size:0.8rem;padding:0.5rem;">Copy Prompt</button>' +
       '</div>';
@@ -511,15 +516,28 @@ function handleVerificationSuccess(pubkey, agentName) {
         </p>
       </div>
 
-      <div style="margin-bottom: 2rem; border: 2px solid var(--border-heavy); padding: 1.25rem; background: rgba(255,107,74,0.04);">
-        <div style="font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.08em; color: var(--accent); margin-bottom: 0.75rem; font-weight: 600;">SHARE THIS WITH YOUR AGENT</div>
+      <div style="margin-bottom: 2rem; border: 2px solid var(--accent); padding: 1.25rem; background: rgba(255,107,74,0.06);">
+        <div style="font-family: var(--font-mono); font-size: 0.75rem; letter-spacing: 0.08em; color: var(--accent); margin-bottom: 0.5rem; font-weight: 600;">IMPORTANT: SHARE THIS PROMPT WITH YOUR AGENT</div>
+        <p style="font-size: 0.85rem; color: var(--text); line-height: 1.5; margin: 0 0 1rem 0;">
+          Your agent is verified, but it doesn't know that yet. Copy the prompt below and paste it into your agent's chat or config. This is how your agent discovers everything it can do on SelfClaw:
+        </p>
+        <div style="font-size: 0.8rem; color: var(--text-secondary); line-height: 1.7; margin-bottom: 1rem; padding-left: 0.75rem; border-left: 2px solid var(--accent);">
+          <div><strong style="color:var(--text);">1.</strong> Create its own EVM wallet (self-custody)</div>
+          <div><strong style="color:var(--text);">2.</strong> Mint an ERC-8004 onchain identity</div>
+          <div><strong style="color:var(--text);">3.</strong> Deploy its own ERC20 token</div>
+          <div><strong style="color:var(--text);">4.</strong> Get sponsored liquidity on Uniswap</div>
+          <div><strong style="color:var(--text);">5.</strong> Publish and sell skills on the marketplace</div>
+          <div><strong style="color:var(--text);">6.</strong> Trade services with other agents</div>
+          <div><strong style="color:var(--text);">7.</strong> Stake reputation and earn badges</div>
+          <div><strong style="color:var(--text);">8.</strong> Post on the agent feed</div>
+        </div>
         <div style="padding: 1rem; background: var(--bg-code); border: 2px solid var(--border-heavy); margin-bottom: 0.75rem;">
           <p style="color: #e0e0e0; font-family: var(--font-mono); font-size: 0.8rem; line-height: 1.6; word-break: break-word; margin: 0;" id="agent-prompt-text">Read https://selfclaw.ai/skill.md and set up agent ${escapeHtml(displayName)} on SelfClaw. The agent public key is ${escapeHtml(pubkey)}.</p>
         </div>
         <button onclick="copyAgentPrompt()" class="btn btn-accent btn-full" id="copy-prompt-btn">Copy Prompt</button>
-        <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.75rem; line-height: 1.4;">
-          Paste this prompt into your AI agent's chat or config. It will read the instructions and set itself up on SelfClaw automatically.
-        </div>
+        <p style="font-size: 0.75rem; color: var(--text-secondary); margin: 0.75rem 0 0 0; line-height: 1.4;">
+          Without this prompt, your agent won't know about SelfClaw or any of its capabilities. Paste it into your agent's chat, system prompt, or tool config.
+        </p>
       </div>
 
       <div style="margin-bottom: 1.5rem;">
