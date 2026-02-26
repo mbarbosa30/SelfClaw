@@ -2286,7 +2286,7 @@ td.compare-us {
 }
 
 .pillar {
-  padding: 1.5rem;
+  padding: 1.75rem;
   border-right: 2px solid var(--border-heavy);
 }
 
@@ -2305,7 +2305,7 @@ td.compare-us {
 }
 
 .pillar h3 {
-  font-size: 1rem;
+  font-size: 1.1rem;
   margin-bottom: 0.4rem;
 }
 
@@ -2314,9 +2314,9 @@ td.compare-us {
 }
 
 .pillar p {
-  font-size: 0.8rem;
+  font-size: 0.9rem;
   color: var(--text-secondary);
-  line-height: 1.55;
+  line-height: 1.6;
   margin: 0;
 }
 
@@ -2333,7 +2333,7 @@ td.compare-us {
 }
 
 .step-item {
-  padding: 1.5rem;
+  padding: 1.75rem;
   border-right: 2px solid var(--border-heavy);
 }
 
@@ -2351,7 +2351,7 @@ td.compare-us {
 }
 
 .step-item h3 {
-  font-size: 1rem;
+  font-size: 1.1rem;
   margin-bottom: 0.35rem;
 }
 
@@ -2360,9 +2360,9 @@ td.compare-us {
 }
 
 .step-item p {
-  font-size: 0.8rem;
+  font-size: 0.9rem;
   color: var(--text-muted);
-  line-height: 1.55;
+  line-height: 1.6;
   margin: 0;
 }
 
@@ -2376,11 +2376,11 @@ td.compare-us {
 .diff-item {
   background: var(--bg-card);
   border: 2px solid var(--border-heavy);
-  padding: 1.25rem;
+  padding: 1.5rem;
 }
 
 .diff-item h4 {
-  font-size: 0.9rem;
+  font-size: 1rem;
   font-weight: 600;
   margin-bottom: 0.35rem;
   display: flex;
@@ -2398,9 +2398,9 @@ td.compare-us {
 }
 
 .diff-item p {
-  font-size: 0.8rem;
+  font-size: 0.9rem;
   color: var(--text-secondary);
-  line-height: 1.55;
+  line-height: 1.6;
   margin: 0;
 }
 
