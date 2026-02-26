@@ -216,9 +216,11 @@
     .callout strong {
       color: var(--accent);
     }
+    .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
     @media (max-width: 768px) {
       .partner-hero h1 { font-size: 1.8rem; }
       .comparison-grid { grid-template-columns: 1fr; }
+      .endpoint-table td code { word-break: break-all; }
     }
   </style>
 </head>
@@ -289,6 +291,7 @@
       <h2>Required Endpoints</h2>
       <p>All endpoints are CORS-enabled for cross-origin embedding. Base URL: <code>https://selfclaw.ai/api/selfclaw</code></p>
 
+      <div class="table-scroll">
       <table class="endpoint-table">
         <thead>
           <tr><th>Method</th><th>Endpoint</th><th>Purpose</th><th>Auth</th></tr>
@@ -350,6 +353,7 @@
           </tr>
         </tbody>
       </table>
+      </div>
     </section>
 
     <section class="partner-section">
@@ -383,6 +387,7 @@
       </div>
 
       <h3>Options</h3>
+      <div class="table-scroll">
       <table class="endpoint-table">
         <thead>
           <tr><th>Option</th><th>Type</th><th>Required</th><th>Description</th></tr>
@@ -400,6 +405,7 @@
           <tr><td><code>pollInterval</code></td><td>number</td><td>No</td><td>Polling interval in ms (default: 3000)</td></tr>
         </tbody>
       </table>
+      </div>
     </section>
 
     <section class="partner-section">
