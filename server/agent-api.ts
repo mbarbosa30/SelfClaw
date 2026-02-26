@@ -75,7 +75,7 @@ router.get("/v1/agent-api/me", agentApiLimiter, authenticateAgent, async (req: R
     const metadata = (agent.metadata as Record<string, any>) || {};
 
     let meBuilderContext: any = null;
-    if (metadata.provider === 'talent') {
+    if (metadata.provider === 'talent' || metadata.talentLinked) {
       meBuilderContext = {
         displayName: metadata.displayName || null,
         bio: metadata.bio || null,

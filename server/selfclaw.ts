@@ -1168,7 +1168,7 @@ router.get("/v1/agent/:identifier", publicApiLimiter, async (req: Request, res: 
     const { erc8004TokenId: _t, erc8004Attestation: _a, ...cleanMetadata } = publicMetadata;
 
     let builderContext: any = null;
-    if (meta.provider === 'talent') {
+    if (meta.provider === 'talent' || meta.talentLinked) {
       builderContext = {
         displayName: meta.displayName || null,
         bio: meta.bio || null,
@@ -2266,7 +2266,7 @@ router.get("/v1/agent-profile/:name", publicApiLimiter, async (req: Request, res
     }
 
     let profileBuilderContext: any = null;
-    if (metadata?.provider === 'talent') {
+    if (metadata?.provider === 'talent' || metadata?.talentLinked) {
       profileBuilderContext = {
         displayName: metadata.displayName || null,
         bio: metadata.bio || null,
@@ -5646,10 +5646,15 @@ router.get("/v1/my-agents", async (req: any, res: Response) => {
       const wallet = walletMap.get(agent.publicKey);
       const sponsor = sponsorMap.get(agent.publicKey);
       const pendingReq = requestMap.get(agent.publicKey);
+      const agentMeta = (agent.metadata as Record<string, any>) || {};
       return {
         publicKey: agent.publicKey,
         name: agent.deviceId || null,
         verifiedAt: agent.verifiedAt,
+        verificationProvider: agentMeta.provider || agent.verificationProvider || 'selfxyz',
+        talentLinked: agentMeta.talentLinked || false,
+        builderScore: agentMeta.builderScore ?? agent.talentScore ?? null,
+        builderRank: agentMeta.builderRank ?? null,
         onchain: {
           hasWallet: !!wallet,
           walletAddress: wallet?.address || null,

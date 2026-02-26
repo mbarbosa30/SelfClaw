@@ -19,6 +19,9 @@ The application is built with Node.js 22+ and TypeScript (tsx), using Express.js
 #### Talent Protocol Builder Context Enrichment
 When agents verify via Talent Protocol, the system extracts enriched builder context from the Talent API v3 `/profile` and `/score` endpoints: displayName, bio, imageUrl, github handle, twitter handle, linkedin, location, tags, credentials, builderScore (points), and builderRank (rank_position). This data is stored in the `metadata` JSON field of `verified_bots` and surfaced as a `builderContext` object in three API responses: `/v1/agent/:identifier`, `/v1/agent-profile/:name`, and `/v1/agent-api/me`. Non-talent agents return `builderContext: null`. The `/v1/talent/check-wallet` endpoint also returns `builderContext` and `builderRank`.
 
+#### Talent Profile Linking for Self.xyz Users
+Self.xyz verified users can additionally link their Talent Protocol builder profile via wallet connect on the My Agents dashboard. Endpoints: `GET /v1/talent/link-nonce` (requires Self.xyz session), `POST /v1/talent/link-profile` (accepts walletAddress, signature, sessionKey). On success, all agents under the user's humanId get their metadata enriched with builder context (`metadata.talentLinked: true`). The `builderContext` is then surfaced in API responses for those agents (condition: `meta.provider === 'talent' || meta.talentLinked`). The My Agents dashboard shows a "LINK TALENT PROFILE" button for Self.xyz users who haven't linked yet, and a "TALENT LINKED" badge with Builder Score once linked.
+
 #### Talent Protocol Verification Levels
 - `talent-passport` — wallet connected, Talent Protocol passport found (no Human Checkmark)
 - `talent-passport+signature` — passport + agent key Ed25519 signature

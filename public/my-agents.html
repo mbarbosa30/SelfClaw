@@ -630,6 +630,7 @@
     </footer>
   </div>
 
+  <script src="/waap.js"></script>
   <script src="/auth.js"></script>
   <script src="/nav-gate.js"></script>
   <script>
@@ -2565,6 +2566,84 @@
       }).catch(function() {});
     }
     loadPlatformUpdates();
+  </script>
+  <script>
+    var _linkSessionKey = null;
+    var _linkNonce = null;
+
+    async function startLinkTalent() {
+      var btn = document.getElementById('link-talent-btn');
+      var statusEl = document.getElementById('link-talent-status');
+      if (!btn) return;
+
+      btn.disabled = true;
+      btn.textContent = 'CONNECTING...';
+      if (statusEl) { statusEl.style.display = 'none'; statusEl.textContent = ''; }
+
+      try {
+        var nonceRes = await fetch('/api/selfclaw/v1/talent/link-nonce', { credentials: 'same-origin' });
+        if (!nonceRes.ok) {
+          var errData = await nonceRes.json().catch(function() { return {}; });
+          throw new Error(errData.error || 'Failed to get nonce');
+        }
+        var nonceData = await nonceRes.json();
+        _linkSessionKey = nonceData.sessionKey;
+        _linkNonce = nonceData.nonce;
+
+        var result = await window.selfclawWaaP.connectWallet();
+        var walletAddress = result.address;
+
+        btn.textContent = 'SIGNING...';
+
+        var message = 'Link Talent Profile to SelfClaw\nnonce: ' + _linkNonce;
+        var signature = await window.selfclawWaaP.signMessage(message);
+
+        btn.textContent = 'LINKING...';
+
+        var linkRes = await fetch('/api/selfclaw/v1/talent/link-profile', {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            walletAddress: walletAddress,
+            signature: signature,
+            sessionKey: _linkSessionKey
+          })
+        });
+
+        var linkData = await linkRes.json();
+        if (!linkRes.ok) {
+          throw new Error(linkData.error || 'Failed to link profile');
+        }
+
+        if (statusEl) {
+          statusEl.style.display = 'block';
+          statusEl.style.borderColor = '#22c55e';
+          statusEl.style.color = '#22c55e';
+          var scoreText = linkData.builderScore ? ' — Builder Score: ' + linkData.builderScore : '';
+          var nameText = linkData.displayName ? linkData.displayName : walletAddress.substring(0, 6) + '...' + walletAddress.slice(-4);
+          statusEl.textContent = 'Talent profile linked: ' + nameText + scoreText;
+        }
+
+        btn.textContent = 'LINKED';
+        btn.style.borderColor = '#22c55e';
+        btn.style.color = '#22c55e';
+
+        setTimeout(function() { window.location.reload(); }, 2000);
+      } catch (err) {
+        btn.disabled = false;
+        btn.textContent = 'LINK TALENT PROFILE';
+        if (statusEl) {
+          statusEl.style.display = 'block';
+          statusEl.style.borderColor = 'var(--red, #ef4444)';
+          statusEl.style.color = 'var(--red, #ef4444)';
+          statusEl.textContent = err.message || 'Failed to link profile';
+        }
+        if (window.selfclawWaaP) {
+          await window.selfclawWaaP.disconnect().catch(function() {});
+        }
+      }
+    }
   </script>
   <script src="/nav-toggle.js"></script>
 </body>

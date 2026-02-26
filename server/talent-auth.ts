@@ -377,6 +377,154 @@ router.post("/v1/talent/nonce", (_req: Request, res: Response) => {
   res.json({ nonce, sessionKey, message: `Sign in with SelfClaw\nnonce: ${nonce}` });
 });
 
+router.get("/v1/talent/link-nonce", (req: Request, res: Response) => {
+  if (!(req.session as any)?.isAuthenticated || !(req.session as any)?.humanId) {
+    return res.status(401).json({ error: "Must be logged in via Self.xyz to link a Talent profile" });
+  }
+  const nonce = crypto.randomBytes(32).toString("hex");
+  const sessionKey = crypto.randomBytes(16).toString("hex");
+  talentNonces.set(sessionKey, { nonce, expires: Date.now() + 5 * 60 * 1000 });
+  res.json({ nonce, sessionKey, message: `Link Talent Profile to SelfClaw\nnonce: ${nonce}` });
+});
+
+router.post("/v1/talent/link-profile", verificationLimiter, async (req: Request, res: Response) => {
+  try {
+    const session = req.session as any;
+    if (!session?.isAuthenticated || !session?.humanId) {
+      return res.status(401).json({ error: "Must be logged in via Self.xyz to link a Talent profile" });
+    }
+
+    const { walletAddress, signature, sessionKey } = req.body;
+
+    if (!walletAddress || !/^0x[0-9a-fA-F]{40}$/.test(walletAddress)) {
+      return res.status(400).json({ error: "Valid EVM wallet address required (0x...)" });
+    }
+    if (!signature || !sessionKey) {
+      return res.status(400).json({ error: "signature and sessionKey required" });
+    }
+
+    const storedNonce = talentNonces.get(sessionKey);
+    if (!storedNonce || storedNonce.expires < Date.now()) {
+      talentNonces.delete(sessionKey);
+      return res.status(400).json({ error: "Nonce expired or invalid. Request a new one." });
+    }
+    talentNonces.delete(sessionKey);
+
+    const expectedMessage = `Link Talent Profile to SelfClaw\nnonce: ${storedNonce.nonce}`;
+    try {
+      const isValidSig = await verifyMessage({
+        address: walletAddress as `0x${string}`,
+        message: expectedMessage,
+        signature: signature as `0x${string}`,
+      });
+      if (!isValidSig) {
+        return res.status(401).json({ error: "Invalid wallet signature" });
+      }
+    } catch (sigErr: any) {
+      console.error("[talent-auth] Link profile signature verification failed:", sigErr.message);
+      return res.status(401).json({ error: "Signature verification failed" });
+    }
+
+    let builderContext: any = null;
+    let builderScore = 0;
+    let builderRank = 0;
+    let talentId: string | null = null;
+    let displayName: string | null = null;
+
+    try {
+      const status = await checkWalletStatus(walletAddress);
+      if (!status.found || status.source === 'wallet') {
+        return res.status(404).json({
+          error: "No Talent Protocol profile found for this wallet",
+          details: `Wallet ${walletAddress} is not registered on Talent Protocol. Create a passport at talentprotocol.com`,
+        });
+      }
+      builderContext = status.builderContext;
+      builderScore = status.builderScore;
+      builderRank = status.builderRank;
+      talentId = status.talentId;
+      displayName = status.displayName;
+    } catch (err: any) {
+      console.error("[talent-auth] Talent API lookup failed during link:", err.message);
+      return res.status(503).json({
+        error: "Talent Protocol API is temporarily unavailable. Please try again later.",
+      });
+    }
+
+    const humanId = session.humanId;
+
+    const agents = await db.select()
+      .from(verifiedBots)
+      .where(eq(verifiedBots.humanId, humanId));
+
+    for (const agent of agents) {
+      const existingMeta = (agent.metadata as Record<string, any>) || {};
+      const updatedMeta = {
+        ...existingMeta,
+        talentLinked: true,
+        talentWalletAddress: walletAddress.toLowerCase(),
+        talentId,
+        builderScore,
+        builderRank,
+        displayName: builderContext?.displayName || displayName || existingMeta.displayName || null,
+        bio: builderContext?.bio || existingMeta.bio || null,
+        imageUrl: builderContext?.imageUrl || existingMeta.imageUrl || null,
+        github: builderContext?.github || existingMeta.github || null,
+        twitter: builderContext?.twitter || existingMeta.twitter || null,
+        linkedin: builderContext?.linkedin || existingMeta.linkedin || null,
+        location: builderContext?.location || existingMeta.location || null,
+        tags: builderContext?.tags?.length ? builderContext.tags : (existingMeta.tags || []),
+        credentials: builderContext?.credentials?.length ? builderContext.credentials : (existingMeta.credentials || []),
+        talentLinkedAt: new Date().toISOString(),
+      };
+
+      await db.update(verifiedBots)
+        .set({
+          metadata: updatedMeta,
+          talentScore: builderScore || agent.talentScore,
+          talentId: talentId || agent.talentId,
+        })
+        .where(eq(verifiedBots.publicKey, agent.publicKey));
+    }
+
+    const existingUser = await db.select()
+      .from(users)
+      .where(eq(users.humanId, humanId))
+      .limit(1);
+
+    if (existingUser.length > 0 && !existingUser[0].walletAddress) {
+      await db.update(users)
+        .set({ walletAddress: walletAddress.toLowerCase() })
+        .where(eq(users.humanId, humanId));
+    }
+
+    session.walletAddress = walletAddress.toLowerCase();
+    session.talentLinked = true;
+
+    logActivity("talent_profile_linked", humanId, undefined, undefined, {
+      walletAddress,
+      builderScore,
+      builderRank,
+      agentsUpdated: agents.length,
+    });
+
+    console.log(`[talent-auth] Talent profile linked for humanId=${humanId}, wallet=${walletAddress}, ${agents.length} agents updated, builderScore=${builderScore}`);
+
+    res.json({
+      success: true,
+      walletAddress,
+      builderScore,
+      builderRank,
+      displayName: builderContext?.displayName || displayName || null,
+      builderContext: builderContext || null,
+      agentsUpdated: agents.length,
+    });
+  } catch (error: any) {
+    console.error("[talent-auth] link-profile error:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 router.post("/v1/talent/connect", async (req: Request, res: Response) => {
   try {
     const { walletAddress, signature, sessionKey } = req.body;

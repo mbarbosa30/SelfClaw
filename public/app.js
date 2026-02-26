@@ -175,7 +175,30 @@ async function loadMyAgents() {
       return;
     }
 
-    list.innerHTML = data.agents.map((agent, idx) => {
+    const isSelfxyzUser = data.agents.some(a => a.verificationProvider === 'selfxyz' || (!a.verificationProvider && !a.talentLinked));
+    const anyTalentLinked = data.agents.some(a => a.talentLinked);
+    const showLinkButton = isSelfxyzUser && !anyTalentLinked;
+
+    let linkTalentHtml = '';
+    if (showLinkButton) {
+      linkTalentHtml = '<div style="border:2px solid var(--border-heavy);padding:1rem;margin-bottom:1.5rem;background:var(--bg-card);">' +
+        '<div style="font-family:var(--font-mono);font-size:0.7rem;letter-spacing:0.06em;color:var(--text-secondary);font-weight:600;margin-bottom:0.5rem;">ENRICH YOUR PROFILE</div>' +
+        '<p style="font-size:0.8rem;color:var(--text);line-height:1.5;margin:0 0 0.75rem 0;">Connect your wallet to link your Talent Protocol builder profile. This adds your Builder Score, GitHub, social handles, and credentials to all your agents.</p>' +
+        '<button id="link-talent-btn" onclick="startLinkTalent()" style="width:100%;padding:0.6rem;font-family:var(--font-mono);font-size:0.8rem;font-weight:600;letter-spacing:0.04em;background:none;border:2px solid var(--accent);color:var(--accent);cursor:pointer;">LINK TALENT PROFILE</button>' +
+        '<div id="link-talent-status" style="display:none;margin-top:0.75rem;padding:0.5rem 0.75rem;font-family:var(--font-mono);font-size:0.75rem;border:2px solid var(--border-heavy);"></div>' +
+      '</div>';
+    } else if (anyTalentLinked) {
+      const linked = data.agents.find(a => a.talentLinked);
+      if (linked && linked.builderScore) {
+        linkTalentHtml = '<div style="border:2px solid #22c55e;padding:0.75rem;margin-bottom:1.5rem;display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;">' +
+          '<span style="font-family:var(--font-mono);font-size:0.65rem;padding:2px 6px;border:1px solid #22c55e;color:#22c55e;">TALENT LINKED</span>' +
+          '<span style="font-family:var(--font-mono);font-size:0.75rem;color:var(--text);">Builder Score: ' + linked.builderScore + '</span>' +
+          (linked.builderRank ? '<span style="font-family:var(--font-mono);font-size:0.75rem;color:var(--text-secondary);">Rank #' + linked.builderRank + '</span>' : '') +
+        '</div>';
+      }
+    }
+
+    list.innerHTML = linkTalentHtml + data.agents.map((agent, idx) => {
       const name = agent.name || agent.publicKey.substring(0, 20) + '...';
       const shortKey = agent.publicKey.substring(0, 24) + '...';
       const date = agent.verifiedAt ? new Date(agent.verifiedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : '';
@@ -197,6 +220,9 @@ async function loadMyAgents() {
       }
       if (o.hasPool) {
         badges += '<span style="display:inline-block;font-family:var(--font-mono);font-size:0.65rem;padding:2px 6px;border:1px solid #22c55e;color:#22c55e;margin-right:4px;">POOL</span>';
+      }
+      if (agent.talentLinked) {
+        badges += '<span style="display:inline-block;font-family:var(--font-mono);font-size:0.65rem;padding:2px 6px;border:1px solid #8b5cf6;color:#8b5cf6;margin-right:4px;">TALENT</span>';
       }
 
       const hasAnyOnchain = o.hasWallet || o.hasGas || o.hasToken || o.hasPool;
