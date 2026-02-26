@@ -44,6 +44,32 @@
     return 'light';
   }
 
+  function bytesToHex(bytes) {
+    var hex = '';
+    for (var i = 0; i < bytes.length; i++) {
+      hex += ('0' + bytes[i].toString(16)).slice(-2);
+    }
+    return hex;
+  }
+
+  async function generateEd25519Keypair() {
+    if (typeof crypto !== 'undefined' && crypto.subtle && crypto.subtle.generateKey) {
+      try {
+        var keypair = await crypto.subtle.generateKey('Ed25519', true, ['sign', 'verify']);
+        var rawPublic = await crypto.subtle.exportKey('raw', keypair.publicKey);
+        var pkcs8Private = await crypto.subtle.exportKey('pkcs8', keypair.privateKey);
+        return {
+          publicKey: bytesToHex(new Uint8Array(rawPublic)),
+          privateKey: bytesToHex(new Uint8Array(pkcs8Private)),
+          cryptoKeyPair: keypair
+        };
+      } catch (e) {
+        // Ed25519 not supported in this browser, fall through
+      }
+    }
+    throw new Error('Ed25519 key generation requires a modern browser (Chrome 113+, Edge 113+, Safari 17+, Firefox 130+). Please provide agentPublicKey manually.');
+  }
+
   function SelfClawVerify(options) {
     if (!options.container) throw new Error('SelfClaw.verify: container is required');
     if (!options.agentName) throw new Error('SelfClaw.verify: agentName is required');
@@ -61,6 +87,7 @@
     var pollInterval = options.pollInterval || 3000;
     var polling = null;
     var sessionId = null;
+    var generatedKeypair = null;
 
     el.innerHTML = '';
     el.classList.add('sc-verify');
@@ -85,8 +112,16 @@
       render('<div class="sc-verify-status"><span class="sc-verify-spinner"></span> Starting verification&hellip;</div>');
 
       try {
+        var pubKeyHex = options.agentPublicKey;
+
+        if (!pubKeyHex) {
+          render('<div class="sc-verify-status"><span class="sc-verify-spinner"></span> Generating agent keypair&hellip;</div>');
+          generatedKeypair = await generateEd25519Keypair();
+          pubKeyHex = generatedKeypair.publicKey;
+        }
+
         var body = {
-          agentPublicKey: options.agentPublicKey || '',
+          agentPublicKey: pubKeyHex,
           agentName: options.agentName,
           agentDescription: options.agentDescription || '',
           category: options.category || 'general'
@@ -142,12 +177,18 @@
               '&#10003; Verified</div>' +
               '<div class="sc-verify-status" style="font-size:0.8rem;">Agent: ' + escapeHtml(options.agentName) + '</div>'
             );
-            options.onVerified({
+            var result = {
               humanId: data.humanId,
-              publicKey: data.publicKey || options.agentPublicKey,
+              publicKey: data.publicKey || options.agentPublicKey || (generatedKeypair ? generatedKeypair.publicKey : undefined),
               agentName: options.agentName,
               sessionId: sessionId
-            });
+            };
+            if (generatedKeypair) {
+              result.privateKey = generatedKeypair.privateKey;
+              result.cryptoKeyPair = generatedKeypair.cryptoKeyPair;
+              result.keyGenerated = true;
+            }
+            options.onVerified(result);
           }
         } catch (e) {
           // polling error, keep trying
@@ -172,7 +213,7 @@
     };
   }
 
-  var SelfClaw = { verify: SelfClawVerify, API_BASE: API_BASE };
+  var SelfClaw = { verify: SelfClawVerify, API_BASE: API_BASE, generateKeypair: generateEd25519Keypair };
 
   if (typeof module !== 'undefined' && module.exports) {
     module.exports = SelfClaw;

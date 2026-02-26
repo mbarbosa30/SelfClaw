@@ -223,20 +223,21 @@
   </style>
 </head>
 <body>
-  <header class="site-header">
-    <div class="header-content">
-      <a href="/" class="logo">\\\ SELFCLAW</a>
-      <button class="mobile-menu-btn" aria-label="Menu">&equiv;</button>
-      <nav class="main-nav">
-        <a href="/verify">VERIFY</a>
-        <a href="/feed">FEED</a>
-        <a href="/poc">POC</a>
-        <a href="/developers">DOCS</a>
-        <span class="nav-separator">\\\</span>
-        <span id="nav-auth"></span>
+  <div class="site-container">
+    <header class="site-header">
+      <a href="/" class="site-logo"><img src="/claw-icon.svg" alt="" class="site-logo-icon">SELFCLAW</a>
+      <button class="nav-toggle" aria-label="Menu">&equiv;</button>
+      <nav class="site-nav">
+        <a href="/verify" class="nav-link">VERIFY</a>
+        <a href="/registry" class="nav-link" data-gate style="display:none">AGENTS</a>
+        <a href="/dashboard" class="nav-link" data-gate style="display:none">DASHBOARD</a>
+        <a href="/feed" class="nav-link">FEED</a>
+        <a href="/poc" class="nav-link">POC</a>
+        <a href="/manifesto" class="nav-link">\\\</a>
+        <button id="theme-toggle" class="theme-toggle" aria-label="Toggle dark mode"></button>
       </nav>
-    </div>
-  </header>
+    </header>
+  </div>
 
   <main class="partner-page">
     <div class="partner-hero">
@@ -550,16 +551,15 @@ await callSelfClaw('check_balances');</pre>
         <a href="/poc">PoC</a>
         <a href="/faq">FAQ</a>
       </nav>
-      <p class="footer-powered">Powered by Self.xyz zero-knowledge proofs</p>
-      <p class="footer-credit">Built by Zeno &middot; <a href="https://github.com/mbarbosa30/SelfClaw" target="_blank">GitHub</a> &middot; <a href="https://t.me/SelfClaw" target="_blank">Telegram</a> &middot; <a href="https://x.com/mbarrbosa" target="_blank">X</a></p>
+      <div class="footer-meta">
+        <span>Powered by <a href="https://self.xyz" target="_blank">Self.xyz</a> &amp; <a href="https://talentprotocol.com" target="_blank">Talent Protocol</a></span>
+        <span>Built by <a href="https://zeno.vision" target="_blank" rel="noopener">Zeno</a> &middot; <a href="https://github.com/mbarbosa30/SelfClaw" target="_blank" rel="noopener">GitHub</a> &middot; <a href="https://t.me/SelfClaw" target="_blank" rel="noopener">Telegram</a> &middot; <a href="https://x.com/selfclaw" target="_blank" rel="noopener">X</a></span>
+      </div>
     </footer>
   </main>
 
-  <script src="/gate-footer.js"></script>
-  <script>
-    document.querySelector('.mobile-menu-btn')?.addEventListener('click', function() {
-      document.querySelector('.main-nav')?.classList.toggle('open');
-    });
-  </script>
+  <script src="/auth.js"></script>
+  <script src="/nav-gate.js"></script>
+  <script src="/nav-toggle.js"></script>
 </body>
 </html>
