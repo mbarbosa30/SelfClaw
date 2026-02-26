@@ -144,6 +144,7 @@ app.get("/feed", (_req: Request, res: Response) => sendHtml(res, "feed.html"));
 app.get("/poc", (_req: Request, res: Response) => sendHtml(res, "poc.html"));
 app.get("/trust-thesis", (_req: Request, res: Response) => sendHtml(res, "trust-thesis.html", { "X-Robots-Tag": "noindex, nofollow" }));
 app.get("/partners/perkos", (_req: Request, res: Response) => sendHtml(res, "partner-perkos.html", { "X-Robots-Tag": "noindex, nofollow" }));
+app.get("/partners/zhc", (_req: Request, res: Response) => sendHtml(res, "partner-zhc.html", { "X-Robots-Tag": "noindex, nofollow" }));
 
 app.get("/skills", (_req: Request, res: Response) => res.redirect(301, "/skill-market"));
 app.get("/how-it-works", (_req: Request, res: Response) => res.redirect(301, "/"));
