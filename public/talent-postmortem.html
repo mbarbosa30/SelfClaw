@@ -346,8 +346,8 @@
           <span class="metric-label">Talent-Path Agents</span>
         </div>
         <div class="metric-card">
-          <span class="metric-value" id="pm-talent-linked">&mdash;</span>
-          <span class="metric-label">Talent Profile Links</span>
+          <span class="metric-value" id="pm-talent-signins">&mdash;</span>
+          <span class="metric-label">Talent Sign-ins</span>
         </div>
       </div>
       <p id="pm-summary"></p>
@@ -645,14 +645,13 @@
         document.getElementById('pm-total-agents').textContent = d.totalAgents;
         document.getElementById('pm-unique-humans').textContent = d.uniqueHumans;
         document.getElementById('pm-talent-agents').textContent = d.talentAgents;
-        document.getElementById('pm-talent-linked').textContent = d.talentLinked;
+        document.getElementById('pm-talent-signins').textContent = d.talentSignins;
         var selfxyz = d.totalAgents - d.talentAgents;
-        var summary = 'All ' + d.totalAgents + ' verified agents used the Self.xyz passport path. '
-          + d.talentAgents + ' agent' + (d.talentAgents !== 1 ? 's' : '') + ' verified via the Talent Protocol flow. '
-          + d.talentLinked + ' Talent profile link' + (d.talentLinked !== 1 ? 's' : '') + ' completed. '
-          + 'The integration is live and fully functional.';
-        if (d.talentAgents === 0 && d.talentLinked === 0) {
-          summary = 'All ' + d.totalAgents + ' verified agents used the Self.xyz passport path. Zero agents verified via the Talent Protocol flow. Zero Talent profile links completed. The integration is live and fully functional \u2014 it has seen no organic usage through the Talent path yet.';
+        var summary;
+        if (d.talentAgents === 0) {
+          summary = 'All ' + d.totalAgents + ' verified agents used the Self.xyz passport path. Zero agents verified via the Talent Protocol flow. ' + d.talentSignins + ' Talent sign-in' + (d.talentSignins !== 1 ? 's' : '') + ' via wallet connect. The integration is live and fully functional \u2014 it has seen no organic agent verification through the Talent path yet.';
+        } else {
+          summary = selfxyz + ' agent' + (selfxyz !== 1 ? 's' : '') + ' verified via Self.xyz passport path. ' + d.talentAgents + ' agent' + (d.talentAgents !== 1 ? 's' : '') + ' verified via the Talent Protocol flow. ' + d.talentSignins + ' Talent sign-in' + (d.talentSignins !== 1 ? 's' : '') + ' via wallet connect. The integration is live and fully functional.';
         }
         document.getElementById('pm-summary').textContent = summary;
         var userBase = document.getElementById('pm-talent-user-base');
