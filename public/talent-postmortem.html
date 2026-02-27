@@ -519,9 +519,9 @@
     </section>
 
     <section class="partner-section">
-      <h2>Why Zero Talent-Path Usage</h2>
+      <h2 id="pm-talent-section-title">Why Zero Talent-Path Usage</h2>
       <ul>
-        <li>The platform is pre-PMF with a total user base of 9 humans</li>
+        <li id="pm-talent-user-base">The platform is pre-PMF with a total user base of &mdash; humans</li>
         <li>The Self.xyz path is simpler (passport NFC scan vs. wallet connect + signature challenge)</li>
         <li>No dedicated activation of the Talent builder community beyond one X post</li>
         <li>The integration is infrastructure &mdash; it needs activation, not more engineering</li>
@@ -608,7 +608,7 @@
         <li><strong>Speed:</strong> 6 hours from idea to production-grade integration</li>
         <li><strong>Reach:</strong> 23,397 impressions on the announcement (5.8x a normal post)</li>
         <li><strong>Market:</strong> Measurable but unsustained impact &mdash; +41% TALENT volume, +20% price, then reversion</li>
-        <li><strong>Usage:</strong> Zero Talent-path verifications &mdash; activation matters more than engineering at this stage</li>
+        <li id="pm-conclusion-usage"><strong>Usage:</strong> &mdash; Talent-path verifications &mdash; activation matters more than engineering at this stage</li>
         <li><strong>Pools:</strong> Two experimental pools validated the thesis &mdash; TALENT benefits from exposure to paired token activity</li>
       </ul>
       <p>The real opportunity isn&rsquo;t identity verification. It&rsquo;s positioning TALENT as the economic routing layer for the entire builder ecosystem &mdash; the base pair for every builder token launch, generating compounding volume and fees through arbitrage.</p>
@@ -655,6 +655,20 @@
           summary = 'All ' + d.totalAgents + ' verified agents used the Self.xyz passport path. Zero agents verified via the Talent Protocol flow. Zero Talent profile links completed. The integration is live and fully functional \u2014 it has seen no organic usage through the Talent path yet.';
         }
         document.getElementById('pm-summary').textContent = summary;
+        var userBase = document.getElementById('pm-talent-user-base');
+        userBase.textContent = 'The platform is pre-PMF with a total user base of ' + d.uniqueHumans + ' humans';
+        var sectionTitle = document.getElementById('pm-talent-section-title');
+        if (d.talentAgents > 0) {
+          sectionTitle.textContent = 'Talent-Path Usage';
+        } else {
+          sectionTitle.textContent = 'Why Zero Talent-Path Usage';
+        }
+        var conclusionUsage = document.getElementById('pm-conclusion-usage');
+        if (d.talentAgents === 0) {
+          conclusionUsage.innerHTML = '<strong>Usage:</strong> Zero Talent-path verifications \u2014 activation matters more than engineering at this stage';
+        } else {
+          conclusionUsage.innerHTML = '<strong>Usage:</strong> ' + d.talentAgents + ' Talent-path verification' + (d.talentAgents !== 1 ? 's' : '');
+        }
       })
       .catch(function() {
         document.getElementById('pm-summary').textContent = 'Unable to load live metrics.';
