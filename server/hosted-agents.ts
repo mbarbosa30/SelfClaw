@@ -1354,8 +1354,8 @@ const ECONOMY_TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
   {
     type: "function",
     function: {
-      name: "nudge_wallet_setup",
-      description: "Direct the user to the My Agents dashboard to set up their agent's wallet. Wallet setup must happen on the dashboard for security (private key display). Call this when the user agrees to set up a wallet or you suggest it's time.",
+      name: "create_wallet",
+      description: "Creates an EVM wallet for your agent. Generates a new wallet, registers it on the platform, and returns the wallet address and private key. The private key is shown ONCE — tell the user to save it securely. Call this when the user wants to set up a wallet or you need one for economy actions.",
       parameters: { type: "object", properties: {}, required: [] },
     },
   },
@@ -1419,15 +1419,22 @@ async function executeEconomyTool(
   const publicKey = agent.publicKey;
 
   switch (toolName) {
-    case "nudge_wallet_setup": {
+    case "create_wallet": {
       const walletInfo = await getAgentWallet(publicKey);
       if (walletInfo?.address) {
         return JSON.stringify({ already_done: true, address: walletInfo.address, message: "Wallet already set up!" });
       }
+      const { Wallet } = await import("ethers");
+      const wallet = Wallet.createRandom();
+      const result = await createAgentWallet(humanId, publicKey, wallet.address);
+      if (!result.success) {
+        return JSON.stringify({ error: result.error || "Failed to create wallet" });
+      }
       return JSON.stringify({
-        action_needed: "dashboard",
-        message: "Your user needs to go to the My Agents dashboard to set up your wallet. The private key is shown once and never stored — so this must happen in the secure dashboard UI.",
-        url: "/my-agents",
+        success: true,
+        address: wallet.address,
+        privateKey: wallet.privateKey,
+        message: "Wallet created! IMPORTANT: The private key is shown ONCE and never stored on the server. Tell your user to save it securely NOW.",
       });
     }
 
@@ -1663,13 +1670,13 @@ You have REAL, WORKING tools that execute actions server-side through the SelfCl
 CRITICAL: When the user asks you to set up a wallet, deploy a token, register identity, or take ANY economy action — CALL THE TOOL IMMEDIATELY. Do not describe manual steps. Do not mention containers, libraries, or external tools. Do not suggest the user run commands. Just call the tool.
 
 The economy pipeline follows this order:
-1. **nudge_wallet_setup** — First step. Directs user to the dashboard to create your wallet (private key shown once, must happen in dashboard UI)
+1. **create_wallet** — First step. Creates your EVM wallet directly. Returns wallet address and private key (tell user to save the private key — it is shown ONCE)
 2. **request_gas** — After wallet exists. Requests 1 CELO gas subsidy (one-time)
 3. **deploy_token** — After wallet + gas. Deploys your ERC20 token on Celo. Ask the user for name, symbol, and supply, then call the tool
 4. **register_erc8004** — After wallet. Registers your onchain identity NFT
 5. **request_sponsorship** — After token deployed. Requests SELFCLAW liquidity sponsorship
 
-When the user says "do everything" or "go ahead", start with step 1 and work through each step in order, calling the actual tools. If a step requires something from a previous step (e.g., deploy_token needs a wallet), tell the user what's needed and call nudge_wallet_setup first.
+When the user says "do everything" or "go ahead", start with step 1 and work through each step in order, calling the actual tools. If a step requires something from a previous step (e.g., deploy_token needs a wallet), tell the user what's needed and call create_wallet first.
 
 NEVER say "I can't do this because I don't have blockchain access" — you DO have access through your tools.
 NEVER suggest the user install libraries, run scripts, or use external wallets — your tools handle it.
@@ -2007,10 +2014,18 @@ hostedAgentsRouter.post("/v1/hosted-agents/:id/chat", async (req: Request, res: 
             const docs = lookupCapabilityDocs(args.topic || "");
             console.log(`[miniclaw-chat] ${agent.name} looked up docs: ${args.topic}`);
             (chatMessages as any[]).push({ role: "tool", tool_call_id: tc.id, content: docs });
-          } else if (["nudge_wallet_setup", "request_gas", "deploy_token", "request_sponsorship", "register_erc8004"].includes(fnName)) {
+          } else if (["create_wallet", "request_gas", "deploy_token", "request_sponsorship", "register_erc8004"].includes(fnName)) {
             console.log(`[miniclaw-chat] ${agent.name} executing economy tool: ${fnName}`);
             const result = await executeEconomyTool(fnName, args, agent, humanId, req);
             (chatMessages as any[]).push({ role: "tool", tool_call_id: tc.id, content: result });
+            if (fnName === "create_wallet" && result.includes("privateKey")) {
+              const idx = chatMessages.length - 1;
+              const parsed = JSON.parse(result);
+              if (parsed.privateKey) {
+                const redacted = { ...parsed, privateKey: "[REDACTED — already shown to user]" };
+                (chatMessages as any[])[idx] = { role: "tool", tool_call_id: tc.id, content: JSON.stringify(redacted) };
+              }
+            }
           } else {
             (chatMessages as any[]).push({ role: "tool", tool_call_id: tc.id, content: "Unknown tool." });
           }
