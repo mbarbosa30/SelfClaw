@@ -7763,6 +7763,34 @@ router.get("/v1/agent/:identifier/price-history", publicApiLimiter, async (req: 
   }
 });
 
+router.get("/v1/postmortem-metrics", publicApiLimiter, async (_req: Request, res: Response) => {
+  try {
+    const [[totals], [talentAgents], [talentLinked]] = await Promise.all([
+      db.select({
+        totalAgents: sql<number>`COUNT(*)`,
+        uniqueHumans: sql<number>`COUNT(DISTINCT ${verifiedBots.humanId})`,
+      }).from(verifiedBots),
+      db.select({
+        agents: sql<number>`COUNT(*)`,
+        humans: sql<number>`COUNT(DISTINCT ${verifiedBots.humanId})`,
+      }).from(verifiedBots).where(sql`${verifiedBots.metadata}->>'provider' = 'talent'`),
+      db.select({
+        count: sql<number>`COUNT(*)`,
+      }).from(verifiedBots).where(sql`${verifiedBots.metadata}->>'talentLinked' = 'true'`),
+    ]);
+    res.json({
+      totalAgents: Number(totals.totalAgents),
+      uniqueHumans: Number(totals.uniqueHumans),
+      talentAgents: Number(talentAgents.agents),
+      talentHumans: Number(talentAgents.humans),
+      talentLinked: Number(talentLinked.count),
+    });
+  } catch (e: any) {
+    console.error("postmortem-metrics error:", e);
+    res.status(500).json({ error: "Failed to fetch metrics" });
+  }
+});
+
 let tokenListingsCache: { data: any; timestamp: number } | null = null;
 const TOKEN_LISTINGS_CACHE_TTL = 3 * 60 * 1000;
 

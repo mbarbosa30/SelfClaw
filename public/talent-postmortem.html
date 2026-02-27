@@ -334,23 +334,23 @@
       <h2>Production Metrics</h2>
       <div class="metric-grid">
         <div class="metric-card">
-          <span class="metric-value">11</span>
+          <span class="metric-value" id="pm-total-agents">&mdash;</span>
           <span class="metric-label">Verified Agents</span>
         </div>
         <div class="metric-card">
-          <span class="metric-value">9</span>
+          <span class="metric-value" id="pm-unique-humans">&mdash;</span>
           <span class="metric-label">Unique Humans</span>
         </div>
         <div class="metric-card">
-          <span class="metric-value">9</span>
-          <span class="metric-label">Wallets</span>
+          <span class="metric-value" id="pm-talent-agents">&mdash;</span>
+          <span class="metric-label">Talent-Path Agents</span>
         </div>
         <div class="metric-card">
-          <span class="metric-value">0</span>
-          <span class="metric-label">Talent-Path Verifications</span>
+          <span class="metric-value" id="pm-talent-linked">&mdash;</span>
+          <span class="metric-label">Talent Profile Links</span>
         </div>
       </div>
-      <p>All 11 verified agents used the Self.xyz passport path. Zero agents verified via the Talent Protocol flow. Zero Talent profile links completed. The integration is live and fully functional &mdash; it has seen no organic usage through the Talent path yet.</p>
+      <p id="pm-summary"></p>
       <p>3 pools tracked on Celo: SELFCLAW/CELO (0.3% fee), PT3/SELFCLAW (1% fee), USDT/SELFCLAW (0.3% fee).</p>
     </section>
 
@@ -668,5 +668,29 @@
   <script src="/auth.js"></script>
   <script src="/nav-gate.js"></script>
   <script src="/nav-toggle.js"></script>
+  <script>
+  (function() {
+    fetch('/api/selfclaw/v1/postmortem-metrics')
+      .then(function(r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then(function(d) {
+        document.getElementById('pm-total-agents').textContent = d.totalAgents;
+        document.getElementById('pm-unique-humans').textContent = d.uniqueHumans;
+        document.getElementById('pm-talent-agents').textContent = d.talentAgents;
+        document.getElementById('pm-talent-linked').textContent = d.talentLinked;
+        var selfxyz = d.totalAgents - d.talentAgents;
+        var summary = 'All ' + d.totalAgents + ' verified agents used the Self.xyz passport path. '
+          + d.talentAgents + ' agent' + (d.talentAgents !== 1 ? 's' : '') + ' verified via the Talent Protocol flow. '
+          + d.talentLinked + ' Talent profile link' + (d.talentLinked !== 1 ? 's' : '') + ' completed. '
+          + 'The integration is live and fully functional.';
+        if (d.talentAgents === 0 && d.talentLinked === 0) {
+          summary = 'All ' + d.totalAgents + ' verified agents used the Self.xyz passport path. Zero agents verified via the Talent Protocol flow. Zero Talent profile links completed. The integration is live and fully functional \u2014 it has seen no organic usage through the Talent path yet.';
+        }
+        document.getElementById('pm-summary').textContent = summary;
+      })
+      .catch(function() {
+        document.getElementById('pm-summary').textContent = 'Unable to load live metrics.';
+      });
+  })();
+  </script>
 </body>
 </html>
