@@ -254,16 +254,20 @@
       margin-top: 0.5rem;
     }
     .recent-badge {
+      display: inline-block;
       font-family: var(--font-mono);
-      font-size: 0.7rem;
-      padding: 0.15rem 0.4rem;
-      border: 1px solid var(--border-light);
+      font-size: 0.65rem;
+      font-weight: 700;
+      padding: 0.2rem 0.55rem;
+      border: 1px solid currentColor;
       color: var(--text-muted);
       text-transform: uppercase;
+      letter-spacing: 0.06em;
+      line-height: 1.4;
     }
     .recent-badge-active {
-      border-color: var(--green-verify, #22c55e);
-      color: var(--green-verify, #22c55e);
+      color: var(--green-verify);
+      background: var(--green-light);
     }
 
     .skill-market-section {
@@ -294,21 +298,6 @@
       flex-wrap: wrap;
       margin-bottom: 1rem;
     }
-    .skill-chip {
-      padding: 0.3rem 0.65rem;
-      border: 2px solid var(--border-light);
-      background: var(--bg-card);
-      font-family: var(--font-mono);
-      font-size: 0.7rem;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      color: var(--text-muted);
-      cursor: pointer;
-      transition: all 0.15s;
-    }
-    .skill-chip:hover { border-color: var(--border-heavy); color: var(--text); }
-    .skill-chip.active { border-color: var(--accent); color: var(--accent); background: var(--bg); }
     .skill-search-row {
       display: flex;
       gap: 0.5rem;
@@ -323,7 +312,7 @@
       font-size: 0.75rem;
       color: var(--text);
     }
-    .skill-search-row input:focus { outline: none; border-color: var(--green-verify); }
+    .skill-search-row input:focus { outline: none; border-color: var(--accent); }
     .skill-search-row input::placeholder { color: var(--text-muted); }
     .skill-grid {
       display: grid;
@@ -446,7 +435,7 @@
     @media (max-width: 480px) {
       .registry-search input, .registry-search button { width: 100%; }
       .selfclaw-ref { flex-direction: column; gap: 0.5rem; padding: 0.5rem 0.75rem; }
-      .skill-chip { min-height: 44px; display: inline-flex; align-items: center; }
+      .chip { min-height: 44px; display: inline-flex; align-items: center; }
       .recent-agent-card { padding: 0.75rem; }
     }
   </style>
@@ -475,19 +464,19 @@
     </section>
 
     <div class="registry-stats" id="registry-stats">
-      <div class="stat-card">
+      <div class="stat-card card-sm">
         <span class="stat-value" id="stat-tokens">-</span>
         <span class="stat-label">Active Tokens</span>
       </div>
-      <div class="stat-card">
+      <div class="stat-card card-sm">
         <span class="stat-value" id="stat-mcap">-</span>
         <span class="stat-label">Combined Market Cap</span>
       </div>
-      <div class="stat-card">
+      <div class="stat-card card-sm">
         <span class="stat-value" id="stat-verified">-</span>
         <span class="stat-label">Verified Agents</span>
       </div>
-      <div class="stat-card">
+      <div class="stat-card card-sm">
         <span class="stat-value" id="stat-humans">-</span>
         <span class="stat-label">Unique Humans</span>
       </div>
@@ -546,15 +535,15 @@
       <p style="color:var(--text-muted);font-size:0.8rem;margin-bottom:1rem;">Browse and install skills for your agents. Priced in SELFCLAW tokens.</p>
 
       <div class="skill-filter-chips" id="skill-chips">
-        <button class="skill-chip active" data-cat="">All</button>
-        <button class="skill-chip" data-cat="research">Research</button>
-        <button class="skill-chip" data-cat="content">Content</button>
-        <button class="skill-chip" data-cat="monitoring">Monitoring</button>
-        <button class="skill-chip" data-cat="analysis">Analysis</button>
-        <button class="skill-chip" data-cat="development">Development</button>
-        <button class="skill-chip" data-cat="translation">Translation</button>
-        <button class="skill-chip" data-cat="consulting">Consulting</button>
-        <button class="skill-chip" data-cat="other">Other</button>
+        <button class="chip active" data-cat="">All</button>
+        <button class="chip" data-cat="research">Research</button>
+        <button class="chip" data-cat="content">Content</button>
+        <button class="chip" data-cat="monitoring">Monitoring</button>
+        <button class="chip" data-cat="analysis">Analysis</button>
+        <button class="chip" data-cat="development">Development</button>
+        <button class="chip" data-cat="translation">Translation</button>
+        <button class="chip" data-cat="consulting">Consulting</button>
+        <button class="chip" data-cat="other">Other</button>
       </div>
 
       <div class="skill-search-row">
@@ -842,9 +831,9 @@
     }
 
     document.getElementById('skill-chips').addEventListener('click', function(e) {
-      var btn = e.target.closest('.skill-chip');
+      var btn = e.target.closest('.chip');
       if (!btn) return;
-      document.querySelectorAll('#skill-chips .skill-chip').forEach(function(c) { c.classList.remove('active'); });
+      document.querySelectorAll('#skill-chips .chip').forEach(function(c) { c.classList.remove('active'); });
       btn.classList.add('active');
       skillCategory = btn.getAttribute('data-cat') || '';
       loadSkillMarket();

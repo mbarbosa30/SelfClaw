@@ -49,7 +49,6 @@
 
     .total-card {
       border: 2px solid var(--border-heavy); padding: 1rem;
-      border-top: 3px solid var(--green-verify);
     }
     .total-label {
       font-family: var(--font-mono); font-size: 0.7rem; font-weight: 600;
@@ -86,7 +85,52 @@
       border: 2px solid var(--border-heavy); padding: 1.25rem;
       transition: border-color 0.2s;
     }
-    .agent-card:hover { border-color: var(--green-verify); }
+    .agent-card:hover { border-color: var(--accent); }
+
+    .agent-tabs {
+      display: flex; gap: 0; border-bottom: 2px solid var(--border);
+      margin-bottom: 1rem;
+    }
+    .agent-tab {
+      font-family: var(--font-mono); font-size: 0.7rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.08em;
+      padding: 0.5rem 1rem; cursor: pointer;
+      border: none; background: none; color: var(--text-muted);
+      border-bottom: 2px solid transparent;
+      margin-bottom: -2px; transition: color 0.15s;
+    }
+    .agent-tab:hover { color: var(--text); }
+    .agent-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+    .agent-tab-panel { display: none; }
+    .agent-tab-panel.active { display: block; }
+
+    .compact-status {
+      display: flex; align-items: center; gap: 1.25rem; flex-wrap: wrap;
+      padding: 0.75rem 1rem; margin-bottom: 1rem;
+      border: 2px solid var(--border-heavy); background: var(--bg-card);
+    }
+    .compact-status-item {
+      display: flex; align-items: center; gap: 0.4rem;
+      font-family: var(--font-mono); font-size: 0.75rem; font-weight: 600;
+    }
+    .compact-status-label {
+      font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .compact-status .health-dot { width: 10px; height: 10px; }
+    .compact-status .pipeline-progress {
+      display: flex; align-items: center; gap: 0.35rem;
+    }
+    .compact-status .pipeline-minibar {
+      width: 48px; height: 4px; background: var(--border);
+    }
+    .compact-status .pipeline-minibar-fill {
+      height: 100%; background: var(--green-verify); transition: width 0.3s;
+    }
+    @media (max-width: 480px) {
+      .compact-status { gap: 0.75rem; padding: 0.6rem 0.75rem; }
+      .compact-status-item { font-size: 0.7rem; }
+    }
 
     .agent-card-header {
       display: flex; justify-content: space-between; align-items: center;
@@ -487,9 +531,8 @@
 
     .agent-prompt-panel {
       border: 2px solid var(--accent); padding: 0; margin-top: 0.75rem;
-      background: rgba(255,107,74,0.03); display: none;
+      background: rgba(255,107,74,0.03);
     }
-    .agent-prompt-panel.open { display: block; }
     .agent-prompt-header {
       display: flex; justify-content: space-between; align-items: center;
       padding: 0.6rem 0.75rem; cursor: pointer;
@@ -1345,6 +1388,35 @@
       });
     }
 
+    function switchAgentTab(idx, tab) {
+      var card = document.getElementById('agent-card-' + idx);
+      if (!card) return;
+      var panels = card.querySelectorAll('.agent-tab-panel');
+      var tabs = card.querySelectorAll('.agent-tab');
+      for (var i = 0; i < panels.length; i++) panels[i].classList.remove('active');
+      for (var i = 0; i < tabs.length; i++) tabs[i].classList.remove('active');
+      var panel = document.getElementById('tab-' + tab + '-' + idx);
+      if (panel) panel.classList.add('active');
+      var tabBtn = card.querySelector('.agent-tab[data-tab="' + tab + '"]');
+      if (tabBtn) tabBtn.classList.add('active');
+    }
+
+    function renderCompactStatus(agent) {
+      var h = agent.health || { status: 'setup', label: 'Setting Up', pipelineProgress: 0, pipelineTotal: 6 };
+      var econ = agent.economics || {};
+      var agentNet = (econ.totalRevenue || 0) - (econ.totalCosts || 0);
+      var rep = agent.reputation || { score: 0 };
+      var pct = Math.round((h.pipelineProgress / Math.max(h.pipelineTotal, 1)) * 100);
+
+      var html = '<div class="compact-status">';
+      html += '<div class="compact-status-item"><div class="health-dot ' + h.status + '"></div><span class="health-label ' + h.status + '">' + esc(h.label) + '</span></div>';
+      html += '<div class="compact-status-item"><span class="compact-status-label">Pipeline</span><div class="pipeline-progress"><div class="pipeline-minibar"><div class="pipeline-minibar-fill" style="width:' + pct + '%"></div></div><span>' + h.pipelineProgress + '/' + h.pipelineTotal + '</span></div></div>';
+      html += '<div class="compact-status-item"><span class="compact-status-label">Net</span><span style="color:' + (agentNet >= 0 ? 'var(--green-verify)' : 'var(--red)') + '">' + fmt$(agentNet) + '</span></div>';
+      html += '<div class="compact-status-item"><span class="compact-status-label">Rep</span><span>' + rep.score + '</span></div>';
+      html += '</div>';
+      return html;
+    }
+
     function renderDashboard(data) {
       document.getElementById('dashboard-loading').style.display = 'none';
       document.getElementById('dashboard-content').style.display = '';
@@ -1381,32 +1453,39 @@
         var name = agent.name || truncKey(agent.publicKey);
         var profileUrl = '/agent/' + encodeURIComponent(name);
 
-        var html = '<div class="agent-card">';
+        var html = '<div class="agent-card" id="agent-card-' + idx + '">';
         html += '<div class="agent-card-header">';
         html += '<div class="agent-card-name"><a href="' + profileUrl + '">' + esc(name) + '</a></div>';
         html += '<span class="agent-card-badge ' + statusClass + '">' + statusText + '</span>';
         html += '</div>';
 
-        html += '<div class="score-card" id="score-card-' + idx + '"><div class="score-loading">Loading SelfClaw Score...</div></div>';
+        html += renderCompactStatus(agent);
 
-        html += renderHealthOverview(agent);
+        html += '<div class="agent-tabs">';
+        html += '<button class="agent-tab active" data-tab="overview" onclick="switchAgentTab(' + idx + ',\'overview\')">Overview</button>';
+        html += '<button class="agent-tab" data-tab="economy" onclick="switchAgentTab(' + idx + ',\'economy\')">Economy</button>';
+        html += '<button class="agent-tab" data-tab="activity" onclick="switchAgentTab(' + idx + ',\'activity\')">Activity</button>';
+        html += '</div>';
 
+        html += '<div class="agent-tab-panel active" id="tab-overview-' + idx + '">';
         html += renderStatusSummary(agent);
-
-        html += renderPipeline(agent, idx);
-
-        if (agent.token) {
-          html += renderTokenEconomyPanel(agent);
-        }
-
-        html += renderSetupGuide(agent);
-
         html += '<div class="agent-card-meta">';
         html += '<div class="meta-item"><div class="meta-dot active"></div>Verified ' + fmtDate(agent.verifiedAt) + '</div>';
         html += '<div class="meta-item"><div class="meta-dot ' + (agent.wallet ? 'active' : 'inactive') + '"></div>' + (agent.wallet ? 'Wallet active' : 'No wallet') + '</div>';
         html += '<div class="meta-item"><div class="meta-dot ' + (agent.token ? 'active' : 'inactive') + '"></div>' + (agent.token ? '$' + esc(agent.token.symbol) : 'No token') + '</div>';
         html += '</div>';
+        html += renderSetupGuide(agent);
+        html += '</div>';
 
+        html += '<div class="agent-tab-panel" id="tab-economy-' + idx + '">';
+        html += '<div class="score-card" id="score-card-' + idx + '"><div class="score-loading">Loading SelfClaw Score...</div></div>';
+        html += renderPipeline(agent, idx);
+        if (agent.token) {
+          html += renderTokenEconomyPanel(agent);
+        }
+        html += '</div>';
+
+        html += '<div class="agent-tab-panel" id="tab-activity-' + idx + '">';
         html += '<div class="briefing-panel" id="briefing-panel-' + idx + '">';
         html += '<div class="briefing-header" onclick="toggleBriefing(' + idx + ', \'' + esc(agent.publicKey) + '\')">';
         html += '<span>Status Briefing</span>';
@@ -1414,12 +1493,10 @@
         html += '</div>';
         html += '<div class="briefing-body" id="briefing-body-' + idx + '" style="display:none;"></div>';
         html += '</div>';
-
         html += renderApiKeyPanel(agent, idx);
-
-        html += '<div class="agent-prompt-panel" id="agent-prompt-panel-' + idx + '">';
+        html += '<div class="agent-prompt-panel" id="agent-prompt-panel-' + idx + '" style="display:none;">';
         html += '<div class="agent-prompt-header" onclick="toggleAgentPrompt(' + idx + ')">';
-        html += '<span>Agent Prompt — Copy & Share</span>';
+        html += '<span>Agent Prompt</span>';
         html += '<span id="prompt-arrow-' + idx + '">&#9660;</span>';
         html += '</div>';
         html += '<div class="agent-prompt-body" id="agent-prompt-body-' + idx + '" style="display:none;">';
@@ -1429,10 +1506,11 @@
         html += '</div>';
         html += '</div>';
         html += '</div>';
+        html += '</div>';
 
         html += '<div class="agent-card-actions">';
         html += '<a href="' + buildShareOnXUrl(name, agent.publicKey) + '" target="_blank" rel="noopener" class="action-btn" style="background:var(--text);color:var(--bg);border-color:var(--text);display:inline-flex;align-items:center;gap:0.35rem;"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>Share on X</a>';
-        html += '<button class="action-btn" onclick="showAgentPromptPanel(' + idx + ')" style="background:var(--accent);color:#fff;border-color:var(--accent);">Share with Agent</button>';
+        html += '<button class="action-btn" onclick="switchAgentTab(' + idx + ',\'activity\');showAgentPromptPanel(' + idx + ')" style="background:var(--accent);color:#fff;border-color:var(--accent);">Share with Agent</button>';
         html += '<a href="' + profileUrl + '" class="action-btn">View Profile</a>';
         if (agent.wallet) {
           html += '<a href="https://celoscan.io/address/' + encodeURIComponent(agent.wallet.address) + '" target="_blank" class="action-btn">View Wallet</a>';
@@ -1852,7 +1930,7 @@
     function showAgentPromptPanel(idx) {
       var panel = document.getElementById('agent-prompt-panel-' + idx);
       if (!panel) return;
-      panel.classList.add('open');
+      panel.style.display = 'block';
       var body = document.getElementById('agent-prompt-body-' + idx);
       if (body) body.style.display = '';
       var arrow = document.getElementById('prompt-arrow-' + idx);

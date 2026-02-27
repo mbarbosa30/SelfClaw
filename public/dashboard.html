@@ -60,6 +60,7 @@
       border: 2px solid var(--border-heavy);
       padding: 1.25rem;
       position: relative;
+      border-left: 3px solid var(--accent);
     }
     .dash-stat-value {
       font-size: 2rem;
@@ -112,7 +113,7 @@
       align-items: start;
     }
     .funnel-visual {
-      border: 2px solid var(--border-light);
+      border: 2px solid var(--border-heavy);
       padding: 1.25rem;
     }
     .funnel-bar-wrap {
@@ -171,7 +172,7 @@
     }
 
     .chart-container {
-      border: 2px solid var(--border-light);
+      border: 2px solid var(--border-heavy);
       padding: 1.25rem;
     }
     .chart-container canvas { max-height: 240px; }
@@ -182,7 +183,7 @@
       gap: 1rem;
     }
     .treasury-card {
-      border: 2px solid var(--border-light);
+      border: 2px solid var(--border-heavy);
       padding: 1.25rem;
     }
     .treasury-value {
@@ -221,7 +222,7 @@
     }
 
     .feed-container {
-      border: 2px solid var(--border-light);
+      border: 2px solid var(--border-heavy);
       max-height: 400px;
       overflow-y: auto;
     }
@@ -232,7 +233,9 @@
       padding: 0.75rem 1rem;
       border-bottom: 1px solid var(--border-light);
       font-size: 0.8rem;
+      transition: background 0.1s;
     }
+    .feed-row:hover { background: var(--accent-light); }
     .feed-row:last-child { border-bottom: none; }
     .feed-dot {
       width: 8px;
@@ -273,7 +276,8 @@
     .dash-context {
       margin-top: 2rem;
       padding: 1.25rem;
-      border: 2px solid var(--border-light);
+      border: 2px solid var(--border);
+      border-left: 3px solid var(--accent);
     }
     .dash-context h3 {
       font-family: var(--font-mono);
@@ -562,7 +566,7 @@
         <span class="dash-section-title">Top Agents</span>
         <span class="dash-section-meta">SelfClaw Score leaderboard</span>
       </div>
-      <div id="leaderboard-container" style="border:2px solid var(--border-light);">
+      <div id="leaderboard-container" style="border:2px solid var(--border-heavy);">
         <div class="lb-empty">Loading...</div>
       </div>
     </section>

@@ -180,6 +180,7 @@
       border: 2px solid var(--border-heavy);
       padding: 0.6rem 0.8rem;
       text-align: left;
+      transition: background 0.1s;
     }
     .endpoint-table th {
       font-family: var(--font-mono);
@@ -187,6 +188,9 @@
       font-size: 0.75rem;
       text-transform: uppercase;
       letter-spacing: 0.05em;
+    }
+    .endpoint-table tbody tr:hover td {
+      background: var(--accent-light);
     }
     .endpoint-table td code {
       font-family: var(--font-mono);

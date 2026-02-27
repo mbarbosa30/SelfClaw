@@ -919,7 +919,6 @@
       h += '<div class="ap-icon">' + letter + '</div>';
       h += '<div class="ap-info">';
       h += '<div class="ap-name">' + esc(a.agentName) + '</div>';
-      h += '<div class="ap-pubkey">' + esc(a.publicKey.length > 20 ? a.publicKey.slice(0, 10) + '...' + a.publicKey.slice(-8) : a.publicKey) + ' <button class="ap-copy-btn" data-addr="' + esc(a.publicKey) + '" style="font-size:0.6rem;padding:0.1rem 0.4rem;border:1px solid var(--border);background:none;cursor:pointer;">Copy</button></div>';
       h += '<div class="ap-badges">';
       if (a.verifiedAt) {
         h += '<span class="ap-badge ap-badge-verified">&#10003; Verified</span>';
@@ -957,15 +956,8 @@
           h += '<div><div class="ap-pstat-val">' + fmtNum(lp.totalSupply, 0) + '</div><div class="ap-pstat-lbl">Total Supply</div></div>';
           h += '<div><div class="ap-pstat-val">' + fmtNum(lp.priceInSelfclaw, 4) + ' SC</div><div class="ap-pstat-lbl">Price in SELFCLAW</div></div>';
           h += '</div>';
-        } else if (hasToken) {
-          h += '<p class="ap-empty">Token deployed but no active liquidity pool yet.</p>';
         }
         if (hasToken && t.address) {
-          h += '<div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;margin-bottom:0.75rem;padding:0.5rem 0.75rem;border:1px solid var(--border);background:var(--bg);">';
-          h += '<span style="font-family:var(--font-mono);font-size:0.6rem;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-muted);flex-shrink:0;">Contract</span>';
-          h += '<span style="font-family:var(--font-mono);font-size:0.75rem;color:var(--text);word-break:break-all;">' + esc(t.address) + '</span>';
-          h += '<button class="ap-copy-btn" data-addr="' + esc(t.address) + '">Copy</button>';
-          h += '</div>';
           h += '<div class="ap-pool-links">';
           h += '<a href="https://celoscan.io/token/' + esc(t.address) + '" target="_blank" rel="noopener" class="ap-pool-link">Token on Celoscan</a>';
           if (hasPool && p.address) h += '<a href="https://celoscan.io/address/' + esc(p.address) + '" target="_blank" rel="noopener" class="ap-pool-link">Pool Contract</a>';
@@ -1008,15 +1000,11 @@
           h += '</div>';
         }
 
-        h += '<div class="ap-kv" style="margin-bottom:1rem;">';
-        h += '<div class="ap-kv-label">Token ID</div><div class="ap-kv-value">#' + esc(String(a.erc8004.tokenId)) + '</div>';
-        if (a.erc8004.identity && a.erc8004.identity.owner) {
-          h += '<div class="ap-kv-label">Owner</div><div class="ap-kv-value"><a href="https://celoscan.io/address/' + esc(a.erc8004.identity.owner) + '" target="_blank">' + trunc(a.erc8004.identity.owner) + '</a></div>';
-        }
         if (a.erc8004.identity && a.erc8004.identity.uri) {
+          h += '<div class="ap-kv" style="margin-bottom:1rem;">';
           h += '<div class="ap-kv-label">URI</div><div class="ap-kv-value" style="font-family:var(--font-mono);font-size:0.75rem;"><a href="' + esc(a.erc8004.identity.uri) + '" target="_blank">' + esc(a.erc8004.identity.uri.length > 60 ? a.erc8004.identity.uri.slice(0, 50) + '...' : a.erc8004.identity.uri) + '</a></div>';
+          h += '</div>';
         }
-        h += '</div>';
 
         var fbArr = a.erc8004.feedback || [];
         if (fbArr.length > 0) {
@@ -1088,20 +1076,6 @@
       if (a.verifiedAt) h += '<div class="ap-kv-label">Verified On</div><div class="ap-kv-value">' + fmtDate(a.verifiedAt) + '</div>';
       h += '</div></div></div>';
 
-      if (hasWallet) {
-        h += '<div class="ap-card">';
-        h += '<div class="ap-card-head"><span class="ap-card-title">Wallet</span><span class="ap-card-meta">Celo EVM</span></div>';
-        h += '<div class="ap-card-body">';
-        h += '<div class="ap-wallet-addr">';
-        h += '<div class="ap-addr-text">' + esc(w.address) + '</div>';
-        h += '<button class="ap-copy-btn" data-addr="' + esc(w.address) + '">Copy</button>';
-        h += '</div>';
-        h += '<div class="ap-kv">';
-        h += '<div class="ap-kv-label">Gas Received</div><div class="ap-kv-value">' + (w.gasReceived ? '<span style="color:var(--green-verify);">Yes</span>' : 'No') + '</div>';
-        h += '<div class="ap-kv-label">Explorer</div><div class="ap-kv-value"><a href="https://celoscan.io/address/' + esc(w.address) + '" target="_blank">View on Celoscan &rarr;</a></div>';
-        h += '</div>';
-        h += '</div></div>';
-      }
 
       if (hasPlan) {
         h += '<div class="ap-card ap-full">';
@@ -1240,19 +1214,25 @@
         h += '</ul></div></div>';
       }
 
-      if (!hasToken && !hasErc8004 && !hasWallet && svc.length === 0 && activity.length === 0) {
-        h += '<div class="ap-card ap-full">';
-        h += '<div class="ap-card-head"><span class="ap-card-title">Getting Started</span></div>';
-        h += '<div class="ap-card-body">';
-        h += '<p class="ap-empty" style="margin-bottom:0.5rem;">This agent has been verified but hasn\'t set up its onchain identity yet.</p>';
-        h += '<ol class="ap-setup-steps">';
-        h += '<li>Create an agent wallet on Celo</li>';
-        h += '<li>Request gas subsidy for onchain operations</li>';
-        h += '<li>Register ERC-8004 onchain identity</li>';
-        h += '<li>Deploy an ERC-20 token with a tokenomics plan</li>';
-        h += '<li>Request SELFCLAW sponsorship for Uniswap V4 liquidity</li>';
-        h += '</ol></div></div>';
+      h += '<div class="ap-card ap-full" style="cursor:pointer;" onclick="var b=this.querySelector(\'.ap-tech-body\');b.style.display=b.style.display===\'none\'?\'\':\'none\';this.querySelector(\'.ap-tech-arrow\').textContent=b.style.display===\'none\'?\'\\u25BC\':\'\\u25B2\';">';
+      h += '<div class="ap-card-head"><span class="ap-card-title">Technical Details</span><span class="ap-tech-arrow" style="font-size:0.7rem;color:var(--text-muted);">&#9660;</span></div>';
+      h += '<div class="ap-card-body ap-tech-body" style="display:none;">';
+      h += '<div class="ap-kv">';
+      h += '<div class="ap-kv-label">Public Key</div><div class="ap-kv-value">' + esc(a.publicKey) + ' <button class="ap-copy-btn" data-addr="' + esc(a.publicKey) + '">Copy</button></div>';
+      if (hasErc8004) {
+        h += '<div class="ap-kv-label">ERC-8004 ID</div><div class="ap-kv-value">#' + esc(String(a.erc8004.tokenId)) + '</div>';
+        if (a.erc8004.identity && a.erc8004.identity.owner) {
+          h += '<div class="ap-kv-label">Owner</div><div class="ap-kv-value"><a href="https://celoscan.io/address/' + esc(a.erc8004.identity.owner) + '" target="_blank">' + trunc(a.erc8004.identity.owner) + '</a></div>';
+        }
       }
+      if (hasWallet) {
+        h += '<div class="ap-kv-label">Wallet</div><div class="ap-kv-value"><a href="https://celoscan.io/address/' + esc(w.address) + '" target="_blank">' + esc(w.address) + '</a> <button class="ap-copy-btn" data-addr="' + esc(w.address) + '">Copy</button></div>';
+      }
+      if (hasToken && t.address) {
+        h += '<div class="ap-kv-label">Token Contract</div><div class="ap-kv-value"><a href="https://celoscan.io/token/' + esc(t.address) + '" target="_blank">' + esc(t.address) + '</a> <button class="ap-copy-btn" data-addr="' + esc(t.address) + '">Copy</button></div>';
+      }
+      h += '</div>';
+      h += '</div></div>';
 
       h += '</div>';
 

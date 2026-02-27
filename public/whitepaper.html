@@ -624,8 +624,7 @@
 
   <style>
     .wp-section {
-      margin-bottom: 3rem;
-      padding-top: 1.5rem;
+      padding-top: 1rem;
     }
     .wp-section h2 {
       cursor: pointer;
@@ -637,11 +636,12 @@
     }
     .wp-section h2::after {
       content: '−';
-      font-size: 1.5rem;
+      font-size: 1.25rem;
       font-weight: 600;
       flex-shrink: 0;
       margin-left: 1rem;
       font-family: var(--font-mono, 'IBM Plex Mono', monospace);
+      color: var(--text-muted);
     }
     .wp-section.collapsed h2::after {
       content: '+';
@@ -654,16 +654,13 @@
       display: none;
     }
     .wp-toggle-all {
-      margin-bottom: 2rem;
+      margin-bottom: 1.5rem;
     }
     .wp-toggle-all-btn {
-      border: 2px solid var(--color-border, #222);
       font-family: var(--font-mono, 'IBM Plex Mono', monospace);
-      font-size: 0.85rem;
+      font-size: 0.75rem;
       text-transform: uppercase;
       letter-spacing: 0.05em;
-      padding: 0.5rem 1.25rem;
-      cursor: pointer;
     }
   </style>
 

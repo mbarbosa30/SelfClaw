@@ -28,160 +28,166 @@
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
   <style>
-    .create-page { max-width: 800px; margin: 0 auto; padding: 0 var(--space-md); }
+    .create-page { max-width: 720px; margin: 0 auto; padding: 0 var(--space-md); }
 
     .wizard-steps {
-      display: flex; gap: 0; margin-bottom: var(--space-lg);
+      display: flex; gap: 0; margin-bottom: var(--space-md);
       border: 2px solid var(--border-heavy);
     }
     .wizard-step {
-      flex: 1; padding: 0.75rem 0.5rem; text-align: center;
+      flex: 1; padding: 0.6rem 0.5rem; text-align: center;
       font-family: var(--font-mono); font-size: 0.65rem; font-weight: 600;
       text-transform: uppercase; letter-spacing: 0.06em;
       color: var(--text-muted); background: var(--bg-card);
       border-right: 2px solid var(--border-heavy);
-      transition: all 0.2s;
+      transition: background 0.15s, color 0.15s;
     }
     .wizard-step:last-child { border-right: none; }
-    .wizard-step.active { background: var(--text-primary); color: var(--bg); }
+    .wizard-step.active { background: var(--text); color: var(--bg); }
     .wizard-step.done { background: var(--green-verify); color: #fff; }
     .wizard-step-num {
-      display: inline-block; width: 20px; height: 20px; line-height: 20px;
-      text-align: center; border: 2px solid currentColor; margin-right: 0.3rem;
-      font-size: 0.6rem;
+      display: inline-block; width: 18px; height: 18px; line-height: 18px;
+      text-align: center; border: 2px solid currentColor; margin-right: 0.25rem;
+      font-size: 0.55rem;
     }
 
     .wizard-panel { display: none; }
     .wizard-panel.active { display: block; }
 
-    .agent-form .form-group { margin-bottom: 1.25rem; }
+    .agent-form .form-group { margin-bottom: 1rem; }
     .agent-form label {
-      display: block; font-family: var(--font-mono); font-size: 0.75rem;
+      display: block; font-family: var(--font-mono); font-size: 0.7rem;
       font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;
-      margin-bottom: 0.4rem; color: var(--text-primary);
+      margin-bottom: 0.35rem; color: var(--text);
     }
     .agent-form .input {
-      width: 100%; padding: 0.65rem 0.85rem;
-      border: 2px solid var(--border-heavy); background: var(--bg-card);
-      font-family: var(--font-mono); font-size: 0.85rem; color: var(--text-primary);
+      width: 100%; padding: 0.6rem 0.8rem;
+      border: 2px solid var(--border); background: var(--bg-card);
+      font-family: var(--font-mono); font-size: 0.85rem; color: var(--text);
+      transition: border-color 0.15s;
     }
-    .agent-form .input:focus { outline: none; border-color: var(--green-verify); }
+    .agent-form .input:focus { outline: none; border-color: var(--accent); }
     .agent-form .input::placeholder { color: var(--text-muted); }
-    .agent-form textarea.input { min-height: 80px; resize: vertical; font-family: var(--font-body); }
+    .agent-form textarea.input { min-height: 80px; resize: vertical; font-family: var(--font-sans); }
 
     .create-btn {
-      width: 100%; padding: 0.85rem; border: none;
+      width: 100%; padding: 0.75rem; border: none;
       background: var(--accent); color: #fff;
-      font-family: var(--font-mono); font-size: 0.9rem; font-weight: 600;
+      font-family: var(--font-mono); font-size: 0.85rem; font-weight: 600;
       text-transform: uppercase; letter-spacing: 0.08em;
-      cursor: pointer; transition: background 0.2s;
+      cursor: pointer; transition: background 0.15s;
     }
     .create-btn:hover { background: var(--accent-hover); }
     .create-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
     .key-display {
-      border: 2px solid var(--border-heavy); padding: 1.25rem;
-      margin-bottom: 1.25rem;
+      border: 2px solid var(--border); padding: 1rem;
+      margin-bottom: 1rem;
     }
     .key-label {
-      font-family: var(--font-mono); font-size: 0.7rem; font-weight: 600;
-      text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-secondary);
-      margin-bottom: 0.4rem;
+      font-family: var(--font-mono); font-size: 0.65rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted);
+      margin-bottom: 0.35rem;
     }
     .key-value {
       font-family: var(--font-mono); font-size: 0.75rem; word-break: break-all;
-      background: var(--bg-card); padding: 0.6rem 0.75rem; border: 1px solid var(--border-light);
+      background: var(--bg-card); padding: 0.5rem 0.7rem; border: 1px solid var(--border-light);
       line-height: 1.5; position: relative;
     }
     .key-copy {
-      position: absolute; top: 0.4rem; right: 0.4rem;
+      position: absolute; top: 0.35rem; right: 0.35rem;
       background: var(--border-heavy); color: #fff; border: none;
-      font-family: var(--font-mono); font-size: 0.65rem; padding: 0.2rem 0.5rem;
-      cursor: pointer;
+      font-family: var(--font-mono); font-size: 0.6rem; padding: 0.2rem 0.45rem;
+      cursor: pointer; transition: background 0.15s;
     }
+    .key-copy:hover { background: var(--accent); }
 
     .key-warning {
-      border: 2px solid var(--red); padding: 1rem; margin-bottom: 1.25rem;
+      border-left: 3px solid var(--red); border-top: none; border-right: none; border-bottom: none;
+      padding: 0.85rem 1rem; margin-bottom: 1rem;
+      background: rgba(239,68,68,0.04);
       font-family: var(--font-mono); font-size: 0.8rem; color: var(--red);
       line-height: 1.5;
     }
 
     .key-download {
-      width: 100%; padding: 0.7rem; border: 2px solid var(--border-heavy);
-      background: var(--bg-card); color: var(--text-primary);
+      width: 100%; padding: 0.65rem; border: 2px solid var(--border);
+      background: var(--bg-card); color: var(--text);
       font-family: var(--font-mono); font-size: 0.8rem; font-weight: 600;
-      cursor: pointer; text-align: center; margin-bottom: 1.25rem;
-      transition: border-color 0.2s;
+      cursor: pointer; text-align: center; margin-bottom: 1rem;
+      transition: border-color 0.15s;
     }
-    .key-download:hover { border-color: var(--green-verify); }
+    .key-download:hover { border-color: var(--accent); }
 
     .success-card {
-      border: 2px solid var(--green-verify); padding: 1.5rem;
-      margin-bottom: 1.25rem;
+      border: 2px solid var(--green-verify); padding: 1.25rem;
+      margin-bottom: 1rem;
     }
     .success-title {
-      font-family: var(--font-mono); font-size: 0.85rem; font-weight: 600;
+      font-family: var(--font-mono); font-size: 0.8rem; font-weight: 600;
       color: var(--green-verify); text-transform: uppercase; letter-spacing: 0.1em;
-      margin-bottom: 0.75rem;
+      margin-bottom: 0.6rem;
     }
     .success-detail {
-      font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.4rem;
+      font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.35rem;
     }
-    .success-detail strong { color: var(--text-primary); }
+    .success-detail strong { color: var(--text); }
     .success-detail a { color: var(--accent); }
 
     .next-steps {
-      border: 2px solid var(--border-heavy); padding: 1.25rem;
+      border: 2px solid var(--border); padding: 1.25rem;
     }
     .next-steps-title {
-      font-family: var(--font-mono); font-size: 0.75rem; font-weight: 600;
+      font-family: var(--font-mono); font-size: 0.7rem; font-weight: 600;
       text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent);
-      margin-bottom: 0.75rem;
+      margin-bottom: 0.6rem;
     }
     .next-steps ol {
       list-style: none; padding: 0; margin: 0;
       font-size: 0.85rem; color: var(--text-secondary);
     }
     .next-steps li {
-      padding: 0.4rem 0; border-bottom: 1px solid var(--border-light);
+      padding: 0.35rem 0; border-bottom: 1px solid var(--border-light);
     }
     .next-steps li:last-child { border-bottom: none; }
 
     .login-gate {
-      text-align: center; padding: 3rem 1rem;
-      border: 2px solid var(--border-heavy);
+      text-align: center; padding: 2.5rem 1rem;
+      border: 2px solid var(--border);
     }
     .login-gate-title {
-      font-family: var(--font-mono); font-size: 0.85rem; font-weight: 600;
+      font-family: var(--font-mono); font-size: 0.8rem; font-weight: 600;
       text-transform: uppercase; letter-spacing: 0.1em;
-      margin-bottom: 1rem;
+      margin-bottom: 0.75rem;
     }
     .login-gate-desc {
       font-size: 0.9rem; color: var(--text-secondary);
-      margin-bottom: 1.5rem; max-width: 400px; margin-left: auto; margin-right: auto;
+      margin-bottom: 1.25rem; max-width: 400px; margin-left: auto; margin-right: auto;
+      line-height: 1.6;
     }
     .login-gate-btn {
-      padding: 0.7rem 2rem; border: 2px solid var(--border-heavy);
-      background: var(--bg-card); color: var(--text-primary);
+      padding: 0.6rem 1.75rem; border: 2px solid var(--border-heavy);
+      background: var(--bg-card); color: var(--text);
       font-family: var(--font-mono); font-size: 0.8rem; font-weight: 600;
-      cursor: pointer; transition: border-color 0.2s;
+      cursor: pointer; transition: border-color 0.15s, background 0.15s;
     }
-    .login-gate-btn:hover { border-color: var(--green-verify); }
+    .login-gate-btn:hover { border-color: var(--accent); background: var(--accent); color: #fff; }
 
     .error-msg {
-      border: 2px solid var(--red); padding: 0.75rem 1rem;
+      border-left: 3px solid var(--red); padding: 0.6rem 0.85rem;
+      background: rgba(239,68,68,0.04);
       font-family: var(--font-mono); font-size: 0.8rem; color: var(--red);
       margin-bottom: 1rem; display: none;
     }
 
     .economy-pipeline {
-      margin: 1.5rem 0;
+      margin: 1.25rem 0;
       padding: 1.25rem;
-      border: 2px solid var(--border-heavy);
+      border: 2px solid var(--border);
     }
     .pipeline-title {
       font-family: var(--font-mono); font-size: 0.7rem; font-weight: 600;
-      text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-secondary);
+      text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted);
       margin-bottom: 1rem;
     }
     .pipeline-steps {
@@ -193,10 +199,10 @@
       min-width: 0;
     }
     .pipeline-step-indicator {
-      width: 32px; height: 32px; margin: 0 auto 0.5rem;
+      width: 30px; height: 30px; margin: 0 auto 0.4rem;
       border: 2px solid var(--border); display: flex;
       align-items: center; justify-content: center;
-      font-family: var(--font-mono); font-size: 0.75rem; font-weight: 600;
+      font-family: var(--font-mono); font-size: 0.7rem; font-weight: 600;
       color: var(--text-muted); background: var(--bg);
       position: relative; z-index: 2;
     }
@@ -212,12 +218,12 @@
     }
     @keyframes pulse-border {
       0%, 100% { box-shadow: 0 0 0 0 rgba(255,107,74,0.3); }
-      50% { box-shadow: 0 0 0 6px rgba(255,107,74,0); }
+      50% { box-shadow: 0 0 0 5px rgba(255,107,74,0); }
     }
     .pipeline-step-label {
       font-family: var(--font-mono); font-size: 0.6rem; font-weight: 600;
       text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted);
-      margin-bottom: 0.2rem;
+      margin-bottom: 0.15rem;
     }
     .pipeline-step.done .pipeline-step-label { color: var(--green-verify); }
     .pipeline-step.active .pipeline-step-label { color: var(--accent); }
@@ -228,8 +234,8 @@
     }
     .pipeline-step-info a { color: var(--accent); }
     .pipeline-connector {
-      position: absolute; top: 16px; left: calc(50% + 16px);
-      right: calc(-50% + 16px); height: 2px; background: var(--border);
+      position: absolute; top: 15px; left: calc(50% + 15px);
+      right: calc(-50% + 15px); height: 2px; background: var(--border);
       z-index: 1;
     }
     .pipeline-step.done .pipeline-connector { background: var(--green-verify); }
@@ -237,7 +243,7 @@
 
     .pipeline-status-text {
       font-family: var(--font-mono); font-size: 0.8rem; font-weight: 600;
-      text-align: center; margin-top: 1.25rem; padding-top: 1rem;
+      text-align: center; margin-top: 1rem; padding-top: 0.85rem;
       border-top: 1px solid var(--border);
     }
     .pipeline-status-text.running { color: var(--accent); }
@@ -246,30 +252,30 @@
 
     .pipeline-elapsed {
       font-family: var(--font-mono); font-size: 0.65rem; color: var(--text-muted);
-      text-align: center; margin-top: 0.25rem;
+      text-align: center; margin-top: 0.2rem;
     }
 
     .econ-form-intro {
-      font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 1.5rem;
+      font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 1.25rem;
       line-height: 1.6;
     }
 
     .skip-economy {
-      display: block; text-align: center; margin-top: 1rem;
+      display: block; text-align: center; margin-top: 0.85rem;
       font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-muted);
       cursor: pointer; background: none; border: none; width: 100%;
-      transition: color 0.2s;
+      transition: color 0.15s;
     }
-    .skip-economy:hover { color: var(--text-secondary); }
+    .skip-economy:hover { color: var(--accent); }
 
     .wallet-warning-box {
-      border: 2px solid var(--accent); padding: 1rem; margin-bottom: 1.25rem;
-      font-size: 0.85rem; line-height: 1.5;
+      border-left: 3px solid var(--accent); padding: 0.85rem 1rem; margin-bottom: 1rem;
+      font-size: 0.85rem; line-height: 1.5; background: var(--accent-light);
     }
     .wallet-warning-box strong {
-      font-family: var(--font-mono); font-size: 0.75rem; text-transform: uppercase;
+      font-family: var(--font-mono); font-size: 0.7rem; text-transform: uppercase;
       letter-spacing: 0.06em; color: var(--accent); display: block;
-      margin-bottom: 0.4rem;
+      margin-bottom: 0.3rem;
     }
 
     @media (max-width: 768px) {
@@ -301,10 +307,10 @@
   </div>
 
   <div class="create-page">
-    <section class="hero" style="padding: 3rem 0 var(--space-lg);">
+    <section class="hero" style="padding: 2rem 0 var(--space-md);">
       <div class="hero-label">One-Click Agent</div>
       <h1>Create your agent</h1>
-      <p class="hero-sub">Name your agent, get a keypair, deploy a token, and launch a liquidity pool. You must be logged in with your verified identity.</p>
+      <p class="hero-sub" style="font-size:1rem;margin-bottom:var(--space-sm);">Name it, get keys, deploy a token, launch a pool. Verified identity required.</p>
     </section>
 
     <div id="login-gate" class="login-gate" style="display:none;">
@@ -469,9 +475,9 @@
           <ol id="next-steps-list"></ol>
         </div>
 
-        <div style="margin-top:1.25rem;display:flex;gap:0.75rem;flex-wrap:wrap;">
+        <div style="margin-top:1rem;display:flex;gap:0.5rem;flex-wrap:wrap;">
           <a href="/my-agents" class="create-btn" style="text-decoration:none;text-align:center;display:block;flex:1;">My Agents Dashboard</a>
-          <a id="done-agent-link" href="/create-agent" class="create-btn" style="text-decoration:none;text-align:center;display:block;flex:1;background:var(--border-heavy);">View Agent Profile</a>
+          <a id="done-agent-link" href="/create-agent" class="create-btn" style="text-decoration:none;text-align:center;display:block;flex:1;background:var(--text);color:var(--bg);">View Agent Profile</a>
         </div>
       </div>
     </div>

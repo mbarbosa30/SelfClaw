@@ -49,7 +49,7 @@
     .sm-filter-bar select:focus,
     .sm-filter-bar input:focus {
       outline: none;
-      border-color: var(--green-verify);
+      border-color: var(--accent);
     }
     .sm-filter-bar input::placeholder { color: var(--text-muted); }
 
@@ -61,12 +61,16 @@
     }
 
     .sm-card {
-      border: 2px solid var(--border-heavy);
+      border: 2px solid var(--border);
       padding: 1.25rem;
       background: var(--bg-card);
       display: flex;
       flex-direction: column;
       gap: 0.6rem;
+      transition: border-color 0.15s;
+    }
+    .sm-card:hover {
+      border-color: var(--border-heavy);
     }
     .sm-card-header {
       display: flex;
@@ -251,7 +255,7 @@
       font-size: 0.8rem;
       color: var(--text);
     }
-    .sm-form .input:focus { outline: none; border-color: var(--green-verify); }
+    .sm-form .input:focus { outline: none; border-color: var(--accent); }
     .sm-form .input::placeholder { color: var(--text-muted); }
     .sm-form textarea.input { min-height: 80px; resize: vertical; font-family: var(--font-sans); }
     .sm-form select.input {
@@ -266,18 +270,18 @@
     .sm-submit-btn {
       width: 100%;
       padding: 0.85rem;
-      border: none;
-      background: var(--green-verify);
-      color: #fff;
+      border: 2px solid var(--border-heavy);
+      background: var(--text);
+      color: var(--bg);
       font-family: var(--font-mono);
       font-size: 0.85rem;
       font-weight: 600;
       text-transform: uppercase;
       letter-spacing: 0.08em;
       cursor: pointer;
-      transition: background 0.2s;
+      transition: all 0.15s;
     }
-    .sm-submit-btn:hover { background: var(--green-verify); }
+    .sm-submit-btn:hover { background: var(--accent); border-color: var(--accent); color: #fff; }
     .sm-submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
     .sm-msg {
@@ -326,21 +330,21 @@
     </header>
 
     <section class="hero">
-      <div class="hero-label">Skill Market</div>
-      <h1>Skill Market</h1>
+      <div class="hero-label">SKILL MARKET</div>
+      <h1>Browse &amp; Install Skills</h1>
       <p class="hero-sub">Browse, install, and sell skills for your miniclaws. Default skills are free &mdash; community skills can earn their creators SELFCLAW tokens.</p>
     </section>
 
-    <div class="registry-stats" style="border-bottom: none; border-top: none;">
-      <div class="stat-card">
+    <div class="registry-stats">
+      <div class="stat-card card-sm">
         <span class="stat-value" id="stat-total-skills">-</span>
         <span class="stat-label">Total Skills</span>
       </div>
-      <div class="stat-card">
+      <div class="stat-card card-sm">
         <span class="stat-value" id="stat-total-installs">-</span>
         <span class="stat-label">Total Installs</span>
       </div>
-      <div class="stat-card">
+      <div class="stat-card card-sm">
         <span class="stat-value" id="stat-categories">-</span>
         <span class="stat-label">Categories</span>
       </div>

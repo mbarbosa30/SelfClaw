@@ -37,26 +37,39 @@
       padding: 0 var(--space-md);
     }
     .guide-step {
-      margin-bottom: 3rem;
-      padding-bottom: 3rem;
-      border-bottom: 2px solid var(--border);
+      margin-bottom: 2.5rem;
+      padding-bottom: 2.5rem;
+      border-bottom: 1px solid var(--border);
+      position: relative;
     }
     .guide-step:last-child {
       border-bottom: none;
     }
     .step-label {
       font-family: var(--font-mono);
-      font-size: 0.7rem;
-      font-weight: 600;
+      font-size: 0.65rem;
+      font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 0.1em;
+      letter-spacing: 0.12em;
       color: var(--accent);
-      margin-bottom: 0.5rem;
+      margin-bottom: 0.4rem;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .step-label::before {
+      content: '';
+      display: inline-block;
+      width: 6px;
+      height: 6px;
+      background: var(--accent);
+      flex-shrink: 0;
     }
     .step-heading {
-      font-size: 1.5rem;
+      font-size: 1.4rem;
       font-weight: 700;
       margin-bottom: 0.75rem;
+      line-height: 1.2;
     }
     .guide-container p {
       color: var(--text-secondary);
@@ -79,22 +92,23 @@
       font-size: 0.85em;
       background: var(--bg-card);
       padding: 0.1rem 0.35rem;
-      border: 2px solid var(--border);
+      border: 1px solid var(--border);
     }
     .what-happens {
-      border-left: 2px solid var(--green-verify);
-      padding: 0.75rem 1rem;
-      margin: 1rem 0;
-      background: rgba(34,197,94,0.04);
+      border: 2px solid var(--border);
+      border-left: 3px solid var(--accent);
+      padding: 1rem 1.25rem;
+      margin: 1.25rem 0;
       font-size: 0.9rem;
+      background: transparent;
     }
     .what-happens strong {
       display: block;
       font-size: 0.7rem;
       text-transform: uppercase;
       letter-spacing: 0.08em;
-      color: var(--green-verify);
-      margin-bottom: 0.25rem;
+      color: var(--accent);
+      margin-bottom: 0.35rem;
       font-family: var(--font-mono);
     }
     .what-happens p {
@@ -103,18 +117,19 @@
       margin: 0;
     }
     .agent-handles {
-      border: 2px solid var(--border-heavy);
+      border: 2px solid var(--border);
+      border-left: 3px solid var(--border-heavy);
       padding: 1.25rem 1.5rem;
       margin: 1.25rem 0;
       background: var(--bg-card);
     }
     .agent-handles .handles-label {
       font-family: var(--font-mono);
-      font-size: 0.7rem;
-      font-weight: 600;
+      font-size: 0.65rem;
+      font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.1em;
-      color: var(--text-secondary);
+      color: var(--text-muted);
       margin-bottom: 0.75rem;
     }
     .agent-handles ul {
@@ -123,10 +138,14 @@
       margin: 0;
     }
     .agent-handles li {
-      padding: 0.35rem 0;
+      padding: 0.3rem 0;
       font-family: var(--font-mono);
-      font-size: 0.85rem;
-      color: var(--text);
+      font-size: 0.82rem;
+      color: var(--text-secondary);
+      border-bottom: 1px solid var(--border);
+    }
+    .agent-handles li:last-child {
+      border-bottom: none;
     }
     .agent-handles li::before {
       content: "\2192 ";
@@ -135,18 +154,20 @@
     }
     .skill-url {
       display: block;
-      border: 2px solid var(--accent);
+      border: 2px solid var(--border);
+      border-left: 3px solid var(--accent);
       padding: 1rem 1.25rem;
       margin: 1rem 0;
       font-family: var(--font-mono);
-      font-size: 0.95rem;
+      font-size: 0.9rem;
       font-weight: 600;
       color: var(--accent);
       text-decoration: none;
       text-align: center;
+      transition: border-color 0.15s;
     }
     .skill-url:hover {
-      background: rgba(255,107,74,0.06);
+      border-color: var(--accent);
     }
     .next-links {
       display: flex;
