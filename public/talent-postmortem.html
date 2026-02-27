@@ -170,35 +170,6 @@
     .neutral { color: var(--text-muted); }
     .mono { font-family: 'IBM Plex Mono', monospace; }
 
-    .screenshots-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 1.5rem;
-      margin: 1.5rem 0;
-    }
-    .screenshot-card {
-      border: 2px solid var(--border-light, #d4d0ca);
-      padding: 1rem;
-    }
-    [data-theme="dark"] .screenshot-card {
-      border-color: var(--border-dark, #333);
-    }
-    .screenshot-card img {
-      width: 100%;
-      height: auto;
-      display: block;
-    }
-    .screenshot-label {
-      font-family: 'IBM Plex Mono', monospace;
-      font-size: 0.7rem;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: var(--accent);
-      margin-bottom: 0.75rem;
-      display: block;
-    }
-
     .callout {
       border: 2px solid var(--accent);
       border-left-width: 4px;
@@ -306,7 +277,6 @@
     @media (max-width: 768px) {
       .partner-hero h1 { font-size: 1.8rem; }
       .metric-grid { grid-template-columns: repeat(2, 1fr); }
-      .screenshots-grid { grid-template-columns: 1fr; }
       .data-table td, .data-table th { padding: 0.5rem 0.6rem; font-size: 0.78rem; }
     }
     @media (max-width: 480px) {
@@ -410,17 +380,6 @@
       <h2>X Engagement Impact</h2>
       <p>The Talent Protocol announcement post vs. a typical SelfClaw post:</p>
 
-      <div class="screenshots-grid">
-        <div class="screenshot-card">
-          <span class="screenshot-label">Talent Announcement Post</span>
-          <img src="/images/x-talent-post.png" alt="X analytics for Talent Protocol announcement post">
-        </div>
-        <div class="screenshot-card">
-          <span class="screenshot-label">Normal Post (Baseline)</span>
-          <img src="/images/x-normal-post.png" alt="X analytics for a typical SelfClaw post">
-        </div>
-      </div>
-
       <div class="table-scroll">
       <table class="data-table">
         <thead>
@@ -488,7 +447,7 @@
           <tr>
             <td>SELFCLAW price</td>
             <td class="mono">$0.00001</td>
-            <td class="neutral">&mdash;</td>
+            <td><span class="mono">$0.000009</span> <span class="negative">-10%</span></td>
             <td><span class="mono">$0.0000073</span> <span class="negative">-27%</span></td>
           </tr>
           <tr>
@@ -500,7 +459,7 @@
           <tr>
             <td>ETH (benchmark)</td>
             <td class="mono">$2,073</td>
-            <td class="neutral">&mdash;</td>
+            <td><span class="mono">$1,989</span> <span class="negative">-4.1%</span></td>
             <td><span class="mono">$1,946</span> <span class="negative">-6.1%</span></td>
           </tr>
           <tr>
@@ -602,40 +561,58 @@
       <h3>Why 1% Fee</h3>
       <p>High enough to generate meaningful revenue from arbitrage volume. Arb bots trade across N pools to keep TALENT price aligned &mdash; this volume is automatic, continuous, and scales linearly with the number of pools. Each new builder token pair adds another arbitrage circuit.</p>
 
-      <h3>Numbers in Context</h3>
+      <h3>Actual Pool Economics (48h)</h3>
+      <div class="metric-grid" style="grid-template-columns: repeat(3, 1fr);">
+        <div class="metric-card">
+          <span class="metric-value">$2,750</span>
+          <span class="metric-label">Capital Allocated</span>
+        </div>
+        <div class="metric-card">
+          <span class="metric-value">$18</span>
+          <span class="metric-label">Fees Earned (48h)</span>
+        </div>
+        <div class="metric-card">
+          <span class="metric-value">~119%</span>
+          <span class="metric-label">Estimated APR</span>
+        </div>
+      </div>
+      <p>~$2,750 worth of tokens allocated across the 2 experimental TALENT pools. $18 in fees generated over 48 hours. That&rsquo;s a 0.65% return in 2 days, or approximately <strong>119% APR</strong> annualized.</p>
+
+      <h3>Scaling Projections</h3>
       <div class="table-scroll">
       <table class="data-table">
         <thead>
-          <tr><th>Scenario</th><th>Daily Volume</th><th>Daily Fees (1%)</th><th>Annual Fees</th></tr>
+          <tr><th>Scenario</th><th>Capital Allocated</th><th>48h Fees (at observed rate)</th><th>Est. APR</th></tr>
         </thead>
         <tbody>
           <tr>
             <td>Current (2 pools)</td>
-            <td class="mono">$19K&ndash;$41K</td>
-            <td class="mono">$190&ndash;$410</td>
-            <td class="mono">$69K&ndash;$150K</td>
+            <td class="mono">$2,750</td>
+            <td class="mono">$18</td>
+            <td class="positive">~119%</td>
           </tr>
           <tr>
-            <td>10 builders, $5K/day each</td>
-            <td class="mono">$50K</td>
-            <td class="mono">$500</td>
-            <td class="mono">$182K</td>
+            <td>10 pools, $2.75K each</td>
+            <td class="mono">$27,500</td>
+            <td class="mono">$180</td>
+            <td class="positive">~119%</td>
           </tr>
           <tr>
-            <td>20 builders, $5K/day each</td>
-            <td class="mono">$100K</td>
-            <td class="mono">$1,000</td>
-            <td class="mono">$365K</td>
+            <td>20 pools, $2.75K each</td>
+            <td class="mono">$55,000</td>
+            <td class="mono">$360</td>
+            <td class="positive">~119%</td>
           </tr>
           <tr>
-            <td>50 builders, $5K/day each</td>
-            <td class="mono">$250K</td>
-            <td class="mono">$2,500</td>
-            <td class="mono">$912K</td>
+            <td>50 pools, $2.75K each</td>
+            <td class="mono">$137,500</td>
+            <td class="mono">$900</td>
+            <td class="positive">~119%</td>
           </tr>
         </tbody>
       </table>
       </div>
+      <p>APR may vary with volume and market conditions, but the observed 48h rate suggests that even modest capital allocations can generate significant returns through arbitrage-driven volume at 1% fee tiers.</p>
 
       <div class="callout">
         <strong>The analogy:</strong> ETH became valuable partly because every token paired with it. TALENT can play that role for the builder economy &mdash; smaller scale, but the same network dynamics. TALENT transforms from a reputation score into the economic routing layer of the builder ecosystem.
