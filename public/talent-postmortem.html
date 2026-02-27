@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Talent Protocol Partnership Post-Mortem | SelfClaw</title>
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+  <link rel="icon" type="image/png" href="/favicon.png">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/dark-mode.js"></script>
+  <style>
+    .partner-page {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 0 var(--space-md, 1.5rem) var(--space-lg, 3rem);
+    }
+    .partner-hero {
+      padding: 3rem 0 2rem;
+    }
+    .partner-hero h1 {
+      font-size: 2.5rem;
+      font-weight: 700;
+      line-height: 1.15;
+      margin-bottom: 1rem;
+    }
+    .partner-hero .hero-sub {
+      font-size: 1.05rem;
+      line-height: 1.7;
+      color: var(--text-muted);
+    }
+    .collab-line {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.8rem;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      color: var(--accent);
+      margin-bottom: 0.75rem;
+    }
+    .partner-section {
+      margin-top: 3rem;
+      padding-top: 2rem;
+      border-top: 1px solid var(--border-light, #d4d0ca);
+    }
+    [data-theme="dark"] .partner-section {
+      border-top-color: var(--border-dark, #333);
+    }
+    .partner-section h2 {
+      font-size: 1.4rem;
+      font-weight: 700;
+      margin-bottom: 1.2rem;
+    }
+    .partner-section h3 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin: 1.5rem 0 0.8rem;
+    }
+    .partner-section p, .partner-section li {
+      font-size: 0.9rem;
+      line-height: 1.7;
+      margin-bottom: 0.8rem;
+    }
+    .partner-section ul {
+      padding-left: 1.2rem;
+      margin-bottom: 1rem;
+    }
+
+    .timeline {
+      position: relative;
+      padding-left: 2rem;
+      margin: 1.5rem 0;
+    }
+    .timeline::before {
+      content: '';
+      position: absolute;
+      left: 0.5rem;
+      top: 0.3rem;
+      bottom: 0.3rem;
+      width: 2px;
+      background: var(--accent);
+    }
+    .timeline-item {
+      position: relative;
+      margin-bottom: 1.2rem;
+      font-size: 0.9rem;
+      line-height: 1.6;
+    }
+    .timeline-item::before {
+      content: '';
+      position: absolute;
+      left: -1.75rem;
+      top: 0.45rem;
+      width: 10px;
+      height: 10px;
+      border: 2px solid var(--accent);
+      background: var(--bg);
+    }
+    .timeline-time {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--accent);
+      display: block;
+      margin-bottom: 0.15rem;
+    }
+
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1rem;
+      margin: 1.5rem 0;
+    }
+    .metric-card {
+      border: 2px solid var(--border-light, #d4d0ca);
+      padding: 1.2rem;
+      text-align: center;
+    }
+    [data-theme="dark"] .metric-card {
+      border-color: var(--border-dark, #333);
+    }
+    .metric-value {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: var(--accent);
+      display: block;
+    }
+    .metric-label {
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      margin-top: 0.3rem;
+      display: block;
+    }
+
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+      margin: 1.5rem 0;
+    }
+    .data-table th, .data-table td {
+      border: 2px solid var(--border-light, #d4d0ca);
+      padding: 0.7rem 0.9rem;
+      text-align: left;
+    }
+    [data-theme="dark"] .data-table th,
+    [data-theme="dark"] .data-table td {
+      border-color: var(--border-dark, #333);
+    }
+    .data-table th {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      background: var(--bg-alt, #e8e4df);
+    }
+    [data-theme="dark"] .data-table th {
+      background: #1e1e1e;
+    }
+    .positive { color: #22c55e; font-weight: 600; }
+    .negative { color: #ef4444; font-weight: 600; }
+    .neutral { color: var(--text-muted); }
+    .mono { font-family: 'IBM Plex Mono', monospace; }
+
+    .screenshots-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      margin: 1.5rem 0;
+    }
+    .screenshot-card {
+      border: 2px solid var(--border-light, #d4d0ca);
+      padding: 1rem;
+    }
+    [data-theme="dark"] .screenshot-card {
+      border-color: var(--border-dark, #333);
+    }
+    .screenshot-card img {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+    .screenshot-label {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--accent);
+      margin-bottom: 0.75rem;
+      display: block;
+    }
+
+    .callout {
+      border: 2px solid var(--accent);
+      border-left-width: 4px;
+      padding: 1.2rem;
+      margin: 1.5rem 0;
+      font-size: 0.9rem;
+    }
+    .callout strong {
+      color: var(--accent);
+    }
+
+    .flywheel {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      margin: 1.5rem 0;
+    }
+    .flywheel-step {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 0.8rem 1rem;
+      border: 2px solid var(--border-light, #d4d0ca);
+      border-bottom: none;
+      font-size: 0.85rem;
+      line-height: 1.5;
+    }
+    .flywheel-step:last-child {
+      border-bottom: 2px solid var(--border-light, #d4d0ca);
+    }
+    [data-theme="dark"] .flywheel-step {
+      border-color: var(--border-dark, #333);
+    }
+    .flywheel-num {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--accent);
+      min-width: 1.5rem;
+    }
+    .flywheel-arrow {
+      text-align: center;
+      color: var(--accent);
+      font-size: 1rem;
+      padding: 0.2rem 0;
+    }
+
+    .pool-card {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      border: 2px solid var(--border-light, #d4d0ca);
+      padding: 1rem 1.2rem;
+      margin-bottom: 0.75rem;
+      font-size: 0.85rem;
+    }
+    [data-theme="dark"] .pool-card {
+      border-color: var(--border-dark, #333);
+    }
+    .pool-name {
+      font-family: 'IBM Plex Mono', monospace;
+      font-weight: 600;
+      font-size: 0.85rem;
+    }
+    .pool-meta {
+      color: var(--text-muted);
+      font-size: 0.8rem;
+    }
+    .pool-link {
+      margin-left: auto;
+      font-size: 0.75rem;
+      color: var(--accent);
+    }
+
+    .next-steps {
+      counter-reset: steps;
+      list-style: none;
+      padding-left: 0;
+    }
+    .next-steps li {
+      counter-increment: steps;
+      padding-left: 2rem;
+      position: relative;
+      margin-bottom: 0.8rem;
+    }
+    .next-steps li::before {
+      content: counter(steps);
+      position: absolute;
+      left: 0;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--accent);
+      border: 2px solid var(--accent);
+      width: 1.3rem;
+      height: 1.3rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      top: 0.15rem;
+    }
+
+    .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+    @media (max-width: 768px) {
+      .partner-hero h1 { font-size: 1.8rem; }
+      .metric-grid { grid-template-columns: repeat(2, 1fr); }
+      .screenshots-grid { grid-template-columns: 1fr; }
+      .data-table td, .data-table th { padding: 0.5rem 0.6rem; font-size: 0.78rem; }
+    }
+    @media (max-width: 480px) {
+      .metric-grid { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="site-container">
+    <header class="site-header">
+      <a href="/" class="site-logo"><img src="/claw-icon.svg" alt="" class="site-logo-icon">SELFCLAW</a>
+      <button class="nav-toggle" aria-label="Menu">&equiv;</button>
+      <nav class="site-nav">
+        <a href="/verify" class="nav-link">VERIFY</a>
+        <a href="/registry" class="nav-link" data-gate style="display:none">AGENTS</a>
+        <a href="/dashboard" class="nav-link" data-gate style="display:none">DASHBOARD</a>
+        <a href="/feed" class="nav-link">FEED</a>
+        <a href="/poc" class="nav-link">POC</a>
+        <a href="/manifesto" class="nav-link">\\\</a>
+        <button id="theme-toggle" class="theme-toggle" aria-label="Toggle dark mode"></button>
+      </nav>
+    </header>
+  </div>
+
+  <main class="partner-page">
+    <div class="partner-hero">
+      <p class="collab-line">SELFCLAW &times; TALENT PROTOCOL</p>
+      <h1>48-Hour Partnership Post-Mortem</h1>
+      <p class="hero-sub">From idea to X announcement in 6 hours. Two experimental liquidity pools. What happened next.</p>
+    </div>
+
+    <section class="partner-section">
+      <h2>Timeline</h2>
+      <div class="timeline">
+        <div class="timeline-item">
+          <span class="timeline-time">Feb 25, ~12:00 UTC</span>
+          Integration idea proposed
+        </div>
+        <div class="timeline-item">
+          <span class="timeline-time">Feb 25, ~18:00 UTC &mdash; 6h later</span>
+          Full Talent Protocol integration shipped to production. X announcement post published. TALENT/SELFCLAW and TALENT/PERKOS pools created jointly with Talent Protocol team.
+        </div>
+        <div class="timeline-item">
+          <span class="timeline-time">Feb 26, ~18:00 UTC &mdash; 24h mark</span>
+          TALENT 24h volume peaks at $41K (+41%). Price reaches $0.00078 (+20%).
+        </div>
+        <div class="timeline-item">
+          <span class="timeline-time">Feb 27, ~18:00 UTC &mdash; 48h mark</span>
+          Post-mortem assessment. TALENT reverts to pre-announcement price. Volume below baseline.
+        </div>
+      </div>
+    </section>
+
+    <section class="partner-section">
+      <h2>Production Metrics</h2>
+      <div class="metric-grid">
+        <div class="metric-card">
+          <span class="metric-value">11</span>
+          <span class="metric-label">Verified Agents</span>
+        </div>
+        <div class="metric-card">
+          <span class="metric-value">9</span>
+          <span class="metric-label">Unique Humans</span>
+        </div>
+        <div class="metric-card">
+          <span class="metric-value">9</span>
+          <span class="metric-label">Wallets</span>
+        </div>
+        <div class="metric-card">
+          <span class="metric-value">0</span>
+          <span class="metric-label">Talent-Path Verifications</span>
+        </div>
+      </div>
+      <p>All 11 verified agents used the Self.xyz passport path. Zero agents verified via the Talent Protocol flow. Zero Talent profile links completed. The integration is live and fully functional &mdash; it has seen no organic usage through the Talent path yet.</p>
+      <p>3 pools tracked on Celo: SELFCLAW/CELO (0.3% fee), PT3/SELFCLAW (1% fee), USDT/SELFCLAW (0.3% fee).</p>
+    </section>
+
+    <section class="partner-section">
+      <h2>The Experiment: Two TALENT Pools</h2>
+      <p>Created jointly by the SelfClaw and Talent Protocol teams to test a thesis: can pairing TALENT with builder project tokens support TALENT price, generate fees, and expose TALENT to the collective volatility and volume of paired tokens &mdash; making it stronger and &ldquo;alive&rdquo;?</p>
+
+      <div class="pool-card">
+        <div>
+          <div class="pool-name">TALENT / SELFCLAW</div>
+          <div class="pool-meta">Uniswap V4 &middot; Base &middot; Position #1906421</div>
+        </div>
+        <a href="https://app.uniswap.org/positions/v4/base/1906421" target="_blank" rel="noopener" class="pool-link">View on Uniswap &rarr;</a>
+      </div>
+      <div class="pool-card">
+        <div>
+          <div class="pool-name">TALENT / PERKOS</div>
+          <div class="pool-meta">Uniswap V4 &middot; Base &middot; Position #1914030 &middot; PerkOS = top Talent Protocol builder</div>
+        </div>
+        <a href="https://app.uniswap.org/positions/v4/base/1914030" target="_blank" rel="noopener" class="pool-link">View on Uniswap &rarr;</a>
+      </div>
+
+      <p>The thesis: TALENT benefits from every paired token&rsquo;s activity &mdash; price movement, volume, arbitrage &mdash; keeping TALENT liquid and relevant regardless of which individual builder token is moving.</p>
+    </section>
+
+    <section class="partner-section">
+      <h2>X Engagement Impact</h2>
+      <p>The Talent Protocol announcement post vs. a typical SelfClaw post:</p>
+
+      <div class="screenshots-grid">
+        <div class="screenshot-card">
+          <span class="screenshot-label">Talent Announcement Post</span>
+          <img src="/images/x-talent-post.png" alt="X analytics for Talent Protocol announcement post">
+        </div>
+        <div class="screenshot-card">
+          <span class="screenshot-label">Normal Post (Baseline)</span>
+          <img src="/images/x-normal-post.png" alt="X analytics for a typical SelfClaw post">
+        </div>
+      </div>
+
+      <div class="table-scroll">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Metric</th>
+            <th>Normal Post</th>
+            <th>Talent Announcement</th>
+            <th>Multiplier</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Impressions</td>
+            <td class="mono">4,003</td>
+            <td class="mono">23,397</td>
+            <td class="positive">5.8x</td>
+          </tr>
+          <tr>
+            <td>Engagements</td>
+            <td class="mono">201</td>
+            <td class="mono">519</td>
+            <td class="positive">2.6x</td>
+          </tr>
+          <tr>
+            <td>Profile Visits</td>
+            <td class="mono">36</td>
+            <td class="mono">164</td>
+            <td class="positive">4.6x</td>
+          </tr>
+          <tr>
+            <td>Likes</td>
+            <td class="mono">36</td>
+            <td class="mono">89</td>
+            <td class="positive">2.5x</td>
+          </tr>
+          <tr>
+            <td>Retweets</td>
+            <td class="mono">6</td>
+            <td class="mono">31</td>
+            <td class="positive">5.2x</td>
+          </tr>
+        </tbody>
+      </table>
+      </div>
+
+      <div class="callout">
+        <strong>Key insight:</strong> Partnership announcements generate 3&ndash;6x more reach than regular content. The 4.6x profile visit multiplier shows the partnership drove real curiosity about SelfClaw beyond passive impressions.
+      </div>
+    </section>
+
+    <section class="partner-section">
+      <h2>Market Impact</h2>
+
+      <div class="table-scroll">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Metric</th>
+            <th>Launch<br><span style="font-weight:400;text-transform:none;letter-spacing:0">Feb 25, 18:00 UTC</span></th>
+            <th>24h<br><span style="font-weight:400;text-transform:none;letter-spacing:0">Feb 26</span></th>
+            <th>48h<br><span style="font-weight:400;text-transform:none;letter-spacing:0">Feb 27</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>SELFCLAW price</td>
+            <td class="mono">$0.00001</td>
+            <td class="neutral">&mdash;</td>
+            <td><span class="mono">$0.0000073</span> <span class="negative">-27%</span></td>
+          </tr>
+          <tr>
+            <td>TALENT price</td>
+            <td class="mono">$0.00065</td>
+            <td><span class="mono">$0.00078</span> <span class="positive">+20%</span></td>
+            <td><span class="mono">$0.00065</span> <span class="neutral">flat</span></td>
+          </tr>
+          <tr>
+            <td>ETH (benchmark)</td>
+            <td class="mono">$2,073</td>
+            <td class="neutral">&mdash;</td>
+            <td><span class="mono">$1,946</span> <span class="negative">-6.1%</span></td>
+          </tr>
+          <tr>
+            <td>TALENT 24h volume</td>
+            <td class="mono">$29K</td>
+            <td><span class="mono">$41K</span> <span class="positive">+41%</span></td>
+            <td><span class="mono">$19K</span> <span class="negative">-34%</span></td>
+          </tr>
+        </tbody>
+      </table>
+      </div>
+
+      <p>TALENT saw a clear volume spike (+41% to $41K) and price pop (+20% to $0.00078) in the first 24 hours after the announcement. By 48 hours, both reverted to pre-announcement levels. SELFCLAW declined 27%, partially attributable to broader market headwinds (ETH also dropped 6.1%).</p>
+
+      <div class="callout">
+        <strong>Takeaway:</strong> Announcements and pool creation generate real but short-lived trading interest. Sustained impact requires more builders creating more TALENT pairs &mdash; volume compounds with the number of active pools.
+      </div>
+    </section>
+
+    <section class="partner-section">
+      <h2>Effort &amp; Cost Asymmetry</h2>
+
+      <div class="metric-grid" style="grid-template-columns: 1fr 1fr;">
+        <div class="metric-card">
+          <span class="metric-value">~6h</span>
+          <span class="metric-label">SelfClaw: Idea to Production</span>
+        </div>
+        <div class="metric-card">
+          <span class="metric-value">~12:1</span>
+          <span class="metric-label">Engineering Effort Ratio</span>
+        </div>
+      </div>
+
+      <h3>What SelfClaw Built</h3>
+      <ul>
+        <li>Full Talent Protocol API v3 integration (profile, score, human checkmark)</li>
+        <li>5 verification levels (talent-passport, talent-passport+signature, talent-human, talent-human+signature, wallet-only fallback)</li>
+        <li>Builder context enrichment: displayName, bio, github, twitter, linkedin, tags, credentials, builderScore, builderRank</li>
+        <li>Wallet connect verification flow with Ed25519 signature challenge</li>
+        <li>Profile linking for Self.xyz users (wallet connect + signature)</li>
+        <li>Graceful API fallback when Talent API is unavailable</li>
+        <li>Dashboard UI: &ldquo;LINK TALENT PROFILE&rdquo; button + &ldquo;TALENT LINKED&rdquo; badge with Builder Score</li>
+      </ul>
+
+      <h3>What Talent Protocol Contributed</h3>
+      <ul>
+        <li>Co-created 2 experimental pools on Base (TALENT/SELFCLAW, TALENT/PERKOS)</li>
+        <li>Shared one X post (written by the SelfClaw team)</li>
+      </ul>
+
+      <p>This asymmetry is acceptable at the experiment stage. SelfClaw needed credibility and a DeFi partner. Talent Protocol has distribution and the TALENT token as economic infrastructure. Both sides got something they needed.</p>
+    </section>
+
+    <section class="partner-section">
+      <h2>Why Zero Talent-Path Usage</h2>
+      <ul>
+        <li>The platform is pre-PMF with a total user base of 9 humans</li>
+        <li>The Self.xyz path is simpler (passport NFC scan vs. wallet connect + signature challenge)</li>
+        <li>No dedicated activation of the Talent builder community beyond one X post</li>
+        <li>The integration is infrastructure &mdash; it needs activation, not more engineering</li>
+      </ul>
+    </section>
+
+    <section class="partner-section">
+      <h2>Strategic Proposal: TALENT as DeFi Primitive</h2>
+      <p>The two experimental pools tested whether TALENT benefits from exposure to paired token activity. The volume spike validated the thesis. Now the question is: what happens at scale?</p>
+
+      <h3>The Proposal</h3>
+      <p>Make TALENT the standard base pair for builder token launches across the Talent Protocol ecosystem. Every builder who launches a project token pairs it with TALENT at a 1% fee tier.</p>
+
+      <h3>The Flywheel</h3>
+      <div class="flywheel">
+        <div class="flywheel-step">
+          <span class="flywheel-num">1</span>
+          Builder launches project token, pairs with TALENT at 1% fee
+        </div>
+        <div class="flywheel-step">
+          <span class="flywheel-num">2</span>
+          Pool creation = buy pressure on TALENT (need TALENT to seed liquidity)
+        </div>
+        <div class="flywheel-step">
+          <span class="flywheel-num">3</span>
+          Arbitrage bots keep TALENT price aligned across all pools &rarr; automatic volume
+        </div>
+        <div class="flywheel-step">
+          <span class="flywheel-num">4</span>
+          1% fee on every swap = revenue for LPs and the Talent ecosystem
+        </div>
+        <div class="flywheel-step">
+          <span class="flywheel-num">5</span>
+          TALENT exposed to collective builder success &mdash; any builder token pump benefits TALENT
+        </div>
+        <div class="flywheel-step">
+          <span class="flywheel-num">6</span>
+          More builders &rarr; more TALENT pairs &rarr; more arb volume &rarr; higher liquidity &rarr; repeat
+        </div>
+      </div>
+
+      <h3>Why 1% Fee</h3>
+      <p>High enough to generate meaningful revenue from arbitrage volume. Arb bots trade across N pools to keep TALENT price aligned &mdash; this volume is automatic, continuous, and scales linearly with the number of pools. Each new builder token pair adds another arbitrage circuit.</p>
+
+      <h3>Numbers in Context</h3>
+      <div class="table-scroll">
+      <table class="data-table">
+        <thead>
+          <tr><th>Scenario</th><th>Daily Volume</th><th>Daily Fees (1%)</th><th>Annual Fees</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Current (2 pools)</td>
+            <td class="mono">$19K&ndash;$41K</td>
+            <td class="mono">$190&ndash;$410</td>
+            <td class="mono">$69K&ndash;$150K</td>
+          </tr>
+          <tr>
+            <td>10 builders, $5K/day each</td>
+            <td class="mono">$50K</td>
+            <td class="mono">$500</td>
+            <td class="mono">$182K</td>
+          </tr>
+          <tr>
+            <td>20 builders, $5K/day each</td>
+            <td class="mono">$100K</td>
+            <td class="mono">$1,000</td>
+            <td class="mono">$365K</td>
+          </tr>
+          <tr>
+            <td>50 builders, $5K/day each</td>
+            <td class="mono">$250K</td>
+            <td class="mono">$2,500</td>
+            <td class="mono">$912K</td>
+          </tr>
+        </tbody>
+      </table>
+      </div>
+
+      <div class="callout">
+        <strong>The analogy:</strong> ETH became valuable partly because every token paired with it. TALENT can play that role for the builder economy &mdash; smaller scale, but the same network dynamics. TALENT transforms from a reputation score into the economic routing layer of the builder ecosystem.
+      </div>
+    </section>
+
+    <section class="partner-section">
+      <h2>Recommended Next Steps</h2>
+      <ol class="next-steps">
+        <li>Present the DeFi primitive proposal to the broader Talent Protocol team &mdash; 2 existing pools as proof-of-concept</li>
+        <li>Build a &ldquo;Launch with TALENT&rdquo; flow &mdash; builder deploys token, auto-creates TALENT pair at 1% fee on Uniswap V4</li>
+        <li>Activate the builder community &mdash; challenges where Talent builders verify on SelfClaw and launch tokens paired with TALENT</li>
+        <li>Weight Builder Score in SelfClaw Score &mdash; make Talent verification economically meaningful on SelfClaw</li>
+        <li>Explore fee sharing &mdash; portion of 1% fees flows to Talent Protocol treasury or back to builder LPs</li>
+        <li>Co-author a case study: &ldquo;TALENT as DeFi Primitive: From Experiment to Infrastructure&rdquo;</li>
+        <li>Request Talent Protocol feature SelfClaw in their ecosystem page</li>
+      </ol>
+    </section>
+
+    <section class="partner-section">
+      <h2>Conclusion</h2>
+      <p>This was a deliberate experiment, not a passive integration.</p>
+      <ul>
+        <li><strong>Speed:</strong> 6 hours from idea to production-grade integration</li>
+        <li><strong>Reach:</strong> 23,397 impressions on the announcement (5.8x a normal post)</li>
+        <li><strong>Market:</strong> Measurable but unsustained impact &mdash; +41% TALENT volume, +20% price, then reversion</li>
+        <li><strong>Usage:</strong> Zero Talent-path verifications &mdash; activation matters more than engineering at this stage</li>
+        <li><strong>Pools:</strong> Two experimental pools validated the thesis &mdash; TALENT benefits from exposure to paired token activity</li>
+      </ul>
+      <p>The real opportunity isn&rsquo;t identity verification. It&rsquo;s positioning TALENT as the economic routing layer for the entire builder ecosystem &mdash; the base pair for every builder token launch, generating compounding volume and fees through arbitrage.</p>
+      <p>Scale from 2 pools to 20+. The next chapter is activation, not integration.</p>
+    </section>
+
+    <footer class="site-footer">
+      <nav class="footer-nav">
+        <a href="/">Home</a>
+        <a href="/verify">Verify</a>
+        <a href="/registry" data-gate-footer style="display:none">Agents</a>
+        <a href="/dashboard" data-gate-footer style="display:none">Dashboard</a>
+        <a href="/economy">Economy</a>
+        <a href="/developers">Docs</a>
+        <a href="/whitepaper">Whitepaper</a>
+        <a href="/poc">PoC</a>
+        <a href="/faq">FAQ</a>
+      </nav>
+      <div class="footer-meta">
+        <span>Powered by <a href="https://self.xyz" target="_blank">Self.xyz</a> &amp; <a href="https://talentprotocol.com" target="_blank">Talent Protocol</a></span>
+        <span>Built by <a href="https://zeno.vision" target="_blank" rel="noopener">Zeno</a> &middot; <a href="https://github.com/mbarbosa30/SelfClaw" target="_blank" rel="noopener">GitHub</a> &middot; <a href="https://t.me/SelfClaw" target="_blank" rel="noopener">Telegram</a> &middot; <a href="https://x.com/selfclaw" target="_blank" rel="noopener">X</a></span>
+      </div>
+    </footer>
+  </main>
+
+  <script src="/auth.js"></script>
+  <script src="/nav-gate.js"></script>
+  <script src="/nav-toggle.js"></script>
+</body>
+</html>
