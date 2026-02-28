@@ -821,13 +821,16 @@ router.get("/v1/status/:sessionId", publicApiLimiter, async (req: Request, res: 
           },
           agentContext: await buildAgentContext(agents[0].publicKey, agents[0].humanId!, 'minimal'),
           nextSteps: {
-            message: "Your agent is verified! Read the playbook to deploy tokens, create liquidity, and build your economy.",
+            message: "Your agent is verified! The playbook covers two paths: Platform-Executed (recommended, no crypto libraries needed) and Self-Custody (advanced). Start with the platform path for the fastest launch.",
             playbook: "https://selfclaw.ai/agent-economy.md",
+            recommendedPath: "platform-executed",
             quickStart: [
-              "1. Read the playbook: https://selfclaw.ai/agent-economy.md",
-              "2. Check SELFCLAW price & sponsorship: GET /api/selfclaw/v1/selfclaw-sponsorship",
-              "3. Simulate your token launch: GET /api/selfclaw/v1/sponsorship-simulator?totalSupply=1000000&liquidityTokens=100000",
-              "4. Register wallet → Request gas → Deploy token → Get sponsored liquidity",
+              "1. Read the playbook: https://selfclaw.ai/agent-economy.md (covers both platform-executed and self-custody paths)",
+              "2. RECOMMENDED: Use platform-executed tools — POST /v1/platform-deploy-token or tool-call deploy_token (Bearer API key, no viem/ethers needed)",
+              "3. Register onchain identity: tool-call register_erc8004",
+              "4. Get sponsored liquidity: tool-call request_sponsorship",
+              "5. Check SELFCLAW price & sponsorship: GET /api/selfclaw/v1/selfclaw-sponsorship",
+              "6. Simulate your token launch: GET /api/selfclaw/v1/sponsorship-simulator?totalSupply=1000000&liquidityTokens=100000",
             ],
             features: [
               "Deploy your own ERC20 token",
@@ -923,6 +926,8 @@ router.get("/v1/agent", publicApiLimiter, async (req: Request, res: Response) =>
       economy: {
         enabled: true,
         playbook: "https://selfclaw.ai/agent-economy.md",
+        recommendedPath: "platform-executed",
+        note: "The playbook covers two paths: Platform-Executed (recommended, no crypto libraries) and Self-Custody (advanced). Use platform tools like deploy_token, register_erc8004, and request_sponsorship with your Bearer API key.",
         sponsorshipSimulator: "GET /api/selfclaw/v1/sponsorship-simulator?totalSupply=1000000&liquidityTokens=100000",
         referencePrices: "GET /api/selfclaw/v1/prices/reference",
         capabilities: ["deploy_token", "create_liquidity_pool", "swap_tokens", "track_economics", "invoke_skill", "erc8004_identity"]
@@ -1206,6 +1211,8 @@ router.get("/v1/agent/:identifier", publicApiLimiter, async (req: Request, res: 
       economy: {
         enabled: true,
         playbook: "https://selfclaw.ai/agent-economy.md",
+        recommendedPath: "platform-executed",
+        note: "The playbook covers two paths: Platform-Executed (recommended, no crypto libraries) and Self-Custody (advanced). Use platform tools like deploy_token, register_erc8004, and request_sponsorship with your Bearer API key.",
         sponsorshipSimulator: "GET /api/selfclaw/v1/sponsorship-simulator?totalSupply=1000000&liquidityTokens=100000",
         referencePrices: "GET /api/selfclaw/v1/prices/reference",
         capabilities: ["deploy_token", "create_liquidity_pool", "swap_tokens", "track_economics", "invoke_skill", "erc8004_identity"]
@@ -5312,10 +5319,12 @@ router.post("/v1/create-agent", verificationLimiter, async (req: any, res: Respo
       },
       nextSteps: [
         "1. The agent securely stores its own private key — SelfClaw cannot recover it",
-        "2. Read the full playbook: https://selfclaw.ai/agent-economy.md",
-        "3. Check prices & sponsorship: GET /api/selfclaw/v1/selfclaw-sponsorship",
-        "4. Simulate your token launch: GET /api/selfclaw/v1/sponsorship-simulator?totalSupply=1000000&liquidityTokens=100000",
-        "5. Create wallet → Request gas → Deploy token → Get sponsored liquidity (see playbook for full details)",
+        "2. Read the full playbook: https://selfclaw.ai/agent-economy.md (covers both platform-executed and self-custody paths)",
+        "3. RECOMMENDED: Use platform-executed path — POST /v1/platform-deploy-token or tool-call deploy_token with your Bearer API key (no viem/ethers needed)",
+        "4. Register onchain identity: tool-call register_erc8004 | Get sponsored liquidity: tool-call request_sponsorship",
+        "5. Check prices & sponsorship: GET /api/selfclaw/v1/selfclaw-sponsorship",
+        "6. Simulate your token launch: GET /api/selfclaw/v1/sponsorship-simulator?totalSupply=1000000&liquidityTokens=100000",
+        "7. Advanced self-custody path also available — see playbook for viem/ethers-based flow",
       ],
     });
   } catch (error: any) {

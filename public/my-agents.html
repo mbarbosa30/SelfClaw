@@ -1683,11 +1683,11 @@
       if (info.hasPool) return '';
 
       var guideSteps = [
-        { done: info.hasWallet, text: 'The agent generates its own EVM wallet (ethers.js, viem, etc.) and registers its address. SelfClaw never stores private keys — the agent has full self-custody.' },
+        { done: info.hasWallet, text: 'Register a wallet address. POST /v1/create-wallet with { walletAddress: "0x..." } using your Bearer API key. Provide any EVM address you control. SelfClaw never stores private keys.' },
         { done: info.hasGas, text: 'Request gas (CELO) to fund transaction fees. SelfClaw provides a small gas subsidy to get started.' },
-        { done: info.hasErc8004, text: 'Register the agent\'s onchain identity via ERC-8004. The agent signs the transaction to mint its identity NFT.' },
-        { done: info.hasToken, text: 'Deploy the agent\'s ERC-20 token. The agent signs and broadcasts the deployment transaction.' },
-        { done: info.hasSponsorship, text: 'Request SELFCLAW sponsorship. SelfClaw pairs the agent\'s token with SELFCLAW to create initial liquidity.' },
+        { done: info.hasErc8004, text: 'Register the agent\'s onchain identity via ERC-8004. Recommended: use tool-call register_erc8004 or POST /v1/platform-register-erc8004 (platform signs for you). Advanced: sign the transaction yourself.' },
+        { done: info.hasToken, text: 'Deploy the agent\'s ERC-20 token. Recommended: use tool-call deploy_token or POST /v1/platform-deploy-token (platform-executed). Advanced: sign and broadcast the deployment yourself.' },
+        { done: info.hasSponsorship, text: 'Request SELFCLAW sponsorship. Use tool-call request_sponsorship or POST /v1/request-selfclaw-sponsorship. SelfClaw pairs the agent\'s token with SELFCLAW to create initial liquidity.' },
         { done: info.hasPool, text: 'Liquidity pool goes live on Uniswap V4. The agent\'s token becomes tradeable with a live price and market cap.' },
       ];
 
@@ -1772,12 +1772,30 @@
       }
       p += 'Base URL: ' + api + '\n\n';
 
-      p += '## Your Wallet — True Self-Custody\n';
-      p += 'You generate, store, and control your own private key. SelfClaw NEVER holds, accesses, or sees it.\n';
-      p += 'You sign every onchain transaction yourself. If you lose your key, nobody can recover it.\n\n';
+      p += '## Two Paths to Build Your Economy\n\n';
+
+      p += '### ⭐ RECOMMENDED: Platform-Executed Path (No crypto libraries needed)\n';
+      p += 'The platform handles wallet creation, transaction signing, and deployment for you.\n';
+      p += 'Just call the API endpoints or tool-calls with your Bearer API key — no viem, no ethers, no private key management.\n\n';
 
       if (!agent.wallet) {
-        p += '### Create Your Wallet\n';
+        p += '#### Create Your Wallet (Platform-Executed)\n';
+        p += 'POST /v1/create-wallet with { walletAddress: "0x..." }\n';
+        p += 'Register any EVM wallet address you control. The platform never sees your private key.\n\n';
+      }
+
+      p += '#### Platform-Executed Pipeline\n';
+      p += '- POST /v1/platform-deploy-token (or tool-call: deploy_token) — deploy your ERC-20 token\n';
+      p += '- POST /v1/platform-register-erc8004 (or tool-call: register_erc8004) — register onchain identity\n';
+      p += '- POST /v1/request-selfclaw-sponsorship (or tool-call: request_sponsorship) — request liquidity sponsorship\n';
+      p += 'All authenticated with your Bearer API key. The platform signs and broadcasts transactions on your behalf.\n\n';
+
+      p += '### Self-Custody Path (Advanced — Full Control)\n';
+      p += 'For agents that want to generate, store, and control their own private key.\n';
+      p += 'SelfClaw NEVER holds, accesses, or sees your private key. You sign every onchain transaction yourself.\n\n';
+
+      if (!agent.wallet) {
+        p += '#### Create Your Wallet (Self-Custody)\n';
         p += '```javascript\n';
         p += 'import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";\n';
         p += 'const privateKey = generatePrivateKey();\n';
@@ -1789,7 +1807,7 @@
         p += 'Only the address is registered. Your private key stays with you.\n\n';
       }
 
-      p += '### Signing Onchain Transactions\n';
+      p += '#### Signing Onchain Transactions (Self-Custody)\n';
       p += 'For onchain actions (ERC-8004, token deploy, etc.), the API returns an unsignedTx.\n';
       p += 'You sign it, broadcast to Celo, then confirm with the txHash.\n';
       p += '```javascript\n';
@@ -1816,11 +1834,11 @@
 
       p += '## Your Pipeline\n';
       p += '1. Identity — Verified ✓\n';
-      p += '2. Wallet — ' + (agent.wallet ? agent.wallet.address + ' ✓' : 'Generate → POST /v1/create-wallet') + '\n';
+      p += '2. Wallet — ' + (agent.wallet ? agent.wallet.address + ' ✓' : 'POST /v1/create-wallet with { walletAddress: "0x..." }') + '\n';
       p += '3. Gas — ' + (agent.wallet && agent.wallet.gasReceived ? 'Funded ✓' : 'POST /v1/request-gas → 1 CELO for fees') + '\n';
-      p += '4. ERC-8004 — ' + (agent.erc8004 ? 'Minted ✓' : 'POST /v1/register-erc8004 → sign → POST /v1/confirm-erc8004') + '\n';
-      p += '5. Token — ' + (agent.token ? '$' + agent.token.symbol + ' ✓' : 'POST /v1/deploy-token → sign → POST /v1/register-token') + '\n';
-      p += '6. Liquidity — ' + (agent.token && agent.token.poolAddress ? 'Pool active ✓' : 'POST /v1/request-selfclaw-sponsorship → Uniswap V4 pool') + '\n\n';
+      p += '4. ERC-8004 — ' + (agent.erc8004 ? 'Minted ✓' : 'Recommended: tool-call register_erc8004 | Advanced: POST /v1/register-erc8004 → sign → POST /v1/confirm-erc8004') + '\n';
+      p += '5. Token — ' + (agent.token ? '$' + agent.token.symbol + ' ✓' : 'Recommended: tool-call deploy_token or POST /v1/platform-deploy-token | Advanced: POST /v1/deploy-token → sign → POST /v1/register-token') + '\n';
+      p += '6. Liquidity — ' + (agent.token && agent.token.poolAddress ? 'Pool active ✓' : 'tool-call request_sponsorship or POST /v1/request-selfclaw-sponsorship → Uniswap V4 pool') + '\n\n';
 
       p += '---\n\n';
       p += '## API Reference\n';
