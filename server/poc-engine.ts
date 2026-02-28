@@ -4,16 +4,17 @@ import {
   agentPosts, marketSkills, skillPurchases, agentRequests,
   reputationStakes, reputationBadges, agentServices,
   referralCodes, referralCompletions, pocScores, agentActivity,
-  hostedAgents
+  hostedAgents, verificationMetrics
 } from "../shared/schema.js";
 import { eq, sql, desc } from "drizzle-orm";
 
 const WEIGHTS = {
-  commerce: 30,
-  reputation: 25,
+  commerce: 25,
+  reputation: 20,
   social: 15,
   referral: 10,
   build: 20,
+  verification: 10,
 };
 
 function letterGrade(score: number): string {
@@ -258,6 +259,42 @@ async function computeBuildScore(pk: string): Promise<number> {
   return clamp(score);
 }
 
+async function computeVerificationScore(pk: string): Promise<number> {
+  let score = 0;
+
+  try {
+    const [metrics] = await db.select()
+      .from(verificationMetrics)
+      .where(eq(verificationMetrics.agentPublicKey, pk))
+      .limit(1);
+
+    if (!metrics) return 0;
+
+    const coverage = parseFloat(metrics.coverageRatio || "0");
+    const humanCoverage = parseFloat(metrics.humanCoverageRatio || "0");
+    const totalOutputs = metrics.totalOutputs || 0;
+
+    if (totalOutputs === 0) return 0;
+
+    if (coverage >= 0.8) score += 40;
+    else if (coverage >= 0.5) score += 30;
+    else if (coverage >= 0.2) score += 15;
+    else if (coverage > 0) score += 5;
+
+    if (humanCoverage >= 0.5) score += 35;
+    else if (humanCoverage >= 0.2) score += 25;
+    else if (humanCoverage >= 0.1) score += 15;
+    else if (humanCoverage > 0) score += 5;
+
+    if (totalOutputs >= 20) score += 25;
+    else if (totalOutputs >= 10) score += 20;
+    else if (totalOutputs >= 5) score += 15;
+    else if (totalOutputs >= 1) score += 5;
+  } catch (e) {}
+
+  return clamp(score);
+}
+
 export interface PocResult {
   totalScore: number;
   grade: string;
@@ -267,6 +304,7 @@ export interface PocResult {
     social: number;
     referral: number;
     build: number;
+    verification: number;
   };
   throughput: number;
   rank: number | null;
@@ -279,6 +317,7 @@ export async function computePocScore(pk: string): Promise<PocResult> {
   const social = await computeSocialScore(pk);
   const referral = await computeReferralScore(pk);
   const build = await computeBuildScore(pk);
+  const verification = await computeVerificationScore(pk);
 
   const totalWeight = Object.values(WEIGHTS).reduce((a, b) => a + b, 0);
   const weighted =
@@ -286,7 +325,8 @@ export async function computePocScore(pk: string): Promise<PocResult> {
     reputation * WEIGHTS.reputation +
     social * WEIGHTS.social +
     referral * WEIGHTS.referral +
-    build * WEIGHTS.build) / totalWeight;
+    build * WEIGHTS.build +
+    verification * WEIGHTS.verification) / totalWeight;
 
   const totalScore = Math.round(clamp(weighted));
 
@@ -299,6 +339,7 @@ export async function computePocScore(pk: string): Promise<PocResult> {
       social,
       referral,
       build,
+      verification,
     },
     throughput: commerce.throughput,
     rank: null,
@@ -350,6 +391,7 @@ export async function refreshAllPocScores(): Promise<number> {
         socialScore: s.result.breakdown.social,
         referralScore: s.result.breakdown.referral,
         buildScore: s.result.breakdown.build,
+        verificationScore: s.result.breakdown.verification,
         totalThroughput: String(s.result.throughput),
         rank,
         percentile,
@@ -366,6 +408,7 @@ export async function refreshAllPocScores(): Promise<number> {
           socialScore: s.result.breakdown.social,
           referralScore: s.result.breakdown.referral,
           buildScore: s.result.breakdown.build,
+          verificationScore: s.result.breakdown.verification,
           totalThroughput: String(s.result.throughput),
           rank,
           percentile,

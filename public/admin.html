@@ -486,6 +486,28 @@
       </section>
 
       <section class="admin-section">
+        <h2 class="admin-section-title">Verification Health</h2>
+        <div class="stats-grid">
+          <div class="stat-card">
+            <span class="stat-label">Coverage</span>
+            <span class="stat-value" id="stat-coverage">&mdash;</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Measurability Gap</span>
+            <span class="stat-value" id="stat-gap">&mdash;</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Human Verified</span>
+            <span class="stat-value" id="stat-human-verified">&mdash;</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Health</span>
+            <span class="stat-value" id="stat-health">&mdash;</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="admin-section">
         <h2 class="admin-section-title">Token Management</h2>
         <p style="color:var(--text-muted);font-size:0.75rem;margin-bottom:1rem;line-height:1.4;">Manage all tracked pools. Hide tokens from the public registry, override display names/symbols, and add notes.</p>
         <div id="tokenmgmt-loading" style="text-align:center;padding:2rem;color:var(--text-muted);"><span class="spinner"></span> Loading tokens...</div>
@@ -1066,6 +1088,22 @@
           if (e.message === 'auth') return;
         });
     }
+
+    function loadVerificationHealth() {
+      fetch('/api/selfclaw/v1/verification/coverage')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (data.platform) {
+            var p = data.platform;
+            document.getElementById('stat-coverage').textContent = (p.coverageRatio * 100).toFixed(1) + '%';
+            document.getElementById('stat-gap').textContent = (p.measurabilityGap * 100).toFixed(1) + '%';
+            document.getElementById('stat-human-verified').textContent = p.humanVerifiedOutputs || 0;
+            document.getElementById('stat-health').textContent = (data.health || 'unknown').toUpperCase();
+          }
+        })
+        .catch(function() {});
+    }
+    loadVerificationHealth();
 
     function loadWalletBalances() {
       var loading = document.getElementById('wallet-loading');

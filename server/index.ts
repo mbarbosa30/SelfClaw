@@ -142,6 +142,7 @@ app.get("/miniclaw", (_req: Request, res: Response) => sendHtml(res, "miniclaw-i
 app.get("/perkos", (_req: Request, res: Response) => sendHtml(res, "perkos.html", { "X-Robots-Tag": "noindex, nofollow" }));
 app.get("/feed", (_req: Request, res: Response) => sendHtml(res, "feed.html"));
 app.get("/poc", (_req: Request, res: Response) => sendHtml(res, "poc.html"));
+app.get("/bounties", (_req: Request, res: Response) => sendHtml(res, "verify-bounties.html"));
 app.get("/trust-thesis", (_req: Request, res: Response) => sendHtml(res, "trust-thesis.html", { "X-Robots-Tag": "noindex, nofollow" }));
 app.get("/partners/perkos", (_req: Request, res: Response) => sendHtml(res, "partner-perkos.html", { "X-Robots-Tag": "noindex, nofollow" }));
 app.get("/partners/zhc", (_req: Request, res: Response) => sendHtml(res, "partner-zhc.html", { "X-Robots-Tag": "noindex, nofollow" }));
@@ -256,6 +257,9 @@ async function initializeApp() {
     { path: "/api/selfclaw", name: "swap-api", importFn: () => import("./swap-api.js"), key: "default" },
     { path: "/api/selfclaw", name: "agent-feed", importFn: () => import("./agent-feed.js"), key: "default" },
     { path: "/api/selfclaw", name: "talent-auth", importFn: () => import("./talent-auth.js"), key: "default" },
+    { path: "/api/selfclaw", name: "verification-bounties", importFn: () => import("./verification-bounties.js"), key: "default" },
+    { path: "/api/selfclaw", name: "insurance", importFn: () => import("./insurance.js"), key: "default" },
+    { path: "/api/selfclaw", name: "verification-metrics", importFn: () => import("./verification-metrics.js"), key: "default" },
   ];
 
   for (const r of routers) {
@@ -525,6 +529,36 @@ async function initializeApp() {
     console.log('[poc] Periodic PoC score refresh scheduled (every 2h)');
   } catch (err: any) {
     console.error('[poc] Failed to load module:', err.message);
+  }
+
+  try {
+    const insuranceMod = await import("./insurance.js");
+    setTimeout(() => {
+      insuranceMod.expireInsuranceBonds().catch((err: any) =>
+        console.error('[insurance] Initial expiry check failed:', err.message));
+    }, 25000);
+    setInterval(() => {
+      insuranceMod.expireInsuranceBonds().catch((err: any) =>
+        console.error('[insurance] Periodic expiry failed:', err.message));
+    }, 60 * 60 * 1000);
+    console.log('[insurance] Periodic bond expiry check scheduled (every 1h)');
+  } catch (err: any) {
+    console.error('[insurance] Failed to load module:', err.message);
+  }
+
+  try {
+    const metricsMod = await import("./verification-metrics.js");
+    setTimeout(() => {
+      metricsMod.refreshVerificationMetrics().catch((err: any) =>
+        console.error('[verification-metrics] Initial refresh failed:', err.message));
+    }, 30000);
+    setInterval(() => {
+      metricsMod.refreshVerificationMetrics().catch((err: any) =>
+        console.error('[verification-metrics] Periodic refresh failed:', err.message));
+    }, 2 * 60 * 60 * 1000);
+    console.log('[verification-metrics] Periodic refresh scheduled (every 2h)');
+  } catch (err: any) {
+    console.error('[verification-metrics] Failed to load module:', err.message);
   }
 
   console.log('[startup] Async initialization complete');

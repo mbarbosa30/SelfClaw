@@ -2185,6 +2185,81 @@ const TOOL_DEFINITIONS = [
       },
     },
   },
+  {
+    type: "function" as const,
+    function: {
+      name: "stake_with_bounty",
+      description: "Create a reputation stake with an attached human verification bounty. The bounty incentivizes passport-verified humans to review your output. Human reviews carry 2x weight in stake resolution.",
+      parameters: {
+        type: "object",
+        properties: {
+          outputHash: { type: "string", description: "Hash of the output being staked" },
+          outputType: { type: "string", description: "Type: research, prediction, content, analysis, or service" },
+          description: { type: "string", description: "Description of what you're staking on" },
+          stakeAmount: { type: "string", description: "Amount of tokens to stake (e.g. '100')" },
+          stakeToken: { type: "string", description: "Token to stake (e.g. 'SELFCLAW')" },
+          bountyReward: { type: "string", description: "SELFCLAW reward for human who reviews this output (e.g. '10')" },
+        },
+        required: ["outputHash", "outputType", "stakeAmount", "stakeToken", "bountyReward"],
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "browse_bounties",
+      description: "List open human verification bounties. These are reputation stakes where the agent is offering SELFCLAW rewards for human review. Sorted by reward amount.",
+      parameters: {
+        type: "object",
+        properties: {},
+        required: [],
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "create_insurance",
+      description: "Create an insurance bond backing another agent's output quality. You stake SELFCLAW as a warranty — if no claims are filed during the bond period, you earn a premium. If a claim is filed, your bond gets slashed.",
+      parameters: {
+        type: "object",
+        properties: {
+          insuredPublicKey: { type: "string", description: "Public key of the agent you're insuring" },
+          bondAmount: { type: "string", description: "Amount of SELFCLAW to stake as insurance bond (e.g. '500')" },
+          premiumRate: { type: "string", description: "Premium rate you earn if no claims (e.g. '0.05' for 5%). Default: 0.05" },
+          scope: { type: "string", description: "Scope: commerce, skill, or general. Default: general" },
+          durationDays: { type: "string", description: "Bond duration in days (1-365). Default: 30" },
+        },
+        required: ["insuredPublicKey", "bondAmount"],
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "browse_insurance",
+      description: "List active insurance bonds on the platform. Shows who is insuring whom, bond amounts, and expiry dates.",
+      parameters: {
+        type: "object",
+        properties: {},
+        required: [],
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "check_agent_insurance",
+      description: "Check what insurance coverage exists for a specific agent. Useful before transacting to see who's backing an agent.",
+      parameters: {
+        type: "object",
+        properties: {
+          publicKey: { type: "string", description: "Public key of the agent to check insurance for" },
+        },
+        required: ["publicKey"],
+      },
+    },
+  },
 ];
 
 async function handleToolCall(agent: any, toolName: string, args: Record<string, any>): Promise<{ success: boolean; data?: any; error?: string }> {
@@ -2516,6 +2591,86 @@ async function handleToolCall(agent: any, toolName: string, args: Record<string,
           return { success: resp.ok, data };
         } catch (e: any) {
           return { success: false, error: `Sponsorship request failed: ${e.message}` };
+        }
+      }
+
+      case "stake_with_bounty": {
+        if (!args.outputHash || !args.outputType || !args.stakeAmount || !args.stakeToken || !args.bountyReward) {
+          return { success: false, error: "outputHash, outputType, stakeAmount, stakeToken, and bountyReward are all required" };
+        }
+        try {
+          const resp = await fetch(`${BASE}/v1/reputation/stake`, {
+            method: "POST",
+            headers: { Authorization: `Bearer ${agent.apiKey}`, "Content-Type": "application/json" },
+            body: JSON.stringify({
+              outputHash: args.outputHash,
+              outputType: args.outputType,
+              description: args.description || null,
+              stakeAmount: args.stakeAmount,
+              stakeToken: args.stakeToken,
+              bountyReward: args.bountyReward,
+            }),
+          });
+          const data = await resp.json();
+          return { success: resp.ok, data };
+        } catch (e: any) {
+          return { success: false, error: `Stake with bounty failed: ${e.message}` };
+        }
+      }
+
+      case "browse_bounties": {
+        try {
+          const resp = await fetch(`${BASE}/v1/verification/bounties`);
+          const data = await resp.json();
+          return { success: resp.ok, data };
+        } catch (e: any) {
+          return { success: false, error: `Browse bounties failed: ${e.message}` };
+        }
+      }
+
+      case "create_insurance": {
+        if (!args.insuredPublicKey || !args.bondAmount) {
+          return { success: false, error: "insuredPublicKey and bondAmount are required" };
+        }
+        try {
+          const resp = await fetch(`${BASE}/v1/insurance/create`, {
+            method: "POST",
+            headers: { Authorization: `Bearer ${agent.apiKey}`, "Content-Type": "application/json" },
+            body: JSON.stringify({
+              insuredPublicKey: args.insuredPublicKey,
+              bondAmount: args.bondAmount,
+              premiumRate: args.premiumRate || "0.05",
+              scope: args.scope || "general",
+              durationDays: args.durationDays || "30",
+            }),
+          });
+          const data = await resp.json();
+          return { success: resp.ok, data };
+        } catch (e: any) {
+          return { success: false, error: `Create insurance failed: ${e.message}` };
+        }
+      }
+
+      case "browse_insurance": {
+        try {
+          const resp = await fetch(`${BASE}/v1/insurance/bonds`);
+          const data = await resp.json();
+          return { success: resp.ok, data };
+        } catch (e: any) {
+          return { success: false, error: `Browse insurance failed: ${e.message}` };
+        }
+      }
+
+      case "check_agent_insurance": {
+        if (!args.publicKey) {
+          return { success: false, error: "publicKey is required" };
+        }
+        try {
+          const resp = await fetch(`${BASE}/v1/insurance/agent/${encodeURIComponent(args.publicKey)}`);
+          const data = await resp.json();
+          return { success: resp.ok, data };
+        } catch (e: any) {
+          return { success: false, error: `Check agent insurance failed: ${e.message}` };
         }
       }
 

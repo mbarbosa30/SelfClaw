@@ -9,6 +9,7 @@ import {
   verifiedBots,
   marketSkills,
   agentRequests,
+  verificationBounties,
 } from "../shared/schema.js";
 
 const router = Router();
@@ -36,7 +37,7 @@ router.post("/v1/reputation/stake", async (req, res) => {
     if (!auth) return;
     const { publicKey, humanId } = auth;
 
-    const { outputHash, outputType, description, stakeAmount, stakeToken, txHash } = req.body;
+    const { outputHash, outputType, description, stakeAmount, stakeToken, txHash, bountyReward } = req.body;
 
     if (!outputHash || !outputType || !stakeAmount || !stakeToken) {
       return res.status(400).json({ error: "Missing required fields: outputHash, outputType, stakeAmount, stakeToken" });
@@ -58,7 +59,21 @@ router.post("/v1/reputation/stake", async (req, res) => {
       status: "active",
     }).returning();
 
-    return res.json({ stake });
+    let bounty = null;
+    if (bountyReward && parseFloat(bountyReward) > 0) {
+      try {
+        const [b] = await db.insert(verificationBounties).values({
+          stakeId: stake.id,
+          rewardAmount: bountyReward,
+          status: "open",
+        }).returning();
+        bounty = b;
+      } catch (e: any) {
+        console.error("[reputation] Error creating bounty:", e.message);
+      }
+    }
+
+    return res.json({ stake, bounty });
   } catch (err: any) {
     console.error("[reputation] Error creating stake:", err.message);
     return res.status(500).json({ error: "Failed to create stake" });
@@ -101,7 +116,24 @@ router.post("/v1/reputation/stakes/:id/review", async (req, res) => {
 
     const reviews = await db.select().from(stakeReviews).where(eq(stakeReviews.stakeId, id));
     const reviewCount = reviews.length;
-    const avgScore = reviews.reduce((sum, r) => sum + r.score, 0) / reviewCount;
+
+    const humanBounties = await db.select().from(verificationBounties)
+      .where(and(
+        eq(verificationBounties.stakeId, id),
+        eq(verificationBounties.status, "claimed"),
+        eq(verificationBounties.verifierType, "human"),
+      ));
+    const humanReviewerIds = new Set(humanBounties.map(b => b.claimedByHumanId));
+
+    let weightedSum = 0;
+    let weightedCount = 0;
+    for (const review of reviews) {
+      const isHuman = humanReviewerIds.has(review.reviewerHumanId);
+      const weight = isHuman ? 2 : 1;
+      weightedSum += review.score * weight;
+      weightedCount += weight;
+    }
+    const avgScore = weightedCount > 0 ? weightedSum / weightedCount : 0;
 
     const updateData: any = {
       reviewCount,

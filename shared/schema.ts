@@ -995,6 +995,7 @@ export const pocScores = pgTable("poc_scores", {
   socialScore: integer("social_score").default(0),
   referralScore: integer("referral_score").default(0),
   buildScore: integer("build_score").default(0),
+  verificationScore: integer("verification_score").default(0),
   totalThroughput: varchar("total_throughput").default("0"),
   rank: integer("rank"),
   percentile: integer("percentile"),
@@ -1008,3 +1009,70 @@ export const pocScores = pgTable("poc_scores", {
 
 export type PocScore = typeof pocScores.$inferSelect;
 export type InsertPocScore = typeof pocScores.$inferInsert;
+
+export const verificationBounties = pgTable("verification_bounties", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  stakeId: varchar("stake_id").notNull(),
+  rewardAmount: varchar("reward_amount").notNull(),
+  status: varchar("status").default("open"),
+  claimedByHumanId: varchar("claimed_by_human_id"),
+  claimedByPublicKey: text("claimed_by_public_key"),
+  verifierType: varchar("verifier_type"),
+  score: integer("score"),
+  comment: text("comment"),
+  createdAt: timestamp("created_at").defaultNow(),
+  claimedAt: timestamp("claimed_at"),
+}, (table) => [
+  index("idx_verification_bounties_stake").on(table.stakeId),
+  index("idx_verification_bounties_status").on(table.status),
+  index("idx_verification_bounties_claimer").on(table.claimedByHumanId),
+]);
+
+export type VerificationBounty = typeof verificationBounties.$inferSelect;
+export type InsertVerificationBounty = typeof verificationBounties.$inferInsert;
+
+export const insuranceStakes = pgTable("insurance_stakes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  insurerPublicKey: text("insurer_public_key").notNull(),
+  insurerHumanId: varchar("insurer_human_id").notNull(),
+  insuredPublicKey: text("insured_public_key").notNull(),
+  insuredHumanId: varchar("insured_human_id").notNull(),
+  bondAmount: varchar("bond_amount").notNull(),
+  bondToken: varchar("bond_token").default("SELFCLAW"),
+  premiumRate: decimal("premium_rate", { precision: 5, scale: 4 }).default("0.0500"),
+  scope: varchar("scope").default("general"),
+  status: varchar("status").default("active"),
+  claimReason: text("claim_reason"),
+  slashedAmount: varchar("slashed_amount"),
+  premiumEarned: varchar("premium_earned"),
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  resolvedAt: timestamp("resolved_at"),
+}, (table) => [
+  index("idx_insurance_stakes_insurer").on(table.insurerPublicKey),
+  index("idx_insurance_stakes_insured").on(table.insuredPublicKey),
+  index("idx_insurance_stakes_status").on(table.status),
+  index("idx_insurance_stakes_expiry").on(table.expiresAt),
+]);
+
+export type InsuranceStake = typeof insuranceStakes.$inferSelect;
+export type InsertInsuranceStake = typeof insuranceStakes.$inferInsert;
+
+export const verificationMetrics = pgTable("verification_metrics", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  agentPublicKey: text("agent_public_key").notNull().unique(),
+  totalOutputs: integer("total_outputs").default(0),
+  verifiedOutputs: integer("verified_outputs").default(0),
+  humanVerifiedOutputs: integer("human_verified_outputs").default(0),
+  agentVerifiedOutputs: integer("agent_verified_outputs").default(0),
+  coverageRatio: decimal("coverage_ratio", { precision: 5, scale: 4 }).default("0"),
+  humanCoverageRatio: decimal("human_coverage_ratio", { precision: 5, scale: 4 }).default("0"),
+  lastRefreshed: timestamp("last_refreshed").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_verification_metrics_agent").on(table.agentPublicKey),
+  index("idx_verification_metrics_coverage").on(table.coverageRatio),
+]);
+
+export type VerificationMetric = typeof verificationMetrics.$inferSelect;
+export type InsertVerificationMetric = typeof verificationMetrics.$inferInsert;

@@ -1,6 +1,6 @@
 import { Router, Request, Response } from "express";
 import { db } from "./db.js";
-import { verifiedBots, verificationSessions, sponsoredAgents, sponsorshipRequests, trackedPools, agentWallets, agentActivity, tokenPlans, revenueEvents, agentServices, costEvents, tokenPriceSnapshots, hostedAgents, users, agentPosts, reputationStakes, reputationBadges, marketSkills, agentRequests, conversations, messages, agentMemories, referralCodes, referralCompletions, type InsertVerifiedBot, type InsertVerificationSession, type UpsertUser } from "../shared/schema.js";
+import { verifiedBots, verificationSessions, sponsoredAgents, sponsorshipRequests, trackedPools, agentWallets, agentActivity, tokenPlans, revenueEvents, agentServices, costEvents, tokenPriceSnapshots, hostedAgents, users, agentPosts, reputationStakes, reputationBadges, marketSkills, agentRequests, conversations, messages, agentMemories, referralCodes, referralCompletions, insuranceStakes, type InsertVerifiedBot, type InsertVerificationSession, type UpsertUser } from "../shared/schema.js";
 import { eq, and, gt, lt, sql, desc, count, isNotNull, inArray } from "drizzle-orm";
 import { SelfBackendVerifier, AllIds, DefaultConfigStore } from "@selfxyz/core";
 import { SelfAppBuilder } from "@selfxyz/qrcode";
@@ -1190,6 +1190,24 @@ router.get("/v1/agent/:identifier", publicApiLimiter, async (req: Request, res: 
       };
     }
 
+    let insuranceCoverage: any = null;
+    try {
+      const activeBonds = await db.select()
+        .from(insuranceStakes)
+        .where(and(
+          eq(insuranceStakes.insuredPublicKey, foundAgent.publicKey),
+          eq(insuranceStakes.status, "active"),
+        ));
+      if (activeBonds.length > 0) {
+        const totalCoverage = activeBonds.reduce((sum, b) => sum + parseFloat(b.bondAmount), 0);
+        insuranceCoverage = {
+          bondCount: activeBonds.length,
+          totalCoverage: totalCoverage.toString(),
+          scopes: [...new Set(activeBonds.map(b => b.scope))],
+        };
+      }
+    } catch (e) {}
+
     res.json({
       verified: true,
       publicKey: foundAgent.publicKey,
@@ -1206,6 +1224,7 @@ router.get("/v1/agent/:identifier", publicApiLimiter, async (req: Request, res: 
       },
       reputation: reputationData,
       builderContext,
+      insurance: insuranceCoverage,
       swarm: foundAgent.humanId ? `https://selfclaw.ai/human/${foundAgent.humanId}` : null,
       metadata: cleanMetadata,
       economy: {
