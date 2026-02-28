@@ -2752,6 +2752,56 @@ td.compare-us {
   color: var(--accent);
 }
 
+/* ── LANDING: TRUST EQUATION ── */
+.trust-thesis-section {
+  padding-top: var(--space-lg);
+  padding-bottom: var(--space-lg);
+}
+
+.trust-equation-box {
+  border: 2px solid var(--border-heavy);
+  padding: 2.5rem;
+  text-align: center;
+  background: var(--bg-card);
+}
+
+.trust-equation {
+  font-family: var(--font-mono);
+  font-size: clamp(1.2rem, 3vw, 2rem);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  margin: 1.5rem 0;
+  line-height: 1.6;
+  color: var(--text);
+}
+
+.eq-fn {
+  color: var(--accent);
+}
+
+.eq-var {
+  font-style: italic;
+  color: var(--text-secondary);
+}
+
+.eq-op {
+  color: var(--text-secondary);
+  padding: 0 0.3em;
+}
+
+.eq-paren {
+  color: var(--text-secondary);
+  font-weight: 400;
+}
+
+.trust-equation-sub {
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  line-height: 1.7;
+  max-width: 680px;
+  margin: 0 auto;
+}
+
 /* ── LANDING: TRUST STRIP ── */
 .trust-strip {
   display: flex;
