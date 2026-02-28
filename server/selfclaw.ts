@@ -12,6 +12,7 @@ import { generateRegistrationFile, ERC8004_CONFIG } from "../lib/erc8004-config.
 import { createPublicClient, http, parseUnits, formatUnits, encodeFunctionData, getContractAddress } from 'viem';
 import { celo } from 'viem/chains';
 import { TOKEN_FACTORY_BYTECODE } from '../lib/constants.js';
+import { platformDeployToken, platformRegisterErc8004, platformRequestSponsorship } from '../lib/platform-economy.js';
 
 import {
   publicApiLimiter,
@@ -3279,7 +3280,173 @@ async function readOnChainTokenInfo(tokenAddress: string): Promise<{ name: strin
 }
 
 // ============================================================
-// PUBLIC API: Token Economy Endpoints
+// PLATFORM-EXECUTED Economy Endpoints
+// ============================================================
+// These endpoints let ANY verified agent have the platform wallet
+// execute onchain operations on their behalf — no self-signing needed.
+// Agents authenticate via Ed25519 signature (authenticateAgent).
+// ============================================================
+
+router.post("/v1/platform-deploy-token", verificationLimiter, async (req: Request, res: Response) => {
+  try {
+    const auth = await authenticateAgentFlexible(req);
+    if (!auth) return res.status(401).json({ error: "Authentication required. Provide Ed25519 signature fields or Bearer API key." });
+
+    const { name, symbol, initialSupply } = req.body;
+
+    if (!name || !symbol || !initialSupply) {
+      return res.status(400).json({
+        error: "name, symbol, and initialSupply are required",
+        hint: "initialSupply is the number of WHOLE tokens (e.g. 1000000 for 1 million). 18 decimals are applied automatically.",
+      });
+    }
+
+    const supplyNum = Number(initialSupply);
+    if (isNaN(supplyNum) || supplyNum <= 0) {
+      return res.status(400).json({ error: "initialSupply must be a positive number." });
+    }
+
+    const result = await platformDeployToken({
+      publicKey: auth.publicKey,
+      humanId: auth.humanId,
+      name: String(name).trim(),
+      symbol: String(symbol).trim().toUpperCase(),
+      initialSupply: String(Math.floor(supplyNum)),
+      agentName: auth.agentName || auth.publicKey,
+    });
+
+    if (!result.success) {
+      return res.status(500).json({ error: result.error });
+    }
+
+    return res.json({
+      success: true,
+      tokenAddress: result.tokenAddress,
+      deployTxHash: result.deployTxHash,
+      explorerUrl: result.explorerUrl,
+      message: "Token deployed via platform wallet. Supply is held until sponsorship.",
+    });
+  } catch (error: any) {
+    console.error("[selfclaw] platform-deploy-token error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post("/v1/platform-register-erc8004", verificationLimiter, async (req: Request, res: Response) => {
+  try {
+    const auth = await authenticateAgentFlexible(req);
+    if (!auth) return res.status(401).json({ error: "Authentication required. Provide Ed25519 signature fields or Bearer API key." });
+
+    const { agentName, description } = req.body;
+
+    const walletResults = await db.select()
+      .from(agentWallets)
+      .where(eq(agentWallets.humanId, auth.humanId))
+      .limit(1);
+
+    const walletAddress = walletResults.length > 0 ? walletResults[0].address : undefined;
+
+    if (!walletAddress) {
+      return res.status(400).json({
+        error: "No wallet registered. Register a wallet first via POST /api/selfclaw/v1/register-wallet.",
+      });
+    }
+
+    const result = await platformRegisterErc8004({
+      publicKey: auth.publicKey,
+      humanId: auth.humanId,
+      agentName: agentName || auth.agentName || auth.publicKey,
+      description: description || undefined,
+      walletAddress,
+    });
+
+    if (!result.success) {
+      if (result.alreadyDone) {
+        return res.json({
+          success: true,
+          alreadyDone: true,
+          tokenId: result.tokenId,
+          explorerUrl: result.explorerUrl,
+          message: "ERC-8004 identity already registered.",
+        });
+      }
+      return res.status(500).json({ error: result.error });
+    }
+
+    return res.json({
+      success: true,
+      tokenId: result.tokenId,
+      txHash: result.txHash,
+      explorerUrl: result.explorerUrl,
+      scan8004Url: result.scan8004Url,
+      message: "ERC-8004 onchain identity registered via platform wallet.",
+    });
+  } catch (error: any) {
+    console.error("[selfclaw] platform-register-erc8004 error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post("/v1/platform-request-sponsorship", verificationLimiter, async (req: Request, res: Response) => {
+  try {
+    const auth = await authenticateAgentFlexible(req);
+    if (!auth) return res.status(401).json({ error: "Authentication required. Provide Ed25519 signature fields or Bearer API key." });
+
+    const { tokenAmount } = req.body;
+
+    if (!tokenAmount) {
+      return res.status(400).json({
+        error: "tokenAmount is required",
+        hint: "The amount of your agent token to pair with SELFCLAW in a Uniswap V4 pool.",
+      });
+    }
+
+    const amountNum = Number(tokenAmount);
+    if (isNaN(amountNum) || amountNum <= 0) {
+      return res.status(400).json({ error: "tokenAmount must be a positive number." });
+    }
+
+    const walletResults = await db.select()
+      .from(agentWallets)
+      .where(eq(agentWallets.humanId, auth.humanId))
+      .limit(1);
+
+    const walletAddress = walletResults.length > 0 ? walletResults[0].address : undefined;
+
+    const result = await platformRequestSponsorship({
+      publicKey: auth.publicKey,
+      humanId: auth.humanId,
+      tokenAmount: String(Math.floor(amountNum)),
+      agentName: auth.agentName || auth.publicKey,
+      walletAddress,
+      source: "platform-executed",
+    });
+
+    if (!result.success) {
+      const errResponse: any = { error: result.error };
+      if (result.sponsorWallet) errResponse.sponsorWallet = result.sponsorWallet;
+      if (result.instructions) errResponse.instructions = result.instructions;
+      if (result.v4PoolId) errResponse.v4PoolId = result.v4PoolId;
+      return res.status(400).json(errResponse);
+    }
+
+    return res.json({
+      success: true,
+      v4PoolId: result.v4PoolId,
+      positionTokenId: result.positionTokenId,
+      txHash: result.txHash,
+      selfclawAmount: result.selfclawAmount,
+      remainingTransferTx: result.remainingTransferTx,
+      message: "Sponsorship pool created via platform wallet. Remaining tokens transferred to your wallet.",
+    });
+  } catch (error: any) {
+    console.error("[selfclaw] platform-request-sponsorship error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================================
+// PUBLIC API: Token Economy Endpoints (Self-Custody)
 // ============================================================
 // These endpoints use humanId authorization for write operations.
 // Read operations (GET) are public since blockchain data is public.

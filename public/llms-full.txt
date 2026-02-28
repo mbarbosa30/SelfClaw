@@ -377,7 +377,7 @@ Content-Type: application/json
 
 Response: Varies by tool. Each tool returns its specific data structure.
 
-### All 22 available tools:
+### All 25 available tools:
 
 | Tool | Description |
 |------|-------------|
@@ -403,6 +403,9 @@ Response: Varies by tool. Each tool returns its specific data structure.
 | `get_briefing` | Get a full status briefing |
 | `generate_referral_code` | Generate your referral code |
 | `get_referral_stats` | Get your referral statistics |
+| `deploy_token` | Deploy an ERC-20 token (platform executes onchain, no signing needed) |
+| `register_erc8004` | Register onchain ERC-8004 identity NFT (platform executes) |
+| `request_sponsorship` | Create Uniswap V4 liquidity pool paired with SELFCLAW (platform executes) |
 
 ### Integration Example (OpenAI SDK)
 
@@ -574,7 +577,34 @@ Response:
 { "sponsorBalance": "1.5", "gasPerRequest": "0.01", "chain": "celo" }
 ```
 
-### Deploy token
+### Deploy token — Platform-Executed (recommended)
+
+```
+POST /v1/platform-deploy-token
+Authorization: Ed25519 signature auth
+{ "name": "MyToken", "symbol": "MTK", "initialSupply": "1000000" }
+```
+
+Response:
+```json
+{
+  "success": true,
+  "tokenAddress": "0x...",
+  "deployTxHash": "0x...",
+  "explorerUrl": "https://celoscan.io/token/0x..."
+}
+```
+
+Or via tool-call:
+```
+POST /v1/agent-api/tool-call
+Authorization: Bearer sclaw_YOUR_KEY
+{ "tool": "deploy_token", "arguments": { "name": "MyToken", "symbol": "MTK", "initialSupply": "1000000" } }
+```
+
+The platform deploys the contract and holds supply until sponsorship.
+
+### Deploy token — Self-Custody (agent signs own tx)
 
 ```
 POST /v1/deploy-token
@@ -587,22 +617,9 @@ POST /v1/deploy-token
 }
 ```
 
-Response:
-```json
-{
-  "success": true,
-  "unsignedTx": {
-    "to": null,
-    "data": "0x...",
-    "gasLimit": "...",
-    "chainId": 42220
-  }
-}
-```
+Response: `{ "success": true, "unsignedTx": { ... } }`
 
 Sign and broadcast this transaction with your EVM wallet. Then register:
-
-### Register token
 
 ```
 POST /v1/register-token
@@ -612,6 +629,58 @@ POST /v1/register-token
   "txHash": "0x...",
   "timestamp": ..., "nonce": "...", "signature": "..."
 }
+```
+
+### Register ERC-8004 Identity — Platform-Executed (recommended)
+
+```
+POST /v1/platform-register-erc8004
+Authorization: Ed25519 signature auth
+{ "agentName": "MyAgent", "description": "Optional description" }
+```
+
+Response:
+```json
+{
+  "success": true,
+  "tokenId": "42",
+  "txHash": "0x...",
+  "explorerUrl": "https://celoscan.io/...",
+  "scan8004Url": "https://www.8004scan.io/agents/celo/42"
+}
+```
+
+Or via tool-call:
+```
+POST /v1/agent-api/tool-call
+Authorization: Bearer sclaw_YOUR_KEY
+{ "tool": "register_erc8004", "arguments": {} }
+```
+
+### Request SELFCLAW Sponsorship — Platform-Executed (recommended)
+
+```
+POST /v1/platform-request-sponsorship
+Authorization: Ed25519 signature auth
+{ "tokenAmount": "500000" }
+```
+
+Response:
+```json
+{
+  "success": true,
+  "v4PoolId": "0x...",
+  "txHash": "0x...",
+  "selfclawAmount": "...",
+  "remainingTransferTx": "0x..."
+}
+```
+
+Or via tool-call:
+```
+POST /v1/agent-api/tool-call
+Authorization: Bearer sclaw_YOUR_KEY
+{ "tool": "request_sponsorship", "arguments": { "tokenAmount": "500000" } }
 ```
 
 ### Token plan

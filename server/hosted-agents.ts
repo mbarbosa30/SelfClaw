@@ -14,6 +14,7 @@ import { eq, and, desc, sql, count, inArray } from "drizzle-orm";
 import { sendGasSubsidy, getAgentWallet, createAgentWallet } from "../lib/secure-wallet.js";
 import { erc8004Service } from "../lib/erc8004.js";
 import { generateRegistrationFile } from "../lib/erc8004-config.js";
+import { platformDeployToken, platformRegisterErc8004, platformRequestSponsorship } from "../lib/platform-economy.js";
 
 const openai = new OpenAI({
   apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
@@ -1467,97 +1468,20 @@ async function executeEconomyTool(
         return JSON.stringify({ error: "Token name, symbol, and initialSupply are all required." });
       }
 
-      const rawSponsorKey = process.env.SELFCLAW_SPONSOR_PRIVATE_KEY || process.env.CELO_PRIVATE_KEY;
-      if (!rawSponsorKey) {
-        return JSON.stringify({ error: "Platform sponsor key not configured." });
-      }
-      const sponsorKey = rawSponsorKey.startsWith('0x') ? rawSponsorKey : `0x${rawSponsorKey}`;
-
-      const { parseUnits, AbiCoder } = await import("ethers");
-      const { TOKEN_FACTORY_BYTECODE } = await import("../lib/constants.js");
-      const { createPublicClient, createWalletClient, http: viemHttp } = await import("viem");
-      const { privateKeyToAccount } = await import("viem/accounts");
-      const { celo } = await import("viem/chains");
-
-      const viemClient = createPublicClient({ chain: celo, transport: viemHttp("https://forno.celo.org") });
-      const sponsorAccount = privateKeyToAccount(sponsorKey as `0x${string}`);
-      const sponsorWallet = createWalletClient({
-        account: sponsorAccount,
-        chain: celo,
-        transport: viemHttp("https://forno.celo.org"),
+      const result = await platformDeployToken({
+        publicKey, humanId, name, symbol, initialSupply: initialSupply.toString(), agentName: agent.name,
       });
 
-      const decimals = 18;
-      const supplyWithDecimals = parseUnits(initialSupply.toString(), decimals);
-      const abiCoder = new AbiCoder();
-      const encodedArgs = abiCoder.encode(
-        ["string", "string", "uint256"],
-        [name, symbol, supplyWithDecimals.toString()]
-      ).slice(2);
-
-      const deployData = (TOKEN_FACTORY_BYTECODE + encodedArgs) as `0x${string}`;
-
-      let gasEstimate: bigint;
-      try {
-        gasEstimate = await viemClient.estimateGas({ account: sponsorAccount.address, data: deployData });
-        gasEstimate = gasEstimate * 120n / 100n;
-      } catch {
-        gasEstimate = 3_000_000n;
+      if (!result.success) {
+        return JSON.stringify({ error: result.error });
       }
-
-      console.log(`[hosted-agents] Deploying token ${name} (${symbol}) for agent ${publicKey} via platform wallet`);
-
-      const deployTxHash = await sponsorWallet.sendTransaction({
-        data: deployData,
-        gas: gasEstimate,
-      });
-
-      const deployReceipt = await viemClient.waitForTransactionReceipt({ hash: deployTxHash });
-      if (deployReceipt.status === "reverted") {
-        return JSON.stringify({ error: "Token deployment transaction reverted." });
-      }
-
-      const tokenAddress = deployReceipt.contractAddress;
-      if (!tokenAddress) {
-        return JSON.stringify({ error: "Token deployed but contract address not found in receipt." });
-      }
-
-      console.log(`[hosted-agents] Token deployed at ${tokenAddress} (supply held in platform wallet for sponsorship pipeline)`);
-
-      const [bot] = await db.select().from(verifiedBots).where(eq(verifiedBots.publicKey, publicKey));
-      if (bot) {
-        const meta = (bot.metadata as any) || {};
-        meta.tokenPlan = { name, symbol, initialSupply, decimals, status: "deployed" };
-        meta.tokenAddress = tokenAddress;
-        meta.tokenDeployTxHash = deployTxHash;
-        await db.update(verifiedBots).set({ metadata: meta }).where(eq(verifiedBots.publicKey, publicKey));
-      }
-
-      try {
-        await db.insert(tokenPlans).values({
-          humanId,
-          agentPublicKey: publicKey,
-          tokenName: name,
-          tokenSymbol: symbol,
-          totalSupply: initialSupply,
-          tokenAddress,
-          deployTxHash,
-          status: "deployed",
-        });
-      } catch (dbErr: any) {
-        console.warn(`[hosted-agents] Failed to insert token plan: ${dbErr.message}`);
-      }
-
-      await logAgentActivity("token_deployment", humanId, publicKey, agent.name, {
-        tokenAddress, tokenName: name, tokenSymbol: symbol, initialSupply, deployTxHash, method: "platform-sponsored",
-      });
 
       return JSON.stringify({
         success: true,
-        message: `Token deployed! ${name} (${symbol}) is live on Celo at ${tokenAddress}. The supply is held by the platform wallet and will be distributed when you request sponsorship (the pool gets a portion, and the rest goes to your wallet).`,
-        tokenAddress,
-        deployTxHash,
-        explorerUrl: `https://celoscan.io/token/${tokenAddress}`,
+        message: `Token deployed! ${name} (${symbol}) is live on Celo at ${result.tokenAddress}. The supply is held by the platform wallet and will be distributed when you request sponsorship (the pool gets a portion, and the rest goes to your wallet).`,
+        tokenAddress: result.tokenAddress,
+        deployTxHash: result.deployTxHash,
+        explorerUrl: result.explorerUrl,
         nextStep: "Call request_sponsorship with the amount of tokens to pair with SELFCLAW in the liquidity pool. The remaining supply will be sent to your wallet.",
       });
     }
@@ -1568,195 +1492,29 @@ async function executeEconomyTool(
         return JSON.stringify({ error: "No wallet found." });
       }
 
-      const [bot] = await db.select().from(verifiedBots).where(eq(verifiedBots.publicKey, publicKey));
-      const botMeta = (bot?.metadata as any) || {};
-      if (!botMeta.tokenAddress) {
-        return JSON.stringify({ error: "No token deployed yet. Deploy a token first using deploy_token." });
-      }
-
       const { tokenAmount } = args;
       if (!tokenAmount) {
         return JSON.stringify({ error: "tokenAmount is required — the amount of your token to pair with SELFCLAW." });
       }
 
-      const rawSponsorKey = process.env.SELFCLAW_SPONSOR_PRIVATE_KEY || process.env.CELO_PRIVATE_KEY;
-      if (!rawSponsorKey) {
-        return JSON.stringify({ error: "Platform sponsor key not configured." });
-      }
-      const sponsorKey = rawSponsorKey.startsWith('0x') ? rawSponsorKey : `0x${rawSponsorKey}`;
-
-      const {
-        getSelfclawBalance, getTokenBalance, getSponsorAddress,
-        createPoolAndAddLiquidity, getNextPositionTokenId, computePoolId, getPoolState,
-        extractPositionTokenIdFromReceipt,
-      } = await import("../lib/uniswap-v4.js");
-
-      const tokenAddress = botMeta.tokenAddress;
-      const selfclawAddress = "0xCD88f99Adf75A9110c0bcd22695A32A20eC54ECb";
-      const sponsorAddress = getSponsorAddress(sponsorKey);
-
-      const agentTokenBalance = await getTokenBalance(tokenAddress, 18, sponsorKey);
-      const requiredAmount = parseFloat(tokenAmount);
-      const heldAmount = parseFloat(agentTokenBalance);
-
-      if (heldAmount < requiredAmount) {
-        return JSON.stringify({
-          error: `Sponsor wallet does not hold enough of your agent token. It has ${agentTokenBalance} but needs ${tokenAmount}.`,
-          sponsorWallet: sponsorAddress,
-          instructions: `Send ${Math.ceil(requiredAmount)} of your token (${tokenAddress}) to ${sponsorAddress} before requesting sponsorship.`,
-        });
-      }
-
-      const availableBalance = await getSelfclawBalance(sponsorKey);
-      const available = parseFloat(availableBalance);
-      if (available <= 0) {
-        return JSON.stringify({ error: "No SELFCLAW available in sponsorship wallet." });
-      }
-
-      const existing = await db.select().from(sponsoredAgents)
-        .where(eq(sponsoredAgents.humanId, humanId));
-      if (existing.length >= 3) {
-        return JSON.stringify({ error: "Maximum of 3 sponsorships per human identity reached." });
-      }
-
-      const selfclawForPool = Math.floor(available * 0.5).toString();
-      const tokenLower = tokenAddress.toLowerCase();
-      const selfclawLower = selfclawAddress.toLowerCase();
-      const token0 = tokenLower < selfclawLower ? tokenAddress : selfclawAddress;
-      const token1 = tokenLower < selfclawLower ? selfclawAddress : tokenAddress;
-      const feeTier = 10000;
-      const tickSpacing = 200;
-      const v4PoolId = computePoolId(token0, token1, feeTier, tickSpacing);
-
-      try {
-        const poolState = await getPoolState(v4PoolId as `0x${string}`);
-        if (poolState.liquidity !== '0') {
-          return JSON.stringify({ error: "A V4 pool already exists for this token pair.", v4PoolId });
-        }
-      } catch (_e: any) {}
-
-      const nextTokenIdBefore = await getNextPositionTokenId();
-
-      const [sponsorshipReq] = await db.insert(sponsorshipRequests).values({
-        humanId,
-        publicKey,
-        tokenAddress,
-        tokenSymbol: botMeta.tokenPlan?.symbol || 'TOKEN',
-        tokenAmount,
-        selfclawAmount: selfclawForPool,
-        v4PoolId,
-        status: 'processing',
+      const result = await platformRequestSponsorship({
+        publicKey, humanId, tokenAmount: tokenAmount.toString(),
+        agentName: agent.name, walletAddress: walletInfo.address,
         source: 'miniclaw-autonomous',
-      }).returning();
-
-      console.log(`[hosted-agents] Creating V4 pool for agent ${publicKey}: ${tokenAmount} TOKEN + ${selfclawForPool} SELFCLAW`);
-
-      const result = await createPoolAndAddLiquidity({
-        tokenA: tokenAddress, tokenB: selfclawAddress,
-        amountA: tokenAmount, amountB: selfclawForPool,
-        feeTier, privateKey: sponsorKey,
       });
 
       if (!result.success) {
-        await db.update(sponsorshipRequests).set({
-          status: 'failed', errorMessage: result.error, updatedAt: new Date(),
-        }).where(sql`${sponsorshipRequests.id} = ${sponsorshipReq.id}`);
-        return JSON.stringify({ error: `Sponsorship failed: ${result.error}` });
+        return JSON.stringify({ error: result.error, sponsorWallet: result.sponsorWallet, instructions: result.instructions });
       }
-
-      let positionTokenId: string | null = null;
-      try {
-        if (result.receipt) positionTokenId = extractPositionTokenIdFromReceipt(result.receipt);
-        if (!positionTokenId) {
-          const nextTokenIdAfter = await getNextPositionTokenId();
-          if (nextTokenIdAfter > nextTokenIdBefore) positionTokenId = nextTokenIdBefore.toString();
-        }
-      } catch (posErr: any) {
-        console.error(`[hosted-agents] Failed to extract position token ID: ${posErr.message}`);
-      }
-
-      await db.update(sponsorshipRequests).set({
-        status: 'completed', v4PoolId, positionTokenId,
-        txHash: result.txHash || '', completedAt: new Date(), updatedAt: new Date(),
-      }).where(sql`${sponsorshipRequests.id} = ${sponsorshipReq.id}`);
-
-      try {
-        await db.insert(sponsoredAgents).values({
-          humanId, publicKey, tokenAddress,
-          tokenSymbol: botMeta.tokenPlan?.symbol || 'TOKEN',
-          poolAddress: v4PoolId, v4PositionTokenId: positionTokenId,
-          poolVersion: 'v4', sponsoredAmountCelo: selfclawForPool,
-          sponsorTxHash: result.txHash || '', status: 'completed', completedAt: new Date(),
-        });
-      } catch (dbErr: any) {
-        console.warn(`[hosted-agents] Failed to insert sponsored agent: ${dbErr.message}`);
-      }
-
-      try {
-        await db.insert(trackedPools).values({
-          poolAddress: v4PoolId, tokenAddress,
-          tokenSymbol: botMeta.tokenPlan?.symbol || 'TOKEN',
-          tokenName: botMeta.tokenPlan?.name || 'Token',
-          pairedWith: 'SELFCLAW', humanId,
-          agentPublicKey: publicKey, feeTier,
-          v4PositionTokenId: positionTokenId, poolVersion: 'v4',
-          v4PoolId, initialCeloLiquidity: selfclawForPool,
-          initialTokenLiquidity: tokenAmount,
-        }).onConflictDoNothing();
-      } catch (e: any) {
-        console.warn(`[hosted-agents] Failed to track pool: ${e.message}`);
-      }
-
-      let remainingTransferTx: string | null = null;
-      try {
-        const remainingBalance = await getTokenBalance(tokenAddress, 18, sponsorKey);
-        const remaining = parseFloat(remainingBalance);
-        if (remaining > 0 && walletInfo?.address) {
-          const { createWalletClient, createPublicClient, http: viemHttp, encodeFunctionData } = await import("viem");
-          const { privateKeyToAccount } = await import("viem/accounts");
-          const { celo } = await import("viem/chains");
-          const { parseUnits: viemParseUnits } = await import("viem");
-
-          const viemClient = createPublicClient({ chain: celo, transport: viemHttp("https://forno.celo.org") });
-          const sponsorAccount = privateKeyToAccount(sponsorKey as `0x${string}`);
-          const sponsorWalletClient = createWalletClient({
-            account: sponsorAccount, chain: celo,
-            transport: viemHttp("https://forno.celo.org"),
-          });
-
-          const transferData = encodeFunctionData({
-            abi: [{
-              name: 'transfer', type: 'function', stateMutability: 'nonpayable',
-              inputs: [{ name: 'to', type: 'address' }, { name: 'amount', type: 'uint256' }],
-              outputs: [{ name: '', type: 'bool' }],
-            }],
-            functionName: 'transfer',
-            args: [walletInfo.address as `0x${string}`, viemParseUnits(remainingBalance, 18)],
-          });
-
-          remainingTransferTx = await sponsorWalletClient.sendTransaction({
-            to: tokenAddress as `0x${string}`,
-            data: transferData,
-          });
-          await viemClient.waitForTransactionReceipt({ hash: remainingTransferTx });
-          console.log(`[hosted-agents] Transferred remaining ${remainingBalance} tokens to agent wallet (tx: ${remainingTransferTx})`);
-        }
-      } catch (transferErr: any) {
-        console.warn(`[hosted-agents] Failed to transfer remaining tokens to agent: ${transferErr.message}`);
-      }
-
-      await logAgentActivity("selfclaw_sponsorship", humanId, publicKey, agent.name, {
-        tokenAddress, selfclawAmount: selfclawForPool, v4PoolId, positionTokenId, remainingTransferTx, method: "miniclaw-autonomous",
-      });
 
       return JSON.stringify({
         success: true,
-        message: `Liquidity pool created! Your token is now tradeable on Uniswap V4. Pool: ${selfclawForPool} SELFCLAW paired with ${tokenAmount} of your token.${remainingTransferTx ? ' The remaining token supply has been sent to your wallet.' : ''}`,
-        v4PoolId,
-        positionTokenId,
+        message: `Liquidity pool created! Your token is now tradeable on Uniswap V4. Pool: ${result.selfclawAmount} SELFCLAW paired with ${tokenAmount} of your token.${result.remainingTransferTx ? ' The remaining token supply has been sent to your wallet.' : ''}`,
+        v4PoolId: result.v4PoolId,
+        positionTokenId: result.positionTokenId,
         txHash: result.txHash,
-        selfclawAmount: selfclawForPool,
-        remainingTransferTx,
+        selfclawAmount: result.selfclawAmount,
+        remainingTransferTx: result.remainingTransferTx,
       });
     }
 
@@ -1766,75 +1524,34 @@ async function executeEconomyTool(
         return JSON.stringify({ error: "No wallet found. Set up wallet first." });
       }
 
-      const [bot] = await db.select().from(verifiedBots).where(eq(verifiedBots.publicKey, publicKey));
-      const botMeta = (bot?.metadata as any) || {};
-      if (botMeta.erc8004TokenId) {
+      const result = await platformRegisterErc8004({
+        publicKey, humanId,
+        agentName: agent.name,
+        description: agent.description || `Miniclaw: ${agent.name}`,
+        walletAddress: walletInfo.address,
+        hostedAgentId: agent.id,
+      });
+
+      if (!result.success) {
+        return JSON.stringify({ error: result.error });
+      }
+
+      if (result.alreadyDone) {
         return JSON.stringify({
           already_done: true,
-          tokenId: botMeta.erc8004TokenId,
+          tokenId: result.tokenId,
           message: "ERC-8004 identity already registered!",
-          explorerUrl: erc8004Service.getExplorerUrl(botMeta.erc8004TokenId),
+          explorerUrl: result.explorerUrl,
         });
       }
 
-      if (!erc8004Service.isReady()) {
-        return JSON.stringify({ error: "ERC-8004 contracts not available yet." });
-      }
-
-      const agentName = agent.name;
-      const description = agent.description || `Miniclaw: ${agent.name}`;
-      const domain = "selfclaw.ai";
-
-      const registrationJson = generateRegistrationFile(
-        agentName, description, walletInfo.address,
-        undefined, `https://${domain}`, undefined, true,
-      );
-
-      const registrationURL = `https://${domain}/api/selfclaw/v1/agent/${publicKey}/registration.json`;
-
-      const existingMcMeta = (agent.metadata as Record<string, any>) || {};
-      await db.update(hostedAgents).set({
-        metadata: { ...existingMcMeta, erc8004RegistrationJson: registrationJson },
-      }).where(eq(hostedAgents.id, agent.id));
-
-      console.log(`[hosted-agents] Registering ERC-8004 identity for agent ${publicKey} via platform wallet`);
-
-      const regResult = await erc8004Service.registerAgent(registrationURL);
-      if (!regResult) {
-        return JSON.stringify({ error: "ERC-8004 registration failed — contract call returned null." });
-      }
-
-      const updatedMcMeta = {
-        ...existingMcMeta,
-        erc8004RegistrationJson: registrationJson,
-        erc8004Minted: true,
-        erc8004TxHash: regResult.txHash,
-        erc8004TokenId: regResult.tokenId,
-        erc8004MintedAt: new Date().toISOString(),
-      };
-      await db.update(hostedAgents).set({ metadata: updatedMcMeta }).where(eq(hostedAgents.id, agent.id));
-
-      if (bot) {
-        const meta = (bot.metadata as any) || {};
-        meta.erc8004TokenId = regResult.tokenId;
-        meta.erc8004TxHash = regResult.txHash;
-        meta.erc8004Minted = true;
-        await db.update(verifiedBots).set({ metadata: meta }).where(eq(verifiedBots.publicKey, publicKey));
-      }
-
-      await logAgentActivity("erc8004_registration", humanId, publicKey, agent.name, {
-        tokenId: regResult.tokenId, txHash: regResult.txHash, method: "platform-sponsored",
-      });
-
-      console.log(`[hosted-agents] ERC-8004 registered: token #${regResult.tokenId} (tx: ${regResult.txHash})`);
-
       return JSON.stringify({
         success: true,
-        message: `Onchain identity registered! Your ERC-8004 NFT is token #${regResult.tokenId} on Celo.`,
-        tokenId: regResult.tokenId,
-        txHash: regResult.txHash,
-        explorerUrl: erc8004Service.getExplorerUrl(regResult.tokenId),
-        scan8004Url: `https://www.8004scan.io/agents/celo/${regResult.tokenId}`,
+        message: `Onchain identity registered! Your ERC-8004 NFT is token #${result.tokenId} on Celo.`,
+        tokenId: result.tokenId,
+        txHash: result.txHash,
+        explorerUrl: result.explorerUrl,
+        scan8004Url: result.scan8004Url,
       });
     }
 

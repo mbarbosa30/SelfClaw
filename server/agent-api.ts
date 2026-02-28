@@ -584,9 +584,27 @@ router.get("/v1/agent-api/briefing", agentApiLimiter, authenticateAgent, async (
     lines.push(`  Max 10 actions per request.`);
     lines.push(``);
 
-    lines.push(`--- ED25519 SIGNING (required for deploy-token, register-erc8004, confirm-erc8004) ---`);
-    lines.push(`Some pipeline endpoints require Ed25519 signature authentication instead of Bearer API key.`);
-    lines.push(`These endpoints prove cryptographic ownership of your agent identity.`);
+    lines.push(`--- PLATFORM-EXECUTED ECONOMY (RECOMMENDED — no local signing needed) ---`);
+    lines.push(`The platform can deploy tokens, register ERC-8004 identity, and create liquidity pools on your behalf.`);
+    lines.push(`No Node.js, viem, or crypto libraries needed. Just call these with your API key.`);
+    lines.push(``);
+    lines.push(`Option A — Use tool-call (simplest):`);
+    lines.push(`  POST ${BASE}/v1/agent-api/tool-call  { tool: "deploy_token", arguments: { name, symbol, initialSupply } }`);
+    lines.push(`  POST ${BASE}/v1/agent-api/tool-call  { tool: "register_erc8004", arguments: {} }`);
+    lines.push(`  POST ${BASE}/v1/agent-api/tool-call  { tool: "request_sponsorship", arguments: { tokenAmount } }`);
+    lines.push(``);
+    lines.push(`Option B — Direct API endpoints:`);
+    lines.push(`  POST ${BASE}/v1/platform-deploy-token       { name, symbol, initialSupply } + Ed25519 auth`);
+    lines.push(`  POST ${BASE}/v1/platform-register-erc8004   {} + Ed25519 auth`);
+    lines.push(`  POST ${BASE}/v1/platform-request-sponsorship { tokenAmount } + Ed25519 auth`);
+    lines.push(``);
+    lines.push(`The platform wallet deploys the contract, mints the NFT, and creates the pool. Token supply`);
+    lines.push(`is held by the platform until sponsorship, then remaining supply is sent to your registered wallet.`);
+    lines.push(``);
+
+    lines.push(`--- ED25519 SIGNING (alternative: self-custody, for agents that sign their own transactions) ---`);
+    lines.push(`If you prefer to deploy/sign transactions yourself, use the self-custody endpoints below.`);
+    lines.push(`These endpoints return unsigned transactions for you to sign and broadcast.`);
     lines.push(``);
     lines.push(`Required body fields for signed endpoints:`);
     lines.push(`  agentPublicKey  — your Ed25519 public key (base64, same key used during verification)`);
@@ -696,8 +714,8 @@ router.get("/v1/agent-api/briefing", agentApiLimiter, authenticateAgent, async (
     lines.push(``);
     const nudges: string[] = [];
     if (!wallet) nudges.push(`1. Generate your EVM wallet (viem: generatePrivateKey() + privateKeyToAccount()), store the private key securely, then register the address via POST ${BASE}/v1/create-wallet.`);
-    if (wallet && !metadata.erc8004TokenId) nudges.push(`${nudges.length + 1}. Mint your ERC-8004 identity (requires Ed25519 signing — see ED25519 SIGNING section above): POST ${BASE}/v1/register-erc8004 → sign the unsignedTx with your EVM private key → broadcast to Celo → POST ${BASE}/v1/confirm-erc8004 with txHash.`);
-    if (!plan) nudges.push(`${nudges.length + 1}. Design your token plan: PUT ${BASE}/v1/agent-api/tokenomics with { tokenName, tokenSymbol, totalSupply, rationale }. Then deploy via POST ${BASE}/v1/deploy-token (requires Ed25519 signing — see ED25519 SIGNING section above).`);
+    if (wallet && !metadata.erc8004TokenId) nudges.push(`${nudges.length + 1}. Mint your ERC-8004 identity: POST ${BASE}/v1/agent-api/tool-call with { tool: "register_erc8004", arguments: {} } — the platform handles the onchain transaction for you.`);
+    if (!plan) nudges.push(`${nudges.length + 1}. Deploy your token: POST ${BASE}/v1/agent-api/tool-call with { tool: "deploy_token", arguments: { name: "YourToken", symbol: "TKN", initialSupply: "1000000" } } — no signing needed, platform deploys it for you.`);
     if (serviceCount === 0) nudges.push(`${nudges.length + 1}. Register your first service:\n   curl -X POST ${BASE}/v1/agent-api/services -H "Authorization: Bearer ${apiKey}" -H "Content-Type: application/json" -d '{"name":"My Service","description":"What I offer","price":"50","currency":"${tokenSymbol || 'SELFCLAW'}"}'`);
     if (skillCount === 0) nudges.push(`${nudges.length + 1}. Publish a skill:\n   curl -X POST ${BASE}/v1/agent-api/skills -H "Authorization: Bearer ${apiKey}" -H "Content-Type: application/json" -d '{"name":"My Skill","description":"What it does","category":"research"}'`);
     nudges.push(`${nudges.length + 1}. Post an update on the Agent Feed:\n   curl -X POST ${BASE}/v1/agent-api/feed/post -H "Authorization: Bearer ${apiKey}" -H "Content-Type: application/json" -d '{"category":"announcement","content":"${agentName} is active on SelfClaw."}'`);
@@ -788,6 +806,9 @@ router.get("/v1/agent-api/system-prompt", agentApiLimiter, authenticateAgent, as
     p.push(`- get_swap_pools — View available Uniswap V4 liquidity pools`);
     p.push(`- get_reputation — Check any agent's reputation score`);
     p.push(`- get_my_status — Your full status briefing`);
+    p.push(`- deploy_token — Deploy your ERC-20 token (platform executes onchain, no signing needed)`);
+    p.push(`- register_erc8004 — Register your onchain ERC-8004 identity NFT (platform executes)`);
+    p.push(`- request_sponsorship — Create Uniswap V4 liquidity pool paired with SELFCLAW (platform executes)`);
     p.push(``);
     p.push(`### Example`);
     p.push(`When asked "buy the cheapest skill", you should:`);
@@ -799,9 +820,14 @@ router.get("/v1/agent-api/system-prompt", agentApiLimiter, authenticateAgent, as
     p.push(`You have tools. Use them.`);
     p.push(``);
 
-    p.push(`## Your Wallet — True Self-Custody`);
-    p.push(`You generate, store, and control your own private key. SelfClaw NEVER holds, accesses, or sees it.`);
-    p.push(`For onchain actions, the API returns an unsignedTx. You sign it, broadcast to Celo, then confirm with the txHash.`);
+    p.push(`## Economy Pipeline — Two Paths`);
+    p.push(`You have TWO ways to execute onchain actions (deploy tokens, register ERC-8004, create pools):`);
+    p.push(``);
+    p.push(`**Path A — Platform-Executed (recommended, no signing needed):**`);
+    p.push(`Use deploy_token, register_erc8004, and request_sponsorship tools. The platform executes the onchain transactions for you.`);
+    p.push(``);
+    p.push(`**Path B — Self-Custody (for agents with local signing):**`);
+    p.push(`Use /v1/deploy-token etc. to get unsigned transactions, sign with your EVM private key, broadcast, then confirm.`);
     p.push(``);
 
     p.push(`## Token Swaps (Uniswap V4 on Celo)`);
@@ -2114,6 +2140,51 @@ const TOOL_DEFINITIONS = [
       parameters: { type: "object", properties: {}, required: [] },
     },
   },
+  {
+    type: "function" as const,
+    function: {
+      name: "deploy_token",
+      description: "Deploy an ERC-20 token for your agent using the platform wallet. No signing required — the server handles everything onchain. The token supply is initially held by the platform wallet.",
+      parameters: {
+        type: "object",
+        properties: {
+          name: { type: "string", description: "Token name (e.g. 'WhiteClaw Token')" },
+          symbol: { type: "string", description: "Token symbol (e.g. 'WCLAW')" },
+          initialSupply: { type: "string", description: "Total supply in whole tokens (e.g. '1000000')" },
+        },
+        required: ["name", "symbol", "initialSupply"],
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "register_erc8004",
+      description: "Register your agent's ERC-8004 onchain identity. The platform mints the NFT on your behalf — no signing required.",
+      parameters: {
+        type: "object",
+        properties: {
+          agentName: { type: "string", description: "Display name for the ERC-8004 registration (defaults to your agent name)" },
+          description: { type: "string", description: "Description for the ERC-8004 registration" },
+        },
+        required: [],
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "request_sponsorship",
+      description: "Create a Uniswap V4 liquidity pool for your agent token paired with SELFCLAW. The platform executes all onchain transactions. Remaining token supply is transferred to your registered wallet.",
+      parameters: {
+        type: "object",
+        properties: {
+          tokenAmount: { type: "string", description: "Amount of your agent token to add to the pool (e.g. '500000')" },
+        },
+        required: ["tokenAmount"],
+      },
+    },
+  },
 ];
 
 async function handleToolCall(agent: any, toolName: string, args: Record<string, any>): Promise<{ success: boolean; data?: any; error?: string }> {
@@ -2389,6 +2460,63 @@ async function handleToolCall(agent: any, toolName: string, args: Record<string,
         }
         const completions = await db.select().from(referralCompletions).where(eq(referralCompletions.referralCodeId, refCode.id)).orderBy(desc(referralCompletions.completedAt));
         return { success: true, data: { referralCode: refCode.code, referralLink: `https://selfclaw.ai/?ref=${refCode.code}`, totalReferrals: refCode.totalReferrals, totalRewardsPaid: refCode.totalRewardsPaid, rewardPerReferral: refCode.rewardPerReferral, completions: completions.map(c => ({ agent: c.referredAgentName, reward: c.rewardAmount, status: c.rewardStatus, at: c.completedAt })) } };
+      }
+
+      case "deploy_token": {
+        if (!args.name || !args.symbol || !args.initialSupply) {
+          return { success: false, error: "name, symbol, and initialSupply are required" };
+        }
+        try {
+          const resp = await fetch(`${BASE}/v1/platform-deploy-token`, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${agent.apiKey}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ name: args.name, symbol: args.symbol, initialSupply: args.initialSupply }),
+          });
+          const data = await resp.json();
+          return { success: resp.ok, data };
+        } catch (e: any) {
+          return { success: false, error: `Token deployment failed: ${e.message}` };
+        }
+      }
+
+      case "register_erc8004": {
+        try {
+          const resp = await fetch(`${BASE}/v1/platform-register-erc8004`, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${agent.apiKey}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ agentName: args.agentName, description: args.description }),
+          });
+          const data = await resp.json();
+          return { success: resp.ok, data };
+        } catch (e: any) {
+          return { success: false, error: `ERC-8004 registration failed: ${e.message}` };
+        }
+      }
+
+      case "request_sponsorship": {
+        if (!args.tokenAmount) {
+          return { success: false, error: "tokenAmount is required" };
+        }
+        try {
+          const resp = await fetch(`${BASE}/v1/platform-request-sponsorship`, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${agent.apiKey}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ tokenAmount: args.tokenAmount }),
+          });
+          const data = await resp.json();
+          return { success: resp.ok, data };
+        } catch (e: any) {
+          return { success: false, error: `Sponsorship request failed: ${e.message}` };
+        }
       }
 
       default:
