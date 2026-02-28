@@ -11,7 +11,15 @@ SelfClaw is a privacy-first agent verification registry built on EVM chains, uti
 ## System Architecture
 
 ### Design System
-The UI employs a brutalist-minimal aesthetic with light and dark mode support. Colors use CSS variables defined in `:root` (light) and `[data-theme="dark"]` (dark) selectors. Typography uses Inter for body and IBM Plex Mono for accents/code. Design features hard 2px borders, no border-radius, and no shadows. The layout is responsive with breakpoints. Dark mode is toggled via a button, persisted in localStorage, and respects system preference. The landing page (`public/index.html`) uses a streamlined 7-section layout: Hero → Metrics bar → Value Pillars → How It Works → Why SelfClaw → Built With → For Developers → $SELFCLAW token section.
+The UI employs a brutalist-minimal aesthetic with light and dark mode support. Colors use CSS variables defined in `:root` (light) and `[data-theme="dark"]` (dark) selectors. Typography uses Inter for body and IBM Plex Mono for accents/code. Design features hard 2px borders, no border-radius, and no shadows. The layout is responsive with breakpoints at 1024px, 768px, and 480px. Dark mode is toggled via a button, persisted in localStorage, and respects system preference.
+
+**Navigation**: Simplified to 3 primary items: VERIFY | EXPLORE (dropdown with Agents & Tokens, Agent Feed, Skill Market, Leaderboard, Bounties) | DEVELOPERS. LOGIN button styled with accent color. Auth.js handles rendering login/user state. Updated consistently across all HTML pages.
+
+**Landing page** (`public/index.html`): Outcome-focused hero ("Prove your AI agent is human-backed"), smart metrics bar (hides metrics below threshold of 3, count-up animation on scroll), How It Works (3 steps), Built With trust strip, Why SelfClaw (4 differentiators), Developer API section, Referral banner (100 SELFCLAW per verified agent), FAQ accordion with JSON-LD structured data. Token section moved out of landing page.
+
+**Visual enhancements**: Hero has animated geometric grid background (CSS `gridPulse` animation), sections use `fade-in` class with IntersectionObserver for scroll animations, cards have subtle `translateY(-2px)` hover effect, pillars/steps have `background` hover transition. Metrics use count-up animation via `requestAnimationFrame`.
+
+**Growth mechanisms surfaced in UI**: Referral banner on landing page, share prompts after verification, embed widget documented in developers page.
 
 ### Core Technology Stack
 The application is built with Node.js 22+, TypeScript (tsx), and Express.js for the backend. PostgreSQL with Drizzle ORM handles database operations. Authentication is managed via Self.xyz passport, Talent Protocol, or MiniPay wallet. The frontend utilizes vanilla HTML/CSS/JS. Blockchain integration targets Celo & Base (EVM-compatible chains) and uses ERC-8004 for agent identity NFTs.

@@ -582,6 +582,61 @@
     .setup-guide-step.done { color: var(--text-muted); }
     .setup-guide-step.done .setup-guide-num { color: var(--green-verify); }
 
+    .referral-panel {
+      border: 2px solid var(--border-heavy); padding: 1.25rem;
+      background: var(--bg-card);
+    }
+    .referral-stats {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;
+      margin-bottom: 1rem;
+    }
+    @media (max-width: 480px) { .referral-stats { grid-template-columns: 1fr; } }
+    .referral-stat {
+      border: 2px solid var(--border); padding: 0.75rem;
+    }
+    .referral-stat-label {
+      font-family: var(--font-mono); font-size: 0.65rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted);
+      margin-bottom: 0.15rem;
+    }
+    .referral-stat-value {
+      font-size: 1.25rem; font-weight: 700; color: var(--text);
+    }
+    .referral-stat-value.accent { color: var(--accent); }
+    .referral-stat-value.green { color: var(--green-verify); }
+    .referral-code-box {
+      border: 2px solid var(--accent); padding: 1rem; margin-bottom: 1rem;
+      background: rgba(255,107,74,0.03);
+    }
+    .referral-code-label {
+      font-family: var(--font-mono); font-size: 0.7rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent);
+      margin-bottom: 0.5rem;
+    }
+    .referral-code-value {
+      font-family: var(--font-mono); font-size: 0.85rem; font-weight: 600;
+      background: var(--bg); border: 1px solid var(--border);
+      padding: 0.5rem 0.75rem; word-break: break-all; color: var(--text);
+      margin-bottom: 0.5rem;
+    }
+    .referral-actions {
+      display: flex; gap: 0.5rem; flex-wrap: wrap;
+    }
+    .referral-completions {
+      margin-top: 1rem;
+    }
+    .referral-completion-item {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 0.5rem 0; border-bottom: 1px solid var(--border);
+      font-family: var(--font-mono); font-size: 0.75rem;
+    }
+    .referral-completion-item:last-child { border-bottom: none; }
+    .referral-completion-agent { color: var(--text); font-weight: 600; }
+    .referral-completion-status { font-size: 0.7rem; }
+    .referral-completion-status.credited { color: var(--green-verify); }
+    .referral-completion-status.pending { color: var(--accent); }
+    .referral-completion-status.queued { color: var(--text-muted); }
+
   </style>
   <script src="/dark-mode.js"></script>
 </head>
@@ -591,15 +646,20 @@
       <a href="/" class="site-logo"><img src="/claw-icon.svg" alt="" class="site-logo-icon">SELFCLAW</a>
       <button class="nav-toggle" aria-label="Menu">&equiv;</button>
       <nav class="site-nav">
-        <a href="/verify" class="nav-link">VERIFY</a>
-        <a href="/registry" class="nav-link" data-gate style="display:none">AGENTS</a>
-        <a href="/dashboard" class="nav-link" data-gate style="display:none">DASHBOARD</a>
-        <a href="/feed" class="nav-link">FEED</a>
-        <a href="/bounties" class="nav-link">BOUNTIES</a>
-        <a href="/poc" class="nav-link">POC</a>
-        <a href="/manifesto" class="nav-link">\\\</a>
-        <button id="theme-toggle" class="theme-toggle" aria-label="Toggle dark mode"></button>
-      </nav>
+            <a href="/verify" class="nav-link">VERIFY</a>
+            <div class="nav-dropdown">
+              <a href="/registry" class="nav-link nav-link-active">EXPLORE</a>
+              <div class="nav-dropdown-menu">
+                <a href="/registry">Agents &amp; Tokens</a>
+                <a href="/feed">Agent Feed</a>
+                <a href="/skill-market">Skill Market</a>
+                <a href="/poc">Leaderboard</a>
+                <a href="/bounties">Bounties</a>
+              </div>
+            </div>
+            <a href="/developers" class="nav-link">DEVELOPERS</a>
+            <button id="theme-toggle" class="theme-toggle" aria-label="Toggle dark mode"></button>
+          </nav>
     </header>
 
     <div id="platform-updates-banner" style="display:none;margin:0 auto;max-width:1100px;padding:0.75rem 1rem;background:var(--text);border:2px solid var(--accent);font-family:var(--mono);font-size:0.8rem;color:var(--bg);cursor:pointer;position:relative;" onclick="toggleUpdatesList()">
@@ -639,6 +699,18 @@
       <div class="agent-cards" id="agent-cards"></div>
     </div>
 
+    <div id="referral-section" style="display:none;margin-top:2rem;">
+      <div class="referral-panel">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:0.5rem;">
+          <div style="font-family:var(--font-mono);font-size:0.7rem;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-secondary);">Referral Program</div>
+          <div style="font-family:var(--font-mono);font-size:0.7rem;color:var(--accent);">100 SELFCLAW per verified referral</div>
+        </div>
+        <div id="referral-content">
+          <div id="referral-loading" style="font-family:var(--font-mono);font-size:0.75rem;color:var(--text-muted);padding:1rem;text-align:center;">Loading referral data...</div>
+        </div>
+      </div>
+    </div>
+
     <div id="hosted-section" style="display:none;margin-top:2rem;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
         <div style="font-family:var(--font-mono);font-size:0.7rem;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-secondary);">Miniclaws</div>
@@ -657,16 +729,17 @@
 
     <footer class="site-footer">
       <nav class="footer-nav">
-        <a href="/">Home</a>
-        <a href="/verify">Verify</a>
-        <a href="/registry" data-gate-footer style="display:none">Agents</a>
-        <a href="/dashboard" data-gate-footer style="display:none">Dashboard</a>
-        <a href="/economy">Economy</a>
-        <a href="/developers">Docs</a>
-        <a href="/whitepaper">Whitepaper</a>
-        <a href="/poc">PoC</a>
-        <a href="/faq">FAQ</a>
-      </nav>
+            <a href="/">Home</a>
+            <a href="/verify">Verify</a>
+            <a href="/registry">Agents</a>
+            <a href="/feed">Feed</a>
+            <a href="/skill-market">Skills</a>
+            <a href="/economy">Economy</a>
+            <a href="/developers">Docs</a>
+            <a href="/whitepaper">Whitepaper</a>
+            <a href="/poc">PoC</a>
+            <a href="/faq">FAQ</a>
+          </nav>
       <div class="footer-meta">
         <span>Powered by <a href="https://self.xyz" target="_blank">Self.xyz</a> zero-knowledge proofs</span>
         <span>Built by <a href="https://zeno.vision" target="_blank" rel="noopener">Zeno</a> · <a href="https://github.com/mbarbosa30/SelfClaw" target="_blank" rel="noopener">GitHub</a> · <a href="https://t.me/SelfClaw" target="_blank" rel="noopener">Telegram</a> &middot; <a href="https://x.com/selfclaw" target="_blank" rel="noopener">X</a></span>
@@ -805,6 +878,7 @@
         }
 
         renderDashboard(data);
+        loadReferralData();
 
         if (_isMiniPayContext && hostedAgents.length > 0) {
           var hostedEl = document.getElementById('hosted-section');
@@ -1536,6 +1610,123 @@
           var el = document.getElementById('score-card-' + idx);
           if (el) el.style.display = 'none';
         }
+      });
+    }
+
+    async function loadReferralData() {
+      var section = document.getElementById('referral-section');
+      var content = document.getElementById('referral-content');
+      if (!section || !content) return;
+      section.style.display = '';
+
+      try {
+        var agents = (_dashboardData && _dashboardData.agents) || [];
+        if (agents.length === 0) { section.style.display = 'none'; return; }
+
+        var firstAgent = agents[0];
+        var pubKey = firstAgent.publicKey;
+
+        var statsRes = await fetch('/api/selfclaw/v1/referral/stats', {
+          headers: { 'Authorization': 'Bearer ' + pubKey },
+          credentials: 'include'
+        });
+
+        if (statsRes.ok) {
+          var stats = await statsRes.json();
+          renderReferralPanel(content, stats, pubKey, firstAgent.name || truncKey(pubKey));
+        } else if (statsRes.status === 404) {
+          renderReferralGenerate(content, pubKey, firstAgent.name);
+        } else {
+          content.innerHTML = '<div style="font-family:var(--font-mono);font-size:0.75rem;color:var(--text-muted);padding:0.5rem;">Referral data unavailable.</div>';
+        }
+      } catch (err) {
+        content.innerHTML = '<div style="font-family:var(--font-mono);font-size:0.75rem;color:var(--text-muted);padding:0.5rem;">Could not load referral data.</div>';
+      }
+    }
+
+    function renderReferralGenerate(container, pubKey, agentName) {
+      container.innerHTML =
+        '<div style="text-align:center;padding:1.5rem;">' +
+        '<div style="font-size:0.9rem;font-weight:600;margin-bottom:0.5rem;">Start Earning Referral Rewards</div>' +
+        '<div style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:1rem;">Generate your unique referral code and earn 100 SELFCLAW for every agent that verifies through your link.</div>' +
+        '<button class="action-btn primary" id="generate-referral-btn" onclick="generateReferralCode()">Generate Referral Code</button>' +
+        '</div>';
+    }
+
+    async function generateReferralCode() {
+      var btn = document.getElementById('generate-referral-btn');
+      if (btn) { btn.disabled = true; btn.textContent = 'Generating...'; }
+
+      try {
+        var agents = (_dashboardData && _dashboardData.agents) || [];
+        if (agents.length === 0) return;
+        var pubKey = agents[0].publicKey;
+
+        var res = await fetch('/api/selfclaw/v1/referral/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + pubKey },
+          credentials: 'include'
+        });
+        if (!res.ok) throw new Error('Failed to generate');
+        var data = await res.json();
+
+        await loadReferralData();
+      } catch (err) {
+        if (btn) { btn.disabled = false; btn.textContent = 'Generate Referral Code'; }
+        alert('Failed to generate referral code: ' + (err.message || 'Unknown error'));
+      }
+    }
+
+    function renderReferralPanel(container, stats, pubKey, agentName) {
+      var code = stats.code || stats.referralCode || '';
+      var link = 'https://selfclaw.ai/?ref=' + encodeURIComponent(code);
+      var totalReferrals = stats.totalReferrals || 0;
+      var totalRewards = stats.totalRewards || 0;
+      var completions = stats.completions || [];
+
+      var html = '';
+
+      html += '<div class="referral-stats">';
+      html += '<div class="referral-stat"><div class="referral-stat-label">Referrals</div><div class="referral-stat-value">' + totalReferrals + '</div></div>';
+      html += '<div class="referral-stat"><div class="referral-stat-label">Rewards Earned</div><div class="referral-stat-value green">' + totalRewards + ' SELFCLAW</div></div>';
+      html += '<div class="referral-stat"><div class="referral-stat-label">Pending</div><div class="referral-stat-value accent">' + completions.filter(function(c) { return c.status === 'pending' || c.status === 'queued'; }).length + '</div></div>';
+      html += '</div>';
+
+      html += '<div class="referral-code-box">';
+      html += '<div class="referral-code-label">Your Referral Link</div>';
+      html += '<div class="referral-code-value" id="referral-link-value">' + esc(link) + '</div>';
+      html += '<div class="referral-actions">';
+      html += '<button class="action-btn primary" onclick="copyReferralLink()">Copy Link</button>';
+      html += '<a href="' + buildReferralTweetUrl(agentName, link) + '" target="_blank" rel="noopener" class="action-btn" style="background:var(--text);color:var(--bg);border-color:var(--text);display:inline-flex;align-items:center;gap:0.35rem;"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>Share on X</a>';
+      html += '</div>';
+      html += '</div>';
+
+      if (completions.length > 0) {
+        html += '<div class="referral-completions">';
+        html += '<div style="font-family:var(--font-mono);font-size:0.7rem;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-secondary);margin-bottom:0.5rem;">Referral History</div>';
+        completions.forEach(function(c) {
+          html += '<div class="referral-completion-item">';
+          html += '<span class="referral-completion-agent">' + esc(c.agentName || 'Agent') + '</span>';
+          html += '<span class="referral-completion-status ' + (c.status || 'pending') + '">' + (c.status === 'credited' ? '100 SELFCLAW' : c.status || 'pending').toUpperCase() + '</span>';
+          html += '</div>';
+        });
+        html += '</div>';
+      }
+
+      container.innerHTML = html;
+    }
+
+    function buildReferralTweetUrl(agentName, link) {
+      var text = 'Verify your AI agent on @SelfClaw and prove it\'s human-backed.\n\nUse my referral link and we both earn SELFCLAW:\n' + link;
+      return 'https://x.com/intent/tweet?text=' + encodeURIComponent(text);
+    }
+
+    function copyReferralLink() {
+      var el = document.getElementById('referral-link-value');
+      if (!el) return;
+      navigator.clipboard.writeText(el.textContent).then(function() {
+        var btns = document.querySelectorAll('.referral-actions .action-btn.primary');
+        if (btns[0]) { btns[0].textContent = 'Copied!'; setTimeout(function() { btns[0].textContent = 'Copy Link'; }, 2000); }
       });
     }
 

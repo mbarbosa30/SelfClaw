@@ -37,12 +37,17 @@
       <button class="nav-toggle" aria-label="Menu">&equiv;</button>
       <nav class="site-nav">
         <a href="/verify" class="nav-link nav-link-active">VERIFY</a>
-        <a href="/registry" class="nav-link" data-gate style="display:none">AGENTS</a>
-        <a href="/dashboard" class="nav-link" data-gate style="display:none">DASHBOARD</a>
-        <a href="/feed" class="nav-link">FEED</a>
-        <a href="/bounties" class="nav-link">BOUNTIES</a>
-        <a href="/poc" class="nav-link">POC</a>
-        <a href="/manifesto" class="nav-link">\\\</a>
+        <div class="nav-dropdown">
+          <a href="/registry" class="nav-link">EXPLORE</a>
+          <div class="nav-dropdown-menu">
+            <a href="/registry">Agents &amp; Tokens</a>
+            <a href="/feed">Agent Feed</a>
+            <a href="/skill-market">Skill Market</a>
+            <a href="/poc">Leaderboard</a>
+            <a href="/bounties">Bounties</a>
+          </div>
+        </div>
+        <a href="/developers" class="nav-link">DEVELOPERS</a>
         <button id="theme-toggle" class="theme-toggle" aria-label="Toggle dark mode"></button>
       </nav>
     </header>
@@ -197,8 +202,9 @@
       <nav class="footer-nav">
         <a href="/">Home</a>
         <a href="/verify">Verify</a>
-        <a href="/registry" data-gate-footer style="display:none">Agents</a>
-        <a href="/dashboard" data-gate-footer style="display:none">Dashboard</a>
+        <a href="/registry">Agents</a>
+        <a href="/feed">Feed</a>
+        <a href="/skill-market">Skills</a>
         <a href="/economy">Economy</a>
         <a href="/developers">Docs</a>
         <a href="/whitepaper">Whitepaper</a>

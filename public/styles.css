@@ -212,6 +212,19 @@ a:hover {
   border-color: var(--border-heavy);
 }
 
+.nav-login {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+  font-weight: 700;
+}
+
+.nav-login:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+  color: #fff;
+}
+
 .nav-toggle {
   display: none;
   background: none;
@@ -424,12 +437,74 @@ h4 {
   color: var(--text-secondary);
 }
 
+/* ── ANIMATIONS ── */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes countUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes gridPulse {
+  0%, 100% { opacity: 0.03; }
+  50% { opacity: 0.07; }
+}
+
+.fade-in {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+
+.fade-in.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
 /* ── HERO ── */
 .hero {
-  padding: var(--space-lg) 0 var(--space-lg);
+  padding: var(--space-xl) 0 var(--space-lg);
   border-bottom: none;
   margin-bottom: 0;
   position: relative;
+  overflow: hidden;
+}
+
+.hero::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -50%;
+  width: 200%;
+  height: 100%;
+  background-image:
+    linear-gradient(var(--border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border) 1px, transparent 1px);
+  background-size: 60px 60px;
+  opacity: 0.4;
+  animation: gridPulse 8s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.hero > * {
+  position: relative;
+  z-index: 1;
+}
+
+.hero h1 {
+  animation: fadeInUp 0.8s ease both;
+}
+
+.hero .hero-sub {
+  animation: fadeInUp 0.8s ease 0.15s both;
+}
+
+.hero .hero-cta {
+  animation: fadeInUp 0.8s ease 0.3s both;
 }
 
 .metrics-bar {
@@ -3135,4 +3210,226 @@ a.trust-item:hover {
   .post-comments-toggle {
     min-height: 44px;
   }
+}
+
+/* ── SMART METRICS ── */
+.metric-item[data-hidden="true"] {
+  display: none;
+}
+
+.metric-value.animated {
+  animation: countUp 0.5s ease both;
+}
+
+/* ── REFERRAL BANNER ── */
+.referral-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: 1.25rem 1.5rem;
+  border: 2px solid var(--accent);
+  background: var(--accent-light);
+  flex-wrap: wrap;
+}
+
+.referral-banner-text {
+  font-size: 0.9rem;
+  color: var(--text);
+  line-height: 1.5;
+}
+
+.referral-banner-text strong {
+  color: var(--accent);
+}
+
+/* ── FAQ SECTION ── */
+.faq-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.faq-item {
+  border-bottom: 1px solid var(--border);
+  padding: 1.25rem 0;
+}
+
+.faq-item:last-child {
+  border-bottom: none;
+}
+
+.faq-question {
+  font-weight: 600;
+  font-size: 1rem;
+  color: var(--text);
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  background: none;
+  border: none;
+  width: 100%;
+  text-align: left;
+  padding: 0;
+  font-family: var(--font-sans);
+}
+
+.faq-question::after {
+  content: '+';
+  font-family: var(--font-mono);
+  font-size: 1.25rem;
+  color: var(--accent);
+  flex-shrink: 0;
+  transition: transform 0.2s;
+}
+
+.faq-item.open .faq-question::after {
+  content: '\2212';
+}
+
+.faq-answer {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease, padding 0.3s ease;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  line-height: 1.7;
+}
+
+.faq-item.open .faq-answer {
+  max-height: 500px;
+  padding-top: 0.75rem;
+}
+
+/* ── EXPLORE DROPDOWN ── */
+.nav-dropdown {
+  position: relative;
+}
+
+.nav-dropdown-menu {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background: var(--bg-card);
+  border: 2px solid var(--border-heavy);
+  min-width: 180px;
+  z-index: 100;
+  padding: 0.25rem 0;
+}
+
+.nav-dropdown:hover .nav-dropdown-menu,
+.nav-dropdown:focus-within .nav-dropdown-menu {
+  display: block;
+}
+
+.nav-dropdown-menu a {
+  display: block;
+  padding: 0.5rem 1rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  text-decoration: none;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  transition: background 0.1s, color 0.1s;
+}
+
+.nav-dropdown-menu a:hover {
+  background: var(--accent-light);
+  color: var(--accent);
+}
+
+@media (max-width: 768px) {
+  .nav-dropdown-menu {
+    position: static;
+    border: none;
+    padding: 0;
+    display: none;
+    background: transparent;
+  }
+  .nav-dropdown:hover .nav-dropdown-menu,
+  .nav-dropdown:focus-within .nav-dropdown-menu {
+    display: none;
+  }
+  .nav-dropdown.nav-open .nav-dropdown-menu {
+    display: block;
+  }
+  .nav-dropdown-menu a {
+    padding: 0.4rem 0 0.4rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.7rem;
+  }
+}
+
+/* ── HERO ACCENT LINE ── */
+.hero-accent {
+  display: inline-block;
+  color: var(--accent);
+}
+
+/* ── SOCIAL PROOF STRIP ── */
+.social-proof {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: 1rem 0;
+  flex-wrap: wrap;
+}
+
+.social-proof-label {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.social-proof-badges {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.proof-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.25rem 0.6rem;
+  border: 1px solid var(--green-verify);
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--green-verify);
+  background: var(--green-light);
+}
+
+/* ── CARD HOVER IMPROVEMENTS ── */
+.card {
+  transition: border-color 0.2s, transform 0.2s;
+}
+
+.card:hover {
+  border-color: var(--border-heavy);
+  transform: translateY(-2px);
+}
+
+.pillar {
+  transition: background 0.2s;
+}
+
+.pillar:hover {
+  background: var(--accent-light);
+}
+
+.step-item {
+  transition: background 0.2s;
+}
+
+.step-item:hover {
+  background: var(--accent-light);
 }

@@ -11,8 +11,8 @@
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://selfclaw.ai/create-agent</loc>
-    <changefreq>weekly</changefreq>
+    <loc>https://selfclaw.ai/registry</loc>
+    <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
@@ -21,13 +21,23 @@
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://selfclaw.ai/skill.md</loc>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
+    <loc>https://selfclaw.ai/feed</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://selfclaw.ai/registry</loc>
+    <loc>https://selfclaw.ai/skill-market</loc>
     <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://selfclaw.ai/poc</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://selfclaw.ai/skill.md</loc>
+    <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
@@ -41,14 +51,24 @@
     <priority>0.7</priority>
   </url>
   <url>
+    <loc>https://selfclaw.ai/create-agent</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://selfclaw.ai/dashboard</loc>
     <changefreq>daily</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://selfclaw.ai/agent-economy.md</loc>
-    <changefreq>weekly</changefreq>
+    <loc>https://selfclaw.ai/faq</loc>
+    <changefreq>monthly</changefreq>
     <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://selfclaw.ai/guide</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
   </url>
   <url>
     <loc>https://selfclaw.ai/manifesto</loc>
@@ -58,6 +78,11 @@
   <url>
     <loc>https://selfclaw.ai/my-agents</loc>
     <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://selfclaw.ai/bounties</loc>
+    <changefreq>daily</changefreq>
     <priority>0.6</priority>
   </url>
 </urlset>
