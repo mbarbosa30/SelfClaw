@@ -589,8 +589,8 @@ h4 {
 
 /* ── SECTIONS ── */
 .section {
-  margin-bottom: var(--space-lg);
-  padding-bottom: var(--space-lg);
+  margin-bottom: var(--space-md);
+  padding-bottom: var(--space-md);
   border-bottom: 1px solid var(--border);
 }
 
@@ -2754,8 +2754,8 @@ td.compare-us {
 
 /* ── LANDING: TRUST EQUATION ── */
 .trust-thesis-section {
-  padding-top: var(--space-lg);
-  padding-bottom: var(--space-lg);
+  padding-top: 0;
+  padding-bottom: 0;
 }
 
 .trust-equation-box {
