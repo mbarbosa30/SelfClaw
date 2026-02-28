@@ -1,7 +1,17 @@
 import { Router, Request, Response } from "express";
 import { db } from "./db.js";
-import { marketSkills, skillPurchases } from "../shared/schema.js";
+import { marketSkills, skillPurchases, agentWallets } from "../shared/schema.js";
 import { sql, desc, eq, count } from "drizzle-orm";
+import {
+  createPaymentRequirement,
+  buildPaymentRequiredResponse,
+  verifyPayment,
+  releaseEscrow,
+  refundEscrow,
+  getEscrowAddress,
+  SELFCLAW_TOKEN,
+} from "../lib/selfclaw-commerce.js";
+import { parseUnits } from "viem";
 
 const router = Router();
 
@@ -236,6 +246,65 @@ router.post("/v1/skills/:id/purchase", async (req: Request, res: Response) => {
     }
 
     const skill = skills[0];
+    const isFree = skill.isFree || !skill.price || skill.price === "0";
+
+    if (isFree) {
+      const [purchase] = await db.insert(skillPurchases).values({
+        skillId: id as string,
+        buyerHumanId: auth.humanId as string,
+        buyerPublicKey: auth.publicKey as string,
+        sellerHumanId: skill.humanId as string,
+        sellerPublicKey: skill.agentPublicKey as string,
+        price: "0" as string,
+        priceToken: (skill.priceToken || "SELFCLAW") as string,
+        txHash: null as string | null,
+        status: "completed" as string,
+      } as any).returning();
+
+      await db.update(marketSkills)
+        .set({ purchaseCount: sql`${marketSkills.purchaseCount} + 1` })
+        .where(sql`${marketSkills.id} = ${id}`);
+
+      return res.status(201).json({ purchase });
+    }
+
+    if (!txHash) {
+      const sellerWallets = await db.select().from(agentWallets)
+        .where(sql`${agentWallets.publicKey} = ${skill.agentPublicKey}`)
+        .limit(1);
+      const sellerAddress = sellerWallets.length > 0 ? sellerWallets[0].address : "";
+
+      const requirement = createPaymentRequirement(
+        sellerAddress,
+        skill.price!,
+        `Purchase skill: ${skill.name}`,
+        id as string,
+        auth.publicKey,
+      );
+
+      const paymentResponse = buildPaymentRequiredResponse(requirement);
+      return res.status(402).json(paymentResponse.body);
+    }
+
+    const existingWithTx = await db.select({ id: skillPurchases.id }).from(skillPurchases)
+      .where(sql`${skillPurchases.txHash} = ${txHash}`)
+      .limit(1);
+    if (existingWithTx.length > 0) {
+      return res.status(409).json({ error: "This transaction hash has already been used for a purchase" });
+    }
+
+    const escrowAddress = getEscrowAddress();
+    const amountWei = parseUnits(skill.price!, 18);
+    const tokenAddress = skill.priceToken === "SELFCLAW" ? SELFCLAW_TOKEN : SELFCLAW_TOKEN;
+
+    const verification = await verifyPayment(txHash, escrowAddress, amountWei, tokenAddress);
+
+    if (!verification.valid) {
+      return res.status(400).json({
+        error: "Payment verification failed",
+        details: verification.error,
+      });
+    }
 
     const [purchase] = await db.insert(skillPurchases).values({
       skillId: id as string,
@@ -245,17 +314,140 @@ router.post("/v1/skills/:id/purchase", async (req: Request, res: Response) => {
       sellerPublicKey: skill.agentPublicKey as string,
       price: (skill.price || "0") as string,
       priceToken: (skill.priceToken || "SELFCLAW") as string,
-      txHash: (txHash || null) as string | null,
-      status: (txHash ? "completed" : "pending") as string,
+      txHash: txHash as string,
+      status: "escrowed" as string,
     } as any).returning();
 
     await db.update(marketSkills)
       .set({ purchaseCount: sql`${marketSkills.purchaseCount} + 1` })
       .where(sql`${marketSkills.id} = ${id}`);
 
+    console.log(`[skill-market] Purchase ${purchase.id} escrowed — txHash: ${txHash}`);
     res.status(201).json({ purchase });
   } catch (error: any) {
     console.error("[skill-market] purchase error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post("/v1/skills/purchases/:purchaseId/deliver", async (req: Request, res: Response) => {
+  try {
+    const auth = getAuth(req);
+    if (!auth) return res.status(401).json({ error: "Authentication required" });
+
+    const { purchaseId } = req.params;
+
+    const purchases = await db.select().from(skillPurchases)
+      .where(sql`${skillPurchases.id} = ${purchaseId}`)
+      .limit(1);
+
+    if (purchases.length === 0) {
+      return res.status(404).json({ error: "Purchase not found" });
+    }
+
+    const purchase = purchases[0];
+
+    if (purchase.buyerHumanId !== auth.humanId) {
+      return res.status(403).json({ error: "Only the buyer can confirm delivery" });
+    }
+
+    if (purchase.status !== "escrowed") {
+      return res.status(400).json({ error: `Cannot confirm delivery for purchase with status: ${purchase.status}` });
+    }
+
+    const sellerWallets = await db.select().from(agentWallets)
+      .where(sql`${agentWallets.publicKey} = ${purchase.sellerPublicKey}`)
+      .limit(1);
+
+    let transferStatus = "released";
+    let releaseTxHash: string | undefined;
+
+    if (sellerWallets.length > 0 && purchase.price && purchase.price !== "0") {
+      const amountWei = parseUnits(purchase.price, 18);
+      const release = await releaseEscrow(sellerWallets[0].address, amountWei);
+
+      if (release.success) {
+        releaseTxHash = release.txHash;
+        console.log(`[skill-market] Escrow released for purchase ${purchaseId} — tx: ${release.txHash}`);
+      } else {
+        transferStatus = "release_failed";
+        console.warn(`[skill-market] Escrow release failed for purchase ${purchaseId}: ${release.error}`);
+      }
+    }
+
+    await db.update(skillPurchases)
+      .set({ status: transferStatus === "released" ? "completed" : "release_failed" })
+      .where(sql`${skillPurchases.id} = ${purchaseId}`);
+
+    res.json({
+      success: transferStatus === "released",
+      purchaseId,
+      status: transferStatus,
+      releaseTxHash,
+    });
+  } catch (error: any) {
+    console.error("[skill-market] deliver error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post("/v1/skills/purchases/:purchaseId/refund", async (req: Request, res: Response) => {
+  try {
+    const auth = getAuth(req);
+    if (!auth) return res.status(401).json({ error: "Authentication required" });
+
+    const { purchaseId } = req.params;
+
+    const purchases = await db.select().from(skillPurchases)
+      .where(sql`${skillPurchases.id} = ${purchaseId}`)
+      .limit(1);
+
+    if (purchases.length === 0) {
+      return res.status(404).json({ error: "Purchase not found" });
+    }
+
+    const purchase = purchases[0];
+
+    if (purchase.sellerHumanId !== auth.humanId && purchase.buyerHumanId !== auth.humanId) {
+      return res.status(403).json({ error: "Only the buyer or seller can request a refund" });
+    }
+
+    if (purchase.status !== "escrowed") {
+      return res.status(400).json({ error: `Cannot refund purchase with status: ${purchase.status}` });
+    }
+
+    const buyerWallets = await db.select().from(agentWallets)
+      .where(sql`${agentWallets.publicKey} = ${purchase.buyerPublicKey}`)
+      .limit(1);
+
+    let refundStatus = "refunded";
+    let refundTxHash: string | undefined;
+
+    if (buyerWallets.length > 0 && purchase.price && purchase.price !== "0") {
+      const amountWei = parseUnits(purchase.price, 18);
+      const refund = await refundEscrow(buyerWallets[0].address, amountWei);
+
+      if (refund.success) {
+        refundTxHash = refund.txHash;
+        console.log(`[skill-market] Escrow refunded for purchase ${purchaseId} — tx: ${refund.txHash}`);
+      } else {
+        refundStatus = "refund_failed";
+        console.warn(`[skill-market] Escrow refund failed for purchase ${purchaseId}: ${refund.error}`);
+      }
+    }
+
+    await db.update(skillPurchases)
+      .set({ status: refundStatus })
+      .where(sql`${skillPurchases.id} = ${purchaseId}`);
+
+    res.json({
+      success: refundStatus === "refunded",
+      purchaseId,
+      status: refundStatus,
+      refundTxHash,
+    });
+  } catch (error: any) {
+    console.error("[skill-market] refund error:", error);
     res.status(500).json({ error: error.message });
   }
 });

@@ -620,7 +620,7 @@
     }
 
     async function doInstall(slug, agentId, picker) {
-      picker.innerHTML = '<span style="font-family:var(--font-mono);font-size:0.75rem;color:var(--text-muted);">Installing...</span>';
+      picker.innerHTML = '<span style="font-family:var(--font-mono);font-size:0.75rem;color:var(--text-muted);">Processing...</span>';
       try {
         var res = await fetch('/api/selfclaw/v1/skills/' + encodeURIComponent(slug) + '/purchase', {
           method: 'POST',
@@ -629,10 +629,57 @@
           body: JSON.stringify({ hostedAgentId: agentId }),
         });
         var data = await res.json();
-        if (res.ok) {
+        if (res.status === 402 && data.payment) {
+          var p = data.payment;
+          picker.innerHTML =
+            '<div style="border:2px solid var(--accent);padding:0.75rem;font-family:var(--font-mono);font-size:0.7rem;line-height:1.6;max-width:400px;">' +
+              '<div style="font-weight:600;margin-bottom:0.5rem;color:var(--accent);text-transform:uppercase;">Payment Required</div>' +
+              '<div>Send <strong>' + esc(p.amount) + ' ' + esc(p.tokenSymbol) + '</strong> to escrow:</div>' +
+              '<div style="word-break:break-all;background:var(--bg);padding:0.3rem 0.5rem;margin:0.3rem 0;border:1px solid var(--border);">' + esc(p.payTo) + '</div>' +
+              '<div style="color:var(--text-muted);margin-bottom:0.5rem;">Funds held in escrow until you confirm delivery.</div>' +
+              '<div style="margin-top:0.5rem;">' +
+                '<label style="display:block;margin-bottom:0.25rem;">Transaction Hash:</label>' +
+                '<input type="text" id="txhash-' + esc(slug) + '" style="width:100%;padding:0.4rem;border:2px solid var(--border-heavy);background:var(--bg-card);font-family:var(--font-mono);font-size:0.7rem;color:var(--text);" placeholder="0x...">' +
+              '</div>' +
+              '<div style="display:flex;gap:0.5rem;margin-top:0.5rem;">' +
+                '<button class="sm-install-btn" onclick="submitPayment(\'' + esc(slug) + '\',\'' + esc(agentId) + '\')">Verify Payment</button>' +
+                '<button class="sm-install-btn" style="background:var(--bg-card);color:var(--text);" onclick="cancelInstall(\'' + esc(slug) + '\')">Cancel</button>' +
+              '</div>' +
+            '</div>';
+        } else if (res.ok) {
           picker.innerHTML = '<span style="font-family:var(--font-mono);font-size:0.75rem;color:var(--green-verify);">&#10003; Installed</span>';
         } else {
           picker.innerHTML = '<span style="font-family:var(--font-mono);font-size:0.75rem;color:var(--red);">' + esc(data.error || 'Failed') + '</span>' +
+            '<button class="sm-install-btn" style="margin-left:0.5rem;" onclick="startInstall(\'' + esc(slug) + '\')">Retry</button>';
+        }
+      } catch (err) {
+        picker.innerHTML = '<span style="font-family:var(--font-mono);font-size:0.75rem;color:var(--red);">Network error</span>' +
+          '<button class="sm-install-btn" style="margin-left:0.5rem;" onclick="startInstall(\'' + esc(slug) + '\')">Retry</button>';
+      }
+    }
+
+    async function submitPayment(slug, agentId) {
+      var txHashInput = document.getElementById('txhash-' + slug);
+      if (!txHashInput || !txHashInput.value.trim()) {
+        alert('Please enter a transaction hash.');
+        return;
+      }
+      var txHash = txHashInput.value.trim();
+      var picker = document.getElementById('picker-' + slug);
+      if (!picker) return;
+      picker.innerHTML = '<span style="font-family:var(--font-mono);font-size:0.75rem;color:var(--text-muted);">Verifying payment...</span>';
+      try {
+        var res = await fetch('/api/selfclaw/v1/skills/' + encodeURIComponent(slug) + '/purchase', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ hostedAgentId: agentId, txHash: txHash }),
+        });
+        var data = await res.json();
+        if (res.ok) {
+          picker.innerHTML = '<span style="font-family:var(--font-mono);font-size:0.75rem;color:var(--green-verify);">&#10003; Payment verified &amp; escrowed</span>';
+        } else {
+          picker.innerHTML = '<span style="font-family:var(--font-mono);font-size:0.75rem;color:var(--red);">' + esc(data.error || data.details || 'Verification failed') + '</span>' +
             '<button class="sm-install-btn" style="margin-left:0.5rem;" onclick="startInstall(\'' + esc(slug) + '\')">Retry</button>';
         }
       } catch (err) {

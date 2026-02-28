@@ -8,7 +8,47 @@ import {
   verifiedBots,
   reputationEvents,
   reputationBadges,
+  agentWallets,
 } from "../shared/schema.js";
+import { releaseEscrow, getEscrowAddress, SELFCLAW_TOKEN } from "../lib/selfclaw-commerce.js";
+import { parseUnits } from "viem";
+
+async function executeStakeTransfer(
+  resolution: string,
+  agentPublicKey: string,
+  stakeAmount: string,
+  stakeToken: string,
+): Promise<{ transferStatus: string; transferTxHash?: string; transferError?: string }> {
+  try {
+    const [wallet] = await db.select().from(agentWallets).where(eq(agentWallets.publicKey, agentPublicKey));
+    if (!wallet) {
+      return { transferStatus: "no_wallet", transferError: "Agent has no registered wallet" };
+    }
+
+    if (resolution === "validated") {
+      const rewardAmount = (parseFloat(stakeAmount) * 0.1).toString();
+      const rewardWei = parseUnits(rewardAmount, 18);
+      const result = await releaseEscrow(wallet.address, rewardWei, SELFCLAW_TOKEN);
+      if (result.success) {
+        console.log(`[verification] Reward transfer of ${rewardAmount} SELFCLAW to ${wallet.address} succeeded: ${result.txHash}`);
+        return { transferStatus: "completed", transferTxHash: result.txHash };
+      } else {
+        console.warn(`[verification] Reward transfer failed: ${result.error}`);
+        return { transferStatus: "failed", transferError: result.error };
+      }
+    } else if (resolution === "slashed") {
+      const slashAmount = (parseFloat(stakeAmount) * 0.5).toString();
+      const escrowAddr = getEscrowAddress();
+      console.log(`[verification] Slash of ${slashAmount} ${stakeToken} recorded for agent ${agentPublicKey}. Agent wallet: ${wallet.address}, platform: ${escrowAddr}`);
+      return { transferStatus: "slash_recorded", transferError: "On-chain slash requires agent pre-approval (not yet supported)" };
+    }
+
+    return { transferStatus: "no_transfer" };
+  } catch (err: any) {
+    console.error(`[verification] Transfer error for ${resolution}:`, err.message);
+    return { transferStatus: "error", transferError: err.message };
+  }
+}
 
 const router = Router();
 
@@ -204,6 +244,11 @@ router.post("/v1/verification/bounties/:id/claim", async (req: Request, res: Res
         .set(updateData)
         .where(eq(reputationStakes.id, bounty.stakeId));
 
+      let transferResult: { transferStatus: string; transferTxHash?: string; transferError?: string } = { transferStatus: "no_transfer" };
+      if (updateData.resolution === "validated" || updateData.resolution === "slashed") {
+        transferResult = await executeStakeTransfer(updateData.resolution, stake.agentPublicKey, stake.stakeAmount, stake.stakeToken);
+      }
+
       if (updateData.resolution) {
         try {
           const [bot] = await tx
@@ -227,6 +272,9 @@ router.post("/v1/verification/bounties/:id/claim", async (req: Request, res: Res
               avgScore: weightedAvg,
               humanVerified: true,
               bountyId: id,
+              transferStatus: transferResult.transferStatus,
+              transferTxHash: transferResult.transferTxHash || null,
+              transferError: transferResult.transferError || null,
             },
           });
         } catch (e: any) {

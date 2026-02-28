@@ -13,6 +13,7 @@ import { createPublicClient, http, parseUnits, formatUnits, encodeFunctionData, 
 import { celo } from 'viem/chains';
 import { TOKEN_FACTORY_BYTECODE } from '../lib/constants.js';
 import { platformDeployToken, platformRegisterErc8004, platformRequestSponsorship } from '../lib/platform-economy.js';
+import { releaseEscrow, SELFCLAW_TOKEN } from '../lib/selfclaw-commerce.js';
 
 import {
   publicApiLimiter,
@@ -602,6 +603,31 @@ async function handleCallback(req: Request, res: Response) {
         if (refCode && refCode.ownerHumanId !== humanId) {
           const [existingCompletion] = await db.select({ id: referralCompletions.id }).from(referralCompletions).where(and(eq(referralCompletions.referralCodeId, refCode.id), eq(referralCompletions.referredPublicKey, session.agentPublicKey))).limit(1);
           if (!existingCompletion) {
+            const rewardAmount = refCode.rewardPerReferral || "100";
+            let rewardStatus = "pending";
+            let transferTxHash: string | undefined;
+
+            if (refCode.ownerPublicKey) {
+              const [referrerWallet] = await db.select().from(agentWallets).where(eq(agentWallets.publicKey, refCode.ownerPublicKey)).limit(1);
+              if (referrerWallet) {
+                try {
+                  const amountWei = parseUnits(rewardAmount, 18);
+                  const result = await releaseEscrow(referrerWallet.address, amountWei, SELFCLAW_TOKEN);
+                  if (result.success && result.txHash) {
+                    rewardStatus = "credited";
+                    transferTxHash = result.txHash;
+                    console.log(`[selfclaw] Referral reward transferred: ${rewardAmount} SELFCLAW to ${referrerWallet.address} — tx: ${result.txHash}`);
+                  } else {
+                    console.warn(`[selfclaw] Referral reward transfer failed for ${referrerWallet.address}: ${result.error}`);
+                  }
+                } catch (txErr: any) {
+                  console.warn(`[selfclaw] Referral reward transfer error for ${referrerWallet.address}:`, txErr.message);
+                }
+              } else {
+                console.warn(`[selfclaw] Referral reward pending: no wallet registered for referrer ${refCode.ownerPublicKey.substring(0, 12)}...`);
+              }
+            }
+
             await db.insert(referralCompletions).values({
               referralCodeId: refCode.id,
               referrerHumanId: refCode.ownerHumanId,
@@ -609,15 +635,21 @@ async function handleCallback(req: Request, res: Response) {
               referredHumanId: humanId,
               referredPublicKey: session.agentPublicKey,
               referredAgentName: session.agentName || null,
-              rewardAmount: refCode.rewardPerReferral || "100",
-              rewardStatus: "credited",
+              rewardAmount,
+              rewardStatus,
             });
-            await db.update(referralCodes).set({
-              totalReferrals: sql`${referralCodes.totalReferrals} + 1`,
-              totalRewardsPaid: sql`(COALESCE(${referralCodes.totalRewardsPaid}::numeric, 0) + ${refCode.rewardPerReferral || "100"})::text`,
-            }).where(eq(referralCodes.id, refCode.id));
-            logActivity("referral_completed", humanId, session.agentPublicKey, session.agentName || undefined, { referralCode: pendingRefCode, referrerHumanId: refCode.ownerHumanId, reward: refCode.rewardPerReferral || "100" });
-            console.log(`[selfclaw] Referral completed: ${pendingRefCode} → ${session.agentName || session.agentPublicKey.substring(0, 12)}`);
+            if (rewardStatus === "credited") {
+              await db.update(referralCodes).set({
+                totalReferrals: sql`${referralCodes.totalReferrals} + 1`,
+                totalRewardsPaid: sql`(COALESCE(${referralCodes.totalRewardsPaid}::numeric, 0) + ${rewardAmount})::text`,
+              }).where(eq(referralCodes.id, refCode.id));
+            } else {
+              await db.update(referralCodes).set({
+                totalReferrals: sql`${referralCodes.totalReferrals} + 1`,
+              }).where(eq(referralCodes.id, refCode.id));
+            }
+            logActivity("referral_completed", humanId, session.agentPublicKey, session.agentName || undefined, { referralCode: pendingRefCode, referrerHumanId: refCode.ownerHumanId, reward: rewardAmount, rewardStatus, transferTxHash });
+            console.log(`[selfclaw] Referral completed: ${pendingRefCode} → ${session.agentName || session.agentPublicKey.substring(0, 12)} (status: ${rewardStatus})`);
           }
         }
       } catch (refError: any) {
@@ -759,6 +791,67 @@ router.get("/v1/referral/validate/:code", publicApiLimiter, async (req: Request,
       message: `You were referred by ${refCode.ownerAgentName || 'a verified agent'}. Complete verification to activate the referral.`
     });
   } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post("/v1/referral/claim", publicApiLimiter, async (req: Request, res: Response) => {
+  try {
+    const auth = await authenticateAgentFlexible(req);
+    if (!auth) return res.status(401).json({ error: "Authentication required" });
+    const { publicKey } = auth;
+
+    const [wallet] = await db.select().from(agentWallets).where(eq(agentWallets.publicKey, publicKey)).limit(1);
+    if (!wallet) {
+      return res.status(400).json({ error: "No wallet registered. Register a wallet first before claiming referral rewards." });
+    }
+
+    const [refCode] = await db.select().from(referralCodes).where(eq(referralCodes.ownerPublicKey, publicKey)).limit(1);
+    if (!refCode) {
+      return res.status(404).json({ error: "No referral code found for this agent." });
+    }
+
+    const pendingCompletions = await db.select().from(referralCompletions).where(and(eq(referralCompletions.referralCodeId, refCode.id), eq(referralCompletions.rewardStatus, "pending")));
+
+    if (pendingCompletions.length === 0) {
+      return res.json({ success: true, claimed: 0, message: "No pending referral rewards to claim." });
+    }
+
+    let claimed = 0;
+    let totalClaimed = "0";
+    const results: Array<{ completionId: string; status: string; txHash?: string; error?: string }> = [];
+
+    for (const completion of pendingCompletions) {
+      const rewardAmount = completion.rewardAmount || "100";
+      try {
+        const amountWei = parseUnits(rewardAmount, 18);
+        const transferResult = await releaseEscrow(wallet.address, amountWei, SELFCLAW_TOKEN);
+        if (transferResult.success && transferResult.txHash) {
+          await db.update(referralCompletions).set({ rewardStatus: "credited" }).where(eq(referralCompletions.id, completion.id));
+          await db.update(referralCodes).set({
+            totalRewardsPaid: sql`(COALESCE(${referralCodes.totalRewardsPaid}::numeric, 0) + ${rewardAmount})::text`,
+          }).where(eq(referralCodes.id, refCode.id));
+          claimed++;
+          totalClaimed = String(Number(totalClaimed) + Number(rewardAmount));
+          results.push({ completionId: completion.id, status: "credited", txHash: transferResult.txHash });
+        } else {
+          results.push({ completionId: completion.id, status: "failed", error: transferResult.error });
+        }
+      } catch (claimErr: any) {
+        results.push({ completionId: completion.id, status: "failed", error: claimErr.message });
+      }
+    }
+
+    logActivity("referral_rewards_claimed", undefined, publicKey, auth.agentName || undefined, { claimed, totalClaimed, pending: pendingCompletions.length });
+    res.json({
+      success: true,
+      claimed,
+      totalClaimed: totalClaimed + " SELFCLAW",
+      pending: pendingCompletions.length - claimed,
+      results,
+    });
+  } catch (error: any) {
+    console.error("[selfclaw] referral claim error:", error);
     res.status(500).json({ error: error.message });
   }
 });

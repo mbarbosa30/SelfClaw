@@ -9,9 +9,49 @@ import {
   verifiedBots,
   marketSkills,
   agentRequests,
+  agentWallets,
   verificationBounties,
 } from "../shared/schema.js";
 import { resolveAgent } from "./routes/_shared.js";
+import { releaseEscrow, getEscrowAddress, SELFCLAW_TOKEN } from "../lib/selfclaw-commerce.js";
+import { parseUnits } from "viem";
+
+async function executeStakeTransfer(
+  resolution: string,
+  agentPublicKey: string,
+  stakeAmount: string,
+  stakeToken: string,
+): Promise<{ transferStatus: string; transferTxHash?: string; transferError?: string }> {
+  try {
+    const [wallet] = await db.select().from(agentWallets).where(eq(agentWallets.publicKey, agentPublicKey));
+    if (!wallet) {
+      return { transferStatus: "no_wallet", transferError: "Agent has no registered wallet" };
+    }
+
+    if (resolution === "validated") {
+      const rewardAmount = (parseFloat(stakeAmount) * 0.1).toString();
+      const rewardWei = parseUnits(rewardAmount, 18);
+      const result = await releaseEscrow(wallet.address, rewardWei, SELFCLAW_TOKEN);
+      if (result.success) {
+        console.log(`[reputation] Reward transfer of ${rewardAmount} SELFCLAW to ${wallet.address} succeeded: ${result.txHash}`);
+        return { transferStatus: "completed", transferTxHash: result.txHash };
+      } else {
+        console.warn(`[reputation] Reward transfer failed: ${result.error}`);
+        return { transferStatus: "failed", transferError: result.error };
+      }
+    } else if (resolution === "slashed") {
+      const slashAmount = (parseFloat(stakeAmount) * 0.5).toString();
+      const escrowAddr = getEscrowAddress();
+      console.log(`[reputation] Slash of ${slashAmount} ${stakeToken} recorded for agent ${agentPublicKey}. Agent wallet: ${wallet.address}, platform: ${escrowAddr}`);
+      return { transferStatus: "slash_recorded", transferError: "On-chain slash requires agent pre-approval (not yet supported)" };
+    }
+
+    return { transferStatus: "no_transfer" };
+  } catch (err: any) {
+    console.error(`[reputation] Transfer error for ${resolution}:`, err.message);
+    return { transferStatus: "error", transferError: err.message };
+  }
+}
 
 const router = Router();
 
@@ -147,6 +187,11 @@ router.post("/v1/reputation/stakes/:id/review", async (req, res) => {
       .returning();
 
     if (updateData.resolution) {
+      let transferResult: { transferStatus: string; transferTxHash?: string; transferError?: string } = { transferStatus: "no_transfer" };
+      if (updateData.resolution === "validated" || updateData.resolution === "slashed") {
+        transferResult = await executeStakeTransfer(updateData.resolution, stake.agentPublicKey, stake.stakeAmount, stake.stakeToken);
+      }
+
       const eventType = updateData.resolution === "validated" ? "stake_validated" : updateData.resolution === "slashed" ? "stake_slashed" : "stake_neutral";
       try {
         const [bot] = await db.select().from(verifiedBots).where(eq(verifiedBots.publicKey, stake.agentPublicKey));
@@ -156,7 +201,15 @@ router.post("/v1/reputation/stakes/:id/review", async (req, res) => {
           humanId: stake.humanId,
           erc8004TokenId,
           eventType,
-          eventData: { stakeId: id, resolution: updateData.resolution, avgScore, stakeAmount: stake.stakeAmount },
+          eventData: {
+            stakeId: id,
+            resolution: updateData.resolution,
+            avgScore,
+            stakeAmount: stake.stakeAmount,
+            transferStatus: transferResult.transferStatus,
+            transferTxHash: transferResult.transferTxHash || null,
+            transferError: transferResult.transferError || null,
+          },
         });
       } catch (e: any) {
         console.error("[reputation] Error logging event:", e.message);

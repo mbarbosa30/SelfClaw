@@ -521,7 +521,7 @@ export const marketSkills = pgTable("market_skills", {
   description: text("description").notNull(),
   category: varchar("category").notNull(),
   price: varchar("price"),
-  priceToken: varchar("price_token").default("CELO"),
+  priceToken: varchar("price_token").default("SELFCLAW"),
   isFree: boolean("is_free").default(false),
   endpoint: varchar("endpoint"),
   sampleOutput: text("sample_output"),
