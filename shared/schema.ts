@@ -553,6 +553,7 @@ export const skillPurchases = pgTable("skill_purchases", {
   status: varchar("status").default("pending"),
   rating: integer("rating"),
   review: text("review"),
+  metadata: jsonb("metadata"),
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => [
   index("IDX_purchases_skill_id").on(table.skillId),
@@ -606,6 +607,7 @@ export const reputationStakes = pgTable("reputation_stakes", {
   rewardAmount: varchar("reward_amount"),
   reviewCount: integer("review_count").default(0),
   avgScore: decimal("avg_score", { precision: 3, scale: 2 }),
+  metadata: jsonb("metadata"),
   resolvedAt: timestamp("resolved_at"),
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => [

@@ -1,0 +1,192 @@
+import { createPublicClient, createWalletClient, http, fallback, parseAbi, parseUnits, formatUnits, keccak256, toHex } from 'viem';
+import { celo } from 'viem/chains';
+import { privateKeyToAccount } from 'viem/accounts';
+import { getDeployedAddress, getDeployedAbi } from './contract-deployer.js';
+
+const CELO_RPC_PRIMARY = 'https://forno.celo.org';
+const CELO_RPC_FALLBACK = 'https://rpc.ankr.com/celo';
+const SELFCLAW_TOKEN = '0xCD88f99Adf75A9110c0bcd22695A32A20eC54ECb';
+
+const ERC20_ABI = parseAbi([
+  'function approve(address spender, uint256 amount) returns (bool)',
+  'function allowance(address owner, address spender) view returns (uint256)',
+]);
+
+const publicClient = createPublicClient({
+  chain: celo,
+  transport: fallback([
+    http(CELO_RPC_PRIMARY, { timeout: 15_000, retryCount: 1 }),
+    http(CELO_RPC_FALLBACK, { timeout: 15_000, retryCount: 1 }),
+  ]),
+});
+
+function getWalletClient() {
+  const rawKey = process.env.CELO_PRIVATE_KEY;
+  if (!rawKey) throw new Error('CELO_PRIVATE_KEY not set');
+  const pk = rawKey.startsWith('0x') ? rawKey : `0x${rawKey}`;
+  const account = privateKeyToAccount(pk as `0x${string}`);
+  return createWalletClient({
+    account,
+    chain: celo,
+    transport: fallback([
+      http(CELO_RPC_PRIMARY, { timeout: 15_000, retryCount: 1 }),
+      http(CELO_RPC_FALLBACK, { timeout: 15_000, retryCount: 1 }),
+    ]),
+  });
+}
+
+function getContractConfig(): { address: `0x${string}`; abi: any[] } | null {
+  const address = getDeployedAddress('SelfClawRewards');
+  const abi = getDeployedAbi('SelfClawRewards');
+  if (!address || !abi) return null;
+  return { address: address as `0x${string}`, abi };
+}
+
+export function referralIdToBytes32(referralId: string): `0x${string}` {
+  return keccak256(toHex(referralId));
+}
+
+export interface RewardResult {
+  success: boolean;
+  txHash?: string;
+  queued?: boolean;
+  error?: string;
+}
+
+export async function distributeReferralReward(
+  recipientAddress: string,
+  amount: string,
+  referralId: string,
+): Promise<RewardResult> {
+  const config = getContractConfig();
+  if (!config) return { success: false, error: 'Rewards contract not deployed' };
+
+  try {
+    const walletClient = getWalletClient();
+    const amountWei = parseUnits(amount, 18);
+    const refIdBytes = referralIdToBytes32(referralId);
+
+    const txHash = await walletClient.writeContract({
+      address: config.address,
+      abi: config.abi,
+      functionName: 'distributeReward',
+      args: [recipientAddress as `0x${string}`, amountWei, refIdBytes],
+    });
+
+    const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash, timeout: 30_000 });
+    if (receipt.status !== 'success') {
+      return { success: false, error: 'Reward distribution failed on-chain' };
+    }
+
+    const queuedEvent = receipt.logs.find(log => {
+      const queuedTopic = '0x' + 'a2e524e2fdf0b7b9a0f44e8fa543fe5bcb2c4aef5ad1f80cb25e8835d0abeb8c';
+      return log.topics[0] === queuedTopic;
+    });
+
+    console.log(`[rewards-contract] Reward distributed: referral=${referralId}, recipient=${recipientAddress}, amount=${amount}, tx=${txHash}`);
+    return { success: true, txHash, queued: !!queuedEvent };
+  } catch (error: any) {
+    console.error(`[rewards-contract] Distribution failed:`, error.message);
+    return { success: false, error: error.message };
+  }
+}
+
+export async function claimPendingReward(referralId: string): Promise<RewardResult> {
+  const config = getContractConfig();
+  if (!config) return { success: false, error: 'Rewards contract not deployed' };
+
+  try {
+    const walletClient = getWalletClient();
+    const refIdBytes = referralIdToBytes32(referralId);
+
+    const txHash = await walletClient.writeContract({
+      address: config.address,
+      abi: config.abi,
+      functionName: 'claimReward',
+      args: [refIdBytes],
+    });
+
+    const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash, timeout: 30_000 });
+    if (receipt.status !== 'success') {
+      return { success: false, error: 'Claim failed on-chain' };
+    }
+
+    console.log(`[rewards-contract] Reward claimed: referral=${referralId}, tx=${txHash}`);
+    return { success: true, txHash };
+  } catch (error: any) {
+    console.error(`[rewards-contract] Claim failed:`, error.message);
+    return { success: false, error: error.message };
+  }
+}
+
+export async function fundRewardsPool(amount: string): Promise<{ success: boolean; txHash?: string; error?: string }> {
+  const config = getContractConfig();
+  if (!config) return { success: false, error: 'Rewards contract not deployed' };
+
+  try {
+    const walletClient = getWalletClient();
+    const amountWei = parseUnits(amount, 18);
+
+    const approveTx = await walletClient.writeContract({
+      address: SELFCLAW_TOKEN as `0x${string}`,
+      abi: ERC20_ABI,
+      functionName: 'approve',
+      args: [config.address, amountWei],
+    });
+    await publicClient.waitForTransactionReceipt({ hash: approveTx, timeout: 30_000 });
+
+    const txHash = await walletClient.writeContract({
+      address: config.address,
+      abi: config.abi,
+      functionName: 'fundPool',
+      args: [amountWei],
+    });
+
+    const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash, timeout: 30_000 });
+    if (receipt.status !== 'success') {
+      return { success: false, error: 'Fund pool failed on-chain' };
+    }
+
+    console.log(`[rewards-contract] Pool funded: ${amount} SELFCLAW, tx=${txHash}`);
+    return { success: true, txHash };
+  } catch (error: any) {
+    console.error(`[rewards-contract] Fund pool failed:`, error.message);
+    return { success: false, error: error.message };
+  }
+}
+
+export async function getRewardsPoolBalance(): Promise<string> {
+  const config = getContractConfig();
+  if (!config) return '0';
+
+  try {
+    const balance = await publicClient.readContract({
+      address: config.address,
+      abi: config.abi,
+      functionName: 'getPoolBalance',
+    });
+    return formatUnits(balance as bigint, 18);
+  } catch {
+    return '0';
+  }
+}
+
+export async function isRewardDistributed(referralId: string): Promise<boolean> {
+  const config = getContractConfig();
+  if (!config) return false;
+
+  try {
+    return await publicClient.readContract({
+      address: config.address,
+      abi: config.abi,
+      functionName: 'isDistributed',
+      args: [referralIdToBytes32(referralId)],
+    }) as boolean;
+  } catch {
+    return false;
+  }
+}
+
+export function isRewardsContractDeployed(): boolean {
+  return !!getDeployedAddress('SelfClawRewards');
+}

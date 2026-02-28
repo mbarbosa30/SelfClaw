@@ -14,6 +14,7 @@ import { celo } from 'viem/chains';
 import { TOKEN_FACTORY_BYTECODE } from '../lib/constants.js';
 import { platformDeployToken, platformRegisterErc8004, platformRequestSponsorship } from '../lib/platform-economy.js';
 import { releaseEscrow, SELFCLAW_TOKEN } from '../lib/selfclaw-commerce.js';
+import { distributeReferralReward, isRewardsContractDeployed, isRewardDistributed } from '../lib/rewards-contract.js';
 
 import {
   publicApiLimiter,
@@ -611,14 +612,26 @@ async function handleCallback(req: Request, res: Response) {
               const [referrerWallet] = await db.select().from(agentWallets).where(eq(agentWallets.publicKey, refCode.ownerPublicKey)).limit(1);
               if (referrerWallet) {
                 try {
-                  const amountWei = parseUnits(rewardAmount, 18);
-                  const result = await releaseEscrow(referrerWallet.address, amountWei, SELFCLAW_TOKEN);
-                  if (result.success && result.txHash) {
-                    rewardStatus = "credited";
-                    transferTxHash = result.txHash;
-                    console.log(`[selfclaw] Referral reward transferred: ${rewardAmount} SELFCLAW to ${referrerWallet.address} — tx: ${result.txHash}`);
+                  const referralId = `ref_${refCode.id}_${session.agentPublicKey.substring(0, 12)}`;
+                  if (isRewardsContractDeployed()) {
+                    const result = await distributeReferralReward(referrerWallet.address, rewardAmount, referralId);
+                    if (result.success && result.txHash) {
+                      rewardStatus = result.queued ? "queued" : "credited";
+                      transferTxHash = result.txHash;
+                      console.log(`[selfclaw] Referral reward ${result.queued ? "queued" : "distributed"} via contract: ${rewardAmount} SELFCLAW to ${referrerWallet.address} — tx: ${result.txHash}`);
+                    } else {
+                      console.warn(`[selfclaw] Referral reward contract distribution failed for ${referrerWallet.address}: ${result.error}`);
+                    }
                   } else {
-                    console.warn(`[selfclaw] Referral reward transfer failed for ${referrerWallet.address}: ${result.error}`);
+                    const amountWei = parseUnits(rewardAmount, 18);
+                    const result = await releaseEscrow(referrerWallet.address, amountWei, SELFCLAW_TOKEN);
+                    if (result.success && result.txHash) {
+                      rewardStatus = "credited";
+                      transferTxHash = result.txHash;
+                      console.log(`[selfclaw] Referral reward transferred (legacy): ${rewardAmount} SELFCLAW to ${referrerWallet.address} — tx: ${result.txHash}`);
+                    } else {
+                      console.warn(`[selfclaw] Referral reward transfer failed for ${referrerWallet.address}: ${result.error}`);
+                    }
                   }
                 } catch (txErr: any) {
                   console.warn(`[selfclaw] Referral reward transfer error for ${referrerWallet.address}:`, txErr.message);
@@ -824,10 +837,19 @@ router.post("/v1/referral/claim", publicApiLimiter, async (req: Request, res: Re
     for (const completion of pendingCompletions) {
       const rewardAmount = completion.rewardAmount || "100";
       try {
-        const amountWei = parseUnits(rewardAmount, 18);
-        const transferResult = await releaseEscrow(wallet.address, amountWei, SELFCLAW_TOKEN);
+        const referralId = `ref_${completion.referralCodeId}_${completion.referredPublicKey?.substring(0, 12) || completion.id}`;
+        let transferResult: { success: boolean; txHash?: string; queued?: boolean; error?: string };
+
+        if (isRewardsContractDeployed()) {
+          transferResult = await distributeReferralReward(wallet.address, rewardAmount, referralId);
+        } else {
+          const amountWei = parseUnits(rewardAmount, 18);
+          transferResult = await releaseEscrow(wallet.address, amountWei, SELFCLAW_TOKEN);
+        }
+
         if (transferResult.success && transferResult.txHash) {
-          await db.update(referralCompletions).set({ rewardStatus: "credited" }).where(eq(referralCompletions.id, completion.id));
+          const status = transferResult.queued ? "queued" : "credited";
+          await db.update(referralCompletions).set({ rewardStatus: status }).where(eq(referralCompletions.id, completion.id));
           await db.update(referralCodes).set({
             totalRewardsPaid: sql`(COALESCE(${referralCodes.totalRewardsPaid}::numeric, 0) + ${rewardAmount})::text`,
           }).where(eq(referralCodes.id, refCode.id));

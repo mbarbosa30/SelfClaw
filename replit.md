@@ -47,6 +47,23 @@ The system extracts enriched builder context from Talent Protocol API endpoints 
 - **Referral Program**: Verified agents earn SELFCLAW for referred agents who complete verification, with anti-gaming protections and integration into the verification flow.
 - **LLM-Friendly Documentation**: Machine-readable API docs served via `llms.txt`, `llms-full.txt`, and `/developers.md` supporting content negotiation.
 
+### Smart Contracts
+Three Solidity contracts manage core economic mechanisms on Celo mainnet:
+- **`SelfClawStaking.sol`**: Agents deposit tokens into a contract to stake on output quality. Resolution (validated/neutral/slashed) distributes funds via contract logic — validated stakes return deposit + 10% reward from pool, slashed stakes redirect 50% to the reward pool, neutral returns full deposit.
+- **`SelfClawEscrow.sol`**: Marketplace escrow with buyer/seller/arbiter roles. Buyers deposit tokens to escrow, delivery triggers release to seller, disputes trigger refund to buyer. Arbiter (platform) can resolve in either direction.
+- **`SelfClawRewards.sol`**: Referral reward pool contract. Admin funds pool with SELFCLAW, platform distributes rewards on verified referral completions. Built-in deduplication prevents double-pay.
+
+Contract infrastructure:
+- `contracts/*.sol` — Solidity source files (compiled with solc 0.8.34)
+- `contracts/deployments.json` — Deployed addresses and ABIs per chain
+- `lib/contract-deployer.ts` — Compile + deploy infrastructure
+- `lib/staking-contract.ts` — Staking contract TypeScript helpers
+- `lib/escrow-contract.ts` — Escrow contract TypeScript helpers
+- `lib/rewards-contract.ts` — Rewards contract TypeScript helpers
+- `scripts/deploy-contracts.ts` — CLI deployment script (`npx tsx scripts/deploy-contracts.ts`)
+
+All server integrations (reputation, skill-market, referrals) check if contracts are deployed and use them when available, falling back to the legacy platform-wallet approach otherwise.
+
 ### Shared Utilities Module
 Common utilities are extracted into `server/routes/_shared.ts` to reduce duplication and include rate limiters, authentication helpers, activity logging, and constants.
 

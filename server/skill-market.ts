@@ -11,6 +11,13 @@ import {
   getEscrowAddress,
   SELFCLAW_TOKEN,
 } from "../lib/selfclaw-commerce.js";
+import {
+  createOnchainEscrow,
+  releaseOnchainEscrow,
+  refundOnchainEscrow,
+  isEscrowContractDeployed,
+  getEscrowContractAddress,
+} from "../lib/escrow-contract.js";
 import { parseUnits } from "viem";
 
 const router = Router();
@@ -268,12 +275,12 @@ router.post("/v1/skills/:id/purchase", async (req: Request, res: Response) => {
       return res.status(201).json({ purchase });
     }
 
-    if (!txHash) {
-      const sellerWallets = await db.select().from(agentWallets)
-        .where(sql`${agentWallets.publicKey} = ${skill.agentPublicKey}`)
-        .limit(1);
-      const sellerAddress = sellerWallets.length > 0 ? sellerWallets[0].address : "";
+    const sellerWallets = await db.select().from(agentWallets)
+      .where(sql`${agentWallets.publicKey} = ${skill.agentPublicKey}`)
+      .limit(1);
+    const sellerAddress = sellerWallets.length > 0 ? sellerWallets[0].address : "";
 
+    if (!txHash) {
       const requirement = createPaymentRequirement(
         sellerAddress,
         skill.price!,
@@ -295,15 +302,42 @@ router.post("/v1/skills/:id/purchase", async (req: Request, res: Response) => {
 
     const escrowAddress = getEscrowAddress();
     const amountWei = parseUnits(skill.price!, 18);
-    const tokenAddress = skill.priceToken === "SELFCLAW" ? SELFCLAW_TOKEN : SELFCLAW_TOKEN;
+    const legacyTokenAddress = skill.priceToken === "SELFCLAW" ? SELFCLAW_TOKEN : SELFCLAW_TOKEN;
 
-    const verification = await verifyPayment(txHash, escrowAddress, amountWei, tokenAddress);
+    const verification = await verifyPayment(txHash, escrowAddress, amountWei, legacyTokenAddress);
 
     if (!verification.valid) {
       return res.status(400).json({
         error: "Payment verification failed",
         details: verification.error,
       });
+    }
+
+    const useContract = isEscrowContractDeployed();
+    let purchaseMetadata: Record<string, any> = { escrowType: "legacy" };
+    let escrowTxHash = txHash;
+
+    if (useContract && sellerAddress) {
+      const tokenAddress = skill.priceToken === "SELFCLAW" ? SELFCLAW_TOKEN : SELFCLAW_TOKEN;
+      const escrowResult = await createOnchainEscrow(
+        sellerAddress,
+        skill.price!,
+        tokenAddress,
+        `${id}-${auth.humanId}-${Date.now()}`,
+      );
+
+      if (escrowResult.success) {
+        purchaseMetadata = {
+          contractEscrowId: escrowResult.escrowId,
+          escrowContract: getEscrowContractAddress(),
+          escrowType: "contract",
+          buyerTxHash: txHash,
+        };
+        escrowTxHash = escrowResult.txHash || txHash;
+        console.log(`[skill-market] On-chain escrow created: escrowId=${escrowResult.escrowId}, tx=${escrowResult.txHash}`);
+      } else {
+        console.warn(`[skill-market] Contract escrow failed, using legacy: ${escrowResult.error}`);
+      }
     }
 
     const [purchase] = await db.insert(skillPurchases).values({
@@ -314,15 +348,16 @@ router.post("/v1/skills/:id/purchase", async (req: Request, res: Response) => {
       sellerPublicKey: skill.agentPublicKey as string,
       price: (skill.price || "0") as string,
       priceToken: (skill.priceToken || "SELFCLAW") as string,
-      txHash: txHash as string,
+      txHash: escrowTxHash as string,
       status: "escrowed" as string,
+      metadata: purchaseMetadata,
     } as any).returning();
 
     await db.update(marketSkills)
       .set({ purchaseCount: sql`${marketSkills.purchaseCount} + 1` })
       .where(sql`${marketSkills.id} = ${id}`);
 
-    console.log(`[skill-market] Purchase ${purchase.id} escrowed — txHash: ${txHash}`);
+    console.log(`[skill-market] Purchase ${purchase.id} escrowed (${purchaseMetadata.escrowType}) — txHash: ${escrowTxHash}`);
     res.status(201).json({ purchase });
   } catch (error: any) {
     console.error("[skill-market] purchase error:", error);
@@ -355,23 +390,39 @@ router.post("/v1/skills/purchases/:purchaseId/deliver", async (req: Request, res
       return res.status(400).json({ error: `Cannot confirm delivery for purchase with status: ${purchase.status}` });
     }
 
-    const sellerWallets = await db.select().from(agentWallets)
-      .where(sql`${agentWallets.publicKey} = ${purchase.sellerPublicKey}`)
-      .limit(1);
+    const purchaseMetadata = purchase.metadata as any;
+    const useContract = purchaseMetadata?.escrowType === "contract" && purchaseMetadata?.contractEscrowId;
 
     let transferStatus = "released";
     let releaseTxHash: string | undefined;
 
-    if (sellerWallets.length > 0 && purchase.price && purchase.price !== "0") {
-      const amountWei = parseUnits(purchase.price, 18);
-      const release = await releaseEscrow(sellerWallets[0].address, amountWei);
+    if (useContract) {
+      const contractEscrowId = parseInt(purchaseMetadata.contractEscrowId);
+      const release = await releaseOnchainEscrow(contractEscrowId);
 
       if (release.success) {
         releaseTxHash = release.txHash;
-        console.log(`[skill-market] Escrow released for purchase ${purchaseId} — tx: ${release.txHash}`);
+        console.log(`[skill-market] Contract escrow ${contractEscrowId} released for purchase ${purchaseId} — tx: ${release.txHash}`);
       } else {
         transferStatus = "release_failed";
-        console.warn(`[skill-market] Escrow release failed for purchase ${purchaseId}: ${release.error}`);
+        console.warn(`[skill-market] Contract escrow release failed for purchase ${purchaseId}: ${release.error}`);
+      }
+    } else {
+      const sellerWallets = await db.select().from(agentWallets)
+        .where(sql`${agentWallets.publicKey} = ${purchase.sellerPublicKey}`)
+        .limit(1);
+
+      if (sellerWallets.length > 0 && purchase.price && purchase.price !== "0") {
+        const amountWei = parseUnits(purchase.price, 18);
+        const release = await releaseEscrow(sellerWallets[0].address, amountWei);
+
+        if (release.success) {
+          releaseTxHash = release.txHash;
+          console.log(`[skill-market] Escrow released for purchase ${purchaseId} — tx: ${release.txHash}`);
+        } else {
+          transferStatus = "release_failed";
+          console.warn(`[skill-market] Escrow release failed for purchase ${purchaseId}: ${release.error}`);
+        }
       }
     }
 
@@ -416,23 +467,39 @@ router.post("/v1/skills/purchases/:purchaseId/refund", async (req: Request, res:
       return res.status(400).json({ error: `Cannot refund purchase with status: ${purchase.status}` });
     }
 
-    const buyerWallets = await db.select().from(agentWallets)
-      .where(sql`${agentWallets.publicKey} = ${purchase.buyerPublicKey}`)
-      .limit(1);
+    const purchaseMetadata = purchase.metadata as any;
+    const useContract = purchaseMetadata?.escrowType === "contract" && purchaseMetadata?.contractEscrowId;
 
     let refundStatus = "refunded";
     let refundTxHash: string | undefined;
 
-    if (buyerWallets.length > 0 && purchase.price && purchase.price !== "0") {
-      const amountWei = parseUnits(purchase.price, 18);
-      const refund = await refundEscrow(buyerWallets[0].address, amountWei);
+    if (useContract) {
+      const contractEscrowId = parseInt(purchaseMetadata.contractEscrowId);
+      const refund = await refundOnchainEscrow(contractEscrowId);
 
       if (refund.success) {
         refundTxHash = refund.txHash;
-        console.log(`[skill-market] Escrow refunded for purchase ${purchaseId} — tx: ${refund.txHash}`);
+        console.log(`[skill-market] Contract escrow ${contractEscrowId} refunded for purchase ${purchaseId} — tx: ${refund.txHash}`);
       } else {
         refundStatus = "refund_failed";
-        console.warn(`[skill-market] Escrow refund failed for purchase ${purchaseId}: ${refund.error}`);
+        console.warn(`[skill-market] Contract escrow refund failed for purchase ${purchaseId}: ${refund.error}`);
+      }
+    } else {
+      const buyerWallets = await db.select().from(agentWallets)
+        .where(sql`${agentWallets.publicKey} = ${purchase.buyerPublicKey}`)
+        .limit(1);
+
+      if (buyerWallets.length > 0 && purchase.price && purchase.price !== "0") {
+        const amountWei = parseUnits(purchase.price, 18);
+        const refund = await refundEscrow(buyerWallets[0].address, amountWei);
+
+        if (refund.success) {
+          refundTxHash = refund.txHash;
+          console.log(`[skill-market] Escrow refunded for purchase ${purchaseId} — tx: ${refund.txHash}`);
+        } else {
+          refundStatus = "refund_failed";
+          console.warn(`[skill-market] Escrow refund failed for purchase ${purchaseId}: ${refund.error}`);
+        }
       }
     }
 

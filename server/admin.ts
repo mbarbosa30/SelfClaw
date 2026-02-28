@@ -2033,4 +2033,80 @@ router.delete("/platform-updates/:id", async (req: Request, res: Response) => {
   }
 });
 
+router.get("/contracts", async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    const { loadDeployments } = await import("../lib/contract-deployer.js");
+    const deployments = loadDeployments();
+    if (!deployments || !deployments.contracts || Object.keys(deployments.contracts).length === 0) {
+      return res.json({ deployed: false, message: "No contracts deployed yet. Run: npx tsx scripts/deploy-contracts.ts" });
+    }
+
+    const contractSummary: Record<string, any> = {};
+    for (const [name, info] of Object.entries(deployments.contracts)) {
+      contractSummary[name] = {
+        address: info.address,
+        explorerUrl: info.explorerUrl,
+        txHash: info.txHash,
+      };
+    }
+
+    let stakingRewardPool = "0";
+    let referralPoolBalance = "0";
+    try {
+      if (contractSummary.SelfClawStaking) {
+        const { getRewardPoolBalance } = await import("../lib/staking-contract.js");
+        stakingRewardPool = await getRewardPoolBalance("0xCD88f99Adf75A9110c0bcd22695A32A20eC54ECb");
+      }
+    } catch {}
+    try {
+      if (contractSummary.SelfClawRewards) {
+        const { getRewardsPoolBalance } = await import("../lib/rewards-contract.js");
+        referralPoolBalance = await getRewardsPoolBalance();
+      }
+    } catch {}
+
+    res.json({
+      deployed: true,
+      chainId: deployments.chainId,
+      deployedAt: deployments.deployedAt,
+      contracts: contractSummary,
+      pools: {
+        stakingRewardPool: stakingRewardPool + " SELFCLAW",
+        referralRewardPool: referralPoolBalance + " SELFCLAW",
+      },
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post("/contracts/fund-staking-pool", async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    const { amount } = req.body;
+    if (!amount || parseFloat(amount) <= 0) return res.status(400).json({ error: "Valid amount required" });
+
+    const { fundStakingRewardPool } = await import("../lib/staking-contract.js");
+    const result = await fundStakingRewardPool("0xCD88f99Adf75A9110c0bcd22695A32A20eC54ECb", amount);
+    res.json(result);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post("/contracts/fund-referral-pool", async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    const { amount } = req.body;
+    if (!amount || parseFloat(amount) <= 0) return res.status(400).json({ error: "Valid amount required" });
+
+    const { fundRewardsPool } = await import("../lib/rewards-contract.js");
+    const result = await fundRewardsPool(amount);
+    res.json(result);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 export default router;

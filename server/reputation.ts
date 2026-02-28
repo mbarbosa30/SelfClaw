@@ -15,13 +15,37 @@ import {
 import { resolveAgent } from "./routes/_shared.js";
 import { releaseEscrow, getEscrowAddress, SELFCLAW_TOKEN } from "../lib/selfclaw-commerce.js";
 import { parseUnits } from "viem";
+import {
+  depositStakePlatform,
+  resolveStakeOnchain,
+  isStakingContractDeployed,
+  createStakeUnsignedTx,
+} from "../lib/staking-contract.js";
 
 async function executeStakeTransfer(
   resolution: string,
   agentPublicKey: string,
   stakeAmount: string,
   stakeToken: string,
+  contractStakeId?: number,
 ): Promise<{ transferStatus: string; transferTxHash?: string; transferError?: string }> {
+  if (isStakingContractDeployed() && contractStakeId != null) {
+    try {
+      const resolutionType = resolution as 'neutral' | 'validated' | 'slashed';
+      const result = await resolveStakeOnchain(contractStakeId, resolutionType);
+      if (result.success) {
+        console.log(`[reputation] On-chain resolution of stake ${contractStakeId} as ${resolution}: tx=${result.txHash}`);
+        return { transferStatus: "completed", transferTxHash: result.txHash };
+      } else {
+        console.warn(`[reputation] On-chain resolution failed: ${result.error}`);
+        return { transferStatus: "failed", transferError: result.error };
+      }
+    } catch (err: any) {
+      console.error(`[reputation] On-chain resolution error:`, err.message);
+      return { transferStatus: "error", transferError: err.message };
+    }
+  }
+
   try {
     const [wallet] = await db.select().from(agentWallets).where(eq(agentWallets.publicKey, agentPublicKey));
     if (!wallet) {
@@ -72,6 +96,21 @@ router.post("/v1/reputation/stake", async (req, res) => {
       return res.status(400).json({ error: `Invalid outputType. Must be one of: ${validTypes.join(", ")}` });
     }
 
+    let contractDepositResult: { stakeId?: string; txHash?: string } = {};
+    if (isStakingContractDeployed() && txHash) {
+      try {
+        const depositResult = await depositStakePlatform(outputHash, stakeAmount, stakeToken);
+        if (depositResult.success) {
+          contractDepositResult = { stakeId: depositResult.stakeId, txHash: depositResult.txHash };
+          console.log(`[reputation] Stake deposited to contract (buyer tx verified: ${txHash}): stakeId=${depositResult.stakeId}, contract tx=${depositResult.txHash}`);
+        } else {
+          console.warn(`[reputation] Contract deposit failed, proceeding with DB-only stake: ${depositResult.error}`);
+        }
+      } catch (err: any) {
+        console.warn(`[reputation] Contract deposit error, proceeding with DB-only stake: ${err.message}`);
+      }
+    }
+
     const [stake] = await db.insert(reputationStakes).values({
       humanId,
       agentPublicKey: publicKey,
@@ -81,6 +120,11 @@ router.post("/v1/reputation/stake", async (req, res) => {
       stakeAmount,
       stakeToken,
       status: "active",
+      metadata: contractDepositResult.stakeId ? {
+        contractStakeId: contractDepositResult.stakeId,
+        contractTxHash: contractDepositResult.txHash,
+        contractBacked: true,
+      } : null,
     }).returning();
 
     let bounty = null;
@@ -189,7 +233,9 @@ router.post("/v1/reputation/stakes/:id/review", async (req, res) => {
     if (updateData.resolution) {
       let transferResult: { transferStatus: string; transferTxHash?: string; transferError?: string } = { transferStatus: "no_transfer" };
       if (updateData.resolution === "validated" || updateData.resolution === "slashed") {
-        transferResult = await executeStakeTransfer(updateData.resolution, stake.agentPublicKey, stake.stakeAmount, stake.stakeToken);
+        const stakeMetadata = stake.metadata as any;
+        const contractStakeId = stakeMetadata?.contractStakeId ? parseInt(stakeMetadata.contractStakeId) : undefined;
+        transferResult = await executeStakeTransfer(updateData.resolution, stake.agentPublicKey, stake.stakeAmount, stake.stakeToken, contractStakeId);
       }
 
       const eventType = updateData.resolution === "validated" ? "stake_validated" : updateData.resolution === "slashed" ? "stake_slashed" : "stake_neutral";

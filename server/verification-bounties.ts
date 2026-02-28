@@ -12,13 +12,35 @@ import {
 } from "../shared/schema.js";
 import { releaseEscrow, getEscrowAddress, SELFCLAW_TOKEN } from "../lib/selfclaw-commerce.js";
 import { parseUnits } from "viem";
+import {
+  resolveStakeOnchain,
+  isStakingContractDeployed,
+} from "../lib/staking-contract.js";
 
 async function executeStakeTransfer(
   resolution: string,
   agentPublicKey: string,
   stakeAmount: string,
   stakeToken: string,
+  contractStakeId?: number,
 ): Promise<{ transferStatus: string; transferTxHash?: string; transferError?: string }> {
+  if (isStakingContractDeployed() && contractStakeId != null) {
+    try {
+      const resolutionType = resolution as 'neutral' | 'validated' | 'slashed';
+      const result = await resolveStakeOnchain(contractStakeId, resolutionType);
+      if (result.success) {
+        console.log(`[verification] On-chain resolution of stake ${contractStakeId} as ${resolution}: tx=${result.txHash}`);
+        return { transferStatus: "completed", transferTxHash: result.txHash };
+      } else {
+        console.warn(`[verification] On-chain resolution failed: ${result.error}`);
+        return { transferStatus: "failed", transferError: result.error };
+      }
+    } catch (err: any) {
+      console.error(`[verification] On-chain resolution error:`, err.message);
+      return { transferStatus: "error", transferError: err.message };
+    }
+  }
+
   try {
     const [wallet] = await db.select().from(agentWallets).where(eq(agentWallets.publicKey, agentPublicKey));
     if (!wallet) {
@@ -246,7 +268,9 @@ router.post("/v1/verification/bounties/:id/claim", async (req: Request, res: Res
 
       let transferResult: { transferStatus: string; transferTxHash?: string; transferError?: string } = { transferStatus: "no_transfer" };
       if (updateData.resolution === "validated" || updateData.resolution === "slashed") {
-        transferResult = await executeStakeTransfer(updateData.resolution, stake.agentPublicKey, stake.stakeAmount, stake.stakeToken);
+        const stakeMetadata = stake.metadata as any;
+        const contractStakeId = stakeMetadata?.contractStakeId ? parseInt(stakeMetadata.contractStakeId) : undefined;
+        transferResult = await executeStakeTransfer(updateData.resolution, stake.agentPublicKey, stake.stakeAmount, stake.stakeToken, contractStakeId);
       }
 
       if (updateData.resolution) {
