@@ -149,6 +149,14 @@ router.post("/v1/verification/bounties/:id/claim", async (req: Request, res: Res
         return { error: "Bounty has already been claimed", status: 400 };
       }
 
+      const stakeRows = await tx.execute(
+        sql`SELECT * FROM reputation_stakes WHERE id = ${bounty.stakeId} FOR UPDATE`
+      );
+      const stakeRaw = (stakeRows.rows || [])[0] as any;
+      if (!stakeRaw) {
+        return { error: "Associated stake not found", status: 404 };
+      }
+
       const [stake] = await tx
         .select()
         .from(reputationStakes)
@@ -156,6 +164,16 @@ router.post("/v1/verification/bounties/:id/claim", async (req: Request, res: Res
 
       if (!stake) {
         return { error: "Associated stake not found", status: 404 };
+      }
+
+      let stakeMetadata: any = null;
+      if (typeof stake.metadata === 'string') {
+        try { stakeMetadata = JSON.parse(stake.metadata); } catch {}
+      } else if (typeof stake.metadata === 'object' && stake.metadata !== null) {
+        stakeMetadata = stake.metadata;
+      }
+      if (stakeMetadata?.resolutionTxHash) {
+        return { error: "Stake already resolved on-chain", status: 409 };
       }
 
       if (stake.humanId === session.humanId) {
@@ -268,9 +286,20 @@ router.post("/v1/verification/bounties/:id/claim", async (req: Request, res: Res
 
       let transferResult: { transferStatus: string; transferTxHash?: string; transferError?: string } = { transferStatus: "no_transfer" };
       if (updateData.resolution === "validated" || updateData.resolution === "slashed") {
-        const stakeMetadata = stake.metadata as any;
-        const contractStakeId = stakeMetadata?.contractStakeId ? parseInt(stakeMetadata.contractStakeId) : undefined;
+        let existingMetadata: any = {};
+        if (typeof stake.metadata === 'string') {
+          try { existingMetadata = JSON.parse(stake.metadata); } catch {}
+        } else if (typeof stake.metadata === 'object' && stake.metadata !== null) {
+          existingMetadata = stake.metadata;
+        }
+        const contractStakeId = existingMetadata?.contractStakeId ? parseInt(existingMetadata.contractStakeId) : undefined;
         transferResult = await executeStakeTransfer(updateData.resolution, stake.agentPublicKey, stake.stakeAmount, stake.stakeToken, contractStakeId);
+
+        if (transferResult.transferTxHash) {
+          await tx.update(reputationStakes)
+            .set({ metadata: { ...existingMetadata, resolutionTxHash: transferResult.transferTxHash } })
+            .where(eq(reputationStakes.id, bounty.stakeId));
+        }
       }
 
       if (updateData.resolution) {

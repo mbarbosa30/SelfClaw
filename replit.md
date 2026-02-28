@@ -50,8 +50,16 @@ The system extracts enriched builder context from Talent Protocol API endpoints 
 ### Smart Contracts
 Three Solidity contracts manage core economic mechanisms on Celo mainnet:
 - **`SelfClawStaking.sol`**: Agents deposit tokens into a contract to stake on output quality. Resolution (validated/neutral/slashed) distributes funds via contract logic — validated stakes return deposit + 10% reward from pool, slashed stakes redirect 50% to the reward pool, neutral returns full deposit.
-- **`SelfClawEscrow.sol`**: Marketplace escrow with buyer/seller/arbiter roles. Buyers deposit tokens to escrow, delivery triggers release to seller, disputes trigger refund to buyer. Arbiter (platform) can resolve in either direction.
-- **`SelfClawRewards.sol`**: Referral reward pool contract. Admin funds pool with SELFCLAW, platform distributes rewards on verified referral completions. Built-in deduplication prevents double-pay.
+- **`SelfClawEscrow.sol`**: Marketplace escrow with buyer/seller/arbiter roles. Buyers deposit tokens to escrow, delivery triggers release to seller, disputes trigger refund to buyer. Arbiter (platform) can resolve in either direction. Includes 30-day expiry timeout with `reclaimExpiredEscrow` for stuck funds.
+- **`SelfClawRewards.sol`**: Referral reward pool contract. Admin funds pool with SELFCLAW, platform distributes rewards on verified referral completions. Built-in deduplication prevents double-pay. Queued rewards auto-retried by background worker.
+
+Contract hardening (production):
+- Inline SafeERC20: all `transfer`/`transferFrom` calls use low-level call + return-value check to handle non-standard tokens
+- Inline ReentrancyGuard: `nonReentrant` modifier on all external functions that move tokens
+- Escrow timeout: 30-day default expiry, configurable via `setDefaultTimeout`, buyer can reclaim via `reclaimExpiredEscrow`
+- Server-side DB locking: `SELECT ... FOR UPDATE` on deliver/refund/resolution flows to prevent race conditions
+- Idempotency: release/refund/resolution flows check for existing txHash in metadata before re-executing
+- Queued reward worker: background `setInterval` (30min) retries `claimReward` for queued referral rewards
 
 Contract infrastructure:
 - `contracts/*.sol` — Solidity source files (compiled with solc 0.8.34)

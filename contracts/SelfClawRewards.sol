@@ -13,6 +13,8 @@ contract SelfClawRewards {
     address public rewardToken;
     uint256 public poolBalance;
 
+    uint256 private _locked;
+
     mapping(bytes32 => bool) public distributed;
     mapping(bytes32 => address) public pendingClaims;
     mapping(bytes32 => uint256) public pendingAmounts;
@@ -33,20 +35,41 @@ contract SelfClawRewards {
         _;
     }
 
+    modifier nonReentrant() {
+        require(_locked == 0, "Reentrancy");
+        _locked = 1;
+        _;
+        _locked = 0;
+    }
+
     constructor(address _distributor, address _rewardToken) {
         owner = msg.sender;
         distributor = _distributor;
         rewardToken = _rewardToken;
     }
 
-    function fundPool(uint256 amount) external {
+    function _safeTransfer(IERC20 token, address to, uint256 amount) private {
+        (bool success, bytes memory data) = address(token).call(
+            abi.encodeWithSelector(token.transfer.selector, to, amount)
+        );
+        require(success && (data.length == 0 || abi.decode(data, (bool))), "Transfer failed");
+    }
+
+    function _safeTransferFrom(IERC20 token, address from, address to, uint256 amount) private {
+        (bool success, bytes memory data) = address(token).call(
+            abi.encodeWithSelector(token.transferFrom.selector, from, to, amount)
+        );
+        require(success && (data.length == 0 || abi.decode(data, (bool))), "TransferFrom failed");
+    }
+
+    function fundPool(uint256 amount) external nonReentrant {
         require(amount > 0, "Amount must be > 0");
-        IERC20(rewardToken).transferFrom(msg.sender, address(this), amount);
+        _safeTransferFrom(IERC20(rewardToken), msg.sender, address(this), amount);
         poolBalance += amount;
         emit PoolFunded(msg.sender, amount);
     }
 
-    function distributeReward(address recipient, uint256 amount, bytes32 referralId) external onlyDistributor {
+    function distributeReward(address recipient, uint256 amount, bytes32 referralId) external onlyDistributor nonReentrant {
         require(!distributed[referralId], "Already distributed");
         require(recipient != address(0), "Invalid recipient");
         require(amount > 0, "Amount must be > 0");
@@ -55,7 +78,7 @@ contract SelfClawRewards {
 
         if (poolBalance >= amount) {
             poolBalance -= amount;
-            IERC20(rewardToken).transfer(recipient, amount);
+            _safeTransfer(IERC20(rewardToken), recipient, amount);
             emit RewardDistributed(referralId, recipient, amount);
         } else {
             pendingClaims[referralId] = recipient;
@@ -64,7 +87,7 @@ contract SelfClawRewards {
         }
     }
 
-    function claimReward(bytes32 referralId) external {
+    function claimReward(bytes32 referralId) external nonReentrant {
         address recipient = pendingClaims[referralId];
         require(recipient != address(0), "No pending claim");
         require(msg.sender == recipient || msg.sender == distributor, "Not authorized");
@@ -76,7 +99,7 @@ contract SelfClawRewards {
         delete pendingClaims[referralId];
         delete pendingAmounts[referralId];
 
-        IERC20(rewardToken).transfer(recipient, amount);
+        _safeTransfer(IERC20(rewardToken), recipient, amount);
         emit RewardClaimed(referralId, recipient, amount);
     }
 

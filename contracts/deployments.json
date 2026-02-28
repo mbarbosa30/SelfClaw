@@ -1,11 +1,11 @@
 {
   "chainId": 42220,
-  "deployedAt": "2026-02-28T12:23:43.557Z",
+  "deployedAt": "2026-02-28T13:19:53.885Z",
   "contracts": {
     "SelfClawStaking": {
-      "address": "0x002442877c534ba2ec14a50a7b66c16e298ed061",
-      "txHash": "0x8d9dce39dc18ae79ab702eb1d14dc68b9219f91dfb1cb33c253d4a28d2685016",
-      "explorerUrl": "https://celoscan.io/address/0x002442877c534ba2ec14a50a7b66c16e298ed061",
+      "address": "0x53468171d4df0649d8a2e780854c5be6b1b5c56b",
+      "txHash": "0xdcb513b2c6bf88e8cb4927f60ec6072abf6039eec9153fc1cf067fb80461be92",
+      "explorerUrl": "https://celoscan.io/address/0x53468171d4df0649d8a2e780854c5be6b1b5c56b",
       "abi": [
         {
           "inputs": [
@@ -400,9 +400,9 @@
       ]
     },
     "SelfClawEscrow": {
-      "address": "0xee946da4cb5b55b3756289ca4147e153ccee92f5",
-      "txHash": "0x3057c35b838cab2faea72dd7f41a00cb36d856325b0ae2edec0ea6ccd83c9f0d",
-      "explorerUrl": "https://celoscan.io/address/0xee946da4cb5b55b3756289ca4147e153ccee92f5",
+      "address": "0xe7b17a469a5a2120e112a9bd3a8d69dcb4a7ef16",
+      "txHash": "0xd44e69ed8c56a9ba3cd5d559c740f84233d0f47e2a88dcc273a5d6b94169ecee",
+      "explorerUrl": "https://celoscan.io/address/0xe7b17a469a5a2120e112a9bd3a8d69dcb4a7ef16",
       "abi": [
         {
           "inputs": [
@@ -432,6 +432,25 @@
             }
           ],
           "name": "ArbiterUpdated",
+          "type": "event"
+        },
+        {
+          "anonymous": false,
+          "inputs": [
+            {
+              "indexed": false,
+              "internalType": "uint256",
+              "name": "oldTimeout",
+              "type": "uint256"
+            },
+            {
+              "indexed": false,
+              "internalType": "uint256",
+              "name": "newTimeout",
+              "type": "uint256"
+            }
+          ],
+          "name": "DefaultTimeoutUpdated",
           "type": "event"
         },
         {
@@ -472,9 +491,40 @@
               "internalType": "bytes32",
               "name": "purchaseId",
               "type": "bytes32"
+            },
+            {
+              "indexed": false,
+              "internalType": "uint256",
+              "name": "expiresAt",
+              "type": "uint256"
             }
           ],
           "name": "EscrowCreated",
+          "type": "event"
+        },
+        {
+          "anonymous": false,
+          "inputs": [
+            {
+              "indexed": true,
+              "internalType": "uint256",
+              "name": "escrowId",
+              "type": "uint256"
+            },
+            {
+              "indexed": true,
+              "internalType": "address",
+              "name": "buyer",
+              "type": "address"
+            },
+            {
+              "indexed": false,
+              "internalType": "uint256",
+              "name": "amount",
+              "type": "uint256"
+            }
+          ],
+          "name": "EscrowExpired",
           "type": "event"
         },
         {
@@ -576,6 +626,19 @@
         },
         {
           "inputs": [],
+          "name": "defaultTimeout",
+          "outputs": [
+            {
+              "internalType": "uint256",
+              "name": "",
+              "type": "uint256"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [],
           "name": "escrowCount",
           "outputs": [
             {
@@ -636,6 +699,11 @@
               "internalType": "uint256",
               "name": "resolvedAt",
               "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "expiresAt",
+              "type": "uint256"
             }
           ],
           "stateMutability": "view",
@@ -689,6 +757,11 @@
             {
               "internalType": "uint256",
               "name": "resolvedAt",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "expiresAt",
               "type": "uint256"
             }
           ],
@@ -773,6 +846,19 @@
               "type": "uint256"
             }
           ],
+          "name": "reclaimExpiredEscrow",
+          "outputs": [],
+          "stateMutability": "nonpayable",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "uint256",
+              "name": "escrowId",
+              "type": "uint256"
+            }
+          ],
           "name": "refundEscrow",
           "outputs": [],
           "stateMutability": "nonpayable",
@@ -803,13 +889,26 @@
           "outputs": [],
           "stateMutability": "nonpayable",
           "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "uint256",
+              "name": "_timeout",
+              "type": "uint256"
+            }
+          ],
+          "name": "setDefaultTimeout",
+          "outputs": [],
+          "stateMutability": "nonpayable",
+          "type": "function"
         }
       ]
     },
     "SelfClawRewards": {
-      "address": "0xbbcd542e12b541c95a635506746ca4bdb9dcc0fd",
-      "txHash": "0x47db884a31de16dfae866997059a8d28d3436199e6d1a7786293bcd0e11b0940",
-      "explorerUrl": "https://celoscan.io/address/0xbbcd542e12b541c95a635506746ca4bdb9dcc0fd",
+      "address": "0xfb158268f06e45aa564c92f09854bbc4f1322992",
+      "txHash": "0x297d1a56b3c35a92587df249ecebe47e6a690ac814ca29c52bedb3412811eb07",
+      "explorerUrl": "https://celoscan.io/address/0xfb158268f06e45aa564c92f09854bbc4f1322992",
       "abi": [
         {
           "inputs": [

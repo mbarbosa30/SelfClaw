@@ -162,108 +162,132 @@ router.post("/v1/reputation/stakes/:id/review", async (req, res) => {
       return res.status(400).json({ error: "Score must be between 1 and 5" });
     }
 
-    const [stake] = await db.select().from(reputationStakes).where(eq(reputationStakes.id, id));
-    if (!stake) {
-      return res.status(404).json({ error: "Stake not found" });
-    }
+    const result = await db.transaction(async (tx) => {
+      const stakeRows = await tx.execute(
+        sql`SELECT * FROM reputation_stakes WHERE id = ${id} FOR UPDATE`
+      );
+      const stake = (stakeRows.rows || [])[0] as any;
+      if (!stake) {
+        return { error: "Stake not found", status: 404 };
+      }
 
-    if (stake.agentPublicKey === publicKey) {
-      return res.status(403).json({ error: "Cannot review your own stake" });
-    }
+      if (stake.agent_public_key === publicKey) {
+        return { error: "Cannot review your own stake", status: 403 };
+      }
 
-    if (stake.status !== "active") {
-      return res.status(400).json({ error: "Stake is no longer active" });
-    }
+      if (stake.status !== "active") {
+        return { error: "Stake is no longer active", status: 400 };
+      }
 
-    await db.insert(stakeReviews).values({
-      stakeId: id,
-      reviewerHumanId: humanId,
-      reviewerPublicKey: publicKey,
-      score,
-      comment: comment || null,
+      const stakeMetadata = typeof stake.metadata === 'string' ? JSON.parse(stake.metadata) : stake.metadata;
+      if (stakeMetadata?.resolutionTxHash) {
+        return { error: "Stake already resolved on-chain", status: 409 };
+      }
+
+      await tx.insert(stakeReviews).values({
+        stakeId: id,
+        reviewerHumanId: humanId,
+        reviewerPublicKey: publicKey,
+        score,
+        comment: comment || null,
+      });
+
+      const reviews = await tx.select().from(stakeReviews).where(eq(stakeReviews.stakeId, id));
+      const reviewCount = reviews.length;
+
+      const humanBounties = await tx.select().from(verificationBounties)
+        .where(and(
+          eq(verificationBounties.stakeId, id),
+          eq(verificationBounties.status, "claimed"),
+          eq(verificationBounties.verifierType, "human"),
+        ));
+      const humanReviewerIds = new Set(humanBounties.map(b => b.claimedByHumanId));
+
+      let weightedSum = 0;
+      let weightedCount = 0;
+      for (const review of reviews) {
+        const isHuman = humanReviewerIds.has(review.reviewerHumanId);
+        const weight = isHuman ? 2 : 1;
+        weightedSum += review.score * weight;
+        weightedCount += weight;
+      }
+      const avgScore = weightedCount > 0 ? weightedSum / weightedCount : 0;
+
+      const updateData: any = {
+        reviewCount,
+        avgScore: avgScore.toFixed(2),
+      };
+
+      if (reviewCount >= 3) {
+        updateData.resolvedAt = new Date();
+        if (avgScore >= 3.5) {
+          updateData.status = "validated";
+          updateData.resolution = "validated";
+          updateData.rewardAmount = (parseFloat(stake.stake_amount) * 0.1).toString();
+        } else if (avgScore < 2.0) {
+          updateData.status = "slashed";
+          updateData.resolution = "slashed";
+          updateData.slashedAmount = (parseFloat(stake.stake_amount) * 0.5).toString();
+        } else {
+          updateData.status = "neutral";
+          updateData.resolution = "neutral";
+        }
+      }
+
+      const [updatedStake] = await tx.update(reputationStakes)
+        .set(updateData)
+        .where(eq(reputationStakes.id, id))
+        .returning();
+
+      let transferResult: { transferStatus: string; transferTxHash?: string; transferError?: string } = { transferStatus: "no_transfer" };
+      if (updateData.resolution) {
+        if (updateData.resolution === "validated" || updateData.resolution === "slashed") {
+          const contractStakeId = stakeMetadata?.contractStakeId ? parseInt(stakeMetadata.contractStakeId) : undefined;
+          transferResult = await executeStakeTransfer(updateData.resolution, stake.agent_public_key, stake.stake_amount, stake.stake_token, contractStakeId);
+
+          if (transferResult.transferTxHash) {
+            await tx.update(reputationStakes)
+              .set({ metadata: { ...stakeMetadata, resolutionTxHash: transferResult.transferTxHash } })
+              .where(eq(reputationStakes.id, id));
+          }
+        }
+
+        const eventType = updateData.resolution === "validated" ? "stake_validated" : updateData.resolution === "slashed" ? "stake_slashed" : "stake_neutral";
+        try {
+          const [bot] = await tx.select().from(verifiedBots).where(eq(verifiedBots.publicKey, stake.agent_public_key));
+          const erc8004TokenId = (bot?.metadata as any)?.erc8004TokenId || null;
+          await tx.insert(reputationEvents).values({
+            agentPublicKey: stake.agent_public_key,
+            humanId: stake.human_id,
+            erc8004TokenId,
+            eventType,
+            eventData: {
+              stakeId: id,
+              resolution: updateData.resolution,
+              avgScore,
+              stakeAmount: stake.stake_amount,
+              transferStatus: transferResult.transferStatus,
+              transferTxHash: transferResult.transferTxHash || null,
+              transferError: transferResult.transferError || null,
+            },
+          });
+        } catch (e: any) {
+          console.error("[reputation] Error logging event:", e.message);
+        }
+      }
+
+      return { updatedStake, resolution: updateData.resolution, agentPublicKey: stake.agent_public_key, humanId: stake.human_id };
     });
 
-    const reviews = await db.select().from(stakeReviews).where(eq(stakeReviews.stakeId, id));
-    const reviewCount = reviews.length;
-
-    const humanBounties = await db.select().from(verificationBounties)
-      .where(and(
-        eq(verificationBounties.stakeId, id),
-        eq(verificationBounties.status, "claimed"),
-        eq(verificationBounties.verifierType, "human"),
-      ));
-    const humanReviewerIds = new Set(humanBounties.map(b => b.claimedByHumanId));
-
-    let weightedSum = 0;
-    let weightedCount = 0;
-    for (const review of reviews) {
-      const isHuman = humanReviewerIds.has(review.reviewerHumanId);
-      const weight = isHuman ? 2 : 1;
-      weightedSum += review.score * weight;
-      weightedCount += weight;
-    }
-    const avgScore = weightedCount > 0 ? weightedSum / weightedCount : 0;
-
-    const updateData: any = {
-      reviewCount,
-      avgScore: avgScore.toFixed(2),
-    };
-
-    if (reviewCount >= 3) {
-      updateData.resolvedAt = new Date();
-      if (avgScore >= 3.5) {
-        updateData.status = "validated";
-        updateData.resolution = "validated";
-        updateData.rewardAmount = (parseFloat(stake.stakeAmount) * 0.1).toString();
-      } else if (avgScore < 2.0) {
-        updateData.status = "slashed";
-        updateData.resolution = "slashed";
-        updateData.slashedAmount = (parseFloat(stake.stakeAmount) * 0.5).toString();
-      } else {
-        updateData.status = "neutral";
-        updateData.resolution = "neutral";
-      }
+    if ("error" in result) {
+      return res.status(result.status as number).json({ error: result.error });
     }
 
-    const [updatedStake] = await db.update(reputationStakes)
-      .set(updateData)
-      .where(eq(reputationStakes.id, id))
-      .returning();
-
-    if (updateData.resolution) {
-      let transferResult: { transferStatus: string; transferTxHash?: string; transferError?: string } = { transferStatus: "no_transfer" };
-      if (updateData.resolution === "validated" || updateData.resolution === "slashed") {
-        const stakeMetadata = stake.metadata as any;
-        const contractStakeId = stakeMetadata?.contractStakeId ? parseInt(stakeMetadata.contractStakeId) : undefined;
-        transferResult = await executeStakeTransfer(updateData.resolution, stake.agentPublicKey, stake.stakeAmount, stake.stakeToken, contractStakeId);
-      }
-
-      const eventType = updateData.resolution === "validated" ? "stake_validated" : updateData.resolution === "slashed" ? "stake_slashed" : "stake_neutral";
-      try {
-        const [bot] = await db.select().from(verifiedBots).where(eq(verifiedBots.publicKey, stake.agentPublicKey));
-        const erc8004TokenId = (bot?.metadata as any)?.erc8004TokenId || null;
-        await db.insert(reputationEvents).values({
-          agentPublicKey: stake.agentPublicKey,
-          humanId: stake.humanId,
-          erc8004TokenId,
-          eventType,
-          eventData: {
-            stakeId: id,
-            resolution: updateData.resolution,
-            avgScore,
-            stakeAmount: stake.stakeAmount,
-            transferStatus: transferResult.transferStatus,
-            transferTxHash: transferResult.transferTxHash || null,
-            transferError: transferResult.transferError || null,
-          },
-        });
-      } catch (e: any) {
-        console.error("[reputation] Error logging event:", e.message);
-      }
-      await checkAndAwardBadges(stake.agentPublicKey, stake.humanId);
+    if (result.resolution) {
+      await checkAndAwardBadges(result.agentPublicKey, result.humanId);
     }
 
-    return res.json({ stake: updatedStake });
+    return res.json({ stake: result.updatedStake });
   } catch (err: any) {
     console.error("[reputation] Error creating review:", err.message);
     return res.status(500).json({ error: "Failed to create review" });

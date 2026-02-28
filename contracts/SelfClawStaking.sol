@@ -27,6 +27,8 @@ contract SelfClawStaking {
     uint256 public constant REWARD_BPS = 1000;
     uint256 public constant SLASH_BPS = 5000;
 
+    uint256 private _locked;
+
     mapping(uint256 => Stake) public stakes;
     mapping(address => uint256) public rewardPool;
 
@@ -45,16 +47,37 @@ contract SelfClawStaking {
         _;
     }
 
+    modifier nonReentrant() {
+        require(_locked == 0, "Reentrancy");
+        _locked = 1;
+        _;
+        _locked = 0;
+    }
+
     constructor(address _resolver) {
         owner = msg.sender;
         resolver = _resolver;
     }
 
-    function createStake(bytes32 outputHash, uint256 amount, address token) external returns (uint256) {
+    function _safeTransfer(IERC20 token, address to, uint256 amount) private {
+        (bool success, bytes memory data) = address(token).call(
+            abi.encodeWithSelector(token.transfer.selector, to, amount)
+        );
+        require(success && (data.length == 0 || abi.decode(data, (bool))), "Transfer failed");
+    }
+
+    function _safeTransferFrom(IERC20 token, address from, address to, uint256 amount) private {
+        (bool success, bytes memory data) = address(token).call(
+            abi.encodeWithSelector(token.transferFrom.selector, from, to, amount)
+        );
+        require(success && (data.length == 0 || abi.decode(data, (bool))), "TransferFrom failed");
+    }
+
+    function createStake(bytes32 outputHash, uint256 amount, address token) external nonReentrant returns (uint256) {
         require(amount > 0, "Amount must be > 0");
         require(token != address(0), "Invalid token");
 
-        IERC20(token).transferFrom(msg.sender, address(this), amount);
+        _safeTransferFrom(IERC20(token), msg.sender, address(this), amount);
 
         uint256 stakeId = stakeCount++;
         stakes[stakeId] = Stake({
@@ -71,7 +94,7 @@ contract SelfClawStaking {
         return stakeId;
     }
 
-    function resolveStake(uint256 stakeId, uint8 resolution) external onlyResolver {
+    function resolveStake(uint256 stakeId, uint8 resolution) external onlyResolver nonReentrant {
         Stake storage stake = stakes[stakeId];
         require(stake.amount > 0, "Stake not found");
         require(stake.resolution == Resolution.Pending, "Already resolved");
@@ -82,34 +105,37 @@ contract SelfClawStaking {
         stake.resolvedAt = block.timestamp;
 
         uint256 rewardOrSlash = 0;
+        address _token = stake.token;
+        address _staker = stake.staker;
+        uint256 _amount = stake.amount;
 
         if (res == Resolution.Neutral) {
-            IERC20(stake.token).transfer(stake.staker, stake.amount);
+            _safeTransfer(IERC20(_token), _staker, _amount);
         } else if (res == Resolution.Validated) {
-            uint256 reward = (stake.amount * REWARD_BPS) / 10000;
-            uint256 available = rewardPool[stake.token];
+            uint256 reward = (_amount * REWARD_BPS) / 10000;
+            uint256 available = rewardPool[_token];
             if (reward > available) {
                 reward = available;
             }
-            rewardPool[stake.token] -= reward;
+            rewardPool[_token] -= reward;
             rewardOrSlash = reward;
-            IERC20(stake.token).transfer(stake.staker, stake.amount + reward);
+            _safeTransfer(IERC20(_token), _staker, _amount + reward);
         } else if (res == Resolution.Slashed) {
-            uint256 slashAmount = (stake.amount * SLASH_BPS) / 10000;
+            uint256 slashAmount = (_amount * SLASH_BPS) / 10000;
             rewardOrSlash = slashAmount;
-            uint256 returnAmount = stake.amount - slashAmount;
-            rewardPool[stake.token] += slashAmount;
+            uint256 returnAmount = _amount - slashAmount;
+            rewardPool[_token] += slashAmount;
             if (returnAmount > 0) {
-                IERC20(stake.token).transfer(stake.staker, returnAmount);
+                _safeTransfer(IERC20(_token), _staker, returnAmount);
             }
         }
 
         emit StakeResolved(stakeId, res, rewardOrSlash);
     }
 
-    function fundRewardPool(address token, uint256 amount) external {
+    function fundRewardPool(address token, uint256 amount) external nonReentrant {
         require(amount > 0, "Amount must be > 0");
-        IERC20(token).transferFrom(msg.sender, address(this), amount);
+        _safeTransferFrom(IERC20(token), msg.sender, address(this), amount);
         rewardPool[token] += amount;
         emit RewardPoolFunded(token, amount);
     }

@@ -14,7 +14,7 @@ import { celo } from 'viem/chains';
 import { TOKEN_FACTORY_BYTECODE } from '../lib/constants.js';
 import { platformDeployToken, platformRegisterErc8004, platformRequestSponsorship } from '../lib/platform-economy.js';
 import { releaseEscrow, SELFCLAW_TOKEN } from '../lib/selfclaw-commerce.js';
-import { distributeReferralReward, isRewardsContractDeployed, isRewardDistributed } from '../lib/rewards-contract.js';
+import { distributeReferralReward, claimPendingReward, isRewardsContractDeployed, isRewardDistributed } from '../lib/rewards-contract.js';
 
 import {
   publicApiLimiter,
@@ -8497,5 +8497,53 @@ router.get("/v1/badge/:identifier", async (req: Request, res: Response) => {
   const id = String(req.params.identifier);
   res.redirect(301, `/api/selfclaw/v1/badge/${encodeURIComponent(id)}.png`);
 });
+
+async function retryQueuedRewards(): Promise<void> {
+  try {
+    if (!isRewardsContractDeployed()) {
+      return;
+    }
+
+    const queued = await db.select()
+      .from(referralCompletions)
+      .where(eq(referralCompletions.rewardStatus, 'queued'));
+
+    if (queued.length === 0) return;
+
+    console.log(`[reward-worker] Found ${queued.length} queued reward(s) to retry`);
+
+    for (const completion of queued) {
+      try {
+        const result = await claimPendingReward(completion.id);
+
+        if (result.success) {
+          await db.update(referralCompletions)
+            .set({ rewardStatus: 'credited' })
+            .where(eq(referralCompletions.id, completion.id));
+          console.log(`[reward-worker] Claimed reward for referral ${completion.id}, tx=${result.txHash}`);
+        } else {
+          console.log(`[reward-worker] Reward ${completion.id} still queued: ${result.error}`);
+        }
+      } catch (err: any) {
+        console.error(`[reward-worker] Error retrying reward ${completion.id}:`, err.message);
+      }
+    }
+  } catch (error: any) {
+    console.error("[reward-worker] Tick error:", error.message);
+  }
+}
+
+let rewardWorkerInterval: ReturnType<typeof setInterval> | null = null;
+
+function startRewardWorker() {
+  if (rewardWorkerInterval) return;
+  console.log("[reward-worker] Starting queued reward retry worker (30min interval)");
+  rewardWorkerInterval = setInterval(() => {
+    retryQueuedRewards().catch(err => console.error("[reward-worker] Unhandled:", err.message));
+  }, 30 * 60 * 1000);
+  setTimeout(() => retryQueuedRewards().catch(() => {}), 10000);
+}
+
+startRewardWorker();
 
 export default router;
