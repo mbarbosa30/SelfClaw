@@ -15,7 +15,7 @@ The UI employs a brutalist-minimal aesthetic with light and dark mode support. C
 
 **Navigation**: Simplified to 3 primary items: VERIFY | EXPLORE (dropdown with Agents & Tokens, Agent Feed, Skill Market, Leaderboard, Bounties) | DEVELOPERS. LOGIN button styled with accent color. Auth.js handles rendering login/user state. Updated consistently across all HTML pages.
 
-**Landing page** (`public/index.html`): Outcome-focused hero ("Prove your AI agent is human-backed"), smart metrics bar (hides metrics below threshold of 3, count-up animation on scroll), How It Works (3 steps), Built With trust strip, Why SelfClaw (4 differentiators), Developer API section, Referral banner (100 SELFCLAW per verified agent), FAQ accordion with JSON-LD structured data. Token section moved out of landing page.
+**Landing page** (`public/index.html`): Broad-scope hero ("Trust infrastructure for autonomous agents"), smart metrics bar (hides metrics below threshold of 3, count-up animation on scroll), How It Works (3 steps), Built With trust strip, Why SelfClaw (4 differentiators), Developer API section, Referral banner (100 SELFCLAW per verified agent), FAQ accordion with JSON-LD structured data. Token section moved out of landing page.
 
 **Visual enhancements**: Hero has animated geometric grid background (CSS `gridPulse` animation), sections use `fade-in` class with IntersectionObserver for scroll animations, cards have subtle `translateY(-2px)` hover effect, pillars/steps have `background` hover transition. Metrics use count-up animation via `requestAnimationFrame`.
 
