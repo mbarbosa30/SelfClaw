@@ -509,8 +509,6 @@ h4 {
 
 .metrics-bar {
   padding: 2.5rem 0;
-  border-top: 2px solid var(--border);
-  border-bottom: 2px solid var(--border-heavy);
   margin-bottom: var(--space-lg);
 }
 
@@ -589,13 +587,11 @@ h4 {
 
 /* ── SECTIONS ── */
 .section {
-  margin-bottom: var(--space-md);
-  padding-bottom: var(--space-md);
-  border-bottom: 1px solid var(--border);
+  margin-bottom: var(--space-lg);
 }
 
 .section:last-child {
-  border-bottom: none;
+  margin-bottom: 0;
 }
 
 .section-label {
@@ -2808,8 +2804,6 @@ td.compare-us {
   align-items: center;
   gap: var(--space-md);
   padding: 1.25rem 0;
-  border-top: 2px solid var(--border);
-  border-bottom: 2px solid var(--border);
 }
 
 .trust-strip-label {
