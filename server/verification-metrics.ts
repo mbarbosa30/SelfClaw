@@ -159,7 +159,7 @@ router.get("/v1/verification/coverage", async (_req: Request, res: Response) => 
 
 router.get("/v1/verification/coverage/:publicKey", async (req: Request, res: Response) => {
   try {
-    const { publicKey } = req.params;
+    const publicKey = req.params.publicKey as string;
 
     const [metrics] = await db
       .select()

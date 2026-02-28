@@ -103,11 +103,13 @@ export async function platformDeployToken(params: PlatformDeployTokenParams): Pr
     await db.insert(tokenPlans).values({
       humanId,
       agentPublicKey: publicKey,
-      tokenName: name,
-      tokenSymbol: symbol,
-      totalSupply: initialSupply,
+      agentName,
+      purpose: `Platform-deployed token: ${name} (${symbol})`,
+      supplyReasoning: `Initial supply: ${initialSupply}`,
+      allocation: { deployer: "100%" },
+      utility: { type: "agent-token", symbol },
+      economicModel: `ERC-20 token deployed via platform. Supply: ${initialSupply}, Decimals: ${decimals}`,
       tokenAddress,
-      deployTxHash,
       status: "deployed",
     });
   } catch (dbErr: any) {
@@ -132,7 +134,7 @@ export interface PlatformRegisterErc8004Params {
   agentName: string;
   description?: string;
   walletAddress: string;
-  hostedAgentId?: number;
+  hostedAgentId?: number | string;
 }
 
 export interface PlatformRegisterErc8004Result {
@@ -175,12 +177,12 @@ export async function platformRegisterErc8004(params: PlatformRegisterErc8004Par
 
   if (hostedAgentId) {
     try {
-      const [ha] = await db.select().from(hostedAgents).where(eq(hostedAgents.id, hostedAgentId));
+      const [ha] = await db.select().from(hostedAgents).where(eq(hostedAgents.id, String(hostedAgentId)));
       if (ha) {
         const existingMcMeta = (ha.metadata as Record<string, any>) || {};
         await db.update(hostedAgents).set({
           metadata: { ...existingMcMeta, erc8004RegistrationJson: registrationJson },
-        }).where(eq(hostedAgents.id, hostedAgentId));
+        }).where(eq(hostedAgents.id, String(hostedAgentId)));
       }
     } catch {}
   }
@@ -194,7 +196,7 @@ export async function platformRegisterErc8004(params: PlatformRegisterErc8004Par
 
   if (hostedAgentId) {
     try {
-      const [ha] = await db.select().from(hostedAgents).where(eq(hostedAgents.id, hostedAgentId));
+      const [ha] = await db.select().from(hostedAgents).where(eq(hostedAgents.id, String(hostedAgentId)));
       if (ha) {
         const existingMcMeta = (ha.metadata as Record<string, any>) || {};
         await db.update(hostedAgents).set({
@@ -206,7 +208,7 @@ export async function platformRegisterErc8004(params: PlatformRegisterErc8004Par
             erc8004TokenId: regResult.tokenId,
             erc8004MintedAt: new Date().toISOString(),
           },
-        }).where(eq(hostedAgents.id, hostedAgentId));
+        }).where(eq(hostedAgents.id, String(hostedAgentId)));
       }
     } catch {}
   }
@@ -421,7 +423,7 @@ export async function platformRequestSponsorship(params: PlatformRequestSponsors
           to: tokenAddress as `0x${string}`,
           data: transferData,
         });
-        await viemClient.waitForTransactionReceipt({ hash: remainingTransferTx });
+        await viemClient.waitForTransactionReceipt({ hash: remainingTransferTx as `0x${string}` });
         console.log(`[platform-economy] Transferred remaining ${remainingBalance} tokens to ${transferTarget} (tx: ${remainingTransferTx})`);
       }
     } catch (transferErr: any) {

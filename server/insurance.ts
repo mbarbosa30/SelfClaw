@@ -7,25 +7,9 @@ import {
   skillPurchases,
   agentRequests,
 } from "../shared/schema.js";
+import { resolveAgent } from "./routes/_shared.js";
 
 const router = Router();
-
-async function resolveAgent(req: any, res: any): Promise<{ publicKey: string; humanId: string } | null> {
-  const authHeader = req.headers?.authorization;
-  if (authHeader && authHeader.startsWith("Bearer ")) {
-    const apiKey = authHeader.slice(7).trim();
-    if (apiKey) {
-      const [agent] = await db.select().from(verifiedBots).where(eq(verifiedBots.apiKey, apiKey)).limit(1);
-      if (agent) return { publicKey: agent.publicKey, humanId: agent.humanId || "" };
-    }
-  }
-  const session = req.session as any;
-  if (session?.publicKey && session?.humanId) {
-    return { publicKey: session.publicKey, humanId: session.humanId };
-  }
-  res.status(401).json({ error: "Authentication required. Use Bearer <api_key> or session auth." });
-  return null;
-}
 
 router.post("/v1/insurance/create", async (req: Request, res: Response) => {
   try {
@@ -137,7 +121,7 @@ router.get("/v1/insurance/bonds", async (_req: Request, res: Response) => {
 
 router.get("/v1/insurance/agent/:publicKey", async (req: Request, res: Response) => {
   try {
-    const { publicKey } = req.params;
+    const publicKey = req.params.publicKey as string;
 
     const bonds = await db
       .select()
@@ -180,7 +164,7 @@ router.post("/v1/insurance/bonds/:id/claim", async (req: Request, res: Response)
     const auth = await resolveAgent(req, res);
     if (!auth) return;
 
-    const { id } = req.params;
+    const id = req.params.id as string;
     const { reason } = req.body;
 
     if (!reason || reason.trim().length < 10) {

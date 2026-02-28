@@ -122,7 +122,7 @@ const SELFCLAW_TOKEN = "0x9ae5f51d81ff510bf961218f833f79d57bfbab07";
 router.get("/bridge/token-info/:address", async (req: Request, res: Response) => {
   if (!requireAdmin(req, res)) return;
   try {
-    const address = req.params.address;
+    const address = req.params.address as string;
     if (!address || !/^0x[0-9a-fA-F]{40}$/.test(address)) {
       return res.status(400).json({ error: "Valid ERC20 token address required" });
     }

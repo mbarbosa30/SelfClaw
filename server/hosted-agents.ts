@@ -1529,7 +1529,7 @@ async function executeEconomyTool(
         agentName: agent.name,
         description: agent.description || `Miniclaw: ${agent.name}`,
         walletAddress: walletInfo.address,
-        hostedAgentId: agent.id,
+        hostedAgentId: String(agent.id),
       });
 
       if (!result.success) {

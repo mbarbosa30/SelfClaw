@@ -66,178 +66,196 @@ router.post("/v1/verification/bounties/:id/claim", async (req: Request, res: Res
       });
     }
 
-    const { id } = req.params;
+    const id = req.params.id as string;
     const { score, comment } = req.body;
 
     if (!score || score < 1 || score > 5) {
       return res.status(400).json({ error: "Score must be between 1 and 5" });
     }
 
-    const [bounty] = await db
-      .select()
-      .from(verificationBounties)
-      .where(eq(verificationBounties.id, id));
+    const result = await db.transaction(async (tx) => {
+      const [bounty] = await tx
+        .select()
+        .from(verificationBounties)
+        .where(eq(verificationBounties.id, id));
 
-    if (!bounty) {
-      return res.status(404).json({ error: "Bounty not found" });
-    }
+      if (!bounty) {
+        return { error: "Bounty not found", status: 404 };
+      }
 
-    if (bounty.status !== "open") {
-      return res.status(400).json({ error: "Bounty has already been claimed" });
-    }
+      if (bounty.status !== "open") {
+        return { error: "Bounty has already been claimed", status: 400 };
+      }
 
-    const [stake] = await db
-      .select()
-      .from(reputationStakes)
-      .where(eq(reputationStakes.id, bounty.stakeId));
+      const [stake] = await tx
+        .select()
+        .from(reputationStakes)
+        .where(eq(reputationStakes.id, bounty.stakeId));
 
-    if (!stake) {
-      return res.status(404).json({ error: "Associated stake not found" });
-    }
+      if (!stake) {
+        return { error: "Associated stake not found", status: 404 };
+      }
 
-    if (stake.humanId === session.humanId) {
-      return res.status(403).json({ error: "Cannot verify your own agent's output" });
-    }
+      if (stake.humanId === session.humanId) {
+        return { error: "Cannot verify your own agent's output", status: 403 };
+      }
 
-    if (stake.status !== "active") {
-      return res.status(400).json({ error: "Stake is no longer active for review" });
-    }
+      if (stake.status !== "active") {
+        return { error: "Stake is no longer active for review", status: 400 };
+      }
 
-    const existingReview = await db
-      .select()
-      .from(stakeReviews)
-      .where(
-        and(
-          eq(stakeReviews.stakeId, bounty.stakeId),
-          eq(stakeReviews.reviewerHumanId, session.humanId)
+      const existingReview = await tx
+        .select()
+        .from(stakeReviews)
+        .where(
+          and(
+            eq(stakeReviews.stakeId, bounty.stakeId),
+            eq(stakeReviews.reviewerHumanId, session.humanId)
+          )
         )
-      )
-      .limit(1);
+        .limit(1);
 
-    if (existingReview.length > 0) {
-      return res.status(409).json({ error: "You have already reviewed this stake" });
-    }
+      if (existingReview.length > 0) {
+        return { error: "You have already reviewed this stake", status: 409 };
+      }
 
-    const sessionPublicKey = session.publicKey || `human:${session.humanId}`;
+      const sessionPublicKey = session.publicKey || `human:${session.humanId}`;
 
-    await db.insert(stakeReviews).values({
-      stakeId: bounty.stakeId,
-      reviewerHumanId: session.humanId,
-      reviewerPublicKey: sessionPublicKey,
-      score,
-      comment: comment || null,
-    });
-
-    const [updatedBounty] = await db
-      .update(verificationBounties)
-      .set({
-        status: "claimed",
-        claimedByHumanId: session.humanId,
-        claimedByPublicKey: sessionPublicKey,
-        verifierType: "human",
+      await tx.insert(stakeReviews).values({
+        stakeId: bounty.stakeId,
+        reviewerHumanId: session.humanId,
+        reviewerPublicKey: sessionPublicKey,
         score,
         comment: comment || null,
-        claimedAt: new Date(),
-      })
-      .where(eq(verificationBounties.id, id))
-      .returning();
+      });
 
-    const reviews = await db
-      .select()
-      .from(stakeReviews)
-      .where(eq(stakeReviews.stakeId, bounty.stakeId));
+      const [updatedBounty] = await tx
+        .update(verificationBounties)
+        .set({
+          status: "claimed",
+          claimedByHumanId: session.humanId,
+          claimedByPublicKey: sessionPublicKey,
+          verifierType: "human",
+          score,
+          comment: comment || null,
+          claimedAt: new Date(),
+        })
+        .where(and(eq(verificationBounties.id, id), eq(verificationBounties.status, "open")))
+        .returning();
 
-    const humanBounties = await db
-      .select()
-      .from(verificationBounties)
-      .where(
-        and(
-          eq(verificationBounties.stakeId, bounty.stakeId),
-          eq(verificationBounties.status, "claimed"),
-          eq(verificationBounties.verifierType, "human")
-        )
-      );
-
-    let weightedSum = 0;
-    let weightedCount = 0;
-
-    for (const review of reviews) {
-      const isHumanReview = humanBounties.some(
-        (hb) => hb.claimedByHumanId === review.reviewerHumanId
-      );
-      const weight = isHumanReview ? 2 : 1;
-      weightedSum += review.score * weight;
-      weightedCount += weight;
-    }
-
-    const weightedAvg = weightedCount > 0 ? weightedSum / weightedCount : 0;
-    const reviewCount = reviews.length;
-
-    const updateData: any = {
-      reviewCount,
-      avgScore: weightedAvg.toFixed(2),
-    };
-
-    if (reviewCount >= 3) {
-      updateData.resolvedAt = new Date();
-      if (weightedAvg >= 3.5) {
-        updateData.status = "validated";
-        updateData.resolution = "validated";
-        updateData.rewardAmount = (parseFloat(stake.stakeAmount) * 0.1).toString();
-      } else if (weightedAvg < 2.0) {
-        updateData.status = "slashed";
-        updateData.resolution = "slashed";
-        updateData.slashedAmount = (parseFloat(stake.stakeAmount) * 0.5).toString();
-      } else {
-        updateData.status = "neutral";
-        updateData.resolution = "neutral";
+      if (!updatedBounty) {
+        return { error: "Bounty has already been claimed", status: 409 };
       }
-    }
 
-    await db
-      .update(reputationStakes)
-      .set(updateData)
-      .where(eq(reputationStakes.id, bounty.stakeId));
+      const reviews = await tx
+        .select()
+        .from(stakeReviews)
+        .where(eq(stakeReviews.stakeId, bounty.stakeId));
 
-    if (updateData.resolution) {
-      try {
-        const [bot] = await db
-          .select()
-          .from(verifiedBots)
-          .where(eq(verifiedBots.publicKey, stake.agentPublicKey));
-        const erc8004TokenId = (bot?.metadata as any)?.erc8004TokenId || null;
-        await db.insert(reputationEvents).values({
-          agentPublicKey: stake.agentPublicKey,
-          humanId: stake.humanId,
-          erc8004TokenId,
-          eventType:
-            updateData.resolution === "validated"
-              ? "stake_validated"
-              : updateData.resolution === "slashed"
-              ? "stake_slashed"
-              : "stake_neutral",
-          eventData: {
-            stakeId: bounty.stakeId,
-            resolution: updateData.resolution,
-            avgScore: weightedAvg,
-            humanVerified: true,
-            bountyId: id,
-          },
-        });
-      } catch (e: any) {
-        console.error("[verification] Error logging event:", e.message);
+      const humanBounties = await tx
+        .select()
+        .from(verificationBounties)
+        .where(
+          and(
+            eq(verificationBounties.stakeId, bounty.stakeId),
+            eq(verificationBounties.status, "claimed"),
+            eq(verificationBounties.verifierType, "human")
+          )
+        );
+
+      let weightedSum = 0;
+      let weightedCount = 0;
+
+      for (const review of reviews) {
+        const isHumanReview = humanBounties.some(
+          (hb) => hb.claimedByHumanId === review.reviewerHumanId
+        );
+        const weight = isHumanReview ? 2 : 1;
+        weightedSum += review.score * weight;
+        weightedCount += weight;
       }
+
+      const weightedAvg = weightedCount > 0 ? weightedSum / weightedCount : 0;
+      const reviewCount = reviews.length;
+
+      const updateData: any = {
+        reviewCount,
+        avgScore: weightedAvg.toFixed(2),
+      };
+
+      if (reviewCount >= 3) {
+        updateData.resolvedAt = new Date();
+        if (weightedAvg >= 3.5) {
+          updateData.status = "validated";
+          updateData.resolution = "validated";
+          updateData.rewardAmount = (parseFloat(stake.stakeAmount) * 0.1).toString();
+        } else if (weightedAvg < 2.0) {
+          updateData.status = "slashed";
+          updateData.resolution = "slashed";
+          updateData.slashedAmount = (parseFloat(stake.stakeAmount) * 0.5).toString();
+        } else {
+          updateData.status = "neutral";
+          updateData.resolution = "neutral";
+        }
+      }
+
+      await tx
+        .update(reputationStakes)
+        .set(updateData)
+        .where(eq(reputationStakes.id, bounty.stakeId));
+
+      if (updateData.resolution) {
+        try {
+          const [bot] = await tx
+            .select()
+            .from(verifiedBots)
+            .where(eq(verifiedBots.publicKey, stake.agentPublicKey));
+          const erc8004TokenId = (bot?.metadata as any)?.erc8004TokenId || null;
+          await tx.insert(reputationEvents).values({
+            agentPublicKey: stake.agentPublicKey,
+            humanId: stake.humanId,
+            erc8004TokenId,
+            eventType:
+              updateData.resolution === "validated"
+                ? "stake_validated"
+                : updateData.resolution === "slashed"
+                ? "stake_slashed"
+                : "stake_neutral",
+            eventData: {
+              stakeId: bounty.stakeId,
+              resolution: updateData.resolution,
+              avgScore: weightedAvg,
+              humanVerified: true,
+              bountyId: id,
+            },
+          });
+        } catch (e: any) {
+          console.error("[verification] Error logging event:", e.message);
+        }
+      }
+
+      return {
+        bounty: updatedBounty,
+        stakeResolution: updateData.resolution || null,
+        weightedAvgScore: parseFloat(weightedAvg.toFixed(2)),
+        reviewCount,
+        rewardAmount: bounty.rewardAmount,
+      };
+    });
+
+    if ("error" in result) {
+      return res.status(result.status as number).json({ error: result.error });
     }
 
     res.json({
-      bounty: updatedBounty,
-      stakeResolution: updateData.resolution || null,
-      weightedAvgScore: parseFloat(weightedAvg.toFixed(2)),
-      reviewCount,
-      message: `Bounty claimed. Reward: ${bounty.rewardAmount} SELFCLAW. ${
-        updateData.resolution
-          ? `Stake resolved as: ${updateData.resolution}`
-          : `${3 - reviewCount} more reviews needed for resolution.`
+      bounty: result.bounty,
+      stakeResolution: result.stakeResolution,
+      weightedAvgScore: result.weightedAvgScore,
+      reviewCount: result.reviewCount,
+      message: `Bounty claimed. Reward: ${result.rewardAmount} SELFCLAW. ${
+        result.stakeResolution
+          ? `Stake resolved as: ${result.stakeResolution}`
+          : `${3 - result.reviewCount} more reviews needed for resolution.`
       }`,
     });
   } catch (err: any) {

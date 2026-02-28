@@ -2411,7 +2411,7 @@ router.get("/v1/ecosystem-stats", publicApiLimiter, async (_req: Request, res: R
 router.get("/v1/agent-score/:publicKey", publicApiLimiter, async (req: Request, res: Response) => {
   try {
     const { computeScoreWithPercentile } = await import("./selfclaw-score.js");
-    const score = await computeScoreWithPercentile(req.params.publicKey);
+    const score = await computeScoreWithPercentile(req.params.publicKey as string);
     if (!score) return res.status(404).json({ error: "Agent not found or not a verified agent" });
     res.json(score);
   } catch (error: any) {
@@ -2461,7 +2461,7 @@ router.get("/v1/score-leaderboard", publicApiLimiter, async (req: Request, res: 
       for (const a of agents) {
         const meta = a.metadata as any;
         agentData.set(a.publicKey, {
-          name: a.deviceId,
+          name: a.deviceId || "",
           erc8004TokenId: meta?.erc8004TokenId || null,
           onchainFeedbackCount: Number(meta?.onchainFeedbackCount) || 0,
           onchainAvgScore: Number(meta?.onchainAvgScore) || 0,
@@ -2497,7 +2497,7 @@ router.get("/v1/score-leaderboard", publicApiLimiter, async (req: Request, res: 
 router.get("/v1/poc/:publicKey", publicApiLimiter, async (req: Request, res: Response) => {
   try {
     const { getAgentPocScore, computePocScore } = await import("./poc-engine.js");
-    const pk = req.params.publicKey;
+    const pk = req.params.publicKey as string;
     let cached = await getAgentPocScore(pk);
     if (!cached) {
       const fresh = await computePocScore(pk);
@@ -8353,6 +8353,7 @@ router.get("/v1/badge/:identifier.png", async (req: Request, res: Response) => {
   </g>
 </svg>`;
 
+    // @ts-ignore — optional dependency, gracefully handled if missing
     const { Resvg } = await import("@aspect-ratio/resvg-js").catch(() => ({ Resvg: null }));
 
     if (Resvg) {

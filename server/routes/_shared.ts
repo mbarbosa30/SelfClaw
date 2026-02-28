@@ -434,3 +434,20 @@ export function getSponsorKey(): string | undefined {
   const rawKey = process.env.SELFCLAW_SPONSOR_PRIVATE_KEY || process.env.CELO_PRIVATE_KEY;
   return rawKey && !rawKey.startsWith('0x') ? `0x${rawKey}` : rawKey;
 }
+
+export async function resolveAgent(req: any, res: any): Promise<{ publicKey: string; humanId: string } | null> {
+  const authHeader = req.headers?.authorization;
+  if (authHeader && authHeader.startsWith("Bearer ")) {
+    const apiKey = authHeader.slice(7).trim();
+    if (apiKey) {
+      const [agent] = await db.select().from(verifiedBots).where(eq(verifiedBots.apiKey, apiKey)).limit(1);
+      if (agent) return { publicKey: agent.publicKey, humanId: agent.humanId || "" };
+    }
+  }
+  const session = req.session as any;
+  if (session?.publicKey && session?.humanId) {
+    return { publicKey: session.publicKey, humanId: session.humanId };
+  }
+  res.status(401).json({ error: "Authentication required. Use Bearer <api_key> or session auth." });
+  return null;
+}

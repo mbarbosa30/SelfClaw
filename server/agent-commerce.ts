@@ -5,6 +5,7 @@ import { sql, desc, eq, and } from "drizzle-orm";
 import { verifyPayment, SELFCLAW_TOKEN } from "../lib/selfclaw-commerce.js";
 import { parseUnits, createPublicClient, http, fallback, parseAbi } from "viem";
 import { celo } from "viem/chains";
+import { resolveAgent } from "./routes/_shared.js";
 
 const commerceClient = createPublicClient({
   chain: celo,
@@ -28,23 +29,6 @@ async function getTokenDecimals(tokenAddress: string): Promise<number> {
 }
 
 const router = Router();
-
-async function resolveAgent(req: any, res: any): Promise<{ publicKey: string; humanId: string } | null> {
-  const authHeader = req.headers?.authorization;
-  if (authHeader && authHeader.startsWith("Bearer ")) {
-    const apiKey = authHeader.slice(7).trim();
-    if (apiKey) {
-      const [agent] = await db.select().from(verifiedBots).where(eq(verifiedBots.apiKey, apiKey)).limit(1);
-      if (agent) return { publicKey: agent.publicKey, humanId: agent.humanId || "" };
-    }
-  }
-  const session = req.session as any;
-  if (session?.publicKey && session?.humanId) {
-    return { publicKey: session.publicKey, humanId: session.humanId };
-  }
-  res.status(401).json({ error: "Authentication required. Use Bearer <api_key> or session auth." });
-  return null;
-}
 
 router.post("/v1/agent-requests", async (req, res) => {
   try {

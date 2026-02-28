@@ -17,10 +17,10 @@ export function registerImageRoutes(app: Express): void {
         size: size as "1024x1024" | "512x512" | "256x256",
       });
 
-      const imageData = response.data[0];
+      const imageData = response.data?.[0];
       res.json({
-        url: imageData.url,
-        b64_json: imageData.b64_json,
+        url: imageData?.url,
+        b64_json: imageData?.b64_json,
       });
     } catch (error) {
       console.error("Error generating image:", error);

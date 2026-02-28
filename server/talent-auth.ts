@@ -174,10 +174,7 @@ router.post("/v1/talent/sign-challenge", verificationLimiter, async (req: Reques
       return res.status(410).json({ error: "Session expired" });
     }
 
-    const rawKey = extractRawEd25519Key(session.agentPublicKey);
-    const sigBytes = decodeSignature(signature);
-
-    const isValid = await verifyEd25519Signature(rawKey, sigBytes, session.challenge);
+    const isValid = await verifyEd25519Signature(session.agentPublicKey, signature, session.challenge);
 
     if (!isValid) {
       return res.status(401).json({ error: "Invalid signature" });
@@ -313,7 +310,7 @@ router.post("/v1/talent/complete", verificationLimiter, async (req: Request, res
       .set({ status: "verified", humanId })
       .where(eq(verificationSessions.id, sessionId));
 
-    logActivity(session.agentPublicKey, "verified", { provider: "talent", level: verificationLevel });
+    logActivity("verified", humanId, session.agentPublicKey, undefined, { provider: "talent", level: verificationLevel });
 
     const finalApiKey = existingBot.length > 0 ? existingBot[0].apiKey : apiKey;
 
@@ -340,7 +337,7 @@ router.get("/v1/talent/status/:sessionId", async (req: Request, res: Response) =
     const sessions = await db.select()
       .from(verificationSessions)
       .where(and(
-        eq(verificationSessions.id, req.params.sessionId),
+        eq(verificationSessions.id, req.params.sessionId as string),
         eq(verificationSessions.verificationProvider, "talent"),
       ))
       .limit(1);

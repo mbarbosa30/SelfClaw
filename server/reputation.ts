@@ -11,25 +11,9 @@ import {
   agentRequests,
   verificationBounties,
 } from "../shared/schema.js";
+import { resolveAgent } from "./routes/_shared.js";
 
 const router = Router();
-
-async function resolveAgent(req: any, res: any): Promise<{ publicKey: string; humanId: string } | null> {
-  const authHeader = req.headers?.authorization;
-  if (authHeader && authHeader.startsWith("Bearer ")) {
-    const apiKey = authHeader.slice(7).trim();
-    if (apiKey) {
-      const [agent] = await db.select().from(verifiedBots).where(eq(verifiedBots.apiKey, apiKey)).limit(1);
-      if (agent) return { publicKey: agent.publicKey, humanId: agent.humanId || "" };
-    }
-  }
-  const session = req.session as any;
-  if (session?.publicKey && session?.humanId) {
-    return { publicKey: session.publicKey, humanId: session.humanId };
-  }
-  res.status(401).json({ error: "Authentication required. Use Bearer <api_key> or session auth." });
-  return null;
-}
 
 router.post("/v1/reputation/stake", async (req, res) => {
   try {
@@ -60,7 +44,8 @@ router.post("/v1/reputation/stake", async (req, res) => {
     }).returning();
 
     let bounty = null;
-    if (bountyReward && parseFloat(bountyReward) > 0) {
+    const bountyNum = parseFloat(bountyReward);
+    if (bountyReward && !isNaN(bountyNum) && bountyNum > 0) {
       try {
         const [b] = await db.insert(verificationBounties).values({
           stakeId: stake.id,
