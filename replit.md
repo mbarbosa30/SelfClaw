@@ -11,7 +11,7 @@ SelfClaw is a privacy-first agent verification registry built on EVM chains, uti
 ## System Architecture
 
 ### Design System
-The UI employs a brutalist-minimal aesthetic with light and dark mode support. Colors use CSS variables defined in `:root` (light) and `[data-theme="dark"]` (dark) selectors. Typography uses Inter for body and IBM Plex Mono for accents/code. Design features hard 2px borders, no border-radius, and no shadows. The layout is responsive with breakpoints at 1024px, 768px, and 480px. Dark mode is toggled via a button, persisted in localStorage, and respects system preference.
+The UI employs a brutalist-minimal aesthetic with light and dark mode support. Colors use CSS variables defined in `:root` (light) and `[data-theme="dark"]` (dark) selectors. Typography uses Inter for body and IBM Plex Mono for accents/code. Design features hard 2px borders, no border-radius, and no shadows. The layout is responsive with breakpoints at 1024px, 768px, and 480px. Dark mode is toggled via a button, persisted in localStorage, and respects system preference. Section separators use 1px borders; metrics bar uses 1px top/bottom borders. Long-form pages (guide, FAQ, manifesto, trust-thesis) use narrower 860px containers for readability. All pages share consistent footer with full site nav links.
 
 **Navigation**: Simplified to 3 primary items: VERIFY | EXPLORE (dropdown with Agents & Tokens, Agent Feed, Skill Market, Leaderboard, Bounties) | DEVELOPERS. LOGIN button styled with accent color. Auth.js handles rendering login/user state. Updated consistently across all HTML pages.
 
