@@ -12,13 +12,13 @@ async function main() {
   const contractsDir = path.join(process.cwd(), 'contracts');
 
   console.log('--- Compiling contracts ---');
-  const staking = compileSolidity(path.join(contractsDir, 'SelfClawStaking.sol'));
+  const staking = await compileSolidity(path.join(contractsDir, 'SelfClawStaking.sol'));
   console.log(`  SelfClawStaking: compiled (${staking.bytecode.length / 2} bytes)`);
 
-  const escrow = compileSolidity(path.join(contractsDir, 'SelfClawEscrow.sol'));
+  const escrow = await compileSolidity(path.join(contractsDir, 'SelfClawEscrow.sol'));
   console.log(`  SelfClawEscrow: compiled (${escrow.bytecode.length / 2} bytes)`);
 
-  const rewards = compileSolidity(path.join(contractsDir, 'SelfClawRewards.sol'));
+  const rewards = await compileSolidity(path.join(contractsDir, 'SelfClawRewards.sol'));
   console.log(`  SelfClawRewards: compiled (${rewards.bytecode.length / 2} bytes)`);
 
   console.log('\n--- Deploying contracts ---');

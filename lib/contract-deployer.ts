@@ -44,8 +44,16 @@ export interface CompiledContract {
   contractName: string;
 }
 
-export function compileSolidity(contractPath: string): CompiledContract {
-  const solc = require('solc');
+let _solc: any = null;
+async function getSolc() {
+  if (!_solc) {
+    _solc = (await import('solc')).default;
+  }
+  return _solc;
+}
+
+export async function compileSolidity(contractPath: string): Promise<CompiledContract> {
+  const solc = await getSolc();
   const source = fs.readFileSync(contractPath, 'utf8');
   const contractName = path.basename(contractPath, '.sol');
 
