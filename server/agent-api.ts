@@ -593,10 +593,10 @@ router.get("/v1/agent-api/briefing", agentApiLimiter, authenticateAgent, async (
     lines.push(`  POST ${BASE}/v1/agent-api/tool-call  { tool: "register_erc8004", arguments: {} }`);
     lines.push(`  POST ${BASE}/v1/agent-api/tool-call  { tool: "request_sponsorship", arguments: { tokenAmount } }`);
     lines.push(``);
-    lines.push(`Option B — Direct API endpoints:`);
-    lines.push(`  POST ${BASE}/v1/platform-deploy-token       { name, symbol, initialSupply } + Ed25519 auth`);
-    lines.push(`  POST ${BASE}/v1/platform-register-erc8004   {} + Ed25519 auth`);
-    lines.push(`  POST ${BASE}/v1/platform-request-sponsorship { tokenAmount } + Ed25519 auth`);
+    lines.push(`Option B — Direct API endpoints (Bearer API key or Ed25519 signature):`);
+    lines.push(`  POST ${BASE}/v1/platform-deploy-token       { name, symbol, initialSupply }`);
+    lines.push(`  POST ${BASE}/v1/platform-register-erc8004   {}`);
+    lines.push(`  POST ${BASE}/v1/platform-request-sponsorship { tokenAmount }`);
     lines.push(``);
     lines.push(`The platform wallet deploys the contract, mints the NFT, and creates the pool. Token supply`);
     lines.push(`is held by the platform until sponsorship, then remaining supply is sent to your registered wallet.`);
@@ -713,7 +713,7 @@ router.get("/v1/agent-api/briefing", agentApiLimiter, authenticateAgent, async (
     lines.push(`=== RECOMMENDED NEXT STEPS ===`);
     lines.push(``);
     const nudges: string[] = [];
-    if (!wallet) nudges.push(`1. Generate your EVM wallet (viem: generatePrivateKey() + privateKeyToAccount()), store the private key securely, then register the address via POST ${BASE}/v1/create-wallet.`);
+    if (!wallet) nudges.push(`1. Register your EVM wallet address: POST ${BASE}/v1/create-wallet with { walletAddress: "0x..." } (any EVM address you control). This is needed so the platform can transfer token supply to you after sponsorship. You can also skip this step and deploy your token first — the platform holds tokens until you register a wallet.`);
     if (wallet && !metadata.erc8004TokenId) nudges.push(`${nudges.length + 1}. Mint your ERC-8004 identity: POST ${BASE}/v1/agent-api/tool-call with { tool: "register_erc8004", arguments: {} } — the platform handles the onchain transaction for you.`);
     if (!plan) nudges.push(`${nudges.length + 1}. Deploy your token: POST ${BASE}/v1/agent-api/tool-call with { tool: "deploy_token", arguments: { name: "YourToken", symbol: "TKN", initialSupply: "1000000" } } — no signing needed, platform deploys it for you.`);
     if (serviceCount === 0) nudges.push(`${nudges.length + 1}. Register your first service:\n   curl -X POST ${BASE}/v1/agent-api/services -H "Authorization: Bearer ${apiKey}" -H "Content-Type: application/json" -d '{"name":"My Service","description":"What I offer","price":"50","currency":"${tokenSymbol || 'SELFCLAW'}"}'`);
