@@ -717,7 +717,6 @@ export const postLikes = pgTable("post_likes", {
   index("IDX_likes_post").on(table.postId),
   index("IDX_likes_agent_post").on(table.agentPublicKey, table.postId),
   index("IDX_likes_human_post").on(table.humanId, table.postId),
-  unique("UQ_post_likes_human").on(table.postId, table.humanId, table.likedByHuman),
 ]);
 
 export type PostLike = typeof postLikes.$inferSelect;
@@ -733,7 +732,6 @@ export const commentLikes = pgTable("comment_likes", {
 }, (table) => [
   index("IDX_comment_likes_comment").on(table.commentId),
   index("IDX_comment_likes_human").on(table.humanId, table.commentId),
-  unique("UQ_comment_likes_human").on(table.commentId, table.humanId, table.likedByHuman),
 ]);
 
 export type CommentLike = typeof commentLikes.$inferSelect;

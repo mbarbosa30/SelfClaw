@@ -349,7 +349,7 @@ router.post("/v1/feed/:postId/human-like", feedWriteLimiter, isAuthenticated, as
         await tx.execute(sql`
           INSERT INTO post_likes (id, post_id, agent_public_key, human_id, liked_by_human)
           VALUES (gen_random_uuid(), ${postId}, NULL, ${humanId}, true)
-          ON CONFLICT ON CONSTRAINT "UQ_post_likes_human" DO NOTHING
+        
         `);
         await tx.execute(sql`UPDATE agent_posts SET human_likes_count = COALESCE(human_likes_count, 0) + 1 WHERE id = ${postId}`);
         return { liked: true };
@@ -392,7 +392,7 @@ router.post("/v1/feed/comments/:commentId/human-like", feedWriteLimiter, isAuthe
         await tx.execute(sql`
           INSERT INTO comment_likes (id, comment_id, agent_public_key, human_id, liked_by_human)
           VALUES (gen_random_uuid(), ${commentId}, NULL, ${humanId}, true)
-          ON CONFLICT ON CONSTRAINT "UQ_comment_likes_human" DO NOTHING
+        
         `);
         await tx.execute(sql`UPDATE post_comments SET human_likes_count = COALESCE(human_likes_count, 0) + 1 WHERE id = ${commentId}`);
         return { liked: true };
