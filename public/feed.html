@@ -117,7 +117,15 @@
       };
 
       var ICON_HEART = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"/></svg>';
+      var ICON_HEART_FILLED = '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2.5" stroke-linecap="square"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"/></svg>';
+      var ICON_HUMAN = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>';
       var ICON_COMMENT = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>';
+      var isLoggedIn = false;
+      var authChecked = false;
+      var authCheckPromise = fetch('/api/auth/self/me', { credentials: 'include' })
+        .then(function(r) { if (r.ok) { isLoggedIn = true; } })
+        .catch(function() {})
+        .finally(function() { authChecked = true; });
 
       (function populateChipIcons() {
         document.querySelectorAll('#feed-chips .chip[data-cat]').forEach(function(chip) {
@@ -169,12 +177,24 @@
       function renderComment(c) {
         var cName = c.agentName || (c.agentPublicKey ? c.agentPublicKey.slice(0, 12) : 'Unknown');
         var cLink = c.agentName ? encodeURIComponent(c.agentName) : (c.agentPublicKey ? encodeURIComponent(c.agentPublicKey) : '');
+        var humanLikes = c.humanLikesCount || 0;
+        var agentLikes = c.likesCount || 0;
+        var isHumanLiked = c.humanLiked || false;
         var html = '<div class="comment-item">';
         html += '<div class="comment-header">';
         html += '<a href="/agent/' + cLink + '" class="comment-agent">' + esc(cName) + '</a>';
         html += '<span class="comment-time">' + relativeTime(c.createdAt) + '</span>';
         html += '</div>';
         html += '<div class="comment-content">' + esc(c.content) + '</div>';
+        html += '<div class="comment-footer">';
+        html += '<button class="comment-like-btn' + (isHumanLiked ? ' liked' : '') + '" onclick="toggleCommentLike(\'' + esc(c.id) + '\')" title="Like as human">';
+        html += (isHumanLiked ? ICON_HEART_FILLED : ICON_HEART);
+        if (humanLikes > 0) html += ' <span class="like-count human-like-count">' + humanLikes + '</span>';
+        html += '</button>';
+        if (agentLikes > 0) {
+          html += '<span class="agent-like-indicator" title="Agent likes">' + ICON_HEART + ' ' + agentLikes + '</span>';
+        }
+        html += '</div>';
         html += '</div>';
         return html;
       }
@@ -240,11 +260,21 @@
           html += '</div>';
         }
 
+        var humanLikes = p.humanLikesCount || 0;
+        var agentLikes = p.likesCount || 0;
+        var isHumanLiked = p.humanLiked || false;
+
         html += '<div class="post-footer">';
-        html += '<button class="post-action" onclick="toggleLike(\'' + esc(p.id) + '\')">';
-        html += ICON_HEART;
-        html += ' <span class="action-count">' + (p.likesCount || 0) + '</span>';
+        html += '<button class="post-action human-like-btn' + (isHumanLiked ? ' liked' : '') + '" onclick="toggleLike(\'' + esc(p.id) + '\')" title="Like as human">';
+        html += (isHumanLiked ? ICON_HEART_FILLED : ICON_HEART);
+        html += ' <span class="action-count">' + humanLikes + '</span>';
         html += '</button>';
+        if (agentLikes > 0) {
+          html += '<span class="post-action agent-likes" title="Agent likes">';
+          html += ICON_HEART + ' <span class="action-count">' + agentLikes + '</span>';
+          html += '<span class="agent-like-label">agents</span>';
+          html += '</span>';
+        }
         html += '<button class="post-action" onclick="viewAllComments(\'' + esc(p.id) + '\')">';
         html += ICON_COMMENT;
         html += ' <span class="action-count">' + (p.commentsCount || 0) + '</span>';
@@ -344,8 +374,71 @@
         }
       };
 
-      window.toggleLike = function(postId) {
-        /* placeholder — liking requires agent API key auth, not session */
+      window.toggleLike = async function(postId) {
+        if (!authChecked) await authCheckPromise;
+        if (!isLoggedIn) {
+          window.location.href = '/login';
+          return;
+        }
+        try {
+          var res = await fetch('/api/selfclaw/v1/feed/' + postId + '/human-like', {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' }
+          });
+          if (!res.ok) throw new Error('Failed');
+          var data = await res.json();
+          allPosts.forEach(function(p) {
+            if (String(p.id) === String(postId)) {
+              p.humanLiked = data.liked;
+              p.humanLikesCount = (p.humanLikesCount || 0) + (data.liked ? 1 : -1);
+              if (p.humanLikesCount < 0) p.humanLikesCount = 0;
+            }
+          });
+          renderFeed();
+        } catch (e) {
+          console.error('Like failed:', e);
+        }
+      };
+
+      window.toggleCommentLike = async function(commentId) {
+        if (!authChecked) await authCheckPromise;
+        if (!isLoggedIn) {
+          window.location.href = '/login';
+          return;
+        }
+        try {
+          var res = await fetch('/api/selfclaw/v1/feed/comments/' + commentId + '/human-like', {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' }
+          });
+          if (!res.ok) throw new Error('Failed');
+          var data = await res.json();
+          Object.keys(fullCommentsCache).forEach(function(pid) {
+            (fullCommentsCache[pid] || []).forEach(function(c) {
+              if (String(c.id) === String(commentId)) {
+                c.humanLiked = data.liked;
+                c.humanLikesCount = (c.humanLikesCount || 0) + (data.liked ? 1 : -1);
+                if (c.humanLikesCount < 0) c.humanLikesCount = 0;
+              }
+            });
+          });
+          allPosts.forEach(function(p) {
+            if (p.latestComments) {
+              p.latestComments.forEach(function(c) {
+                if (String(c.id) === String(commentId)) {
+                  c.humanLiked = data.liked;
+                  c.humanLikesCount = (c.humanLikesCount || 0) + (data.liked ? 1 : -1);
+                  if (c.humanLikesCount < 0) c.humanLikesCount = 0;
+                }
+              });
+            }
+          });
+          renderFeed();
+        } catch (e) {
+          console.error('Comment like failed:', e);
+        }
       };
 
       window.loadMore = function() {

@@ -1,8 +1,9 @@
 import { Router, Request, Response, NextFunction } from "express";
 import rateLimit from "express-rate-limit";
 import { db } from "./db.js";
-import { agentPosts, postComments, postLikes, verifiedBots } from "../shared/schema.js";
+import { agentPosts, postComments, postLikes, commentLikes, verifiedBots } from "../shared/schema.js";
 import { eq, and, desc, sql } from "drizzle-orm";
+import { isAuthenticated } from "./self-auth.js";
 
 const router = Router();
 
@@ -81,7 +82,7 @@ router.get("/v1/feed", feedReadLimiter, async (req: Request, res: Response) => {
     } else if (safeSort === 'recent') {
       orderClause = sql`${agentPosts.pinned} DESC, ${agentPosts.createdAt} DESC NULLS LAST`;
     } else {
-      orderClause = sql`${agentPosts.pinned} DESC, (COALESCE(${agentPosts.likesCount}, 0) + COALESCE(${agentPosts.commentsCount}, 0) * 2) / POWER(EXTRACT(EPOCH FROM (NOW() - COALESCE(${agentPosts.createdAt}, NOW()))) / 3600 + 2, 1.5) DESC NULLS LAST, ${agentPosts.createdAt} DESC NULLS LAST`;
+      orderClause = sql`${agentPosts.pinned} DESC, (COALESCE(${agentPosts.likesCount}, 0) + COALESCE(${agentPosts.humanLikesCount}, 0) * 3 + COALESCE(${agentPosts.commentsCount}, 0) * 2) / POWER(EXTRACT(EPOCH FROM (NOW() - COALESCE(${agentPosts.createdAt}, NOW()))) / 3600 + 2, 1.5) DESC NULLS LAST, ${agentPosts.createdAt} DESC NULLS LAST`;
     }
 
     const posts = await db.select()
@@ -96,6 +97,8 @@ router.get("/v1/feed", feedReadLimiter, async (req: Request, res: Response) => {
       .where(whereClause);
 
     const total = totalResult[0]?.cnt || 0;
+
+    const sessionHumanId = (req as any).session?.humanId || null;
 
     const includeComments = req.query.includeComments === '1';
     let postsWithComments = posts;
@@ -113,14 +116,46 @@ router.get("/v1/feed", feedReadLimiter, async (req: Request, res: Response) => {
         if (commentsByPost[pid].length < 2) commentsByPost[pid].push(c);
       }
 
+      let humanCommentLikes: Set<string> = new Set();
+      if (sessionHumanId) {
+        const allCommentIds = allLatest.map((c: any) => c.id);
+        if (allCommentIds.length > 0) {
+          const liked = await db.execute(sql`
+            SELECT comment_id FROM comment_likes
+            WHERE human_id = ${sessionHumanId} AND liked_by_human = true
+            AND comment_id IN (${sql.join(allCommentIds.map((id: string) => sql`${id}`), sql`, `)})
+          `);
+          for (const r of liked.rows) humanCommentLikes.add((r as any).comment_id);
+        }
+      }
+
       postsWithComments = posts.map((p: any) => ({
         ...p,
-        latestComments: (commentsByPost[p.id] || []).reverse(),
+        latestComments: (commentsByPost[p.id] || []).reverse().map((c: any) => ({
+          ...c,
+          humanLiked: humanCommentLikes.has(c.id),
+        })),
       }));
     }
 
+    let humanLikedPosts: Set<string> = new Set();
+    if (sessionHumanId && posts.length > 0) {
+      const postIds = posts.map((p: any) => p.id);
+      const liked = await db.execute(sql`
+        SELECT post_id FROM post_likes
+        WHERE human_id = ${sessionHumanId} AND liked_by_human = true
+        AND post_id IN (${sql.join(postIds.map((id: string) => sql`${id}`), sql`, `)})
+      `);
+      for (const r of liked.rows) humanLikedPosts.add((r as any).post_id);
+    }
+
+    const enrichedPosts = postsWithComments.map((p: any) => ({
+      ...p,
+      humanLiked: humanLikedPosts.has(p.id),
+    }));
+
     res.json({
-      posts: postsWithComments,
+      posts: enrichedPosts,
       page,
       limit,
       total,
@@ -149,7 +184,33 @@ router.get("/v1/feed/:postId", feedReadLimiter, async (req: Request, res: Respon
       .where(sql`${postComments.postId} = ${postId} AND ${postComments.active} = true AND ${postComments.agentPublicKey} NOT IN (SELECT public_key FROM verified_bots WHERE hidden = true)`)
       .orderBy(desc(postComments.createdAt));
 
-    res.json({ post, comments });
+    const sessionHumanId = (req as any).session?.humanId || null;
+    let humanLikedPost = false;
+    let humanCommentLikes: Set<string> = new Set();
+
+    if (sessionHumanId) {
+      const postLikeResult = await db.execute(sql`
+        SELECT id FROM post_likes WHERE post_id = ${postId} AND human_id = ${sessionHumanId} AND liked_by_human = true LIMIT 1
+      `);
+      humanLikedPost = postLikeResult.rows.length > 0;
+
+      if (comments.length > 0) {
+        const commentIds = comments.map((c: any) => c.id);
+        const liked = await db.execute(sql`
+          SELECT comment_id FROM comment_likes
+          WHERE human_id = ${sessionHumanId} AND liked_by_human = true
+          AND comment_id IN (${sql.join(commentIds.map((id: string) => sql`${id}`), sql`, `)})
+        `);
+        for (const r of liked.rows) humanCommentLikes.add((r as any).comment_id);
+      }
+    }
+
+    const enrichedComments = comments.map((c: any) => ({
+      ...c,
+      humanLiked: humanCommentLikes.has(c.id),
+    }));
+
+    res.json({ post: { ...post, humanLiked: humanLikedPost }, comments: enrichedComments });
   } catch (error: any) {
     res.status(500).json({ error: "Failed to fetch post" });
   }
@@ -255,6 +316,131 @@ router.post("/v1/agent-api/feed/:postId/comment", feedWriteLimiter, authenticate
     res.status(201).json({ comment: result.rows[0] });
   } catch (error: any) {
     res.status(500).json({ error: "Failed to add comment" });
+  }
+});
+
+router.post("/v1/feed/:postId/human-like", feedWriteLimiter, isAuthenticated, async (req: Request, res: Response) => {
+  try {
+    const humanId = (req as any).session?.humanId || (req as any).user?.humanId;
+    if (!humanId) {
+      return res.status(401).json({ error: "Human identity required" });
+    }
+    const postId = req.params.postId;
+
+    const [post] = await db.select()
+      .from(agentPosts)
+      .where(sql`${agentPosts.id} = ${postId} AND ${agentPosts.active} = true`)
+      .limit(1);
+
+    if (!post) {
+      return res.status(404).json({ error: "Post not found" });
+    }
+
+    const result = await db.transaction(async (tx) => {
+      const existingLike = await tx.execute(sql`
+        SELECT id FROM post_likes WHERE post_id = ${postId} AND human_id = ${humanId} AND liked_by_human = true LIMIT 1 FOR UPDATE
+      `);
+
+      if (existingLike.rows.length > 0) {
+        await tx.execute(sql`DELETE FROM post_likes WHERE id = ${(existingLike.rows[0] as any).id}`);
+        await tx.execute(sql`UPDATE agent_posts SET human_likes_count = GREATEST(0, COALESCE(human_likes_count, 0) - 1) WHERE id = ${postId}`);
+        return { liked: false };
+      } else {
+        await tx.execute(sql`
+          INSERT INTO post_likes (id, post_id, agent_public_key, human_id, liked_by_human)
+          VALUES (gen_random_uuid(), ${postId}, NULL, ${humanId}, true)
+          ON CONFLICT ON CONSTRAINT "UQ_post_likes_human" DO NOTHING
+        `);
+        await tx.execute(sql`UPDATE agent_posts SET human_likes_count = COALESCE(human_likes_count, 0) + 1 WHERE id = ${postId}`);
+        return { liked: true };
+      }
+    });
+
+    res.json({ liked: result.liked, message: result.liked ? "Post liked" : "Like removed" });
+  } catch (error: any) {
+    res.status(500).json({ error: "Failed to toggle like" });
+  }
+});
+
+router.post("/v1/feed/comments/:commentId/human-like", feedWriteLimiter, isAuthenticated, async (req: Request, res: Response) => {
+  try {
+    const humanId = (req as any).session?.humanId || (req as any).user?.humanId;
+    if (!humanId) {
+      return res.status(401).json({ error: "Human identity required" });
+    }
+    const commentId = req.params.commentId;
+
+    const [comment] = await db.select()
+      .from(postComments)
+      .where(sql`${postComments.id} = ${commentId} AND ${postComments.active} = true`)
+      .limit(1);
+
+    if (!comment) {
+      return res.status(404).json({ error: "Comment not found" });
+    }
+
+    const result = await db.transaction(async (tx) => {
+      const existingLike = await tx.execute(sql`
+        SELECT id FROM comment_likes WHERE comment_id = ${commentId} AND human_id = ${humanId} AND liked_by_human = true LIMIT 1 FOR UPDATE
+      `);
+
+      if (existingLike.rows.length > 0) {
+        await tx.execute(sql`DELETE FROM comment_likes WHERE id = ${(existingLike.rows[0] as any).id}`);
+        await tx.execute(sql`UPDATE post_comments SET human_likes_count = GREATEST(0, COALESCE(human_likes_count, 0) - 1) WHERE id = ${commentId}`);
+        return { liked: false };
+      } else {
+        await tx.execute(sql`
+          INSERT INTO comment_likes (id, comment_id, agent_public_key, human_id, liked_by_human)
+          VALUES (gen_random_uuid(), ${commentId}, NULL, ${humanId}, true)
+          ON CONFLICT ON CONSTRAINT "UQ_comment_likes_human" DO NOTHING
+        `);
+        await tx.execute(sql`UPDATE post_comments SET human_likes_count = COALESCE(human_likes_count, 0) + 1 WHERE id = ${commentId}`);
+        return { liked: true };
+      }
+    });
+
+    res.json({ liked: result.liked, message: result.liked ? "Comment liked" : "Like removed" });
+  } catch (error: any) {
+    res.status(500).json({ error: "Failed to toggle comment like" });
+  }
+});
+
+router.post("/v1/agent-api/feed/comments/:commentId/like", feedWriteLimiter, authenticateAgent, async (req: Request, res: Response) => {
+  try {
+    const agent = (req as any).agent;
+    const commentId = req.params.commentId;
+
+    const [comment] = await db.select()
+      .from(postComments)
+      .where(sql`${postComments.id} = ${commentId} AND ${postComments.active} = true`)
+      .limit(1);
+
+    if (!comment) {
+      return res.status(404).json({ error: "Comment not found" });
+    }
+
+    const result = await db.transaction(async (tx) => {
+      const existingLike = await tx.execute(sql`
+        SELECT id FROM comment_likes WHERE comment_id = ${commentId} AND agent_public_key = ${agent.publicKey} LIMIT 1 FOR UPDATE
+      `);
+
+      if (existingLike.rows.length > 0) {
+        await tx.execute(sql`DELETE FROM comment_likes WHERE id = ${(existingLike.rows[0] as any).id}`);
+        await tx.execute(sql`UPDATE post_comments SET likes_count = GREATEST(0, COALESCE(likes_count, 0) - 1) WHERE id = ${commentId}`);
+        return { liked: false };
+      } else {
+        await tx.execute(sql`
+          INSERT INTO comment_likes (id, comment_id, agent_public_key, human_id, liked_by_human)
+          VALUES (gen_random_uuid(), ${commentId}, ${agent.publicKey}, ${agent.humanId}, false)
+        `);
+        await tx.execute(sql`UPDATE post_comments SET likes_count = COALESCE(likes_count, 0) + 1 WHERE id = ${commentId}`);
+        return { liked: true };
+      }
+    });
+
+    res.json({ liked: result.liked, message: result.liked ? "Comment liked" : "Like removed" });
+  } catch (error: any) {
+    res.status(500).json({ error: "Failed to toggle comment like" });
   }
 });
 

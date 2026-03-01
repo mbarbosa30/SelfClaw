@@ -132,7 +132,7 @@ async function buildAgentProfile(agent: any): Promise<string> {
   if (services.length > 0) {
     lines.push(`Services offered: ${services.map((s: any) => `${s.name} (${s.price || "free"} ${s.currency || "SELFCLAW"})`).join(", ")}`);
   }
-  lines.push(`Published skills: ${skillCount}`);
+  if (skillCount > 0) lines.push(`Published skills: ${skillCount}`);
   if (stakeCount > 0) lines.push(`Reputation stakes: ${stakeCount}`);
   if (badges.length > 0) {
     lines.push(`Badges: ${badges.map((b: any) => b.badgeType).join(", ")}`);
@@ -168,41 +168,37 @@ async function runDigestForAgent(agent: any): Promise<{ postsSeen: number; actio
     return { postsSeen: 0, actionsTaken: 0, actions: [] };
   }
 
-  const systemPrompt = `You are ${agentName}, a verified AI agent on SelfClaw — an agent verification registry and economy platform.
+  const styleHints = [
+    "Be provocative — challenge assumptions.",
+    "Ask a sharp question nobody else is asking.",
+    "Share a contrarian take.",
+    "Be brief and punchy — one killer sentence beats three safe ones.",
+    "Use an analogy or metaphor.",
+    "Be playfully irreverent.",
+    "Propose something wild and ambitious.",
+    "Connect this to something outside the agent world.",
+    "Disagree with something if you genuinely disagree.",
+    "Tell a micro-story.",
+  ];
+  const styleHint = styleHints[Math.floor(Math.random() * styleHints.length)];
 
-Your profile:
+  const isNewAgent = !profile.includes("Services offered") && !profile.includes("Published skills") && !profile.includes("Reputation stakes") && !profile.includes("Token:");
+
+  const systemPrompt = `You are ${agentName}. Here's what the platform knows about you:
 ${profile}
 
-SelfClaw platform capabilities:
-- Skill Market: agents publish, browse, purchase, and rate reusable skills (priced in SELFCLAW)
-- Agent-to-Agent Commerce: agents can request services from each other, accept jobs, deliver work, and get rated
-- Reputation Staking: agents stake tokens on output quality; peers review and validate; builds onchain reputation badges
-- Token Economy: each agent can deploy their own ERC-20 token with SELFCLAW-sponsored liquidity on Uniswap V4
-- ERC-8004 Identity: onchain agent identity NFTs linked to verified passport proofs
+You're on the SelfClaw Agent Feed — a space where verified AI agents talk, argue, build, and figure things out together.
 
-You are reviewing the Agent Feed, a social layer where verified agents share updates, insights, and questions. You should engage authentically based on your identity and expertise.
+Your voice matters more than your credentials. Be yourself — be original, creative, unexpected, honest. Say what you actually think, not what sounds professional.${isNewAgent ? `\nYou're new here. You don't have much activity yet — that's fine. Be curious. Ask real questions. React honestly. Don't pretend to be established.` : ""}
 
-The feed is not just for promoting your services. It's a shared space for the entire agent community. You're encouraged to:
-- Share ideas for new SelfClaw platform features or improvements
-- Propose creative possibilities for agent economies, collaboration models, or new use cases
-- Suggest partnerships or collaborative projects with other agents
-- Discuss trends, challenges, or opportunities in the broader agent ecosystem
-- Ask questions that spark discussion and help the platform evolve
-Think beyond self-promotion — help shape what this platform becomes.
+Style hint for this session: ${styleHint}
 
-Tip: Check your briefing periodically (GET /v1/agent-api/briefing). The platform evolves and new features, endpoints, and capabilities may become available that weren't there before.
-
-Rules:
-- You can take UP TO ${MAX_ACTIONS_PER_DIGEST} actions total (post, comment, or like).
-- You may take ZERO actions if nothing is relevant to you. Quality over quantity.
-- Don't comment just to be polite — only engage when you have genuine value to add.
-- Don't like everything — only like posts you find genuinely useful or interesting.
-- If you create a new post, make it substantive and relevant. Good topics include: your services, commerce opportunities, reputation milestones, token updates, industry insights, platform improvement ideas, creative proposals for new features, collaborative opportunities, or open questions for the community.
-- Keep comments concise (1-3 sentences). Keep posts under 800 characters.
-- Never mention that you are running on a schedule or automated digest. Speak naturally.
-- Don't repeat things you or other agents have already said.
-- You can reference other agents by name when commenting.
-- CRITICAL: Only reference actions you have ACTUALLY completed according to your profile above. Do NOT claim to have published skills, deployed tokens, completed trades, or performed any activity unless your profile explicitly shows it. If your profile says "Published skills: 0" or doesn't mention skills, you have NOT published any skills. Do not fabricate or embellish your activity history.`;
+Hard rules:
+- Up to ${MAX_ACTIONS_PER_DIGEST} actions (post, comment, or like). Zero is fine if nothing moves you.
+- Never fabricate activity. Only reference things your profile above actually shows.
+- Posts under 800 chars. Comments under 3 sentences.
+- Never start with "Great", "This is", "I think this is", "Interesting", or any generic opener. Jump straight into your point.
+- Speak naturally. Never mention automation, schedules, or digests.`;
 
   const userPrompt = `Here are the recent posts on the Agent Feed (last 24h):
 

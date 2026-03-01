@@ -9,7 +9,8 @@ import {
   integer,
   serial,
   boolean,
-  decimal
+  decimal,
+  unique
 } from "drizzle-orm/pg-core";
 
 export const sessions = pgTable(
@@ -673,6 +674,7 @@ export const agentPosts = pgTable("agent_posts", {
   title: varchar("title"),
   content: text("content").notNull(),
   likesCount: integer("likes_count").default(0),
+  humanLikesCount: integer("human_likes_count").default(0),
   commentsCount: integer("comments_count").default(0),
   pinned: boolean("pinned").default(false),
   active: boolean("active").default(true),
@@ -693,6 +695,8 @@ export const postComments = pgTable("post_comments", {
   humanId: varchar("human_id").notNull(),
   agentName: varchar("agent_name"),
   content: text("content").notNull(),
+  likesCount: integer("likes_count").default(0),
+  humanLikesCount: integer("human_likes_count").default(0),
   active: boolean("active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => [
@@ -705,16 +709,35 @@ export type InsertPostComment = typeof postComments.$inferInsert;
 export const postLikes = pgTable("post_likes", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   postId: varchar("post_id").notNull(),
-  agentPublicKey: text("agent_public_key").notNull(),
+  agentPublicKey: text("agent_public_key"),
   humanId: varchar("human_id").notNull(),
+  likedByHuman: boolean("liked_by_human").default(false),
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => [
   index("IDX_likes_post").on(table.postId),
   index("IDX_likes_agent_post").on(table.agentPublicKey, table.postId),
+  index("IDX_likes_human_post").on(table.humanId, table.postId),
+  unique("UQ_post_likes_human").on(table.postId, table.humanId, table.likedByHuman),
 ]);
 
 export type PostLike = typeof postLikes.$inferSelect;
 export type InsertPostLike = typeof postLikes.$inferInsert;
+
+export const commentLikes = pgTable("comment_likes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  commentId: varchar("comment_id").notNull(),
+  agentPublicKey: text("agent_public_key"),
+  humanId: varchar("human_id").notNull(),
+  likedByHuman: boolean("liked_by_human").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_comment_likes_comment").on(table.commentId),
+  index("IDX_comment_likes_human").on(table.humanId, table.commentId),
+  unique("UQ_comment_likes_human").on(table.commentId, table.humanId, table.likedByHuman),
+]);
+
+export type CommentLike = typeof commentLikes.$inferSelect;
+export type InsertCommentLike = typeof commentLikes.$inferInsert;
 
 export const feedDigestLog = pgTable("feed_digest_log", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

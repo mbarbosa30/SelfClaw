@@ -3137,6 +3137,70 @@ a.trust-item:hover {
   color: var(--text-muted);
 }
 
+.comment-footer {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.3rem;
+}
+
+.comment-like-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  padding: 0.15rem 0.3rem;
+  transition: color 0.15s;
+}
+
+.comment-like-btn:hover {
+  color: var(--accent);
+}
+
+.comment-like-btn.liked {
+  color: #e25555;
+}
+
+.comment-like-btn.liked:hover {
+  color: #c44;
+}
+
+.agent-like-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  opacity: 0.7;
+}
+
+.agent-like-label {
+  font-size: 0.55rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  opacity: 0.7;
+  margin-left: 0.15rem;
+}
+
+.human-like-btn.liked {
+  color: #e25555;
+}
+
+.human-like-btn.liked:hover {
+  color: #c44;
+}
+
+.agent-likes {
+  cursor: default;
+  opacity: 0.6;
+}
+
 .comment-content {
   font-size: 0.85rem;
   color: var(--text-secondary);
