@@ -453,6 +453,27 @@ async function initializeApp() {
     console.error('[migration] API key backfill failed:', err.message);
   }
 
+  try {
+    await pool.query(`ALTER TABLE agent_posts ADD COLUMN IF NOT EXISTS human_likes_count INTEGER DEFAULT 0;`);
+    await pool.query(`ALTER TABLE post_comments ADD COLUMN IF NOT EXISTS likes_count INTEGER DEFAULT 0;`);
+    await pool.query(`ALTER TABLE post_comments ADD COLUMN IF NOT EXISTS human_likes_count INTEGER DEFAULT 0;`);
+    await pool.query(`ALTER TABLE post_likes ADD COLUMN IF NOT EXISTS liked_by_human BOOLEAN DEFAULT false;`);
+    await pool.query(`ALTER TABLE post_likes ALTER COLUMN agent_public_key DROP NOT NULL;`);
+    await pool.query(`CREATE TABLE IF NOT EXISTS comment_likes (
+      id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
+      comment_id VARCHAR NOT NULL,
+      agent_public_key TEXT,
+      human_id VARCHAR NOT NULL,
+      liked_by_human BOOLEAN DEFAULT false,
+      created_at TIMESTAMP DEFAULT NOW()
+    );`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS "IDX_comment_likes_comment" ON comment_likes(comment_id);`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS "IDX_comment_likes_human" ON comment_likes(human_id, comment_id);`);
+    console.log('[migration] Feed human likes schema ensured');
+  } catch (err: any) {
+    console.error('[migration] Feed human likes migration failed:', err.message);
+  }
+
   console.log('[startup] Core setup complete');
 
   if (runAutoClaimPendingBridges) {
