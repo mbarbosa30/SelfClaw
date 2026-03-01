@@ -8,7 +8,7 @@
     "start": "tsx server/index.ts",
     "start:prod": "node server/boot.mjs",
     "dev": "tsx watch server/index.ts",
-    "build": "node build.mjs",
+    "build": "node build.mjs && drizzle-kit push",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio"
   },
