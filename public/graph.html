@@ -344,7 +344,15 @@
       <label class="toggle-row"><input type="checkbox" id="toggle-labels" checked> Show labels</label>
     </div>
 
-    <div id="graph-canvas"></div>
+    <div id="graph-canvas">
+      <div id="graph-loading" style="display:flex;align-items:center;justify-content:center;height:100%;width:100%;position:absolute;top:0;left:0;z-index:50">
+        <div style="text-align:center;font-family:'IBM Plex Mono',monospace">
+          <div id="loading-spinner" style="width:32px;height:32px;border:2px solid var(--border,#d4d0ca);border-top-color:#FF6B4A;border-radius:50%;margin:0 auto 16px;animation:spin 0.8s linear infinite"></div>
+          <div id="loading-text" style="font-size:12px;color:var(--text-muted,#787470);letter-spacing:0.05em">Loading network graph...</div>
+        </div>
+      </div>
+      <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
+    </div>
 
     <div class="graph-stats" id="graph-stats">
       <span>Nodes <span class="stat-val" id="stat-nodes">0</span></span>
@@ -558,12 +566,33 @@
       return `<div style="font-family:IBM Plex Mono,monospace;font-size:10px;background:${bg};color:${color};padding:3px 7px;border:1px solid ${border};border-left:2px solid ${accentClr};backdrop-filter:blur(8px);letter-spacing:0.03em">${n.name}${detailStr}</div>`;
     }
 
+    function setLoadingStatus(msg) {
+      const el = document.getElementById('loading-text');
+      if (el) el.textContent = msg;
+    }
+
+    function showGraphError(msg) {
+      const loading = document.getElementById('graph-loading');
+      if (loading) {
+        loading.innerHTML = '<div style="text-align:center;font-family:IBM Plex Mono,monospace"><div style="font-size:13px;color:var(--text-muted,#787470);margin-bottom:16px">' + msg + '</div><button onclick="location.reload()" style="font-family:IBM Plex Mono,monospace;font-size:11px;padding:6px 16px;border:2px solid var(--border,#d4d0ca);background:transparent;color:var(--text,#1a1a1a);cursor:pointer;letter-spacing:0.05em">RETRY</button></div>';
+      }
+    }
+
+    function hideLoading() {
+      const loading = document.getElementById('graph-loading');
+      if (loading) loading.style.display = 'none';
+    }
+
     async function fetchGraphData() {
       try {
-        const res = await fetch('/api/selfclaw/v1/graph-data');
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 15000);
+        const res = await fetch('/api/selfclaw/v1/graph-data', { signal: controller.signal });
+        clearTimeout(timeout);
+        if (!res.ok) throw new Error('API returned ' + res.status);
         return await res.json();
       } catch (err) {
-        console.error('Failed to fetch graph data:', err);
+        console.error('[graph] Failed to fetch graph data:', err);
         return null;
       }
     }
@@ -807,7 +836,7 @@
           .cooldownTime(5000);
       } catch (err) {
         console.error('[graph] Failed to initialize 3D graph:', err);
-        container.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;font-family:IBM Plex Mono,monospace;color:var(--text-muted,#787470)"><div style="text-align:center"><p style="font-size:14px;margin:0">WebGL is required to render the network graph.</p><p style="font-size:12px;margin:8px 0 0">Try using a modern browser with hardware acceleration enabled.</p></div></div>';
+        showGraphError('WebGL is required. Try a modern browser with hardware acceleration enabled.');
         return;
       }
 
@@ -858,21 +887,29 @@
     }
 
     async function init() {
-      try {
-        const raw = await fetchGraphData();
-        if (!raw || !raw.nodes) {
-          console.error('[graph] No data returned from API');
-          document.getElementById('graph-canvas').innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;font-family:IBM Plex Mono,monospace;color:var(--text-muted,#787470)"><p>Failed to load graph data. Try refreshing.</p></div>';
-          return;
-        }
-        graphData = transformData(raw);
-      } catch (err) {
-        console.error('[graph] Error loading graph data:', err);
+      setLoadingStatus('Fetching graph data...');
+
+      if (typeof ForceGraph3D === 'undefined') {
+        console.error('[graph] ForceGraph3D library not loaded');
+        showGraphError('3D library failed to load. Check your connection.');
         return;
       }
 
+      const raw = await fetchGraphData();
+      if (!raw || !raw.nodes) {
+        console.error('[graph] No data returned from API');
+        showGraphError('Failed to load graph data.');
+        return;
+      }
+
+      setLoadingStatus('Building graph...');
+      graphData = transformData(raw);
+
+      setLoadingStatus('Initializing 3D view...');
       initGraph();
       if (!graph) return;
+
+      hideLoading();
       refreshGraph();
 
       document.querySelectorAll('[data-edge]').forEach(cb => {
