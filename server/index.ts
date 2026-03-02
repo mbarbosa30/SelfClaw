@@ -148,6 +148,7 @@ app.get("/partners/perkos", (_req: Request, res: Response) => sendHtml(res, "par
 app.get("/partners/zhc", (_req: Request, res: Response) => sendHtml(res, "partner-zhc.html", { "X-Robots-Tag": "noindex, nofollow" }));
 app.get("/talent-postmortem", (_req: Request, res: Response) => sendHtml(res, "talent-postmortem.html", { "X-Robots-Tag": "noindex, nofollow" }));
 app.get("/graph", (_req: Request, res: Response) => sendHtml(res, "graph.html"));
+app.get("/governance", (_req: Request, res: Response) => sendHtml(res, "governance.html"));
 
 app.get("/skills", (_req: Request, res: Response) => res.redirect(301, "/skill-market"));
 app.get("/how-it-works", (_req: Request, res: Response) => res.redirect(301, "/"));
@@ -262,6 +263,7 @@ async function initializeApp() {
     { path: "/api/selfclaw", name: "insurance", importFn: () => import("./insurance.js"), key: "default" },
     { path: "/api/selfclaw", name: "verification-metrics", importFn: () => import("./verification-metrics.js"), key: "default" },
     { path: "/api/selfclaw", name: "graph", importFn: () => import("./graph.js"), key: "default" },
+    { path: "/api/selfclaw", name: "governance", importFn: () => import("./governance.js"), key: "default" },
   ];
 
   for (const r of routers) {

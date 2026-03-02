@@ -1099,3 +1099,66 @@ export const verificationMetrics = pgTable("verification_metrics", {
 
 export type VerificationMetric = typeof verificationMetrics.$inferSelect;
 export type InsertVerificationMetric = typeof verificationMetrics.$inferInsert;
+
+export const governanceStakes = pgTable("governance_stakes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  humanId: varchar("human_id").notNull(),
+  walletAddress: varchar("wallet_address").notNull(),
+  stakedAmount: varchar("staked_amount").notNull(),
+  stakedAt: timestamp("staked_at").defaultNow(),
+  unstakeRequestedAt: timestamp("unstake_requested_at"),
+  unstakeAmount: varchar("unstake_amount"),
+  chainId: integer("chain_id").default(8453),
+  txHash: varchar("tx_hash"),
+  status: varchar("status").default("active"),
+  metadata: jsonb("metadata"),
+}, (table) => [
+  index("idx_governance_stakes_human_id").on(table.humanId),
+  index("idx_governance_stakes_wallet").on(table.walletAddress),
+  index("idx_governance_stakes_status").on(table.status),
+]);
+
+export type GovernanceStake = typeof governanceStakes.$inferSelect;
+export type InsertGovernanceStake = typeof governanceStakes.$inferInsert;
+
+export const governanceProposals = pgTable("governance_proposals", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  proposalOnchainId: integer("proposal_onchain_id"),
+  title: varchar("title").notNull(),
+  description: text("description").notNull(),
+  creatorHumanId: varchar("creator_human_id").notNull(),
+  creatorWallet: varchar("creator_wallet").notNull(),
+  status: varchar("status").default("active"),
+  votingStartsAt: timestamp("voting_starts_at").defaultNow(),
+  votingEndsAt: timestamp("voting_ends_at").notNull(),
+  forVotes: varchar("for_votes").default("0"),
+  againstVotes: varchar("against_votes").default("0"),
+  quorumRequired: varchar("quorum_required").default("0"),
+  txHash: varchar("tx_hash"),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_governance_proposals_creator").on(table.creatorHumanId),
+  index("idx_governance_proposals_status").on(table.status),
+  index("idx_governance_proposals_voting_ends").on(table.votingEndsAt),
+]);
+
+export type GovernanceProposal = typeof governanceProposals.$inferSelect;
+export type InsertGovernanceProposal = typeof governanceProposals.$inferInsert;
+
+export const governanceVotes = pgTable("governance_votes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  proposalId: varchar("proposal_id").notNull(),
+  voterHumanId: varchar("voter_human_id").notNull(),
+  voterWallet: varchar("voter_wallet").notNull(),
+  support: boolean("support").notNull(),
+  votingPower: varchar("voting_power").notNull(),
+  txHash: varchar("tx_hash"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_governance_votes_proposal").on(table.proposalId),
+  index("idx_governance_votes_voter").on(table.voterHumanId),
+]);
+
+export type GovernanceVote = typeof governanceVotes.$inferSelect;
+export type InsertGovernanceVote = typeof governanceVotes.$inferInsert;
