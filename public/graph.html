@@ -28,9 +28,10 @@
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
   <style>
+    @keyframes spin{to{transform:rotate(360deg)}}
     body { margin: 0; overflow: hidden; }
     .graph-container { width: 100vw; height: 100vh; position: relative; }
-    #graph-canvas { width: 100%; height: 100%; display: block; }
+    #graph-canvas { width: 100%; height: calc(100vh); position: relative; }
 
     .graph-header {
       position: absolute;
@@ -351,7 +352,6 @@
           <div id="loading-text" style="font-size:12px;color:var(--text-muted,#787470);letter-spacing:0.05em">Loading network graph...</div>
         </div>
       </div>
-      <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
     </div>
 
     <div class="graph-stats" id="graph-stats">
@@ -580,7 +580,7 @@
 
     function hideLoading() {
       const loading = document.getElementById('graph-loading');
-      if (loading) loading.style.display = 'none';
+      if (loading) loading.remove();
     }
 
     async function fetchGraphData() {
@@ -810,9 +810,14 @@
     function initGraph() {
       const container = document.getElementById('graph-canvas');
       const dark = isDark();
+      const w = container.offsetWidth || window.innerWidth;
+      const h = container.offsetHeight || window.innerHeight;
+      console.log('[graph] Container dimensions:', w, 'x', h);
 
       try {
         graph = ForceGraph3D()(container)
+          .width(w)
+          .height(h)
           .backgroundColor(dark ? '#141414' : '#f2f0ec')
           .nodeLabel(nodeLabel)
           .nodeVal(n => getNodeSize(n))
@@ -873,6 +878,12 @@
         controls.enableDamping = true;
         controls.dampingFactor = 0.12;
       }
+
+      window.addEventListener('resize', () => {
+        if (!graph) return;
+        const c = document.getElementById('graph-canvas');
+        if (c) graph.width(c.offsetWidth || window.innerWidth).height(c.offsetHeight || window.innerHeight);
+      });
     }
 
     function refreshGraph() {
@@ -910,7 +921,15 @@
       if (!graph) return;
 
       hideLoading();
+      console.log('[graph] Data loaded:', graphData.nodes.length, 'nodes,', graphData.links.length, 'links');
       refreshGraph();
+
+      setTimeout(() => {
+        if (graph) {
+          graph.zoomToFit(400);
+          console.log('[graph] Camera zoomed to fit');
+        }
+      }, 500);
 
       document.querySelectorAll('[data-edge]').forEach(cb => {
         cb.addEventListener('change', () => {
