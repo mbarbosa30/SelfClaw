@@ -384,12 +384,20 @@
     };
 
     const EDGE_COLORS_DIM = {
-      commerce: 'rgba(34,197,94,0.15)',
-      skill: 'rgba(16,185,129,0.15)',
-      feed: 'rgba(59,130,246,0.15)',
-      reputation: 'rgba(245,158,11,0.15)',
-      insurance: 'rgba(168,85,247,0.15)',
-      referral: 'rgba(234,179,8,0.15)'
+      commerce: '#d6f0dc',
+      skill: '#d1ede4',
+      feed: '#d4e2f8',
+      reputation: '#fbe9cc',
+      insurance: '#e8d5f5',
+      referral: '#f7edc5'
+    };
+    const EDGE_COLORS_DIM_DARK = {
+      commerce: '#1a2e1f',
+      skill: '#162b24',
+      feed: '#1a2540',
+      reputation: '#302212',
+      insurance: '#251a30',
+      referral: '#2a2210'
     };
 
     const TIER_COLORS = {
@@ -399,6 +407,8 @@
       high:     { light: '#FF6B4A', dark: '#ff8a6e' },
     };
     const MULTI_AGENT_COLOR = { light: '#06b6d4', dark: '#22d3ee' };
+    const DIMMED_COLOR = { light: '#d4d0cc', dark: '#2a2827' };
+    const DIMMED_LINK = { light: '#e8e6e2', dark: '#1e1e1e' };
 
     let graphData = { nodes: [], links: [] };
     let humanGroupCount = 0;
@@ -434,15 +444,14 @@
     }
 
     function getNodeColor(node) {
-      const dark = isDark();
-      const mode = dark ? 'dark' : 'light';
+      const mode = isDark() ? 'dark' : 'light';
       if (highlightNode) {
         if (node === highlightNode) return '#FF6B4A';
         if (highlightLinks.has(node)) {
           if (multiAgentGroups.has(node.group)) return MULTI_AGENT_COLOR[mode];
           return TIER_COLORS[getActivityTier(node)][mode];
         }
-        return dark ? 'rgba(120,116,112,0.2)' : 'rgba(90,90,90,0.15)';
+        return DIMMED_COLOR[mode];
       }
       if (multiAgentGroups.has(node.group)) return MULTI_AGENT_COLOR[mode];
       return TIER_COLORS[getActivityTier(node)][mode];
@@ -465,36 +474,63 @@
     }
 
     function getLinkColor(l) {
+      const dark = isDark();
       if (highlightNode) {
         const sid = typeof l.source === 'object' ? l.source.id : l.source;
         const tid = typeof l.target === 'object' ? l.target.id : l.target;
         if (sid === highlightNode.id || tid === highlightNode.id) {
-          return EDGE_COLORS[l.type] || '#666';
+          return EDGE_COLORS[l.type] || '#666666';
         }
-        return isDark() ? 'rgba(60,60,60,0.08)' : 'rgba(180,180,180,0.08)';
+        return DIMMED_LINK[dark ? 'dark' : 'light'];
       }
-      return EDGE_COLORS_DIM[l.type] || (isDark() ? 'rgba(80,80,80,0.12)' : 'rgba(160,160,160,0.12)');
+      const dimMap = dark ? EDGE_COLORS_DIM_DARK : EDGE_COLORS_DIM;
+      return dimMap[l.type] || (dark ? '#1e1e1e' : '#e8e6e2');
     }
 
     function getLinkWidth(l) {
+      const w = l.weight || 1;
       if (highlightNode) {
         const sid = typeof l.source === 'object' ? l.source.id : l.source;
         const tid = typeof l.target === 'object' ? l.target.id : l.target;
         if (sid === highlightNode.id || tid === highlightNode.id) {
-          return Math.min(l.weight || 1, 4) * 0.8;
+          return Math.min(w, 6) * 0.6;
         }
+        return 0.15;
       }
-      return 0.3;
+      if (w >= 25) return 1.2;
+      if (w >= 10) return 0.7;
+      if (w >= 3) return 0.4;
+      return 0.2;
     }
 
     function getParticleCount(l) {
+      const w = l.weight || 1;
       if (highlightNode) {
         const sid = typeof l.source === 'object' ? l.source.id : l.source;
         const tid = typeof l.target === 'object' ? l.target.id : l.target;
-        if (sid === highlightNode.id || tid === highlightNode.id) return 3;
+        if (sid === highlightNode.id || tid === highlightNode.id) return Math.min(w >= 10 ? 4 : 2, 5);
         return 0;
       }
-      return 1;
+      if (w >= 25) return 3;
+      if (w >= 10) return 2;
+      if (w >= 3) return 1;
+      return 0;
+    }
+
+    function getParticleSpeed(l) {
+      const w = l.weight || 1;
+      if (w >= 25) return 0.008;
+      if (w >= 10) return 0.005;
+      if (w >= 3) return 0.003;
+      return 0.002;
+    }
+
+    function getParticleWidth(l) {
+      const w = l.weight || 1;
+      if (w >= 25) return 1.4;
+      if (w >= 10) return 1.0;
+      if (w >= 3) return 0.6;
+      return 0.4;
     }
 
     function nodeLabel(n) {
@@ -678,10 +714,13 @@
     }
 
     function refreshVisuals() {
+      if (!graph) return;
       graph.nodeColor(graph.nodeColor());
       graph.linkColor(graph.linkColor());
       graph.linkWidth(graph.linkWidth());
       graph.linkDirectionalParticles(graph.linkDirectionalParticles());
+      graph.linkDirectionalParticleWidth(graph.linkDirectionalParticleWidth());
+      graph.linkDirectionalParticleSpeed(graph.linkDirectionalParticleSpeed());
     }
 
     function clusterForce(alpha) {
@@ -720,15 +759,15 @@
 
     function interactionForce(alpha) {
       if (!graphData.links || !graphData.links.length) return;
-      const strength = 0.04 * alpha;
+      const base = 0.06 * alpha;
 
       graphData.links.forEach(l => {
         const s = typeof l.source === 'object' ? l.source : null;
         const t = typeof l.target === 'object' ? l.target : null;
         if (!s || !t || s === t) return;
         if (s.x == null || t.x == null) return;
-        const w = Math.min((l.weight || 1), 10);
-        const f = strength * w;
+        const w = Math.min((l.weight || 1), 36);
+        const f = base * Math.sqrt(w);
         const dx = t.x - s.x, dy = t.y - s.y, dz = (t.z || 0) - (s.z || 0);
         s.vx = (s.vx || 0) + dx * f;
         s.vy = (s.vy || 0) + dy * f;
@@ -755,17 +794,17 @@
           .linkWidth(l => getLinkWidth(l))
           .linkOpacity(0.8)
           .linkDirectionalParticles(l => getParticleCount(l))
-          .linkDirectionalParticleWidth(0.6)
-          .linkDirectionalParticleSpeed(0.003)
-          .linkDirectionalParticleColor(l => EDGE_COLORS[l.type] || '#666')
-          .linkCurvature(0.1)
+          .linkDirectionalParticleWidth(l => getParticleWidth(l))
+          .linkDirectionalParticleSpeed(l => getParticleSpeed(l))
+          .linkDirectionalParticleColor(l => EDGE_COLORS[l.type] || '#666666')
+          .linkCurvature(0.15)
           .onNodeClick(node => selectNode(node))
           .onBackgroundClick(() => clearSelection())
           .onNodeHover(node => {
             container.style.cursor = node ? 'pointer' : 'default';
           })
-          .warmupTicks(80)
-          .cooldownTime(4000);
+          .warmupTicks(120)
+          .cooldownTime(5000);
       } catch (err) {
         console.error('[graph] Failed to initialize 3D graph:', err);
         container.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;font-family:IBM Plex Mono,monospace;color:var(--text-muted,#787470)"><div style="text-align:center"><p style="font-size:14px;margin:0">WebGL is required to render the network graph.</p><p style="font-size:12px;margin:8px 0 0">Try using a modern browser with hardware acceleration enabled.</p></div></div>';
@@ -773,12 +812,22 @@
       }
 
       try {
-        graph.d3Force('charge').strength(-120);
+        graph.d3Force('charge').strength(-100);
         const linkForce = graph.d3Force('link');
         if (linkForce) {
           linkForce.distance(l => {
             const w = (l && l.weight) || 1;
-            return Math.max(20, 80 - w * 6);
+            if (w >= 25) return 18;
+            if (w >= 10) return 35;
+            if (w >= 3) return 55;
+            return 90;
+          });
+          linkForce.strength(l => {
+            const w = (l && l.weight) || 1;
+            if (w >= 25) return 0.8;
+            if (w >= 10) return 0.5;
+            if (w >= 3) return 0.3;
+            return 0.1;
           });
         }
 
