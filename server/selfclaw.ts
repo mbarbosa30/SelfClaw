@@ -686,6 +686,22 @@ async function handleCallback(req: Request, res: Response) {
 // Register callback for both with and without trailing slash (avoid redirects which break Self.xyz app)
 router.post("/v1/callback", handleCallback);
 router.post("/v1/callback/", handleCallback);
+router.post("/v1/self-callback", handleCallback);
+router.post("/v1/self-callback/", handleCallback);
+router.get("/v1/self-callback", (req: Request, res: Response) => {
+  res.status(200).json({ 
+    status: "ok", 
+    message: "SelfClaw callback endpoint. Use POST to submit verification proofs.",
+    method: "GET not supported for verification"
+  });
+});
+router.get("/v1/self-callback/", (req: Request, res: Response) => {
+  res.status(200).json({ 
+    status: "ok", 
+    message: "SelfClaw callback endpoint. Use POST to submit verification proofs.",
+    method: "GET not supported for verification"
+  });
+});
 
 async function authenticateAgentFlexible(req: Request): Promise<{ publicKey: string; humanId: string; agentName: string | null } | null> {
   const authHeader = req.headers.authorization;
