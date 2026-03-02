@@ -392,14 +392,17 @@
       referral: 'rgba(234,179,8,0.15)'
     };
 
-    const CLUSTER_COLORS = [
-      '#FF6B4A', '#3b82f6', '#22c55e', '#f59e0b', '#a855f7',
-      '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#6366f1',
-      '#14b8a6', '#e11d48', '#8b5cf6', '#0ea5e9', '#d946ef'
-    ];
+    const TIER_COLORS = {
+      inactive: { light: '#a8a29e', dark: '#78716c' },
+      low:      { light: '#3b82f6', dark: '#60a5fa' },
+      medium:   { light: '#f59e0b', dark: '#fbbf24' },
+      high:     { light: '#FF6B4A', dark: '#ff8a6e' },
+    };
+    const MULTI_AGENT_COLOR = { light: '#06b6d4', dark: '#22d3ee' };
 
     let graphData = { nodes: [], links: [] };
     let humanGroupCount = 0;
+    let multiAgentGroups = new Set();
     let graph;
     let showLabels = true;
     let activeFilters = new Set(['commerce', 'skill', 'feed', 'reputation', 'insurance', 'referral']);
@@ -412,42 +415,43 @@
       return document.documentElement.getAttribute('data-theme') === 'dark';
     }
 
-    function getClusterColor(groupIndex) {
-      return CLUSTER_COLORS[groupIndex % CLUSTER_COLORS.length];
+    function computeMultiAgentGroups(nodes) {
+      const counts = {};
+      nodes.forEach(n => { counts[n.group] = (counts[n.group] || 0) + 1; });
+      multiAgentGroups = new Set(Object.keys(counts).filter(g => counts[g] >= 2));
     }
 
-    function hexToHsl(hex) {
-      let r = parseInt(hex.slice(1, 3), 16) / 255;
-      let g = parseInt(hex.slice(3, 5), 16) / 255;
-      let b = parseInt(hex.slice(5, 7), 16) / 255;
-      const max = Math.max(r, g, b), min = Math.min(r, g, b);
-      let h = 0, s = 0, l = (max + min) / 2;
-      if (max !== min) {
-        const d = max - min;
-        s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-        if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
-        else if (max === g) h = ((b - r) / d + 2) / 6;
-        else h = ((r - g) / d + 4) / 6;
-      }
-      return [Math.round(h * 360), Math.round(s * 100), Math.round(l * 100)];
+    function getActivityScore(node) {
+      return (node.pocScore || 0) + (node.postsCount || 0) * 3 + (node.commentsCount || 0) * 0.3 + (node.skillsCount || 0) * 2;
+    }
+
+    function getActivityTier(node) {
+      const score = getActivityScore(node);
+      if (score >= 30) return 'high';
+      if (score >= 10) return 'medium';
+      if (score >= 2) return 'low';
+      return 'inactive';
     }
 
     function getNodeColor(node) {
+      const dark = isDark();
+      const mode = dark ? 'dark' : 'light';
       if (highlightNode) {
         if (node === highlightNode) return '#FF6B4A';
-        if (highlightLinks.has(node)) return getClusterColor(node.groupIndex);
-        return isDark() ? 'rgba(120,116,112,0.2)' : 'rgba(90,90,90,0.15)';
+        if (highlightLinks.has(node)) {
+          if (multiAgentGroups.has(node.group)) return MULTI_AGENT_COLOR[mode];
+          return TIER_COLORS[getActivityTier(node)][mode];
+        }
+        return dark ? 'rgba(120,116,112,0.2)' : 'rgba(90,90,90,0.15)';
       }
-      const clr = getClusterColor(node.groupIndex);
-      const activity = (node.pocScore || 0) + (node.postsCount || 0) * 2 + (node.commentsCount || 0) * 0.5;
-      const t = Math.min(activity / 30, 1.0);
-      const [h, s, l] = hexToHsl(clr);
-      const dark = isDark();
-      const newL = dark
-        ? Math.round(25 + t * (l - 25))
-        : Math.round(80 - t * (80 - l));
-      const newS = Math.round(30 + t * (s - 30));
-      return `hsl(${h}, ${newS}%, ${newL}%)`;
+      if (multiAgentGroups.has(node.group)) return MULTI_AGENT_COLOR[mode];
+      return TIER_COLORS[getActivityTier(node)][mode];
+    }
+
+    function getNodeAccentColor(node) {
+      const mode = isDark() ? 'dark' : 'light';
+      if (multiAgentGroups.has(node.group)) return MULTI_AGENT_COLOR[mode];
+      return TIER_COLORS[getActivityTier(node)][mode];
     }
 
     function getNodeSize(node) {
@@ -499,10 +503,12 @@
       const color = isDark() ? '#e8e4df' : '#1a1a1a';
       const border = isDark() ? '#333330' : '#d4d0ca';
       const muted = isDark() ? '#787470' : '#6b6b6b';
-      const clusterClr = getClusterColor(n.groupIndex);
+      const accentClr = getNodeAccentColor(n);
+      const isMulti = multiAgentGroups.has(n.group);
 
       const sep = `<span style="color:${muted}"> · </span>`;
       let details = [];
+      if (isMulti) details.push(`<span style="color:${accentClr}">cluster</span>`);
       if (n.pocScore > 0) details.push(`<span style="color:#FF6B4A">${n.pocScore}</span>`);
       if (n.postsCount > 0 || n.commentsCount > 0) {
         let feedParts = [];
@@ -513,7 +519,7 @@
       if (n.skillsCount > 0) details.push(`<span style="color:${muted}">${n.skillsCount}sk</span>`);
       const detailStr = details.length ? sep + details.join(sep) : '';
 
-      return `<div style="font-family:IBM Plex Mono,monospace;font-size:10px;background:${bg};color:${color};padding:3px 7px;border:1px solid ${border};border-left:2px solid ${clusterClr};backdrop-filter:blur(8px);letter-spacing:0.03em">${n.name}${detailStr}</div>`;
+      return `<div style="font-family:IBM Plex Mono,monospace;font-size:10px;background:${bg};color:${color};padding:3px 7px;border:1px solid ${border};border-left:2px solid ${accentClr};backdrop-filter:blur(8px);letter-spacing:0.03em">${n.name}${detailStr}</div>`;
     }
 
     async function fetchGraphData() {
@@ -536,6 +542,7 @@
         type: e.type,
         weight: e.weight
       }));
+      computeMultiAgentGroups(nodes);
       return { nodes, links };
     }
 
@@ -572,13 +579,14 @@
       document.getElementById('card-key').textContent = node.id.slice(0, 24) + '...';
 
       const meta = document.getElementById('card-meta');
-      const clusterClr = getClusterColor(node.groupIndex);
+      const accentClr = getNodeAccentColor(node);
+      const isMulti = multiAgentGroups.has(node.group);
       let metaHtml = '';
       if (node.isVerified) {
-        metaHtml += `<span style="color:${clusterClr}">Verified</span>`;
-        const sameGroup = graphData.nodes.filter(n => n.group === node.group);
-        if (sameGroup.length > 1) {
-          metaHtml += ` · Cluster of ${sameGroup.length}`;
+        metaHtml += `<span style="color:${accentClr}">Verified</span>`;
+        if (isMulti) {
+          const sameGroup = graphData.nodes.filter(n => n.group === node.group);
+          metaHtml += ` · <span style="color:${accentClr}">Cluster of ${sameGroup.length}</span>`;
         }
       } else {
         metaHtml += 'Unverified';
@@ -699,7 +707,7 @@
       }
 
       clusterCentroids = centroids;
-      const strength = 0.15 * alpha;
+      const strength = 0.25 * alpha;
 
       graphData.nodes.forEach(n => {
         if (n.x == null || !centroids[n.group] || counts[n.group] <= 1) return;
@@ -707,6 +715,28 @@
         n.vx = (n.vx || 0) + (c.x - n.x) * strength;
         n.vy = (n.vy || 0) + (c.y - n.y) * strength;
         n.vz = (n.vz || 0) + (c.z - n.z) * strength;
+      });
+    }
+
+    function interactionForce(alpha) {
+      const nodeMap = {};
+      graphData.nodes.forEach(n => { if (n.x != null) nodeMap[n.id] = n; });
+      const strength = 0.04 * alpha;
+
+      graphData.links.forEach(l => {
+        const sid = typeof l.source === 'object' ? l.source.id : l.source;
+        const tid = typeof l.target === 'object' ? l.target.id : l.target;
+        const s = nodeMap[sid], t = nodeMap[tid];
+        if (!s || !t || s === t) return;
+        const w = Math.min((l.weight || 1), 10);
+        const f = strength * w;
+        const dx = t.x - s.x, dy = t.y - s.y, dz = t.z - s.z;
+        s.vx = (s.vx || 0) + dx * f;
+        s.vy = (s.vy || 0) + dy * f;
+        s.vz = (s.vz || 0) + dz * f;
+        t.vx = (t.vx || 0) - dx * f;
+        t.vy = (t.vy || 0) - dy * f;
+        t.vz = (t.vz || 0) - dz * f;
       });
     }
 
@@ -737,10 +767,14 @@
         .warmupTicks(80)
         .cooldownTime(4000);
 
-      graph.d3Force('charge').strength(-150);
-      graph.d3Force('link').distance(60);
+      graph.d3Force('charge').strength(-120);
+      graph.d3Force('link').distance(l => {
+        const w = l.weight || 1;
+        return Math.max(20, 80 - w * 6);
+      });
 
       graph.d3Force('cluster', (alpha) => clusterForce(alpha));
+      graph.d3Force('interaction', (alpha) => interactionForce(alpha));
 
       const controls = graph.controls();
       if (controls) {
