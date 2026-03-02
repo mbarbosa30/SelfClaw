@@ -10,22 +10,45 @@ const CACHE_TTL = 5 * 60 * 1000;
 
 async function buildGraphData() {
   const nodesResult = await pool.query(`
-    SELECT id, public_key, human_id, device_id, metadata,
-           COALESCE((metadata->>'reputationScore')::float, 0) as rep_score
-    FROM verified_bots
-    WHERE hidden IS NOT TRUE
-    ORDER BY created_at
+    SELECT vb.id, vb.public_key, vb.human_id, vb.device_id, vb.metadata,
+           COALESCE(ps.total_score, 0) as poc_score,
+           COALESCE(ps.grade, '') as grade,
+           COALESCE(sk.skills_count, 0) as skills_count
+    FROM verified_bots vb
+    LEFT JOIN poc_scores ps ON ps.agent_public_key = vb.public_key
+    LEFT JOIN (
+      SELECT agent_id, COUNT(*) as skills_count
+      FROM agent_skills
+      WHERE is_active = true
+      GROUP BY agent_id
+    ) sk ON sk.agent_id = vb.public_key
+    WHERE vb.hidden IS NOT TRUE
+    ORDER BY vb.created_at
   `);
 
-  const nodes = nodesResult.rows.map(r => ({
-    id: r.public_key,
-    name: r.device_id || r.public_key.slice(0, 12),
-    group: r.human_id || "unknown",
-    score: r.rep_score || 0,
-    hasWallet: !!(r.metadata?.walletAddress),
-    hasToken: !!(r.metadata?.tokenAddress),
-    hasErc8004: !!(r.metadata?.erc8004TokenId),
-  }));
+  const humanGroups: Record<string, number> = {};
+  let groupIdx = 0;
+
+  const nodes = nodesResult.rows.map(r => {
+    const humanId = r.human_id || "unknown";
+    if (!(humanId in humanGroups)) {
+      humanGroups[humanId] = groupIdx++;
+    }
+
+    return {
+      id: r.public_key,
+      name: r.device_id || r.public_key.slice(0, 12),
+      group: humanId,
+      groupIndex: humanGroups[humanId],
+      pocScore: Number(r.poc_score) || 0,
+      grade: r.grade || '',
+      skillsCount: Number(r.skills_count) || 0,
+      hasWallet: !!(r.metadata?.walletAddress),
+      hasToken: !!(r.metadata?.tokenAddress),
+      hasErc8004: !!(r.metadata?.erc8004TokenId),
+      isVerified: !!r.human_id,
+    };
+  });
 
   const nodeSet = new Set(nodes.map(n => n.id));
   const edges: Array<{ source: string; target: string; type: string; weight: number }> = [];
@@ -129,7 +152,9 @@ async function buildGraphData() {
     }
   } catch { }
 
-  return { nodes, edges, timestamp: Date.now() };
+  const humanGroupCount = Object.keys(humanGroups).length;
+
+  return { nodes, edges, humanGroupCount, timestamp: Date.now() };
 }
 
 router.get("/v1/graph-data", publicApiLimiter, async (_req: Request, res: Response) => {

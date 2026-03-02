@@ -349,12 +349,14 @@
     <div class="graph-stats" id="graph-stats">
       <span>Nodes <span class="stat-val" id="stat-nodes">0</span></span>
       <span>Edges <span class="stat-val" id="stat-edges">0</span></span>
+      <span>Clusters <span class="stat-val" id="stat-clusters">0</span></span>
     </div>
 
     <div class="agent-card" id="agent-card">
       <button class="agent-card-close" id="card-close">&times;</button>
       <h3 id="card-name"></h3>
-      <div class="agent-card-meta" id="card-key"></div>
+      <div class="agent-card-meta" id="card-meta"></div>
+      <div class="agent-card-meta" id="card-key" style="margin-bottom:10px"></div>
       <div class="agent-card-badges" id="card-badges"></div>
       <a class="agent-card-link" id="card-link" href="#">View Profile &rarr;</a>
     </div>
@@ -390,31 +392,50 @@
       referral: 'rgba(234,179,8,0.15)'
     };
 
+    const CLUSTER_COLORS = [
+      '#FF6B4A', '#3b82f6', '#22c55e', '#f59e0b', '#a855f7',
+      '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#6366f1',
+      '#14b8a6', '#e11d48', '#8b5cf6', '#0ea5e9', '#d946ef'
+    ];
+
     let graphData = { nodes: [], links: [] };
+    let humanGroupCount = 0;
     let graph;
     let showLabels = true;
     let activeFilters = new Set(['commerce', 'skill', 'feed', 'reputation', 'insurance', 'referral']);
     let searchTerm = '';
     let highlightNode = null;
     let highlightLinks = new Set();
+    let clusterCentroids = {};
 
     function isDark() {
       return document.documentElement.getAttribute('data-theme') === 'dark';
     }
 
+    function getClusterColor(groupIndex) {
+      return CLUSTER_COLORS[groupIndex % CLUSTER_COLORS.length];
+    }
+
     function getNodeColor(node) {
       if (highlightNode) {
         if (node === highlightNode) return '#FF6B4A';
-        if (highlightLinks.has(node)) return isDark() ? '#e8e4df' : '#1a1a1a';
-        return isDark() ? 'rgba(120,116,112,0.25)' : 'rgba(90,90,90,0.2)';
+        if (highlightLinks.has(node)) return getClusterColor(node.groupIndex);
+        return isDark() ? 'rgba(120,116,112,0.2)' : 'rgba(90,90,90,0.15)';
       }
-      return isDark() ? 'rgba(232,228,223,0.7)' : 'rgba(26,26,26,0.65)';
+      const score = node.pocScore || 0;
+      if (score >= 60) return getClusterColor(node.groupIndex);
+      const clr = getClusterColor(node.groupIndex);
+      const alpha = 0.4 + (score / 100) * 0.5;
+      return clr + Math.round(alpha * 255).toString(16).padStart(2, '0');
     }
 
     function getNodeSize(node) {
-      const base = 2;
-      const scoreBonus = Math.min((node.score || 0) / 25, 3);
-      return base + scoreBonus;
+      const score = node.pocScore || 0;
+      const base = 1.5;
+      const scoreBonus = (score / 100) * 5;
+      const skillsBonus = Math.min((node.skillsCount || 0) * 0.3, 1.5);
+      const activityBonus = (node.hasWallet ? 0.3 : 0) + (node.hasToken ? 0.3 : 0) + (node.hasErc8004 ? 0.4 : 0);
+      return base + scoreBonus + skillsBonus + activityBonus;
     }
 
     function getLinkColor(l) {
@@ -455,8 +476,15 @@
       const bg = isDark() ? 'rgba(30,30,30,0.9)' : 'rgba(255,255,255,0.9)';
       const color = isDark() ? '#e8e4df' : '#1a1a1a';
       const border = isDark() ? '#333330' : '#d4d0ca';
-      const score = n.score > 0 ? `<span style="color:#FF6B4A;margin-left:4px">${Math.round(n.score)}</span>` : '';
-      return `<div style="font-family:IBM Plex Mono,monospace;font-size:10px;background:${bg};color:${color};padding:3px 7px;border:1px solid ${border};backdrop-filter:blur(8px);letter-spacing:0.03em">${n.name}${score}</div>`;
+      const muted = isDark() ? '#787470' : '#6b6b6b';
+      const clusterClr = getClusterColor(n.groupIndex);
+
+      let details = [];
+      if (n.pocScore > 0) details.push(`<span style="color:#FF6B4A">${n.pocScore}</span>`);
+      if (n.skillsCount > 0) details.push(`<span style="color:${muted}">${n.skillsCount} skill${n.skillsCount > 1 ? 's' : ''}</span>`);
+      const detailStr = details.length ? ` <span style="color:${muted}">·</span> ${details.join(' <span style="color:' + muted + '">·</span> ')}` : '';
+
+      return `<div style="font-family:IBM Plex Mono,monospace;font-size:10px;background:${bg};color:${color};padding:3px 7px;border:1px solid ${border};border-left:2px solid ${clusterClr};backdrop-filter:blur(8px);letter-spacing:0.03em">${n.name}${detailStr}</div>`;
     }
 
     async function fetchGraphData() {
@@ -471,6 +499,7 @@
 
     function transformData(raw) {
       if (!raw) return { nodes: [], links: [] };
+      humanGroupCount = raw.humanGroupCount || 0;
       const nodes = raw.nodes.map(n => ({ ...n }));
       const links = raw.edges.map(e => ({
         source: e.source,
@@ -504,6 +533,8 @@
     function updateStats(data) {
       document.getElementById('stat-nodes').textContent = data.nodes.length;
       document.getElementById('stat-edges').textContent = data.links.length;
+      const groups = new Set(data.nodes.map(n => n.group));
+      document.getElementById('stat-clusters').textContent = groups.size;
     }
 
     function showAgentCard(node) {
@@ -511,8 +542,37 @@
       document.getElementById('card-name').textContent = node.name;
       document.getElementById('card-key').textContent = node.id.slice(0, 24) + '...';
 
+      const meta = document.getElementById('card-meta');
+      const clusterClr = getClusterColor(node.groupIndex);
+      let metaHtml = '';
+      if (node.isVerified) {
+        metaHtml += `<span style="color:${clusterClr}">Verified</span>`;
+        const sameGroup = graphData.nodes.filter(n => n.group === node.group);
+        if (sameGroup.length > 1) {
+          metaHtml += ` · Cluster of ${sameGroup.length}`;
+        }
+      } else {
+        metaHtml += 'Unverified';
+      }
+      meta.innerHTML = metaHtml;
+
       const badges = document.getElementById('card-badges');
       badges.innerHTML = '';
+
+      if (node.pocScore > 0) {
+        const scoreSpan = document.createElement('span');
+        scoreSpan.className = 'agent-badge active';
+        scoreSpan.textContent = 'PoC ' + node.pocScore + (node.grade ? ' ' + node.grade : '');
+        badges.appendChild(scoreSpan);
+      }
+
+      if (node.skillsCount > 0) {
+        const skillSpan = document.createElement('span');
+        skillSpan.className = 'agent-badge active';
+        skillSpan.textContent = node.skillsCount + ' Skill' + (node.skillsCount > 1 ? 's' : '');
+        badges.appendChild(skillSpan);
+      }
+
       [
         { label: 'Wallet', active: node.hasWallet },
         { label: 'Token', active: node.hasToken },
@@ -523,13 +583,6 @@
         span.textContent = b.label;
         badges.appendChild(span);
       });
-
-      if (node.score > 0) {
-        const scoreSpan = document.createElement('span');
-        scoreSpan.className = 'agent-badge active';
-        scoreSpan.textContent = 'Score ' + Math.round(node.score);
-        badges.appendChild(scoreSpan);
-      }
 
       document.getElementById('card-link').href = '/agent?id=' + encodeURIComponent(node.id);
       card.classList.add('visible');
@@ -580,6 +633,40 @@
       graph.linkDirectionalParticles(graph.linkDirectionalParticles());
     }
 
+    function clusterForce(alpha) {
+      const centroids = {};
+      const counts = {};
+
+      graphData.nodes.forEach(n => {
+        if (n.x == null) return;
+        if (!centroids[n.group]) {
+          centroids[n.group] = { x: 0, y: 0, z: 0 };
+          counts[n.group] = 0;
+        }
+        centroids[n.group].x += n.x;
+        centroids[n.group].y += n.y;
+        centroids[n.group].z += n.z;
+        counts[n.group]++;
+      });
+
+      for (const g in centroids) {
+        centroids[g].x /= counts[g];
+        centroids[g].y /= counts[g];
+        centroids[g].z /= counts[g];
+      }
+
+      clusterCentroids = centroids;
+      const strength = 0.15 * alpha;
+
+      graphData.nodes.forEach(n => {
+        if (n.x == null || !centroids[n.group] || counts[n.group] <= 1) return;
+        const c = centroids[n.group];
+        n.vx = (n.vx || 0) + (c.x - n.x) * strength;
+        n.vy = (n.vy || 0) + (c.y - n.y) * strength;
+        n.vz = (n.vz || 0) + (c.z - n.z) * strength;
+      });
+    }
+
     function initGraph() {
       const container = document.getElementById('graph-canvas');
       const dark = isDark();
@@ -604,11 +691,13 @@
         .onNodeHover(node => {
           container.style.cursor = node ? 'pointer' : 'default';
         })
-        .warmupTicks(60)
-        .cooldownTime(3000);
+        .warmupTicks(80)
+        .cooldownTime(4000);
 
-      graph.d3Force('charge').strength(-120);
-      graph.d3Force('link').distance(50);
+      graph.d3Force('charge').strength(-150);
+      graph.d3Force('link').distance(60);
+
+      graph.d3Force('cluster', (alpha) => clusterForce(alpha));
 
       const controls = graph.controls();
       if (controls) {
