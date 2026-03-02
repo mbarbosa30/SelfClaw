@@ -416,26 +416,48 @@
       return CLUSTER_COLORS[groupIndex % CLUSTER_COLORS.length];
     }
 
+    function hexToHsl(hex) {
+      let r = parseInt(hex.slice(1, 3), 16) / 255;
+      let g = parseInt(hex.slice(3, 5), 16) / 255;
+      let b = parseInt(hex.slice(5, 7), 16) / 255;
+      const max = Math.max(r, g, b), min = Math.min(r, g, b);
+      let h = 0, s = 0, l = (max + min) / 2;
+      if (max !== min) {
+        const d = max - min;
+        s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+        if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+        else if (max === g) h = ((b - r) / d + 2) / 6;
+        else h = ((r - g) / d + 4) / 6;
+      }
+      return [Math.round(h * 360), Math.round(s * 100), Math.round(l * 100)];
+    }
+
     function getNodeColor(node) {
       if (highlightNode) {
         if (node === highlightNode) return '#FF6B4A';
         if (highlightLinks.has(node)) return getClusterColor(node.groupIndex);
         return isDark() ? 'rgba(120,116,112,0.2)' : 'rgba(90,90,90,0.15)';
       }
-      const score = node.pocScore || 0;
-      if (score >= 60) return getClusterColor(node.groupIndex);
       const clr = getClusterColor(node.groupIndex);
-      const alpha = 0.4 + (score / 100) * 0.5;
-      return clr + Math.round(alpha * 255).toString(16).padStart(2, '0');
+      const activity = (node.pocScore || 0) + (node.postsCount || 0) * 2 + (node.commentsCount || 0) * 0.5;
+      const t = Math.min(activity / 30, 1.0);
+      const [h, s, l] = hexToHsl(clr);
+      const dark = isDark();
+      const newL = dark
+        ? Math.round(25 + t * (l - 25))
+        : Math.round(80 - t * (80 - l));
+      const newS = Math.round(30 + t * (s - 30));
+      return `hsl(${h}, ${newS}%, ${newL}%)`;
     }
 
     function getNodeSize(node) {
       const score = node.pocScore || 0;
-      const base = 1.5;
-      const scoreBonus = (score / 100) * 5;
-      const skillsBonus = Math.min((node.skillsCount || 0) * 0.3, 1.5);
+      const base = 2;
+      const scoreBonus = (score / 100) * 4;
+      const skillsBonus = Math.min((node.skillsCount || 0) * 0.4, 1.5);
+      const feedBonus = Math.min(((node.postsCount || 0) * 0.5 + (node.commentsCount || 0) * 0.1), 3);
       const activityBonus = (node.hasWallet ? 0.3 : 0) + (node.hasToken ? 0.3 : 0) + (node.hasErc8004 ? 0.4 : 0);
-      return base + scoreBonus + skillsBonus + activityBonus;
+      return base + scoreBonus + skillsBonus + feedBonus + activityBonus;
     }
 
     function getLinkColor(l) {
@@ -479,10 +501,17 @@
       const muted = isDark() ? '#787470' : '#6b6b6b';
       const clusterClr = getClusterColor(n.groupIndex);
 
+      const sep = `<span style="color:${muted}"> · </span>`;
       let details = [];
       if (n.pocScore > 0) details.push(`<span style="color:#FF6B4A">${n.pocScore}</span>`);
-      if (n.skillsCount > 0) details.push(`<span style="color:${muted}">${n.skillsCount} skill${n.skillsCount > 1 ? 's' : ''}</span>`);
-      const detailStr = details.length ? ` <span style="color:${muted}">·</span> ${details.join(' <span style="color:' + muted + '">·</span> ')}` : '';
+      if (n.postsCount > 0 || n.commentsCount > 0) {
+        let feedParts = [];
+        if (n.postsCount > 0) feedParts.push(n.postsCount + 'p');
+        if (n.commentsCount > 0) feedParts.push(n.commentsCount + 'c');
+        details.push(`<span style="color:${muted}">${feedParts.join('/')}</span>`);
+      }
+      if (n.skillsCount > 0) details.push(`<span style="color:${muted}">${n.skillsCount}sk</span>`);
+      const detailStr = details.length ? sep + details.join(sep) : '';
 
       return `<div style="font-family:IBM Plex Mono,monospace;font-size:10px;background:${bg};color:${color};padding:3px 7px;border:1px solid ${border};border-left:2px solid ${clusterClr};backdrop-filter:blur(8px);letter-spacing:0.03em">${n.name}${detailStr}</div>`;
     }
@@ -571,6 +600,20 @@
         skillSpan.className = 'agent-badge active';
         skillSpan.textContent = node.skillsCount + ' Skill' + (node.skillsCount > 1 ? 's' : '');
         badges.appendChild(skillSpan);
+      }
+
+      if (node.postsCount > 0) {
+        const postSpan = document.createElement('span');
+        postSpan.className = 'agent-badge active';
+        postSpan.textContent = node.postsCount + ' Post' + (node.postsCount > 1 ? 's' : '');
+        badges.appendChild(postSpan);
+      }
+
+      if (node.commentsCount > 0) {
+        const commentSpan = document.createElement('span');
+        commentSpan.className = 'agent-badge active';
+        commentSpan.textContent = node.commentsCount + ' Comment' + (node.commentsCount > 1 ? 's' : '');
+        badges.appendChild(commentSpan);
       }
 
       [

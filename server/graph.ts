@@ -13,15 +13,29 @@ async function buildGraphData() {
     SELECT vb.id, vb.public_key, vb.human_id, vb.device_id, vb.metadata,
            COALESCE(ps.total_score, 0) as poc_score,
            COALESCE(ps.grade, '') as grade,
-           COALESCE(sk.skills_count, 0) as skills_count
+           COALESCE(sk.skills_count, 0) as skills_count,
+           COALESCE(ap.posts_count, 0) as posts_count,
+           COALESCE(pc.comments_count, 0) as comments_count
     FROM verified_bots vb
     LEFT JOIN poc_scores ps ON ps.agent_public_key = vb.public_key
     LEFT JOIN (
-      SELECT agent_id, COUNT(*) as skills_count
-      FROM agent_skills
-      WHERE is_active = true
-      GROUP BY agent_id
-    ) sk ON sk.agent_id = vb.public_key
+      SELECT match_key, SUM(cnt) as skills_count FROM (
+        SELECT agent_id as match_key, COUNT(*) as cnt
+        FROM agent_skills WHERE is_active = true
+        GROUP BY agent_id
+      ) sub GROUP BY match_key
+    ) sk ON sk.match_key = vb.public_key OR sk.match_key = vb.id::text
+    LEFT JOIN (
+      SELECT agent_public_key, COUNT(*) as posts_count
+      FROM agent_posts
+      GROUP BY agent_public_key
+    ) ap ON ap.agent_public_key = vb.public_key
+    LEFT JOIN (
+      SELECT agent_public_key, COUNT(*) as comments_count
+      FROM post_comments
+      WHERE agent_public_key IS NOT NULL
+      GROUP BY agent_public_key
+    ) pc ON pc.agent_public_key = vb.public_key
     WHERE vb.hidden IS NOT TRUE
     ORDER BY vb.created_at
   `);
@@ -43,6 +57,8 @@ async function buildGraphData() {
       pocScore: Number(r.poc_score) || 0,
       grade: r.grade || '',
       skillsCount: Number(r.skills_count) || 0,
+      postsCount: Number(r.posts_count) || 0,
+      commentsCount: Number(r.comments_count) || 0,
       hasWallet: !!(r.metadata?.walletAddress),
       hasToken: !!(r.metadata?.tokenAddress),
       hasErc8004: !!(r.metadata?.erc8004TokenId),
