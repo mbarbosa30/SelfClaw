@@ -304,7 +304,6 @@
     </div>
   </div>
 
-  <script src="https://unpkg.com/three@0.161.0/build/three.min.js"></script>
   <script src="https://unpkg.com/3d-force-graph@1.73.3/dist/3d-force-graph.min.js"></script>
   <script>
     const EDGE_COLORS = {
@@ -330,29 +329,6 @@
     let groupColorMap = {};
     let highlightNode = null;
     let highlightLinks = new Set();
-
-    function makeTextSprite(text, color) {
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      const fontSize = 48;
-      ctx.font = `${fontSize}px IBM Plex Mono, monospace`;
-      const metrics = ctx.measureText(text);
-      const w = Math.ceil(metrics.width) + 16;
-      const h = fontSize + 16;
-      canvas.width = w;
-      canvas.height = h;
-      ctx.font = `${fontSize}px IBM Plex Mono, monospace`;
-      ctx.fillStyle = color;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(text, w / 2, h / 2);
-      const texture = new THREE.CanvasTexture(canvas);
-      texture.needsUpdate = true;
-      const material = new THREE.SpriteMaterial({ map: texture, transparent: true, depthWrite: false });
-      const sprite = new THREE.Sprite(material);
-      sprite.scale.set(w / 16, h / 16, 1);
-      return sprite;
-    }
 
     function assignGroupColors(nodes) {
       const groups = [...new Set(nodes.map(n => n.group))];
@@ -467,6 +443,7 @@
 
       graph = ForceGraph3D()(container)
         .backgroundColor(isDark ? '#1a1a1a' : '#f2f0ec')
+        .nodeLabel(n => `<div style="font-family:IBM Plex Mono,monospace;font-size:11px;background:${isDark ? '#222' : '#fff'};color:${isDark ? '#ccc' : '#333'};padding:4px 8px;border:1px solid ${isDark ? '#444' : '#ccc'}">${n.name}${n.score > 0 ? ' [' + Math.round(n.score) + ']' : ''}</div>`)
         .nodeVal(n => getNodeSize(n))
         .nodeColor(n => getNodeColor(n))
         .nodeOpacity(0.9)
@@ -525,12 +502,6 @@
           container.style.cursor = node ? 'pointer' : 'default';
         });
 
-      if (showLabels) {
-        graph.nodeThreeObject(node => {
-          return makeTextSprite(node.name, isDark ? '#ccc' : '#333');
-        }).nodeThreeObjectExtend(true);
-      }
-
       graph.d3Force('charge').strength(-80);
       graph.d3Force('link').distance(40);
     }
@@ -566,11 +537,9 @@
         showLabels = e.target.checked;
         const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
         if (showLabels) {
-          graph.nodeThreeObject(node => {
-            return makeTextSprite(node.name, isDark ? '#ccc' : '#333');
-          }).nodeThreeObjectExtend(true);
+          graph.nodeLabel(n => `<div style="font-family:IBM Plex Mono,monospace;font-size:11px;background:${isDark ? '#222' : '#fff'};color:${isDark ? '#ccc' : '#333'};padding:4px 8px;border:1px solid ${isDark ? '#444' : '#ccc'}">${n.name}${n.score > 0 ? ' [' + Math.round(n.score) + ']' : ''}</div>`);
         } else {
-          graph.nodeThreeObject(null).nodeThreeObjectExtend(false);
+          graph.nodeLabel(() => '');
         }
       });
 
