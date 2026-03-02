@@ -719,18 +719,17 @@
     }
 
     function interactionForce(alpha) {
-      const nodeMap = {};
-      graphData.nodes.forEach(n => { if (n.x != null) nodeMap[n.id] = n; });
+      if (!graphData.links || !graphData.links.length) return;
       const strength = 0.04 * alpha;
 
       graphData.links.forEach(l => {
-        const sid = typeof l.source === 'object' ? l.source.id : l.source;
-        const tid = typeof l.target === 'object' ? l.target.id : l.target;
-        const s = nodeMap[sid], t = nodeMap[tid];
+        const s = typeof l.source === 'object' ? l.source : null;
+        const t = typeof l.target === 'object' ? l.target : null;
         if (!s || !t || s === t) return;
+        if (s.x == null || t.x == null) return;
         const w = Math.min((l.weight || 1), 10);
         const f = strength * w;
-        const dx = t.x - s.x, dy = t.y - s.y, dz = t.z - s.z;
+        const dx = t.x - s.x, dy = t.y - s.y, dz = (t.z || 0) - (s.z || 0);
         s.vx = (s.vx || 0) + dx * f;
         s.vy = (s.vy || 0) + dy * f;
         s.vz = (s.vz || 0) + dz * f;
@@ -744,37 +743,50 @@
       const container = document.getElementById('graph-canvas');
       const dark = isDark();
 
-      graph = ForceGraph3D()(container)
-        .backgroundColor(dark ? '#141414' : '#f2f0ec')
-        .nodeLabel(nodeLabel)
-        .nodeVal(n => getNodeSize(n))
-        .nodeColor(n => getNodeColor(n))
-        .nodeOpacity(0.92)
-        .nodeResolution(16)
-        .linkColor(l => getLinkColor(l))
-        .linkWidth(l => getLinkWidth(l))
-        .linkOpacity(0.8)
-        .linkDirectionalParticles(l => getParticleCount(l))
-        .linkDirectionalParticleWidth(0.6)
-        .linkDirectionalParticleSpeed(0.003)
-        .linkDirectionalParticleColor(l => EDGE_COLORS[l.type] || '#666')
-        .linkCurvature(0.1)
-        .onNodeClick(node => selectNode(node))
-        .onBackgroundClick(() => clearSelection())
-        .onNodeHover(node => {
-          container.style.cursor = node ? 'pointer' : 'default';
-        })
-        .warmupTicks(80)
-        .cooldownTime(4000);
+      try {
+        graph = ForceGraph3D()(container)
+          .backgroundColor(dark ? '#141414' : '#f2f0ec')
+          .nodeLabel(nodeLabel)
+          .nodeVal(n => getNodeSize(n))
+          .nodeColor(n => getNodeColor(n))
+          .nodeOpacity(0.92)
+          .nodeResolution(16)
+          .linkColor(l => getLinkColor(l))
+          .linkWidth(l => getLinkWidth(l))
+          .linkOpacity(0.8)
+          .linkDirectionalParticles(l => getParticleCount(l))
+          .linkDirectionalParticleWidth(0.6)
+          .linkDirectionalParticleSpeed(0.003)
+          .linkDirectionalParticleColor(l => EDGE_COLORS[l.type] || '#666')
+          .linkCurvature(0.1)
+          .onNodeClick(node => selectNode(node))
+          .onBackgroundClick(() => clearSelection())
+          .onNodeHover(node => {
+            container.style.cursor = node ? 'pointer' : 'default';
+          })
+          .warmupTicks(80)
+          .cooldownTime(4000);
+      } catch (err) {
+        console.error('[graph] Failed to initialize 3D graph:', err);
+        container.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;font-family:IBM Plex Mono,monospace;color:var(--text-muted,#787470)"><div style="text-align:center"><p style="font-size:14px;margin:0">WebGL is required to render the network graph.</p><p style="font-size:12px;margin:8px 0 0">Try using a modern browser with hardware acceleration enabled.</p></div></div>';
+        return;
+      }
 
-      graph.d3Force('charge').strength(-120);
-      graph.d3Force('link').distance(l => {
-        const w = l.weight || 1;
-        return Math.max(20, 80 - w * 6);
-      });
+      try {
+        graph.d3Force('charge').strength(-120);
+        const linkForce = graph.d3Force('link');
+        if (linkForce) {
+          linkForce.distance(l => {
+            const w = (l && l.weight) || 1;
+            return Math.max(20, 80 - w * 6);
+          });
+        }
 
-      graph.d3Force('cluster', (alpha) => clusterForce(alpha));
-      graph.d3Force('interaction', (alpha) => interactionForce(alpha));
+        graph.d3Force('cluster', (alpha) => { try { clusterForce(alpha); } catch(e) {} });
+        graph.d3Force('interaction', (alpha) => { try { interactionForce(alpha); } catch(e) {} });
+      } catch (err) {
+        console.error('[graph] Error configuring forces:', err);
+      }
 
       const controls = graph.controls();
       if (controls) {
@@ -786,16 +798,32 @@
     }
 
     function refreshGraph() {
-      const filtered = getFilteredData();
-      updateStats(filtered);
-      graph.graphData(filtered);
+      if (!graph) return;
+      try {
+        const filtered = getFilteredData();
+        updateStats(filtered);
+        graph.graphData(filtered);
+      } catch (err) {
+        console.error('[graph] Error refreshing graph:', err);
+      }
     }
 
     async function init() {
-      const raw = await fetchGraphData();
-      graphData = transformData(raw);
+      try {
+        const raw = await fetchGraphData();
+        if (!raw || !raw.nodes) {
+          console.error('[graph] No data returned from API');
+          document.getElementById('graph-canvas').innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;font-family:IBM Plex Mono,monospace;color:var(--text-muted,#787470)"><p>Failed to load graph data. Try refreshing.</p></div>';
+          return;
+        }
+        graphData = transformData(raw);
+      } catch (err) {
+        console.error('[graph] Error loading graph data:', err);
+        return;
+      }
 
       initGraph();
+      if (!graph) return;
       refreshGraph();
 
       document.querySelectorAll('[data-edge]').forEach(cb => {
