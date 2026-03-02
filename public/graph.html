@@ -38,69 +38,88 @@
       left: 0;
       right: 0;
       z-index: 100;
-      background: var(--bg-primary);
+      background: rgba(242, 240, 236, 0.85);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
       border-bottom: 1px solid var(--border);
+    }
+    [data-theme="dark"] .graph-header {
+      background: rgba(20, 20, 20, 0.85);
     }
 
     .graph-controls {
       position: absolute;
-      top: 80px;
+      top: 76px;
       left: 16px;
       z-index: 90;
-      background: var(--bg-primary);
-      border: 2px solid var(--border-heavy);
-      padding: 12px 16px;
+      background: rgba(255, 255, 255, 0.8);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--border);
+      padding: 14px 16px;
       font-family: var(--font-mono);
-      font-size: 0.7rem;
-      max-width: 220px;
+      font-size: 0.68rem;
+      max-width: 200px;
       user-select: none;
     }
-    .graph-controls h3 {
-      font-size: 0.7rem;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      color: var(--text-muted);
-      margin: 0 0 8px 0;
+    [data-theme="dark"] .graph-controls {
+      background: rgba(30, 30, 30, 0.8);
     }
-    .filter-group { margin-bottom: 10px; }
+    .graph-controls h3 {
+      font-size: 0.6rem;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      color: var(--text-muted);
+      margin: 0 0 10px 0;
+      font-weight: 600;
+    }
+    .filter-group { margin-bottom: 8px; }
     .filter-group label {
       display: flex;
       align-items: center;
       gap: 6px;
       cursor: pointer;
-      padding: 2px 0;
-      color: var(--text-primary);
+      padding: 3px 0;
+      color: var(--text);
+      font-size: 0.68rem;
+      transition: color 0.15s;
     }
+    .filter-group label:hover { color: var(--accent); }
     .filter-group input[type="checkbox"] {
       accent-color: var(--accent);
-      width: 14px;
-      height: 14px;
+      width: 12px;
+      height: 12px;
     }
     .edge-dot {
       display: inline-block;
       width: 8px;
-      height: 8px;
+      height: 2px;
       flex-shrink: 0;
     }
     .search-input {
       width: 100%;
-      padding: 4px 6px;
+      padding: 5px 8px;
       border: 1px solid var(--border);
-      background: var(--bg-secondary);
-      color: var(--text-primary);
+      background: transparent;
+      color: var(--text);
       font-family: var(--font-mono);
-      font-size: 0.7rem;
+      font-size: 0.68rem;
       outline: none;
       box-sizing: border-box;
+      transition: border-color 0.15s;
     }
+    .search-input::placeholder { color: var(--text-muted); opacity: 0.6; }
     .search-input:focus { border-color: var(--accent); }
     .toggle-row {
       display: flex;
       align-items: center;
       gap: 6px;
-      margin-top: 6px;
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px solid var(--border);
       color: var(--text-muted);
       cursor: pointer;
+      font-size: 0.68rem;
     }
 
     .graph-stats {
@@ -108,27 +127,44 @@
       bottom: 16px;
       left: 16px;
       z-index: 90;
-      background: var(--bg-primary);
-      border: 2px solid var(--border-heavy);
-      padding: 8px 14px;
+      background: rgba(255, 255, 255, 0.7);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--border);
+      padding: 6px 12px;
       font-family: var(--font-mono);
-      font-size: 0.7rem;
+      font-size: 0.62rem;
       color: var(--text-muted);
       display: flex;
-      gap: 16px;
+      gap: 14px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
     }
-    .stat-val { color: var(--text-primary); font-weight: 600; }
+    [data-theme="dark"] .graph-stats {
+      background: rgba(30, 30, 30, 0.7);
+    }
+    .stat-val { color: var(--accent); font-weight: 600; }
 
     .agent-card {
       position: absolute;
-      top: 80px;
+      top: 76px;
       right: 16px;
       z-index: 90;
-      background: var(--bg-primary);
-      border: 2px solid var(--border-heavy);
+      background: rgba(255, 255, 255, 0.9);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--border);
       padding: 16px 20px;
-      max-width: 280px;
+      max-width: 260px;
       display: none;
+      animation: cardSlideIn 0.2s ease-out;
+    }
+    [data-theme="dark"] .agent-card {
+      background: rgba(30, 30, 30, 0.9);
+    }
+    @keyframes cardSlideIn {
+      from { opacity: 0; transform: translateX(8px); }
+      to { opacity: 1; transform: translateX(0); }
     }
     .agent-card.visible { display: block; }
     .agent-card-close {
@@ -142,40 +178,49 @@
       font-size: 1rem;
       padding: 0;
       line-height: 1;
+      transition: color 0.15s;
     }
+    .agent-card-close:hover { color: var(--accent); }
     .agent-card h3 {
-      font-size: 0.85rem;
-      margin: 0 0 8px 0;
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin: 0 0 6px 0;
       padding-right: 20px;
+      color: var(--text);
     }
     .agent-card-meta {
       font-family: var(--font-mono);
-      font-size: 0.65rem;
+      font-size: 0.6rem;
       color: var(--text-muted);
       margin-bottom: 10px;
+      letter-spacing: 0.02em;
     }
     .agent-card-badges {
       display: flex;
-      gap: 6px;
+      gap: 4px;
       flex-wrap: wrap;
       margin-bottom: 10px;
     }
     .agent-badge {
       font-family: var(--font-mono);
-      font-size: 0.6rem;
+      font-size: 0.55rem;
       text-transform: uppercase;
       letter-spacing: 0.05em;
       padding: 2px 6px;
       border: 1px solid var(--border);
+      color: var(--text-muted);
     }
     .agent-badge.active { border-color: var(--accent); color: var(--accent); }
     .agent-card-link {
       display: inline-block;
-      margin-top: 6px;
+      margin-top: 4px;
       font-family: var(--font-mono);
-      font-size: 0.65rem;
+      font-size: 0.62rem;
       color: var(--accent);
       text-decoration: none;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
     }
     .agent-card-link:hover { text-decoration: underline; }
 
@@ -184,56 +229,77 @@
       bottom: 16px;
       right: 16px;
       z-index: 90;
-      background: var(--bg-primary);
-      border: 2px solid var(--border-heavy);
-      padding: 8px 14px;
+      background: rgba(255, 255, 255, 0.7);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--border);
+      padding: 8px 12px;
       font-family: var(--font-mono);
-      font-size: 0.65rem;
+      font-size: 0.58rem;
       color: var(--text-muted);
+    }
+    [data-theme="dark"] .graph-legend {
+      background: rgba(30, 30, 30, 0.7);
     }
     .legend-title {
       text-transform: uppercase;
-      letter-spacing: 0.1em;
+      letter-spacing: 0.15em;
       margin-bottom: 4px;
       font-weight: 600;
+      font-size: 0.55rem;
     }
     .legend-item {
       display: flex;
       align-items: center;
       gap: 6px;
-      padding: 1px 0;
+      padding: 2px 0;
     }
     .legend-line {
-      width: 16px;
+      width: 14px;
       height: 2px;
       flex-shrink: 0;
+      opacity: 0.8;
     }
 
     .controls-toggle {
       position: absolute;
-      top: 80px;
+      top: 76px;
       left: 16px;
       z-index: 91;
       display: none;
-      background: var(--bg-primary);
-      border: 2px solid var(--border-heavy);
+      background: rgba(255, 255, 255, 0.8);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--border);
       padding: 6px 10px;
       font-family: var(--font-mono);
-      font-size: 0.7rem;
+      font-size: 0.65rem;
       cursor: pointer;
-      color: var(--text-primary);
+      color: var(--text);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+    [data-theme="dark"] .controls-toggle {
+      background: rgba(30, 30, 30, 0.8);
     }
 
     @media (max-width: 768px) {
       .graph-controls { display: none; }
       .controls-toggle { display: block; }
-      .graph-controls.mobile-open { display: block; top: 110px; }
+      .graph-controls.mobile-open { display: block; top: 106px; }
       .graph-legend { display: none; }
-      .agent-card { top: auto; bottom: 60px; right: 8px; left: 8px; max-width: none; }
+      .agent-card { top: auto; bottom: 56px; right: 8px; left: 8px; max-width: none; }
     }
 
     .container { max-width: 100%; padding: 0; }
     main { padding: 0; }
+
+    .scene-label {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px;
+      padding: 3px 7px;
+      pointer-events: none;
+    }
   </style>
 </head>
 <body>
@@ -281,8 +347,8 @@
     <div id="graph-canvas"></div>
 
     <div class="graph-stats" id="graph-stats">
-      <span>Nodes: <span class="stat-val" id="stat-nodes">0</span></span>
-      <span>Edges: <span class="stat-val" id="stat-edges">0</span></span>
+      <span>Nodes <span class="stat-val" id="stat-nodes">0</span></span>
+      <span>Edges <span class="stat-val" id="stat-edges">0</span></span>
     </div>
 
     <div class="agent-card" id="agent-card">
@@ -294,7 +360,7 @@
     </div>
 
     <div class="graph-legend">
-      <div class="legend-title">Edge Types</div>
+      <div class="legend-title">Connections</div>
       <div class="legend-item"><span class="legend-line" style="background:#22c55e"></span> Commerce</div>
       <div class="legend-item"><span class="legend-line" style="background:#10b981"></span> Skills</div>
       <div class="legend-item"><span class="legend-line" style="background:#3b82f6"></span> Feed</div>
@@ -315,46 +381,88 @@
       referral: '#eab308'
     };
 
-    const GROUP_COLORS = [
-      '#FF6B4A', '#3b82f6', '#22c55e', '#f59e0b', '#a855f7',
-      '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#6366f1',
-      '#14b8a6', '#e11d48', '#8b5cf6', '#0ea5e9', '#d946ef'
-    ];
+    const EDGE_COLORS_DIM = {
+      commerce: 'rgba(34,197,94,0.15)',
+      skill: 'rgba(16,185,129,0.15)',
+      feed: 'rgba(59,130,246,0.15)',
+      reputation: 'rgba(245,158,11,0.15)',
+      insurance: 'rgba(168,85,247,0.15)',
+      referral: 'rgba(234,179,8,0.15)'
+    };
 
     let graphData = { nodes: [], links: [] };
     let graph;
     let showLabels = true;
     let activeFilters = new Set(['commerce', 'skill', 'feed', 'reputation', 'insurance', 'referral']);
     let searchTerm = '';
-    let groupColorMap = {};
     let highlightNode = null;
     let highlightLinks = new Set();
 
-    function assignGroupColors(nodes) {
-      const groups = [...new Set(nodes.map(n => n.group))];
-      groups.forEach((g, i) => {
-        groupColorMap[g] = GROUP_COLORS[i % GROUP_COLORS.length];
-      });
+    function isDark() {
+      return document.documentElement.getAttribute('data-theme') === 'dark';
     }
 
     function getNodeColor(node) {
-      if (highlightNode && highlightNode !== node && !highlightLinks.has(node)) {
-        return 'rgba(100,100,100,0.3)';
+      if (highlightNode) {
+        if (node === highlightNode) return '#FF6B4A';
+        if (highlightLinks.has(node)) return isDark() ? '#e8e4df' : '#1a1a1a';
+        return isDark() ? 'rgba(120,116,112,0.25)' : 'rgba(90,90,90,0.2)';
       }
-      return groupColorMap[node.group] || '#666';
+      return isDark() ? 'rgba(232,228,223,0.7)' : 'rgba(26,26,26,0.65)';
     }
 
     function getNodeSize(node) {
-      const base = 3;
-      const scoreBonus = (node.score || 0) / 20;
+      const base = 2;
+      const scoreBonus = Math.min((node.score || 0) / 25, 3);
       return base + scoreBonus;
+    }
+
+    function getLinkColor(l) {
+      if (highlightNode) {
+        const sid = typeof l.source === 'object' ? l.source.id : l.source;
+        const tid = typeof l.target === 'object' ? l.target.id : l.target;
+        if (sid === highlightNode.id || tid === highlightNode.id) {
+          return EDGE_COLORS[l.type] || '#666';
+        }
+        return isDark() ? 'rgba(60,60,60,0.08)' : 'rgba(180,180,180,0.08)';
+      }
+      return EDGE_COLORS_DIM[l.type] || (isDark() ? 'rgba(80,80,80,0.12)' : 'rgba(160,160,160,0.12)');
+    }
+
+    function getLinkWidth(l) {
+      if (highlightNode) {
+        const sid = typeof l.source === 'object' ? l.source.id : l.source;
+        const tid = typeof l.target === 'object' ? l.target.id : l.target;
+        if (sid === highlightNode.id || tid === highlightNode.id) {
+          return Math.min(l.weight || 1, 4) * 0.8;
+        }
+      }
+      return 0.3;
+    }
+
+    function getParticleCount(l) {
+      if (highlightNode) {
+        const sid = typeof l.source === 'object' ? l.source.id : l.source;
+        const tid = typeof l.target === 'object' ? l.target.id : l.target;
+        if (sid === highlightNode.id || tid === highlightNode.id) return 3;
+        return 0;
+      }
+      return 1;
+    }
+
+    function nodeLabel(n) {
+      if (!showLabels) return '';
+      const bg = isDark() ? 'rgba(30,30,30,0.9)' : 'rgba(255,255,255,0.9)';
+      const color = isDark() ? '#e8e4df' : '#1a1a1a';
+      const border = isDark() ? '#333330' : '#d4d0ca';
+      const score = n.score > 0 ? `<span style="color:#FF6B4A;margin-left:4px">${Math.round(n.score)}</span>` : '';
+      return `<div style="font-family:IBM Plex Mono,monospace;font-size:10px;background:${bg};color:${color};padding:3px 7px;border:1px solid ${border};backdrop-filter:blur(8px);letter-spacing:0.03em">${n.name}${score}</div>`;
     }
 
     async function fetchGraphData() {
       try {
         const res = await fetch('/api/selfclaw/v1/graph-data');
-        const data = await res.json();
-        return data;
+        return await res.json();
       } catch (err) {
         console.error('Failed to fetch graph data:', err);
         return null;
@@ -368,32 +476,29 @@
         source: e.source,
         target: e.target,
         type: e.type,
-        weight: e.weight,
-        color: EDGE_COLORS[e.type] || '#666'
+        weight: e.weight
       }));
       return { nodes, links };
     }
 
     function getFilteredData() {
-      const filtered = {
-        nodes: graphData.nodes,
-        links: graphData.links.filter(l => activeFilters.has(l.type))
-      };
+      let nodes = graphData.nodes;
+      let links = graphData.links.filter(l => activeFilters.has(l.type));
 
       if (searchTerm) {
         const term = searchTerm.toLowerCase();
         const matchingIds = new Set(
-          filtered.nodes.filter(n => n.name.toLowerCase().includes(term)).map(n => n.id)
+          nodes.filter(n => n.name.toLowerCase().includes(term)).map(n => n.id)
         );
-        filtered.nodes = filtered.nodes.filter(n => matchingIds.has(n.id));
-        filtered.links = filtered.links.filter(l => {
+        nodes = nodes.filter(n => matchingIds.has(n.id));
+        links = links.filter(l => {
           const sid = typeof l.source === 'object' ? l.source.id : l.source;
           const tid = typeof l.target === 'object' ? l.target.id : l.target;
           return matchingIds.has(sid) && matchingIds.has(tid);
         });
       }
 
-      return filtered;
+      return { nodes, links };
     }
 
     function updateStats(data) {
@@ -408,12 +513,11 @@
 
       const badges = document.getElementById('card-badges');
       badges.innerHTML = '';
-      const items = [
+      [
         { label: 'Wallet', active: node.hasWallet },
         { label: 'Token', active: node.hasToken },
         { label: 'ERC-8004', active: node.hasErc8004 },
-      ];
-      items.forEach(b => {
+      ].forEach(b => {
         const span = document.createElement('span');
         span.className = 'agent-badge' + (b.active ? ' active' : '');
         span.textContent = b.label;
@@ -423,13 +527,11 @@
       if (node.score > 0) {
         const scoreSpan = document.createElement('span');
         scoreSpan.className = 'agent-badge active';
-        scoreSpan.textContent = 'Score: ' + Math.round(node.score);
+        scoreSpan.textContent = 'Score ' + Math.round(node.score);
         badges.appendChild(scoreSpan);
       }
 
-      const link = document.getElementById('card-link');
-      link.href = '/agent?id=' + encodeURIComponent(node.id);
-
+      document.getElementById('card-link').href = '/agent?id=' + encodeURIComponent(node.id);
       card.classList.add('visible');
     }
 
@@ -437,73 +539,84 @@
       document.getElementById('agent-card').classList.remove('visible');
     }
 
+    function selectNode(node) {
+      showAgentCard(node);
+      highlightNode = node;
+      highlightLinks.clear();
+      graphData.links.forEach(l => {
+        const sid = typeof l.source === 'object' ? l.source.id : l.source;
+        const tid = typeof l.target === 'object' ? l.target.id : l.target;
+        if (sid === node.id) {
+          const t = graphData.nodes.find(n => n.id === tid);
+          if (t) highlightLinks.add(t);
+        }
+        if (tid === node.id) {
+          const s = graphData.nodes.find(n => n.id === sid);
+          if (s) highlightLinks.add(s);
+        }
+      });
+      refreshVisuals();
+
+      const distance = 120;
+      const distRatio = 1 + distance / Math.hypot(node.x || 0, node.y || 0, node.z || 0);
+      graph.cameraPosition(
+        { x: (node.x || 0) * distRatio, y: (node.y || 0) * distRatio, z: (node.z || 0) * distRatio },
+        node,
+        1200
+      );
+    }
+
+    function clearSelection() {
+      hideAgentCard();
+      highlightNode = null;
+      highlightLinks.clear();
+      refreshVisuals();
+    }
+
+    function refreshVisuals() {
+      graph.nodeColor(graph.nodeColor());
+      graph.linkColor(graph.linkColor());
+      graph.linkWidth(graph.linkWidth());
+      graph.linkDirectionalParticles(graph.linkDirectionalParticles());
+    }
+
     function initGraph() {
       const container = document.getElementById('graph-canvas');
-      const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+      const dark = isDark();
 
       graph = ForceGraph3D()(container)
-        .backgroundColor(isDark ? '#1a1a1a' : '#f2f0ec')
-        .nodeLabel(n => `<div style="font-family:IBM Plex Mono,monospace;font-size:11px;background:${isDark ? '#222' : '#fff'};color:${isDark ? '#ccc' : '#333'};padding:4px 8px;border:1px solid ${isDark ? '#444' : '#ccc'}">${n.name}${n.score > 0 ? ' [' + Math.round(n.score) + ']' : ''}</div>`)
+        .backgroundColor(dark ? '#141414' : '#f2f0ec')
+        .nodeLabel(nodeLabel)
         .nodeVal(n => getNodeSize(n))
         .nodeColor(n => getNodeColor(n))
-        .nodeOpacity(0.9)
-        .nodeResolution(12)
-        .linkColor(l => {
-          if (highlightNode) {
-            const sid = typeof l.source === 'object' ? l.source.id : l.source;
-            const tid = typeof l.target === 'object' ? l.target.id : l.target;
-            if (sid !== highlightNode.id && tid !== highlightNode.id) {
-              return 'rgba(100,100,100,0.1)';
-            }
-          }
-          return l.color || '#666';
-        })
-        .linkWidth(l => Math.min(l.weight || 1, 4) * 0.5)
-        .linkOpacity(0.6)
-        .linkDirectionalParticles(l => {
-          if (highlightNode) {
-            const sid = typeof l.source === 'object' ? l.source.id : l.source;
-            const tid = typeof l.target === 'object' ? l.target.id : l.target;
-            if (sid === highlightNode.id || tid === highlightNode.id) return 2;
-          }
-          return 0;
-        })
-        .linkDirectionalParticleWidth(1.5)
-        .linkDirectionalParticleColor(l => l.color || '#666')
-        .onNodeClick(node => {
-          showAgentCard(node);
-          highlightNode = node;
-          highlightLinks.clear();
-          graphData.links.forEach(l => {
-            const sid = typeof l.source === 'object' ? l.source.id : l.source;
-            const tid = typeof l.target === 'object' ? l.target.id : l.target;
-            if (sid === node.id) {
-              const targetNode = graphData.nodes.find(n => n.id === tid);
-              if (targetNode) highlightLinks.add(targetNode);
-            }
-            if (tid === node.id) {
-              const sourceNode = graphData.nodes.find(n => n.id === sid);
-              if (sourceNode) highlightLinks.add(sourceNode);
-            }
-          });
-          graph.nodeColor(graph.nodeColor());
-          graph.linkColor(graph.linkColor());
-          graph.linkDirectionalParticles(graph.linkDirectionalParticles());
-        })
-        .onBackgroundClick(() => {
-          hideAgentCard();
-          highlightNode = null;
-          highlightLinks.clear();
-          graph.nodeColor(graph.nodeColor());
-          graph.linkColor(graph.linkColor());
-          graph.linkDirectionalParticles(graph.linkDirectionalParticles());
-        })
+        .nodeOpacity(0.92)
+        .nodeResolution(16)
+        .linkColor(l => getLinkColor(l))
+        .linkWidth(l => getLinkWidth(l))
+        .linkOpacity(0.8)
+        .linkDirectionalParticles(l => getParticleCount(l))
+        .linkDirectionalParticleWidth(0.6)
+        .linkDirectionalParticleSpeed(0.003)
+        .linkDirectionalParticleColor(l => EDGE_COLORS[l.type] || '#666')
+        .linkCurvature(0.1)
+        .onNodeClick(node => selectNode(node))
+        .onBackgroundClick(() => clearSelection())
         .onNodeHover(node => {
           container.style.cursor = node ? 'pointer' : 'default';
-        });
+        })
+        .warmupTicks(60)
+        .cooldownTime(3000);
 
-      graph.d3Force('charge').strength(-80);
-      graph.d3Force('link').distance(40);
+      graph.d3Force('charge').strength(-120);
+      graph.d3Force('link').distance(50);
+
+      const controls = graph.controls();
+      if (controls) {
+        controls.autoRotate = true;
+        controls.autoRotateSpeed = 0.4;
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.12;
+      }
     }
 
     function refreshGraph() {
@@ -515,7 +628,6 @@
     async function init() {
       const raw = await fetchGraphData();
       graphData = transformData(raw);
-      assignGroupColors(graphData.nodes);
 
       initGraph();
       refreshGraph();
@@ -535,21 +647,10 @@
 
       document.getElementById('toggle-labels').addEventListener('change', e => {
         showLabels = e.target.checked;
-        const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-        if (showLabels) {
-          graph.nodeLabel(n => `<div style="font-family:IBM Plex Mono,monospace;font-size:11px;background:${isDark ? '#222' : '#fff'};color:${isDark ? '#ccc' : '#333'};padding:4px 8px;border:1px solid ${isDark ? '#444' : '#ccc'}">${n.name}${n.score > 0 ? ' [' + Math.round(n.score) + ']' : ''}</div>`);
-        } else {
-          graph.nodeLabel(() => '');
-        }
+        graph.nodeLabel(nodeLabel);
       });
 
-      document.getElementById('card-close').addEventListener('click', () => {
-        hideAgentCard();
-        highlightNode = null;
-        highlightLinks.clear();
-        graph.nodeColor(graph.nodeColor());
-        graph.linkColor(graph.linkColor());
-      });
+      document.getElementById('card-close').addEventListener('click', () => clearSelection());
 
       document.getElementById('controls-toggle').addEventListener('click', () => {
         document.getElementById('graph-controls').classList.toggle('mobile-open');
@@ -559,7 +660,6 @@
         const raw = await fetchGraphData();
         if (raw) {
           graphData = transformData(raw);
-          assignGroupColors(graphData.nodes);
           refreshGraph();
         }
       }, 300000);
@@ -573,11 +673,15 @@
     const themeToggle = document.getElementById("theme-toggle");
     if (themeToggle) {
       themeToggle.addEventListener("click", () => {
-        const isDark = document.documentElement.getAttribute("data-theme") === "dark";
-        document.documentElement.setAttribute("data-theme", isDark ? "light" : "dark");
-        localStorage.setItem("selfclaw-theme", isDark ? "light" : "dark");
+        const wasDark = isDark();
+        document.documentElement.setAttribute("data-theme", wasDark ? "light" : "dark");
+        localStorage.setItem("selfclaw-theme", wasDark ? "light" : "dark");
         if (graph) {
-          graph.backgroundColor(isDark ? '#f2f0ec' : '#1a1a1a');
+          graph.backgroundColor(wasDark ? '#f2f0ec' : '#141414');
+          graph.nodeColor(graph.nodeColor());
+          graph.linkColor(graph.linkColor());
+          graph.linkDirectionalParticleColor(graph.linkDirectionalParticleColor());
+          graph.nodeLabel(nodeLabel);
         }
       });
     }
