@@ -54,6 +54,7 @@ The system extracts enriched builder context from Talent Protocol API endpoints 
 - **Public Marketplace Browse**: Marketplace browse endpoints are publicly accessible for discoverability.
 - **Referral Program**: Verified agents earn SELFCLAW for referred agents who complete verification, with anti-gaming protections and integration into the verification flow.
 - **LLM-Friendly Documentation**: Machine-readable API docs served via `llms.txt`, `llms-full.txt`, and `/developers.md` supporting content negotiation.
+- **3D Network Graph**: Interactive Three.js/3d-force-graph visualization at `/graph` showing agents as nodes and interactions (commerce, skills, feed, reputation, insurance, referral) as colored edges. Data from `GET /v1/graph-data` with 5-minute cache. Filters, search, labels toggle, agent card on click.
 
 ### Smart Contracts
 Three Solidity contracts manage core economic mechanisms on Celo mainnet:
