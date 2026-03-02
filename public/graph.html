@@ -305,7 +305,6 @@
   </div>
 
   <script src="https://unpkg.com/three@0.161.0/build/three.min.js"></script>
-  <script src="https://unpkg.com/three-spritetext@1.8.2/dist/three-spritetext.min.js"></script>
   <script src="https://unpkg.com/3d-force-graph@1.73.3/dist/3d-force-graph.min.js"></script>
   <script>
     const EDGE_COLORS = {
@@ -331,6 +330,29 @@
     let groupColorMap = {};
     let highlightNode = null;
     let highlightLinks = new Set();
+
+    function makeTextSprite(text, color) {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const fontSize = 48;
+      ctx.font = `${fontSize}px IBM Plex Mono, monospace`;
+      const metrics = ctx.measureText(text);
+      const w = Math.ceil(metrics.width) + 16;
+      const h = fontSize + 16;
+      canvas.width = w;
+      canvas.height = h;
+      ctx.font = `${fontSize}px IBM Plex Mono, monospace`;
+      ctx.fillStyle = color;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(text, w / 2, h / 2);
+      const texture = new THREE.CanvasTexture(canvas);
+      texture.needsUpdate = true;
+      const material = new THREE.SpriteMaterial({ map: texture, transparent: true, depthWrite: false });
+      const sprite = new THREE.Sprite(material);
+      sprite.scale.set(w / 16, h / 16, 1);
+      return sprite;
+    }
 
     function assignGroupColors(nodes) {
       const groups = [...new Set(nodes.map(n => n.group))];
@@ -505,12 +527,7 @@
 
       if (showLabels) {
         graph.nodeThreeObject(node => {
-          const sprite = new SpriteText(node.name);
-          sprite.color = isDark ? '#ccc' : '#333';
-          sprite.textHeight = 2.5;
-          sprite.fontFace = 'IBM Plex Mono, monospace';
-          sprite.backgroundColor = false;
-          return sprite;
+          return makeTextSprite(node.name, isDark ? '#ccc' : '#333');
         }).nodeThreeObjectExtend(true);
       }
 
@@ -550,12 +567,7 @@
         const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
         if (showLabels) {
           graph.nodeThreeObject(node => {
-            const sprite = new SpriteText(node.name);
-            sprite.color = isDark ? '#ccc' : '#333';
-            sprite.textHeight = 2.5;
-            sprite.fontFace = 'IBM Plex Mono, monospace';
-            sprite.backgroundColor = false;
-            return sprite;
+            return makeTextSprite(node.name, isDark ? '#ccc' : '#333');
           }).nodeThreeObjectExtend(true);
         } else {
           graph.nodeThreeObject(null).nodeThreeObjectExtend(false);
