@@ -39,13 +39,13 @@
       left: 0;
       right: 0;
       z-index: 100;
-      background: rgba(242, 240, 236, 0.85);
+      background: rgba(255, 255, 255, 0.85);
       backdrop-filter: blur(12px);
       -webkit-backdrop-filter: blur(12px);
       border-bottom: 1px solid var(--border);
     }
     [data-theme="dark"] .graph-header {
-      background: rgba(20, 20, 20, 0.85);
+      background: rgba(10, 10, 10, 0.85);
     }
 
     .graph-controls {
@@ -53,7 +53,7 @@
       top: 76px;
       left: 16px;
       z-index: 90;
-      background: rgba(255, 255, 255, 0.8);
+      background: rgba(255, 255, 255, 0.75);
       backdrop-filter: blur(16px);
       -webkit-backdrop-filter: blur(16px);
       border: 1px solid var(--border);
@@ -64,7 +64,7 @@
       user-select: none;
     }
     [data-theme="dark"] .graph-controls {
-      background: rgba(30, 30, 30, 0.8);
+      background: rgba(10, 10, 10, 0.75);
     }
     .graph-controls h3 {
       font-size: 0.6rem;
@@ -142,9 +142,10 @@
       text-transform: uppercase;
     }
     [data-theme="dark"] .graph-stats {
-      background: rgba(30, 30, 30, 0.7);
+      background: rgba(10, 10, 10, 0.7);
     }
-    .stat-val { color: var(--accent); font-weight: 600; }
+    .stat-val { color: #333333; font-weight: 600; }
+    [data-theme="dark"] .stat-val { color: #cccccc; }
 
     .agent-card {
       position: absolute;
@@ -161,7 +162,7 @@
       animation: cardSlideIn 0.2s ease-out;
     }
     [data-theme="dark"] .agent-card {
-      background: rgba(30, 30, 30, 0.9);
+      background: rgba(10, 10, 10, 0.9);
     }
     @keyframes cardSlideIn {
       from { opacity: 0; transform: translateX(8px); }
@@ -212,7 +213,8 @@
       border: 1px solid var(--border);
       color: var(--text-muted);
     }
-    .agent-badge.active { border-color: var(--accent); color: var(--accent); }
+    .agent-badge.active { border-color: #333333; color: #333333; }
+    [data-theme="dark"] .agent-badge.active { border-color: #cccccc; color: #cccccc; }
     .agent-card-link {
       display: inline-block;
       margin-top: 4px;
@@ -240,7 +242,7 @@
       color: var(--text-muted);
     }
     [data-theme="dark"] .graph-legend {
-      background: rgba(30, 30, 30, 0.7);
+      background: rgba(10, 10, 10, 0.7);
     }
     .legend-title {
       text-transform: uppercase;
@@ -281,7 +283,7 @@
       letter-spacing: 0.1em;
     }
     [data-theme="dark"] .controls-toggle {
-      background: rgba(30, 30, 30, 0.8);
+      background: rgba(10, 10, 10, 0.8);
     }
 
     @media (max-width: 768px) {
@@ -335,12 +337,12 @@
         <input type="text" class="search-input" id="search-input" placeholder="Search agent...">
       </div>
       <div class="filter-group">
-        <label><input type="checkbox" checked data-edge="commerce"><span class="edge-dot" style="background:#22c55e"></span> Commerce</label>
-        <label><input type="checkbox" checked data-edge="skill"><span class="edge-dot" style="background:#10b981"></span> Skills</label>
-        <label><input type="checkbox" checked data-edge="feed"><span class="edge-dot" style="background:#3b82f6"></span> Feed</label>
-        <label><input type="checkbox" checked data-edge="reputation"><span class="edge-dot" style="background:#f59e0b"></span> Reputation</label>
-        <label><input type="checkbox" checked data-edge="insurance"><span class="edge-dot" style="background:#a855f7"></span> Insurance</label>
-        <label><input type="checkbox" checked data-edge="referral"><span class="edge-dot" style="background:#eab308"></span> Referral</label>
+        <label><input type="checkbox" checked data-edge="commerce"><span class="edge-dot" style="background:#555555"></span> Commerce</label>
+        <label><input type="checkbox" checked data-edge="skill"><span class="edge-dot" style="background:#666666"></span> Skills</label>
+        <label><input type="checkbox" checked data-edge="feed"><span class="edge-dot" style="background:#444444"></span> Feed</label>
+        <label><input type="checkbox" checked data-edge="reputation"><span class="edge-dot" style="background:#777777"></span> Reputation</label>
+        <label><input type="checkbox" checked data-edge="insurance"><span class="edge-dot" style="background:#888888"></span> Insurance</label>
+        <label><input type="checkbox" checked data-edge="referral"><span class="edge-dot" style="background:#999999"></span> Referral</label>
       </div>
       <label class="toggle-row"><input type="checkbox" id="toggle-labels" checked> Show labels</label>
     </div>
@@ -348,7 +350,7 @@
     <div id="graph-canvas">
       <div id="graph-loading" style="display:flex;align-items:center;justify-content:center;height:100%;width:100%;position:absolute;top:0;left:0;z-index:50">
         <div style="text-align:center;font-family:'IBM Plex Mono',monospace">
-          <div id="loading-spinner" style="width:32px;height:32px;border:2px solid var(--border,#d4d0ca);border-top-color:#FF6B4A;border-radius:50%;margin:0 auto 16px;animation:spin 0.8s linear infinite"></div>
+          <div id="loading-spinner" style="width:32px;height:32px;border:2px solid var(--border,#d4d0ca);border-top-color:#333333;border-radius:50%;margin:0 auto 16px;animation:spin 0.8s linear infinite"></div>
           <div id="loading-text" style="font-size:12px;color:var(--text-muted,#787470);letter-spacing:0.05em">Loading network graph...</div>
         </div>
       </div>
@@ -371,52 +373,52 @@
 
     <div class="graph-legend">
       <div class="legend-title">Connections</div>
-      <div class="legend-item"><span class="legend-line" style="background:#22c55e"></span> Commerce</div>
-      <div class="legend-item"><span class="legend-line" style="background:#10b981"></span> Skills</div>
-      <div class="legend-item"><span class="legend-line" style="background:#3b82f6"></span> Feed</div>
-      <div class="legend-item"><span class="legend-line" style="background:#f59e0b"></span> Reputation</div>
-      <div class="legend-item"><span class="legend-line" style="background:#a855f7"></span> Insurance</div>
-      <div class="legend-item"><span class="legend-line" style="background:#eab308"></span> Referral</div>
+      <div class="legend-item"><span class="legend-line" style="background:#555555"></span> Commerce</div>
+      <div class="legend-item"><span class="legend-line" style="background:#666666"></span> Skills</div>
+      <div class="legend-item"><span class="legend-line" style="background:#444444"></span> Feed</div>
+      <div class="legend-item"><span class="legend-line" style="background:#777777"></span> Reputation</div>
+      <div class="legend-item"><span class="legend-line" style="background:#888888"></span> Insurance</div>
+      <div class="legend-item"><span class="legend-line" style="background:#999999"></span> Referral</div>
     </div>
   </div>
 
   <script src="https://unpkg.com/3d-force-graph@1.73.3/dist/3d-force-graph.min.js"></script>
   <script>
     const EDGE_COLORS = {
-      commerce: '#22c55e',
-      skill: '#10b981',
-      feed: '#3b82f6',
-      reputation: '#f59e0b',
-      insurance: '#a855f7',
-      referral: '#eab308'
+      commerce: '#555555',
+      skill: '#666666',
+      feed: '#444444',
+      reputation: '#777777',
+      insurance: '#888888',
+      referral: '#999999'
     };
 
     const EDGE_COLORS_DIM = {
-      commerce: '#d6f0dc',
-      skill: '#d1ede4',
-      feed: '#d4e2f8',
-      reputation: '#fbe9cc',
-      insurance: '#e8d5f5',
-      referral: '#f7edc5'
+      commerce: '#d8d8d8',
+      skill: '#d8d8d8',
+      feed: '#d8d8d8',
+      reputation: '#d8d8d8',
+      insurance: '#d8d8d8',
+      referral: '#d8d8d8'
     };
     const EDGE_COLORS_DIM_DARK = {
-      commerce: '#1a2e1f',
-      skill: '#162b24',
-      feed: '#1a2540',
-      reputation: '#302212',
-      insurance: '#251a30',
-      referral: '#2a2210'
+      commerce: '#222222',
+      skill: '#222222',
+      feed: '#222222',
+      reputation: '#222222',
+      insurance: '#222222',
+      referral: '#222222'
     };
 
     const TIER_COLORS = {
-      inactive: { light: '#a8a29e', dark: '#78716c' },
-      low:      { light: '#3b82f6', dark: '#60a5fa' },
-      medium:   { light: '#f59e0b', dark: '#fbbf24' },
-      high:     { light: '#FF6B4A', dark: '#ff8a6e' },
+      inactive: { light: '#aaaaaa', dark: '#555555' },
+      low:      { light: '#777777', dark: '#888888' },
+      medium:   { light: '#444444', dark: '#bbbbbb' },
+      high:     { light: '#111111', dark: '#eeeeee' },
     };
-    const MULTI_AGENT_COLOR = { light: '#06b6d4', dark: '#22d3ee' };
-    const DIMMED_COLOR = { light: '#d4d0cc', dark: '#2a2827' };
-    const DIMMED_LINK = { light: '#e8e6e2', dark: '#1e1e1e' };
+    const MULTI_AGENT_COLOR = { light: '#222222', dark: '#dddddd' };
+    const DIMMED_COLOR = { light: '#d0d0d0', dark: '#2a2a2a' };
+    const DIMMED_LINK = { light: '#e8e8e8', dark: '#1a1a1a' };
 
     let graphData = { nodes: [], links: [] };
     let humanGroupCount = 0;
@@ -454,7 +456,7 @@
     function getNodeColor(node) {
       const mode = isDark() ? 'dark' : 'light';
       if (highlightNode) {
-        if (node === highlightNode) return '#FF6B4A';
+        if (node === highlightNode) return isDark() ? '#ffffff' : '#000000';
         if (highlightLinks.has(node)) {
           if (multiAgentGroups.has(node.group)) return MULTI_AGENT_COLOR[mode];
           return TIER_COLORS[getActivityTier(node)][mode];
@@ -473,11 +475,11 @@
 
     function getNodeSize(node) {
       const score = node.pocScore || 0;
-      const base = 2;
-      const scoreBonus = (score / 100) * 4;
-      const skillsBonus = Math.min((node.skillsCount || 0) * 0.4, 1.5);
-      const feedBonus = Math.min(((node.postsCount || 0) * 0.5 + (node.commentsCount || 0) * 0.1), 3);
-      const activityBonus = (node.hasWallet ? 0.3 : 0) + (node.hasToken ? 0.3 : 0) + (node.hasErc8004 ? 0.4 : 0);
+      const base = 1.5;
+      const scoreBonus = (score / 100) * 14;
+      const skillsBonus = Math.min((node.skillsCount || 0) * 1.0, 4);
+      const feedBonus = Math.min(((node.postsCount || 0) * 1.5 + (node.commentsCount || 0) * 0.3), 8);
+      const activityBonus = (node.hasWallet ? 0.5 : 0) + (node.hasToken ? 0.5 : 0) + (node.hasErc8004 ? 0.8 : 0);
       return base + scoreBonus + skillsBonus + feedBonus + activityBonus;
     }
 
@@ -501,14 +503,14 @@
         const sid = typeof l.source === 'object' ? l.source.id : l.source;
         const tid = typeof l.target === 'object' ? l.target.id : l.target;
         if (sid === highlightNode.id || tid === highlightNode.id) {
-          return Math.min(w, 6) * 0.6;
+          return Math.min(w, 6) * 0.35;
         }
-        return 0.15;
+        return 0.05;
       }
-      if (w >= 25) return 1.2;
-      if (w >= 10) return 0.7;
-      if (w >= 3) return 0.4;
-      return 0.2;
+      if (w >= 25) return 0.6;
+      if (w >= 10) return 0.4;
+      if (w >= 3) return 0.2;
+      return 0.08;
     }
 
     function getParticleCount(l) {
@@ -516,44 +518,45 @@
       if (highlightNode) {
         const sid = typeof l.source === 'object' ? l.source.id : l.source;
         const tid = typeof l.target === 'object' ? l.target.id : l.target;
-        if (sid === highlightNode.id || tid === highlightNode.id) return Math.min(w >= 10 ? 4 : 2, 5);
+        if (sid === highlightNode.id || tid === highlightNode.id) return Math.min(w >= 10 ? 5 : 3, 6);
         return 0;
       }
-      if (w >= 25) return 3;
-      if (w >= 10) return 2;
-      if (w >= 3) return 1;
-      return 0;
+      if (w >= 25) return 5;
+      if (w >= 10) return 3;
+      if (w >= 3) return 2;
+      return 1;
     }
 
     function getParticleSpeed(l) {
       const w = l.weight || 1;
-      if (w >= 25) return 0.008;
-      if (w >= 10) return 0.005;
-      if (w >= 3) return 0.003;
-      return 0.002;
+      if (w >= 25) return 0.006;
+      if (w >= 10) return 0.004;
+      if (w >= 3) return 0.002;
+      return 0.001;
     }
 
     function getParticleWidth(l) {
       const w = l.weight || 1;
-      if (w >= 25) return 1.4;
-      if (w >= 10) return 1.0;
-      if (w >= 3) return 0.6;
-      return 0.4;
+      if (w >= 25) return 0.8;
+      if (w >= 10) return 0.6;
+      if (w >= 3) return 0.3;
+      return 0.2;
     }
 
     function nodeLabel(n) {
       if (!showLabels) return '';
-      const bg = isDark() ? 'rgba(30,30,30,0.9)' : 'rgba(255,255,255,0.9)';
-      const color = isDark() ? '#e8e4df' : '#1a1a1a';
-      const border = isDark() ? '#333330' : '#d4d0ca';
-      const muted = isDark() ? '#787470' : '#6b6b6b';
-      const accentClr = getNodeAccentColor(n);
+      const dark = isDark();
+      const bg = dark ? 'rgba(10,10,10,0.9)' : 'rgba(255,255,255,0.9)';
+      const color = dark ? '#dddddd' : '#111111';
+      const border = dark ? '#333333' : '#d0d0d0';
+      const muted = dark ? '#777777' : '#888888';
+      const nodeClr = getNodeAccentColor(n);
       const isMulti = multiAgentGroups.has(n.group);
 
       const sep = `<span style="color:${muted}"> · </span>`;
       let details = [];
-      if (isMulti) details.push(`<span style="color:${accentClr}">cluster</span>`);
-      if (n.pocScore > 0) details.push(`<span style="color:#FF6B4A">${n.pocScore}</span>`);
+      if (isMulti) details.push(`<span style="color:${nodeClr}">cluster</span>`);
+      if (n.pocScore > 0) details.push(`<span style="color:${color}">${n.pocScore}</span>`);
       if (n.postsCount > 0 || n.commentsCount > 0) {
         let feedParts = [];
         if (n.postsCount > 0) feedParts.push(n.postsCount + 'p');
@@ -563,7 +566,7 @@
       if (n.skillsCount > 0) details.push(`<span style="color:${muted}">${n.skillsCount}sk</span>`);
       const detailStr = details.length ? sep + details.join(sep) : '';
 
-      return `<div style="font-family:IBM Plex Mono,monospace;font-size:10px;background:${bg};color:${color};padding:3px 7px;border:1px solid ${border};border-left:2px solid ${accentClr};backdrop-filter:blur(8px);letter-spacing:0.03em">${n.name}${detailStr}</div>`;
+      return `<div style="font-family:IBM Plex Mono,monospace;font-size:10px;background:${bg};color:${color};padding:3px 7px;border:1px solid ${border};border-left:2px solid ${nodeClr};backdrop-filter:blur(8px);letter-spacing:0.03em">${n.name}${detailStr}</div>`;
     }
 
     function setLoadingStatus(msg) {
@@ -818,20 +821,20 @@
         graph = ForceGraph3D()(container)
           .width(w)
           .height(h)
-          .backgroundColor(dark ? '#141414' : '#f2f0ec')
+          .backgroundColor(dark ? '#0a0a0a' : '#ffffff')
           .nodeLabel(nodeLabel)
           .nodeVal(n => getNodeSize(n))
           .nodeColor(n => getNodeColor(n))
-          .nodeOpacity(0.92)
-          .nodeResolution(16)
+          .nodeOpacity(0.95)
+          .nodeResolution(24)
           .linkColor(l => getLinkColor(l))
           .linkWidth(l => getLinkWidth(l))
-          .linkOpacity(0.8)
+          .linkOpacity(0.35)
           .linkDirectionalParticles(l => getParticleCount(l))
           .linkDirectionalParticleWidth(l => getParticleWidth(l))
           .linkDirectionalParticleSpeed(l => getParticleSpeed(l))
-          .linkDirectionalParticleColor(l => EDGE_COLORS[l.type] || '#666666')
-          .linkCurvature(0.15)
+          .linkDirectionalParticleColor(() => isDark() ? '#cccccc' : '#333333')
+          .linkCurvature(0.25)
           .onNodeClick(node => selectNode(node))
           .onBackgroundClick(() => clearSelection())
           .onNodeHover(node => {
@@ -846,7 +849,7 @@
       }
 
       try {
-        graph.d3Force('charge').strength(-100);
+        graph.d3Force('charge').strength(-80);
         const linkForce = graph.d3Force('link');
         if (linkForce) {
           linkForce.distance(l => {
@@ -874,7 +877,7 @@
       const controls = graph.controls();
       if (controls) {
         controls.autoRotate = true;
-        controls.autoRotateSpeed = 0.4;
+        controls.autoRotateSpeed = 0.25;
         controls.enableDamping = true;
         controls.dampingFactor = 0.12;
       }
@@ -976,10 +979,10 @@
         document.documentElement.setAttribute("data-theme", wasDark ? "light" : "dark");
         localStorage.setItem("selfclaw-theme", wasDark ? "light" : "dark");
         if (graph) {
-          graph.backgroundColor(wasDark ? '#f2f0ec' : '#141414');
+          graph.backgroundColor(wasDark ? '#ffffff' : '#0a0a0a');
           graph.nodeColor(graph.nodeColor());
           graph.linkColor(graph.linkColor());
-          graph.linkDirectionalParticleColor(graph.linkDirectionalParticleColor());
+          graph.linkDirectionalParticleColor(() => wasDark ? '#333333' : '#cccccc');
           graph.nodeLabel(nodeLabel);
         }
       });
