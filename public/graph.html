@@ -348,14 +348,13 @@
       <label class="toggle-row"><input type="checkbox" id="toggle-labels" checked> Show labels</label>
     </div>
 
-    <div id="graph-canvas">
-      <div id="graph-loading" style="display:flex;align-items:center;justify-content:center;height:100%;width:100%;position:absolute;top:0;left:0;z-index:50">
-        <div style="text-align:center;font-family:'IBM Plex Mono',monospace">
-          <div id="loading-spinner" style="width:32px;height:32px;border:2px solid var(--border,#d4d0ca);border-top-color:#333333;border-radius:50%;margin:0 auto 16px;animation:spin 0.8s linear infinite"></div>
-          <div id="loading-text" style="font-size:12px;color:var(--text-muted,#787470);letter-spacing:0.05em">Loading network graph...</div>
-        </div>
+    <div id="graph-loading" style="display:flex;align-items:center;justify-content:center;height:100%;width:100%;position:absolute;top:0;left:0;z-index:50">
+      <div style="text-align:center;font-family:'IBM Plex Mono',monospace">
+        <div id="loading-spinner" style="width:32px;height:32px;border:2px solid var(--border,#d4d0ca);border-top-color:#333333;border-radius:50%;margin:0 auto 16px;animation:spin 0.8s linear infinite"></div>
+        <div id="loading-text" style="font-size:12px;color:var(--text-muted,#787470);letter-spacing:0.05em">Loading network graph...</div>
       </div>
     </div>
+    <div id="graph-canvas"></div>
 
     <div class="graph-stats" id="graph-stats">
       <span>Nodes <span class="stat-val" id="stat-nodes">0</span></span>
@@ -383,7 +382,23 @@
     </div>
   </div>
 
-  <script src="https://unpkg.com/3d-force-graph@1.73.3/dist/3d-force-graph.min.js"></script>
+  <script>
+    var _3dGraphLoaded = false;
+    function _on3DGraphLoad() { _3dGraphLoaded = true; console.log('[graph] 3D library loaded'); }
+    function _on3DGraphError() {
+      console.warn('[graph] Primary CDN failed, trying fallback...');
+      var s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/npm/3d-force-graph@1.73.3/dist/3d-force-graph.min.js';
+      s.onload = function() { _3dGraphLoaded = true; console.log('[graph] 3D library loaded from fallback CDN'); };
+      s.onerror = function() {
+        console.error('[graph] Both CDNs failed');
+        var el = document.getElementById('graph-loading');
+        if (el) el.innerHTML = '<div style="text-align:center;font-family:IBM Plex Mono,monospace"><div style="font-size:13px;color:var(--text,#1a1a1a);margin-bottom:16px">3D library failed to load from all sources.</div><button onclick="location.reload()" style="font-family:IBM Plex Mono,monospace;font-size:11px;padding:6px 16px;border:2px solid var(--border,#d4d0ca);background:transparent;color:var(--text,#1a1a1a);cursor:pointer;letter-spacing:0.05em">RETRY</button></div>';
+      };
+      document.head.appendChild(s);
+    }
+  </script>
+  <script src="https://unpkg.com/3d-force-graph@1.73.3/dist/3d-force-graph.min.js" onload="_on3DGraphLoad()" onerror="_on3DGraphError()"></script>
   <script>
     const EDGE_COLORS = {
       commerce: '#555555',
@@ -576,15 +591,23 @@
     }
 
     function showGraphError(msg) {
-      const loading = document.getElementById('graph-loading');
-      if (loading) {
-        loading.innerHTML = '<div style="text-align:center;font-family:IBM Plex Mono,monospace"><div style="font-size:13px;color:var(--text-muted,#787470);margin-bottom:16px">' + msg + '</div><button onclick="location.reload()" style="font-family:IBM Plex Mono,monospace;font-size:11px;padding:6px 16px;border:2px solid var(--border,#d4d0ca);background:transparent;color:var(--text,#1a1a1a);cursor:pointer;letter-spacing:0.05em">RETRY</button></div>';
+      console.error('[graph] Error displayed:', msg);
+      var loading = document.getElementById('graph-loading');
+      if (!loading) {
+        loading = document.createElement('div');
+        loading.id = 'graph-loading';
+        loading.style.cssText = 'display:flex;align-items:center;justify-content:center;height:100%;width:100%;position:absolute;top:0;left:0;z-index:50';
+        var container = document.querySelector('.graph-container');
+        if (container) container.appendChild(loading);
+        else document.body.appendChild(loading);
       }
+      loading.style.display = 'flex';
+      loading.innerHTML = '<div style="text-align:center;font-family:IBM Plex Mono,monospace;max-width:400px;padding:2rem"><div style="font-size:13px;color:var(--text,#1a1a1a);margin-bottom:16px;line-height:1.5">' + msg + '</div><button onclick="location.reload()" style="font-family:IBM Plex Mono,monospace;font-size:11px;padding:8px 20px;border:2px solid var(--border,#d4d0ca);background:transparent;color:var(--text,#1a1a1a);cursor:pointer;letter-spacing:0.05em">RETRY</button></div>';
     }
 
     function hideLoading() {
-      const loading = document.getElementById('graph-loading');
-      if (loading) loading.remove();
+      var loading = document.getElementById('graph-loading');
+      if (loading) loading.style.display = 'none';
     }
 
     async function fetchGraphData() {
@@ -813,15 +836,41 @@
 
     function initGraph() {
       const container = document.getElementById('graph-canvas');
+      if (!container) {
+        console.error('[graph] Container element #graph-canvas not found');
+        showGraphError('Graph container not found.');
+        return;
+      }
+
       const dark = isDark();
       const w = container.offsetWidth || window.innerWidth;
       const h = container.offsetHeight || window.innerHeight;
       console.log('[graph] Container dimensions:', w, 'x', h);
 
+      if (w === 0 || h === 0) {
+        console.warn('[graph] Container has zero dimensions, using window size');
+      }
+
       try {
-        graph = ForceGraph3D()(container)
-          .width(w)
-          .height(h)
+        var instance = ForceGraph3D();
+        console.log('[graph] ForceGraph3D factory created');
+        graph = instance(container);
+        console.log('[graph] ForceGraph3D attached to container');
+      } catch (err) {
+        console.error('[graph] Failed to create 3D graph instance:', err);
+        var msg = (err && err.message) || '';
+        if (msg.toLowerCase().includes('webgl')) {
+          showGraphError('WebGL is required. Enable hardware acceleration in your browser settings, or try a different browser.');
+        } else {
+          showGraphError('Failed to initialize 3D engine: ' + msg);
+        }
+        return;
+      }
+
+      try {
+        graph
+          .width(w || window.innerWidth)
+          .height(h || window.innerHeight)
           .backgroundColor(dark ? '#0a0a0a' : '#ffffff')
           .nodeLabel(nodeLabel)
           .nodeVal(n => getNodeSize(n))
@@ -843,9 +892,10 @@
           })
           .warmupTicks(120)
           .cooldownTime(5000);
+        console.log('[graph] ForceGraph3D configured');
       } catch (err) {
-        console.error('[graph] Failed to initialize 3D graph:', err);
-        showGraphError('WebGL is required. Try a modern browser with hardware acceleration enabled.');
+        console.error('[graph] Failed to configure 3D graph:', err);
+        showGraphError('Failed to configure graph: ' + ((err && err.message) || 'unknown error'));
         return;
       }
 
@@ -968,6 +1018,13 @@
       }, 300000);
     }
 
+    window.onerror = function(msg, url, line, col, err) {
+      console.error('[graph] Uncaught error:', msg, 'at', url, line);
+      if (!graph) {
+        showGraphError('Unexpected error: ' + (msg || 'unknown'));
+      }
+    };
+
     const savedTheme = localStorage.getItem("selfclaw-theme");
     if (savedTheme === "dark" || (!savedTheme && window.matchMedia("(prefers-color-scheme: dark)").matches)) {
       document.documentElement.setAttribute("data-theme", "dark");
@@ -989,7 +1046,29 @@
       });
     }
 
-    init();
+    function waitForLibAndInit() {
+      if (typeof ForceGraph3D !== 'undefined') {
+        init();
+        return;
+      }
+      var attempts = 0;
+      var check = setInterval(function() {
+        attempts++;
+        if (typeof ForceGraph3D !== 'undefined') {
+          clearInterval(check);
+          init();
+        } else if (attempts > 150) {
+          clearInterval(check);
+          showGraphError('3D library timed out after 15 seconds. Check your connection.');
+        }
+      }, 100);
+    }
+
+    if (document.readyState === 'complete') {
+      waitForLibAndInit();
+    } else {
+      window.addEventListener('load', waitForLibAndInit);
+    }
   </script>
 </body>
 </html>
