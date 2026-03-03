@@ -391,37 +391,57 @@
   <script>
     var _3dGraphLoaded = false;
     var _3dGraphSource = '';
-    function _on3DGraphLoad(src) { _3dGraphLoaded = true; _3dGraphSource = src || 'local'; console.log('[graph] 3D library loaded from ' + _3dGraphSource); _updateDiag('lib', _3dGraphSource); }
-    function _on3DGraphLocalError() {
-      console.warn('[graph] Local library failed, trying unpkg CDN...');
-      _updateDiag('lib', 'local failed, trying CDN...');
-      var s = document.createElement('script');
-      s.src = 'https://unpkg.com/3d-force-graph@1.73.3/dist/3d-force-graph.min.js';
-      s.onload = function() { _on3DGraphLoad('unpkg'); };
-      s.onerror = function() {
-        console.warn('[graph] unpkg CDN failed, trying jsDelivr...');
-        _updateDiag('lib', 'unpkg failed, trying jsDelivr...');
-        var s2 = document.createElement('script');
-        s2.src = 'https://cdn.jsdelivr.net/npm/3d-force-graph@1.73.3/dist/3d-force-graph.min.js';
-        s2.onload = function() { _on3DGraphLoad('jsdelivr'); };
-        s2.onerror = function() {
-          console.error('[graph] All sources failed');
-          _updateDiag('lib', 'ALL FAILED');
-          var el = document.getElementById('graph-loading');
-          if (el) el.innerHTML = '<div style="text-align:center;font-family:IBM Plex Mono,monospace"><div style="font-size:13px;margin-bottom:16px">3D library failed to load from all sources.</div><button onclick="location.reload()" style="font-family:IBM Plex Mono,monospace;font-size:11px;padding:6px 16px;border:2px solid currentColor;background:transparent;cursor:pointer;letter-spacing:0.05em">RETRY</button></div>';
-        };
-        document.head.appendChild(s2);
-      };
-      document.head.appendChild(s);
-    }
+    var _webglSupported = false;
+
     function _updateDiag(key, val) {
       var d = document.getElementById('graph-diag');
       if (!d) return;
       var span = d.querySelector('[data-diag="' + key + '"]');
       if (span) span.textContent = val;
     }
+
+    function _checkWebGL() {
+      try {
+        var c = document.createElement('canvas');
+        var gl = c.getContext('webgl2') || c.getContext('webgl') || c.getContext('experimental-webgl');
+        if (gl) { _webglSupported = true; return true; }
+      } catch (e) {}
+      return false;
+    }
+
+    function _on3DGraphLoad(src) {
+      _3dGraphLoaded = true;
+      _3dGraphSource = src || 'local';
+      console.log('[graph] 3D library loaded from ' + _3dGraphSource);
+      _updateDiag('lib', _3dGraphSource);
+    }
+
+    function _loadLibFrom(url, name, nextFn) {
+      var s = document.createElement('script');
+      s.async = true;
+      s.src = url;
+      s.onload = function() { _on3DGraphLoad(name); };
+      s.onerror = function() {
+        console.warn('[graph] ' + name + ' failed');
+        _updateDiag('lib', name + ' failed...');
+        if (nextFn) nextFn();
+        else {
+          _updateDiag('lib', 'ALL FAILED');
+          showGraphError('3D library failed to load from all sources. Check your connection.');
+        }
+      };
+      document.head.appendChild(s);
+    }
+
+    function _loadLibrary() {
+      _updateDiag('lib', 'loading...');
+      _loadLibFrom('/vendor/3d-force-graph.min.js', 'local', function() {
+        _loadLibFrom('https://unpkg.com/3d-force-graph@1.73.3/dist/3d-force-graph.min.js', 'unpkg', function() {
+          _loadLibFrom('https://cdn.jsdelivr.net/npm/3d-force-graph@1.73.3/dist/3d-force-graph.min.js', 'jsdelivr', null);
+        });
+      });
+    }
   </script>
-  <script src="/vendor/3d-force-graph.min.js" onload="_on3DGraphLoad('local')" onerror="_on3DGraphLocalError()"></script>
   <script>
     const EDGE_COLORS = {
       commerce: '#555555',
@@ -974,6 +994,10 @@
       }
     }
 
+    function yieldToBrowser() {
+      return new Promise(function(resolve) { setTimeout(resolve, 0); });
+    }
+
     async function init() {
       setLoadingStatus('Fetching graph data...');
       _updateDiag('data', 'fetching...');
@@ -985,7 +1009,15 @@
         return;
       }
 
-      const raw = await fetchGraphData();
+      var raw;
+      try {
+        raw = await fetchGraphData();
+      } catch (e) {
+        console.error('[graph] fetchGraphData threw:', e);
+        _updateDiag('data', 'ERROR');
+        showGraphError('Error fetching graph data: ' + ((e && e.message) || 'unknown'));
+        return;
+      }
       if (!raw || !raw.nodes) {
         console.error('[graph] No data returned from API');
         _updateDiag('data', 'FAILED');
@@ -997,13 +1029,20 @@
       setLoadingStatus('Building graph...');
       graphData = transformData(raw);
 
+      await yieldToBrowser();
+
       setLoadingStatus('Initializing 3D view...');
       _updateDiag('render', 'init...');
+
+      await yieldToBrowser();
+
       initGraph();
       if (!graph) {
         _updateDiag('render', 'FAILED');
         return;
       }
+
+      await yieldToBrowser();
 
       hideLoading();
       _updateDiag('render', 'ok');
@@ -1079,28 +1118,40 @@
       });
     }
 
-    function waitForLibAndInit() {
-      if (typeof ForceGraph3D !== 'undefined') {
-        init();
+    function startGraph() {
+      console.log('[graph] Starting initialization...');
+
+      if (!_checkWebGL()) {
+        console.error('[graph] WebGL not supported');
+        _updateDiag('lib', 'n/a');
+        _updateDiag('render', 'no WebGL');
+        showGraphError('WebGL is required but not available in your browser. Enable hardware acceleration in your browser settings (chrome://settings → System → Use graphics acceleration), or try a different browser.');
         return;
       }
+      _updateDiag('render', 'webgl ok');
+      console.log('[graph] WebGL supported, loading library...');
+
+      _loadLibrary();
+
       var attempts = 0;
       var check = setInterval(function() {
         attempts++;
         if (typeof ForceGraph3D !== 'undefined') {
           clearInterval(check);
-          init();
-        } else if (attempts > 150) {
+          console.log('[graph] Library ready, starting init...');
+          setTimeout(function() { init(); }, 0);
+        } else if (attempts > 200) {
           clearInterval(check);
-          showGraphError('3D library timed out after 15 seconds. Check your connection.');
+          _updateDiag('lib', 'TIMEOUT');
+          showGraphError('3D library timed out after 20 seconds. Check your connection.');
         }
       }, 100);
     }
 
     if (document.readyState === 'complete') {
-      waitForLibAndInit();
+      startGraph();
     } else {
-      window.addEventListener('load', waitForLibAndInit);
+      window.addEventListener('load', startGraph);
     }
   </script>
 </body>
