@@ -578,6 +578,7 @@ h4 {
   color: var(--text-secondary);
   max-width: 850px;
   line-height: 1.7;
+  margin-top: 0.75rem;
   margin-bottom: var(--space-md);
 }
 
