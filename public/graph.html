@@ -29,8 +29,9 @@
   <link rel="stylesheet" href="styles.css">
   <style>
     @keyframes spin{to{transform:rotate(360deg)}}
-    body { margin: 0; overflow: hidden; }
-    .graph-container { width: 100vw; height: 100vh; position: relative; }
+    body { margin: 0; overflow: hidden; background: #f5f2ed; color: #1a1a1a; }
+    html[data-theme="dark"] body { background: #0a0a0a; color: #e8e4df; }
+    .graph-container { width: 100vw; height: 100vh; position: relative; background: inherit; }
     #graph-canvas { width: 100%; height: calc(100vh); position: relative; }
 
     .graph-header {
@@ -306,6 +307,7 @@
   </style>
 </head>
 <body>
+  <noscript><div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:'IBM Plex Mono',monospace;font-size:14px;color:#787470;text-align:center;padding:2rem">JavaScript is required to view the 3D network graph.<br><a href="/" style="color:inherit;margin-top:1rem;display:inline-block">Return to homepage</a></div></noscript>
   <div class="graph-container">
     <header class="graph-header">
       <div style="max-width: 1080px; margin: 0 auto; padding: 0 2rem; display: flex; align-items: center; justify-content: space-between; height: 60px;">
@@ -380,25 +382,46 @@
       <div class="legend-item"><span class="legend-line" style="background:#888888"></span> Insurance</div>
       <div class="legend-item"><span class="legend-line" style="background:#999999"></span> Referral</div>
     </div>
+
+    <div id="graph-diag" style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);font-family:'IBM Plex Mono',monospace;font-size:10px;color:#787470;opacity:0.6;z-index:60;pointer-events:none;white-space:nowrap">
+      lib:<span data-diag="lib">loading</span> &middot; data:<span data-diag="data">pending</span> &middot; render:<span data-diag="render">pending</span>
+    </div>
   </div>
 
   <script>
     var _3dGraphLoaded = false;
-    function _on3DGraphLoad() { _3dGraphLoaded = true; console.log('[graph] 3D library loaded'); }
-    function _on3DGraphError() {
-      console.warn('[graph] Primary CDN failed, trying fallback...');
+    var _3dGraphSource = '';
+    function _on3DGraphLoad(src) { _3dGraphLoaded = true; _3dGraphSource = src || 'local'; console.log('[graph] 3D library loaded from ' + _3dGraphSource); _updateDiag('lib', _3dGraphSource); }
+    function _on3DGraphLocalError() {
+      console.warn('[graph] Local library failed, trying unpkg CDN...');
+      _updateDiag('lib', 'local failed, trying CDN...');
       var s = document.createElement('script');
-      s.src = 'https://cdn.jsdelivr.net/npm/3d-force-graph@1.73.3/dist/3d-force-graph.min.js';
-      s.onload = function() { _3dGraphLoaded = true; console.log('[graph] 3D library loaded from fallback CDN'); };
+      s.src = 'https://unpkg.com/3d-force-graph@1.73.3/dist/3d-force-graph.min.js';
+      s.onload = function() { _on3DGraphLoad('unpkg'); };
       s.onerror = function() {
-        console.error('[graph] Both CDNs failed');
-        var el = document.getElementById('graph-loading');
-        if (el) el.innerHTML = '<div style="text-align:center;font-family:IBM Plex Mono,monospace"><div style="font-size:13px;color:var(--text,#1a1a1a);margin-bottom:16px">3D library failed to load from all sources.</div><button onclick="location.reload()" style="font-family:IBM Plex Mono,monospace;font-size:11px;padding:6px 16px;border:2px solid var(--border,#d4d0ca);background:transparent;color:var(--text,#1a1a1a);cursor:pointer;letter-spacing:0.05em">RETRY</button></div>';
+        console.warn('[graph] unpkg CDN failed, trying jsDelivr...');
+        _updateDiag('lib', 'unpkg failed, trying jsDelivr...');
+        var s2 = document.createElement('script');
+        s2.src = 'https://cdn.jsdelivr.net/npm/3d-force-graph@1.73.3/dist/3d-force-graph.min.js';
+        s2.onload = function() { _on3DGraphLoad('jsdelivr'); };
+        s2.onerror = function() {
+          console.error('[graph] All sources failed');
+          _updateDiag('lib', 'ALL FAILED');
+          var el = document.getElementById('graph-loading');
+          if (el) el.innerHTML = '<div style="text-align:center;font-family:IBM Plex Mono,monospace"><div style="font-size:13px;margin-bottom:16px">3D library failed to load from all sources.</div><button onclick="location.reload()" style="font-family:IBM Plex Mono,monospace;font-size:11px;padding:6px 16px;border:2px solid currentColor;background:transparent;cursor:pointer;letter-spacing:0.05em">RETRY</button></div>';
+        };
+        document.head.appendChild(s2);
       };
       document.head.appendChild(s);
     }
+    function _updateDiag(key, val) {
+      var d = document.getElementById('graph-diag');
+      if (!d) return;
+      var span = d.querySelector('[data-diag="' + key + '"]');
+      if (span) span.textContent = val;
+    }
   </script>
-  <script src="https://unpkg.com/3d-force-graph@1.73.3/dist/3d-force-graph.min.js" onload="_on3DGraphLoad()" onerror="_on3DGraphError()"></script>
+  <script src="/vendor/3d-force-graph.min.js" onload="_on3DGraphLoad('local')" onerror="_on3DGraphLocalError()"></script>
   <script>
     const EDGE_COLORS = {
       commerce: '#555555',
@@ -953,28 +976,37 @@
 
     async function init() {
       setLoadingStatus('Fetching graph data...');
+      _updateDiag('data', 'fetching...');
 
       if (typeof ForceGraph3D === 'undefined') {
         console.error('[graph] ForceGraph3D library not loaded');
-        showGraphError('3D library failed to load. Check your connection.');
+        _updateDiag('lib', 'MISSING');
+        showGraphError('3D library failed to load. Check your connection and try refreshing.');
         return;
       }
 
       const raw = await fetchGraphData();
       if (!raw || !raw.nodes) {
         console.error('[graph] No data returned from API');
-        showGraphError('Failed to load graph data.');
+        _updateDiag('data', 'FAILED');
+        showGraphError('Failed to load graph data. The API may be temporarily unavailable.');
         return;
       }
+      _updateDiag('data', raw.nodes.length + ' nodes');
 
       setLoadingStatus('Building graph...');
       graphData = transformData(raw);
 
       setLoadingStatus('Initializing 3D view...');
+      _updateDiag('render', 'init...');
       initGraph();
-      if (!graph) return;
+      if (!graph) {
+        _updateDiag('render', 'FAILED');
+        return;
+      }
 
       hideLoading();
+      _updateDiag('render', 'ok');
       console.log('[graph] Data loaded:', graphData.nodes.length, 'nodes,', graphData.links.length, 'links');
       refreshGraph();
 
@@ -1020,6 +1052,7 @@
 
     window.onerror = function(msg, url, line, col, err) {
       console.error('[graph] Uncaught error:', msg, 'at', url, line);
+      _updateDiag('render', 'ERROR');
       if (!graph) {
         showGraphError('Unexpected error: ' + (msg || 'unknown'));
       }
