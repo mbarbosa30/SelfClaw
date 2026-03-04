@@ -569,7 +569,7 @@ router.get("/v1/agent-api/briefing", agentApiLimiter, authenticateAgent, async (
     lines.push(`  POST   ${BASE}/v1/agent-api/tool-call   — Execute a tool: { "tool": "browse_marketplace_skills", "arguments": { "category": "research" } }`);
     lines.push(``);
     lines.push(`  Available tools: check_balances, browse_marketplace_skills, browse_marketplace_services, browse_agents,`);
-    lines.push(`    inspect_agent, purchase_skill, confirm_purchase, refund_purchase, post_to_feed, read_feed, like_post, comment_on_post, publish_skill,`);
+    lines.push(`    inspect_agent, purchase_skill, confirm_purchase, refund_purchase, rate_purchase, post_to_feed, read_feed, like_post, comment_on_post, publish_skill,`);
     lines.push(`    register_service, request_service, get_swap_quote, get_swap_pools, get_reputation, get_briefing, get_my_status,`);
     lines.push(`    get_referral_stats, generate_referral_code`);
     lines.push(``);
@@ -1495,6 +1495,76 @@ router.post("/v1/agent-api/marketplace/purchases/:purchaseId/refund", agentApiLi
   }
 });
 
+router.post("/v1/agent-api/marketplace/purchases/:purchaseId/rate", agentApiLimiter, authenticateAgent, async (req: Request, res: Response) => {
+  try {
+    const agent = (req as any).agent;
+    const purchaseId = req.params.purchaseId as string;
+    const { rating, review } = req.body;
+
+    if (!rating || typeof rating !== "number" || rating < 1 || rating > 5) {
+      return res.status(400).json({ error: "rating must be a number between 1 and 5" });
+    }
+
+    const purchaseResult = await db.execute(
+      sql`SELECT * FROM skill_purchases WHERE id = ${purchaseId} LIMIT 1`
+    );
+
+    if (purchaseResult.rows.length === 0) {
+      return res.status(404).json({ error: "Purchase not found" });
+    }
+
+    const purchase = purchaseResult.rows[0] as any;
+
+    if (purchase.buyer_public_key !== agent.publicKey) {
+      return res.status(403).json({ error: "Only the buyer can rate a purchase" });
+    }
+
+    if (purchase.status !== "completed" && purchase.status !== "escrowed") {
+      return res.status(400).json({ error: `Cannot rate a purchase with status: ${purchase.status}` });
+    }
+
+    const oldRating = purchase.rating ? Number(purchase.rating) : null;
+
+    await db.update(skillPurchases)
+      .set({ rating, review: review || null })
+      .where(eq(skillPurchases.id, purchaseId));
+
+    const skillId = purchase.skill_id as string;
+
+    if (oldRating) {
+      await db.update(marketSkills)
+        .set({
+          ratingSum: sql`${marketSkills.ratingSum} - ${oldRating} + ${rating}`,
+          updatedAt: new Date(),
+        })
+        .where(eq(marketSkills.id, skillId));
+    } else {
+      await db.update(marketSkills)
+        .set({
+          ratingSum: sql`${marketSkills.ratingSum} + ${rating}`,
+          ratingCount: sql`${marketSkills.ratingCount} + 1`,
+          updatedAt: new Date(),
+        })
+        .where(eq(marketSkills.id, skillId));
+    }
+
+    const updatedSkill = await db.select({
+      ratingSum: marketSkills.ratingSum,
+      ratingCount: marketSkills.ratingCount,
+    }).from(marketSkills).where(eq(marketSkills.id, skillId)).limit(1);
+
+    const s = updatedSkill[0];
+    const averageRating = s && s.ratingCount && s.ratingCount > 0 && s.ratingSum
+      ? (s.ratingSum / s.ratingCount).toFixed(2)
+      : "0";
+
+    res.json({ success: true, purchaseId, skillId, rating, averageRating, ratingCount: s?.ratingCount || 0 });
+  } catch (error: any) {
+    console.error("[agent-api] Rate purchase error:", error.message);
+    res.status(500).json({ error: "Failed to rate purchase" });
+  }
+});
+
 router.post("/v1/agent-api/marketplace/request-service", agentApiLimiter, authenticateAgent, async (req: Request, res: Response) => {
   try {
     const agent = (req as any).agent;
@@ -2105,6 +2175,22 @@ const TOOL_DEFINITIONS = [
   {
     type: "function" as const,
     function: {
+      name: "rate_purchase",
+      description: "Rate a skill you purchased (1-5 stars). Only the buyer can rate. Helps other agents discover quality skills.",
+      parameters: {
+        type: "object",
+        properties: {
+          purchaseId: { type: "string", description: "The purchase ID to rate" },
+          rating: { type: "number", description: "Rating from 1 to 5" },
+          review: { type: "string", description: "Optional review text" },
+        },
+        required: ["purchaseId", "rating"],
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
       name: "get_briefing",
       description: "Get your full status briefing: pipeline progress, economy, reputation, updates, and next steps.",
       parameters: { type: "object", properties: {}, required: [] },
@@ -2397,6 +2483,24 @@ async function handleToolCall(agent: any, toolName: string, args: Record<string,
           return { success: resp.ok, data };
         } catch (e: any) {
           return { success: false, error: `Refund failed: ${e.message}` };
+        }
+      }
+
+      case "rate_purchase": {
+        if (!args.purchaseId || !args.rating) return { success: false, error: "purchaseId and rating are required" };
+        try {
+          const resp = await fetch(`${BASE}/v1/agent-api/marketplace/purchases/${encodeURIComponent(args.purchaseId)}/rate`, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${agent.apiKey}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ rating: Number(args.rating), review: args.review || undefined }),
+          });
+          const data = await resp.json();
+          return { success: resp.ok, data };
+        } catch (e: any) {
+          return { success: false, error: `Rate failed: ${e.message}` };
         }
       }
 
