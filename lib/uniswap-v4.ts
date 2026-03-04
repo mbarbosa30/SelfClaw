@@ -1,24 +1,10 @@
-import { createPublicClient, createWalletClient, http, parseUnits, formatUnits, maxUint256, encodePacked, encodeAbiParameters, parseAbiParameters, keccak256 } from 'viem';
-import { celo } from 'viem/chains';
+import { createWalletClient, http, parseUnits, formatUnits, maxUint256, encodePacked, encodeAbiParameters, parseAbiParameters, keccak256 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-
-const WRAPPED_SELFCLAW_CELO = '0xCD88f99Adf75A9110c0bcd22695A32A20eC54ECb' as `0x${string}`;
-const SELFCLAW_BASE = '0x9ae5f51d81ff510bf961218f833f79d57bfbab07' as `0x${string}`;
-const CELO_NATIVE = '0x471EcE3750Da237f93B8E339c536989b8978a438' as `0x${string}`;
-const CELO_RPC = 'https://forno.celo.org';
-
-const POOL_MANAGER = '0x288dc841A52FCA2707c6947B3A777c5E56cd87BC' as `0x${string}`;
-const POSITION_MANAGER = '0xf7965f3981e4d5bc383bfbcb61501763e9068ca9' as `0x${string}`;
-const UNIVERSAL_ROUTER = '0xcb695bc5d3aa22cad1e6df07801b061a05a0233a' as `0x${string}`;
-const STATE_VIEW = '0xbc21f8720babf4b20d195ee5c6e99c52b76f2bfb' as `0x${string}`;
-const PERMIT2 = '0x000000000022D473030F116dDEE9F6B43aC78BA3' as `0x${string}`;
+import { getPublicClient, getWalletClient as getChainWalletClient, getChainConfig, type SupportedChain } from './chains.js';
 
 export const SELFCLAW_CELO_POOL_ID = '0x92bf22b01e8c42e09e2777f3a11490f3e77bd232b70339dbedb0b5a57b21ab8b' as `0x${string}`;
 
 const MAX_UINT128 = (2n ** 128n) - 1n;
-
-const rawPrivateKey = process.env.CELO_PRIVATE_KEY;
-const PRIVATE_KEY = rawPrivateKey && !rawPrivateKey.startsWith('0x') ? `0x${rawPrivateKey}` : rawPrivateKey;
 
 const V4_ACTIONS = {
   INCREASE_LIQUIDITY: 0x00,
@@ -54,10 +40,11 @@ const TICK_SPACINGS: Record<number, number> = {
   10000: 200,
 };
 
-const publicClient = createPublicClient({
-  chain: celo,
-  transport: http(CELO_RPC, { timeout: 15_000, retryCount: 1 }),
-});
+function getUniswapConfig(chain: SupportedChain) {
+  const config = getChainConfig(chain);
+  if (!config.uniswapV4) throw new Error('Uniswap V4 not available on ' + chain);
+  return config.uniswapV4;
+}
 
 const ERC20_ABI = [
   { name: 'balanceOf', type: 'function', stateMutability: 'view', inputs: [{ name: 'account', type: 'address' }], outputs: [{ name: '', type: 'uint256' }] },
@@ -212,16 +199,19 @@ export interface PoolState {
   inversePrice: string;
 }
 
-export async function getPoolState(poolId: `0x${string}`): Promise<PoolState> {
+export async function getPoolState(poolId: `0x${string}`, chain: SupportedChain = 'celo'): Promise<PoolState> {
+  const pc = getPublicClient(chain);
+  const uniConfig = getUniswapConfig(chain);
+
   const [slot0Result, liquidityResult] = await Promise.all([
-    publicClient.readContract({
-      address: STATE_VIEW,
+    pc.readContract({
+      address: uniConfig.stateView,
       abi: STATE_VIEW_ABI,
       functionName: 'getSlot0',
       args: [poolId],
     }),
-    publicClient.readContract({
-      address: STATE_VIEW,
+    pc.readContract({
+      address: uniConfig.stateView,
       abi: STATE_VIEW_ABI,
       functionName: 'getLiquidity',
       args: [poolId],
@@ -290,22 +280,6 @@ export interface PositionInfo {
   tickLower: number;
   tickUpper: number;
   liquidity: string;
-}
-
-function getAccount() {
-  if (!PRIVATE_KEY) {
-    throw new Error('CELO_PRIVATE_KEY environment variable is not set');
-  }
-  return privateKeyToAccount(PRIVATE_KEY as `0x${string}`);
-}
-
-function getWalletClient() {
-  const account = getAccount();
-  return createWalletClient({
-    account,
-    chain: celo,
-    transport: http(CELO_RPC),
-  });
 }
 
 function sortTokens(
@@ -438,16 +412,20 @@ async function ensurePermit2Approval(
   token: `0x${string}`,
   spender: `0x${string}`,
   amount: bigint,
-  overrideAccount?: ReturnType<typeof privateKeyToAccount>,
-  overrideWalletClient?: ReturnType<typeof createWalletClient>,
-  forceRenew: boolean = false
+  overrideAccount?: any,
+  overrideWalletClient?: any,
+  forceRenew: boolean = false,
+  chain: SupportedChain = 'celo'
 ): Promise<void> {
-  const account = overrideAccount || getAccount();
-  const walletClient = overrideWalletClient || getWalletClient();
+  const walletClient = overrideWalletClient || getChainWalletClient(chain);
+  const account = overrideAccount || walletClient.account!;
+  const viemChain = getChainConfig(chain).viemChain;
+  const pc = getPublicClient(chain);
+  const uniConfig = getUniswapConfig(chain);
   const tokenShort = token.substring(0, 10);
   const spenderShort = spender.substring(0, 10);
 
-  const tokenBalance = await publicClient.readContract({
+  const tokenBalance = await pc.readContract({
     address: token,
     abi: ERC20_ABI,
     functionName: 'balanceOf',
@@ -459,11 +437,11 @@ async function ensurePermit2Approval(
     console.warn(`[uniswap-v4] WARNING: Wallet balance (${formatUnits(tokenBalance, 18)}) < required amount (${formatUnits(amount, 18)}) for ${tokenShort}...`);
   }
 
-  const erc20Allowance = await publicClient.readContract({
+  const erc20Allowance = await pc.readContract({
     address: token,
     abi: ERC20_ABI,
     functionName: 'allowance',
-    args: [account.address, PERMIT2],
+    args: [account.address, uniConfig.permit2],
   }) as bigint;
   console.log(`[uniswap-v4] ERC-20 allowance ${tokenShort}... → Permit2: ${erc20Allowance > 10n ** 30n ? 'maxUint' : formatUnits(erc20Allowance, 18)}`);
 
@@ -475,8 +453,8 @@ async function ensurePermit2Approval(
         address: token,
         abi: ERC20_ABI,
         functionName: 'approve',
-        args: [PERMIT2, maxUint256],
-        chain: celo,
+        args: [uniConfig.permit2, maxUint256],
+        chain: viemChain,
         account,
       });
     } catch (sendErr: any) {
@@ -484,26 +462,26 @@ async function ensurePermit2Approval(
       console.error(`[uniswap-v4] ERC-20 approve() writeContract FAILED for ${tokenShort}...: ${errMsg}`);
       throw new Error(`ERC-20 approve() failed to submit tx for ${tokenShort}... → Permit2: ${errMsg}`);
     }
-    const approveReceipt = await publicClient.waitForTransactionReceipt({ hash: approveTx });
+    const approveReceipt = await pc.waitForTransactionReceipt({ hash: approveTx });
     console.log(`[uniswap-v4] ERC-20 approval tx: ${approveTx} (status: ${approveReceipt.status}, gasUsed: ${approveReceipt.gasUsed})`);
 
     if (approveReceipt.status === 'reverted') {
       throw new Error(`ERC-20 approve() tx reverted for ${tokenShort}... → Permit2. tx: ${approveTx}. The token contract may have a non-standard approve (try setting allowance to 0 first).`);
     }
 
-    const verifyAllowance = await publicClient.readContract({
+    const verifyAllowance = await pc.readContract({
       address: token,
       abi: ERC20_ABI,
       functionName: 'allowance',
-      args: [account.address, PERMIT2],
+      args: [account.address, uniConfig.permit2],
     }) as bigint;
     if (verifyAllowance < amount) {
       throw new Error(`ERC-20 approval verification failed for ${tokenShort}...: allowance=${formatUnits(verifyAllowance, 18)}, needed=${formatUnits(amount, 18)}`);
     }
   }
 
-  const permit2Result = await publicClient.readContract({
-    address: PERMIT2,
+  const permit2Result = await pc.readContract({
+    address: uniConfig.permit2,
     abi: PERMIT2_ABI,
     functionName: 'allowance',
     args: [account.address, token, spender],
@@ -526,11 +504,11 @@ async function ensurePermit2Approval(
     let permit2ApproveTx: `0x${string}`;
     try {
       permit2ApproveTx = await walletClient.writeContract({
-        address: PERMIT2,
+        address: uniConfig.permit2,
         abi: PERMIT2_ABI,
         functionName: 'approve',
         args: [token, spender, maxUint160, expiration],
-        chain: celo,
+        chain: viemChain,
         account,
       });
     } catch (sendErr: any) {
@@ -539,15 +517,15 @@ async function ensurePermit2Approval(
       throw new Error(`Permit2 approve() failed to submit tx for ${tokenShort}... → ${spenderShort}...: ${errMsg}`);
     }
 
-    const p2Receipt = await publicClient.waitForTransactionReceipt({ hash: permit2ApproveTx });
+    const p2Receipt = await pc.waitForTransactionReceipt({ hash: permit2ApproveTx });
     console.log(`[uniswap-v4] Permit2 approval tx: ${permit2ApproveTx} (status: ${p2Receipt.status}, gasUsed: ${p2Receipt.gasUsed}), expiry=${expiration} (${new Date(expiration * 1000).toISOString()})`);
 
     if (p2Receipt.status === 'reverted') {
       throw new Error(`Permit2 approve() tx reverted for ${tokenShort}... → ${spenderShort}.... tx: ${permit2ApproveTx}`);
     }
 
-    const verifyP2 = await publicClient.readContract({
-      address: PERMIT2,
+    const verifyP2 = await pc.readContract({
+      address: uniConfig.permit2,
       abi: PERMIT2_ABI,
       functionName: 'allowance',
       args: [account.address, token, spender],
@@ -567,6 +545,7 @@ export async function checkTokenApprovals(
   tokenAddress: `0x${string}`,
   ownerAddress: `0x${string}`,
   requiredAmount: bigint,
+  chain: SupportedChain = 'celo'
 ): Promise<{
   balance: string;
   balanceSufficient: boolean;
@@ -577,9 +556,12 @@ export async function checkTokenApprovals(
   permit2Expiry: number;
   permit2Expired: boolean;
 }> {
-  const bal = await publicClient.readContract({ address: tokenAddress, abi: ERC20_ABI, functionName: 'balanceOf', args: [ownerAddress] }) as bigint;
-  const erc20 = await publicClient.readContract({ address: tokenAddress, abi: ERC20_ABI, functionName: 'allowance', args: [ownerAddress, PERMIT2] }) as bigint;
-  const p2 = await publicClient.readContract({ address: PERMIT2, abi: PERMIT2_ABI, functionName: 'allowance', args: [ownerAddress, tokenAddress, POSITION_MANAGER] });
+  const pc = getPublicClient(chain);
+  const uniConfig = getUniswapConfig(chain);
+
+  const bal = await pc.readContract({ address: tokenAddress, abi: ERC20_ABI, functionName: 'balanceOf', args: [ownerAddress] }) as bigint;
+  const erc20 = await pc.readContract({ address: tokenAddress, abi: ERC20_ABI, functionName: 'allowance', args: [ownerAddress, uniConfig.permit2] }) as bigint;
+  const p2 = await pc.readContract({ address: uniConfig.permit2, abi: PERMIT2_ABI, functionName: 'allowance', args: [ownerAddress, tokenAddress, uniConfig.positionManager] });
   const p2Amt = BigInt(p2[0]);
   const p2Exp = Number(p2[1]);
   const now = Math.floor(Date.now() / 1000);
@@ -604,13 +586,15 @@ function decodePositionInfo(info: bigint): { hasSubscriber: boolean; tickLower: 
   return { hasSubscriber, tickLower, tickUpper, poolId };
 }
 
-export async function collectFees(positionTokenId: bigint): Promise<CollectFeesResult> {
+export async function collectFees(positionTokenId: bigint, chain: SupportedChain = 'celo'): Promise<CollectFeesResult> {
   try {
-    const account = getAccount();
-    const walletClient = getWalletClient();
+    const walletClient = getChainWalletClient(chain);
+    const account = walletClient.account!;
+    const pc = getPublicClient(chain);
+    const uniConfig = getUniswapConfig(chain);
 
-    const [poolKey] = await publicClient.readContract({
-      address: POSITION_MANAGER,
+    const [poolKey] = await pc.readContract({
+      address: uniConfig.positionManager,
       abi: POSITION_MANAGER_ABI,
       functionName: 'getPoolAndPositionInfo',
       args: [positionTokenId],
@@ -639,13 +623,15 @@ export async function collectFees(positionTokenId: bigint): Promise<CollectFeesR
     const deadline = BigInt(Math.floor(Date.now() / 1000) + 1800);
 
     const txHash = await walletClient.writeContract({
-      address: POSITION_MANAGER,
+      address: uniConfig.positionManager,
       abi: POSITION_MANAGER_ABI,
       functionName: 'modifyLiquidities',
       args: [unlockData, deadline],
+      chain: getChainConfig(chain).viemChain,
+      account,
     });
 
-    const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
+    const receipt = await pc.waitForTransactionReceipt({ hash: txHash });
 
     if (receipt.status === 'reverted') {
       return { success: false, error: 'Transaction reverted' };
@@ -667,22 +653,25 @@ export async function swapExactInput(
   tokenIn: string,
   tokenOut: string,
   amountIn: string,
-  fee: number = 3000
+  fee: number = 3000,
+  chain: SupportedChain = 'celo'
 ): Promise<SwapResult> {
   try {
-    const account = getAccount();
-    const walletClient = getWalletClient();
+    const walletClient = getChainWalletClient(chain);
+    const account = walletClient.account!;
+    const pc = getPublicClient(chain);
+    const uniConfig = getUniswapConfig(chain);
     const amountInWei = parseUnits(amountIn, 18);
     const deadline = BigInt(Math.floor(Date.now() / 1000) + 1800);
-    const isCeloNative = tokenIn.toLowerCase() === CELO_NATIVE.toLowerCase();
+    const isNativeToken = tokenIn.toLowerCase() === uniConfig.wrappedNative.toLowerCase();
 
     const { token0, token1 } = sortTokens(tokenIn, tokenOut, 0n, 0n);
     const zeroForOne = tokenIn.toLowerCase() === token0.toLowerCase();
 
     const tickSpacing = TICK_SPACINGS[fee] || 60;
 
-    if (!isCeloNative) {
-      await ensurePermit2Approval(tokenIn as `0x${string}`, UNIVERSAL_ROUTER, amountInWei);
+    if (!isNativeToken) {
+      await ensurePermit2Approval(tokenIn as `0x${string}`, uniConfig.universalRouter, amountInWei, undefined, undefined, false, chain);
     }
 
     const swapActions = encodePacked(
@@ -729,14 +718,16 @@ export async function swapExactInput(
     const commands = encodePacked(['uint8'], [COMMANDS.V4_SWAP]);
 
     const txHash = await walletClient.writeContract({
-      address: UNIVERSAL_ROUTER,
+      address: uniConfig.universalRouter,
       abi: UNIVERSAL_ROUTER_ABI,
       functionName: 'execute',
       args: [commands, [v4SwapInput], deadline],
-      value: isCeloNative ? amountInWei : 0n,
+      value: isNativeToken ? amountInWei : 0n,
+      chain: getChainConfig(chain).viemChain,
+      account,
     });
 
-    const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
+    const receipt = await pc.waitForTransactionReceipt({ hash: txHash });
 
     if (receipt.status === 'reverted') {
       return { success: false, error: 'Swap transaction reverted' };
@@ -752,15 +743,19 @@ export async function swapExactInput(
   }
 }
 
-export async function createPoolAndAddLiquidity(params: CreatePoolParams): Promise<CreatePoolResult> {
+export async function createPoolAndAddLiquidity(params: CreatePoolParams, chain: SupportedChain = 'celo'): Promise<CreatePoolResult> {
   try {
     const { tokenA, tokenB, amountA, amountB, feeTier = 10000, privateKey: overrideKey } = params;
+    const chainConfig = getChainConfig(chain);
+    const uniConfig = getUniswapConfig(chain);
+    const pc = getPublicClient(chain);
+
     const account = overrideKey
       ? privateKeyToAccount(overrideKey as `0x${string}`)
-      : getAccount();
+      : getChainWalletClient(chain).account! as any;
     const walletClient = overrideKey
-      ? createWalletClient({ account, chain: celo, transport: http(CELO_RPC) })
-      : getWalletClient();
+      ? createWalletClient({ account, chain: chainConfig.viemChain, transport: http(chainConfig.rpcPrimary) })
+      : getChainWalletClient(chain);
     const amountAWei = parseUnits(amountA, 18);
     const amountBWei = parseUnits(amountB, 18);
     const { token0, token1, amount0, amount1 } = sortTokens(tokenA, tokenB, amountAWei, amountBWei);
@@ -779,7 +774,7 @@ export async function createPoolAndAddLiquidity(params: CreatePoolParams): Promi
     let poolAlreadyExists = false;
 
     try {
-      const existingState = await getPoolState(poolId as `0x${string}`);
+      const existingState = await getPoolState(poolId as `0x${string}`, chain);
       const existingSqrtPrice = BigInt(existingState.sqrtPriceX96);
       if (existingSqrtPrice > 0n) {
         poolAlreadyExists = true;
@@ -792,12 +787,14 @@ export async function createPoolAndAddLiquidity(params: CreatePoolParams): Promi
       console.log(`[uniswap-v4] Initializing new pool: ${token0} / ${token1}, fee=${feeTier}, sqrtPriceX96=${sqrtPriceX96}`);
       try {
         const initTx = await walletClient.writeContract({
-          address: POOL_MANAGER,
+          address: uniConfig.poolManager,
           abi: POOL_MANAGER_ABI,
           functionName: 'initialize',
           args: [poolKey, sqrtPriceX96],
+          chain: chainConfig.viemChain,
+          account,
         });
-        const initReceipt = await publicClient.waitForTransactionReceipt({ hash: initTx });
+        const initReceipt = await pc.waitForTransactionReceipt({ hash: initTx });
         if (initReceipt.status === 'reverted') {
           return { success: false, error: `Pool initialize transaction reverted: ${initTx}` };
         }
@@ -812,30 +809,31 @@ export async function createPoolAndAddLiquidity(params: CreatePoolParams): Promi
       }
     }
 
-    const isCeloToken0 = token0.toLowerCase() === CELO_NATIVE.toLowerCase();
-    const isCeloToken1 = token1.toLowerCase() === CELO_NATIVE.toLowerCase();
+    const wrappedNative = uniConfig.wrappedNative;
+    const isNativeToken0 = token0.toLowerCase() === wrappedNative.toLowerCase();
+    const isNativeToken1 = token1.toLowerCase() === wrappedNative.toLowerCase();
 
     const amount0Max = amount0 + (amount0 * 1n / 100n);
     const amount1Max = amount1 + (amount1 * 1n / 100n);
 
     console.log(`[uniswap-v4] Approving tokens via Permit2... amount0Max=${formatUnits(amount0Max, 18)}, amount1Max=${formatUnits(amount1Max, 18)}`);
     console.log(`[uniswap-v4] Wallet: ${account.address}, token0=${token0}, token1=${token1}`);
-    console.log(`[uniswap-v4] isCeloToken0=${isCeloToken0}, isCeloToken1=${isCeloToken1}`);
+    console.log(`[uniswap-v4] isNativeToken0=${isNativeToken0}, isNativeToken1=${isNativeToken1}`);
 
-    if (!isCeloToken0) {
-      await ensurePermit2Approval(token0, POSITION_MANAGER, amount0Max, account, walletClient, true);
+    if (!isNativeToken0) {
+      await ensurePermit2Approval(token0, uniConfig.positionManager, amount0Max, account, walletClient, true, chain);
     }
-    if (!isCeloToken1) {
-      await ensurePermit2Approval(token1, POSITION_MANAGER, amount1Max, account, walletClient, true);
+    if (!isNativeToken1) {
+      await ensurePermit2Approval(token1, uniConfig.positionManager, amount1Max, account, walletClient, true, chain);
     }
 
     console.log(`[uniswap-v4] All approvals set. Verifying final state before modifyLiquidities...`);
     const preflightErrors: string[] = [];
     for (const [label, tkn, amt] of [['token0', token0, amount0Max], ['token1', token1, amount1Max]] as const) {
-      if (tkn.toLowerCase() === CELO_NATIVE.toLowerCase()) continue;
-      const bal = await publicClient.readContract({ address: tkn, abi: ERC20_ABI, functionName: 'balanceOf', args: [account.address] }) as bigint;
-      const erc20 = await publicClient.readContract({ address: tkn, abi: ERC20_ABI, functionName: 'allowance', args: [account.address, PERMIT2] }) as bigint;
-      const p2 = await publicClient.readContract({ address: PERMIT2, abi: PERMIT2_ABI, functionName: 'allowance', args: [account.address, tkn, POSITION_MANAGER] });
+      if (tkn.toLowerCase() === wrappedNative.toLowerCase()) continue;
+      const bal = await pc.readContract({ address: tkn, abi: ERC20_ABI, functionName: 'balanceOf', args: [account.address] }) as bigint;
+      const erc20 = await pc.readContract({ address: tkn, abi: ERC20_ABI, functionName: 'allowance', args: [account.address, uniConfig.permit2] }) as bigint;
+      const p2 = await pc.readContract({ address: uniConfig.permit2, abi: PERMIT2_ABI, functionName: 'allowance', args: [account.address, tkn, uniConfig.positionManager] });
       const p2Amt = BigInt(p2[0]);
       const p2Exp = Number(p2[1]);
       const now = Math.floor(Date.now() / 1000);
@@ -898,15 +896,15 @@ export async function createPoolAndAddLiquidity(params: CreatePoolParams): Promi
       [actions, [mintParams, settlePairParams, closeCurrency0Params, closeCurrency1Params]]
     );
 
-    const celoValue = isCeloToken0 ? amount0Max : isCeloToken1 ? amount1Max : 0n;
+    const nativeValue = isNativeToken0 ? amount0Max : isNativeToken1 ? amount1Max : 0n;
 
     try {
-      await publicClient.simulateContract({
-        address: POSITION_MANAGER,
+      await pc.simulateContract({
+        address: uniConfig.positionManager,
         abi: POSITION_MANAGER_ABI,
         functionName: 'modifyLiquidities',
         args: [unlockData, deadline],
-        value: celoValue,
+        value: nativeValue,
         account: account.address,
       });
       console.log('[uniswap-v4] Simulation passed, sending transaction...');
@@ -920,13 +918,15 @@ export async function createPoolAndAddLiquidity(params: CreatePoolParams): Promi
 
     let mintTxHash: `0x${string}`;
     try {
-      console.log(`[uniswap-v4] Sending modifyLiquidities tx... celoValue=${celoValue}`);
+      console.log(`[uniswap-v4] Sending modifyLiquidities tx... nativeValue=${nativeValue}`);
       mintTxHash = await walletClient.writeContract({
-        address: POSITION_MANAGER,
+        address: uniConfig.positionManager,
         abi: POSITION_MANAGER_ABI,
         functionName: 'modifyLiquidities',
         args: [unlockData, deadline],
-        value: celoValue,
+        value: nativeValue,
+        chain: chainConfig.viemChain,
+        account,
       });
       console.log(`[uniswap-v4] modifyLiquidities tx submitted: ${mintTxHash}`);
     } catch (mintErr: any) {
@@ -941,7 +941,7 @@ export async function createPoolAndAddLiquidity(params: CreatePoolParams): Promi
       return { success: false, error: `modifyLiquidities failed to submit: ${errMsg}` };
     }
 
-    const mintReceipt = await publicClient.waitForTransactionReceipt({ hash: mintTxHash });
+    const mintReceipt = await pc.waitForTransactionReceipt({ hash: mintTxHash });
     console.log(`[uniswap-v4] modifyLiquidities receipt: status=${mintReceipt.status}, gasUsed=${mintReceipt.gasUsed}, tx=${mintTxHash}`);
 
     if (mintReceipt.status === 'reverted') {
@@ -967,16 +967,19 @@ export async function createPoolAndAddLiquidity(params: CreatePoolParams): Promi
   }
 }
 
-export async function getPosition(positionTokenId: bigint): Promise<PositionInfo> {
-  const [poolKey, info] = await publicClient.readContract({
-    address: POSITION_MANAGER,
+export async function getPosition(positionTokenId: bigint, chain: SupportedChain = 'celo'): Promise<PositionInfo> {
+  const pc = getPublicClient(chain);
+  const uniConfig = getUniswapConfig(chain);
+
+  const [poolKey, info] = await pc.readContract({
+    address: uniConfig.positionManager,
     abi: POSITION_MANAGER_ABI,
     functionName: 'getPoolAndPositionInfo',
     args: [positionTokenId],
   });
 
-  const liquidity = await publicClient.readContract({
-    address: POSITION_MANAGER,
+  const liquidity = await pc.readContract({
+    address: uniConfig.positionManager,
     abi: POSITION_MANAGER_ABI,
     functionName: 'getPositionLiquidity',
     args: [positionTokenId],
@@ -994,12 +997,15 @@ export async function getPosition(positionTokenId: bigint): Promise<PositionInfo
   };
 }
 
-export async function getUncollectedFees(positionTokenId: bigint): Promise<{ token0Fees: string; token1Fees: string }> {
+export async function getUncollectedFees(positionTokenId: bigint, chain: SupportedChain = 'celo'): Promise<{ token0Fees: string; token1Fees: string }> {
   try {
-    const account = getAccount();
+    const walletClient = getChainWalletClient(chain);
+    const account = walletClient.account!;
+    const pc = getPublicClient(chain);
+    const uniConfig = getUniswapConfig(chain);
 
-    const [poolKey] = await publicClient.readContract({
-      address: POSITION_MANAGER,
+    const [poolKey] = await pc.readContract({
+      address: uniConfig.positionManager,
       abi: POSITION_MANAGER_ABI,
       functionName: 'getPoolAndPositionInfo',
       args: [positionTokenId],
@@ -1027,8 +1033,8 @@ export async function getUncollectedFees(positionTokenId: bigint): Promise<{ tok
 
     const deadline = BigInt(Math.floor(Date.now() / 1000) + 1800);
 
-    await publicClient.simulateContract({
-      address: POSITION_MANAGER,
+    await pc.simulateContract({
+      address: uniConfig.positionManager,
       abi: POSITION_MANAGER_ABI,
       functionName: 'modifyLiquidities',
       args: [unlockData, deadline],
@@ -1047,7 +1053,8 @@ export function computePoolId(
   tokenB: string,
   fee: number,
   tickSpacing: number,
-  hooks: string = '0x0000000000000000000000000000000000000000'
+  hooks: string = '0x0000000000000000000000000000000000000000',
+  chain: SupportedChain = 'celo'
 ): `0x${string}` {
   const a = tokenA.toLowerCase();
   const b = tokenB.toLowerCase();
@@ -1060,9 +1067,12 @@ export function computePoolId(
   return keccak256(encoded);
 }
 
-export async function getNextPositionTokenId(): Promise<bigint> {
-  const nextId = await publicClient.readContract({
-    address: POSITION_MANAGER,
+export async function getNextPositionTokenId(chain: SupportedChain = 'celo'): Promise<bigint> {
+  const pc = getPublicClient(chain);
+  const uniConfig = getUniswapConfig(chain);
+
+  const nextId = await pc.readContract({
+    address: uniConfig.positionManager,
     abi: POSITION_MANAGER_ABI,
     functionName: 'nextTokenId',
     args: [],
@@ -1070,13 +1080,14 @@ export async function getNextPositionTokenId(): Promise<bigint> {
   return nextId;
 }
 
-export function extractPositionTokenIdFromReceipt(receipt: any): string | null {
+export function extractPositionTokenIdFromReceipt(receipt: any, chain: SupportedChain = 'celo'): string | null {
+  const uniConfig = getUniswapConfig(chain);
   const ERC721_TRANSFER_TOPIC = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
   const ZERO_ADDRESS_TOPIC = '0x0000000000000000000000000000000000000000000000000000000000000000';
 
   for (const log of receipt.logs || []) {
     if (
-      log.address?.toLowerCase() === POSITION_MANAGER.toLowerCase() &&
+      log.address?.toLowerCase() === uniConfig.positionManager.toLowerCase() &&
       log.topics?.length === 4 &&
       log.topics[0] === ERC721_TRANSFER_TOPIC &&
       log.topics[1] === ZERO_ADDRESS_TOPIC
@@ -1089,14 +1100,15 @@ export function extractPositionTokenIdFromReceipt(receipt: any): string | null {
 
 export async function collectAllFees(
   positionTokenIds: bigint[],
-  overrideKey?: string
+  overrideKey?: string,
+  chain: SupportedChain = 'celo'
 ): Promise<{ success: boolean; collected: { tokenId: string; txHash: string }[]; errors: string[]; totalCollected: number }> {
   const collected: { tokenId: string; txHash: string }[] = [];
   const errors: string[] = [];
 
   for (const tokenId of positionTokenIds) {
     try {
-      const result = await collectFees(tokenId);
+      const result = await collectFees(tokenId, chain);
       if (result.success && result.txHash) {
         collected.push({ tokenId: tokenId.toString(), txHash: result.txHash });
       } else if (!result.success) {
@@ -1115,39 +1127,47 @@ export async function collectAllFees(
   };
 }
 
-export async function getSelfclawBalance(overrideKey?: string): Promise<string> {
-  const account = overrideKey
-    ? privateKeyToAccount(overrideKey as `0x${string}`)
-    : getAccount();
+export async function getSelfclawBalance(overrideKey?: string, chain: SupportedChain = 'celo'): Promise<string> {
+  const pc = getPublicClient(chain);
+  const selfclawToken = getChainConfig(chain).selfclawToken;
 
-  const balance = await publicClient.readContract({
-    address: WRAPPED_SELFCLAW_CELO,
+  const accountAddress = overrideKey
+    ? privateKeyToAccount(overrideKey as `0x${string}`).address
+    : getChainWalletClient(chain).account!.address;
+
+  const balance = await pc.readContract({
+    address: selfclawToken,
     abi: ERC20_ABI,
     functionName: 'balanceOf',
-    args: [account.address],
+    args: [accountAddress],
   });
 
   return formatUnits(balance, 18);
 }
 
-export async function getTokenBalance(tokenAddress: string, decimals: number = 18, overrideKey?: string): Promise<string> {
-  const account = overrideKey
-    ? privateKeyToAccount(overrideKey as `0x${string}`)
-    : getAccount();
+export async function getTokenBalance(tokenAddress: string, decimals: number = 18, overrideKey?: string, chain: SupportedChain = 'celo'): Promise<string> {
+  const pc = getPublicClient(chain);
 
-  const balance = await publicClient.readContract({
+  const accountAddress = overrideKey
+    ? privateKeyToAccount(overrideKey as `0x${string}`).address
+    : getChainWalletClient(chain).account!.address;
+
+  const balance = await pc.readContract({
     address: tokenAddress as `0x${string}`,
     abi: ERC20_ABI,
     functionName: 'balanceOf',
-    args: [account.address],
+    args: [accountAddress],
   });
 
   return formatUnits(balance, decimals);
 }
 
 export function getSponsorAddress(overrideKey?: string): string {
-  const account = overrideKey
-    ? privateKeyToAccount(overrideKey as `0x${string}`)
-    : getAccount();
-  return account.address;
+  if (overrideKey) {
+    return privateKeyToAccount(overrideKey as `0x${string}`).address;
+  }
+  const rawKey = process.env.SELFCLAW_SPONSOR_PRIVATE_KEY || process.env.CELO_PRIVATE_KEY;
+  if (!rawKey) throw new Error('CELO_PRIVATE_KEY environment variable is not set');
+  const pk = rawKey.startsWith('0x') ? rawKey : `0x${rawKey}`;
+  return privateKeyToAccount(pk as `0x${string}`).address;
 }

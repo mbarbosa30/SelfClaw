@@ -13,6 +13,7 @@ import { createPublicClient, http, parseUnits, formatUnits, encodeFunctionData, 
 import { celo } from 'viem/chains';
 import { TOKEN_FACTORY_BYTECODE } from '../lib/constants.js';
 import { platformDeployToken, platformRegisterErc8004, platformRequestSponsorship } from '../lib/platform-economy.js';
+import { isValidChain, getChainConfig, getPublicClient as getChainPublicClient, getWalletClient as getChainWalletClient, getExplorerUrl as chainExplorerUrl, type SupportedChain } from '../lib/chains.js';
 import { releaseEscrow, SELFCLAW_TOKEN } from '../lib/selfclaw-commerce.js';
 import { distributeReferralReward, claimPendingReward, isRewardsContractDeployed, isRewardDistributed } from '../lib/rewards-contract.js';
 
@@ -2460,11 +2461,13 @@ router.get("/v1/agent-profile/:name", publicApiLimiter, async (req: Request, res
       wallet: wallet ? {
         address: wallet.address,
         gasReceived: wallet.gasReceived,
+        chain: wallet.chain || 'celo',
       } : null,
       token: pool ? {
         address: pool.tokenAddress,
         symbol: pool.tokenSymbol,
         name: pool.tokenName,
+        chain: pool.chain || 'celo',
       } : null,
       pool: pool ? {
         address: pool.poolAddress,
@@ -2475,6 +2478,7 @@ router.get("/v1/agent-profile/:name", publicApiLimiter, async (req: Request, res
         marketCapCelo: pool.marketCapCelo,
         feeTier: pool.feeTier,
         pairedWith: pool.pairedWith,
+        chain: pool.chain || 'celo',
       } : null,
       livePrice,
       tokenPlan: plan ? {
@@ -5210,6 +5214,7 @@ router.get("/v1/human/:humanId/economics", publicApiLimiter, async (req: Request
           address: agentPool.tokenAddress,
           poolAddress: agentPool.poolAddress,
           poolVersion: agentPool.poolVersion || 'v3',
+          chain: agentPool.chain || 'celo',
           price: agentPool.currentPriceCelo,
           priceCelo: livePrice?.priceInCelo ?? (agentPool.currentPriceCelo ? parseFloat(agentPool.currentPriceCelo) : null),
           priceUsd: livePrice?.priceInUsd ?? null,
@@ -5226,7 +5231,7 @@ router.get("/v1/human/:humanId/economics", publicApiLimiter, async (req: Request
         publicKey: a.publicKey,
         verifiedAt: a.verifiedAt,
         apiKey: a.apiKey || null,
-        wallet: agentWallet ? { address: agentWallet.address, gasReceived: agentWallet.gasReceived } : null,
+        wallet: agentWallet ? { address: agentWallet.address, gasReceived: agentWallet.gasReceived, chain: agentWallet.chain || 'celo' } : null,
         token: tokenData,
         tokenPlan: agentPlan ? { status: agentPlan.status, purpose: agentPlan.purpose } : null,
         sponsorship: agentSponsorship ? {
@@ -5234,6 +5239,7 @@ router.get("/v1/human/:humanId/economics", publicApiLimiter, async (req: Request
           tokenAddress: agentSponsorship.tokenAddress,
           poolAddress: agentSponsorship.poolAddress,
           amount: agentSponsorship.sponsoredAmountCelo,
+          chain: agentSponsorship.chain || 'celo',
         } : null,
         erc8004: erc8004Info,
         sponsorshipRequest: latestSponsorshipReq ? {
@@ -5492,7 +5498,9 @@ router.post("/v1/create-agent/deploy-economy", async (req: any, res: Response) =
     }
 
     const humanId = req.session.humanId;
-    const { publicKey, tokenName, tokenSymbol, totalSupply, selfclawForPool } = req.body;
+    const { publicKey, tokenName, tokenSymbol, totalSupply, selfclawForPool, chain: requestedChain } = req.body;
+
+    const chain: SupportedChain = (requestedChain && isValidChain(requestedChain)) ? requestedChain : 'celo';
 
     if (!publicKey || !tokenName || !tokenSymbol || !totalSupply) {
       logActivity("deploy_economy_failed", humanId, publicKey, undefined, { error: "publicKey, tokenName, tokenSymbol, and totalSupply are required", endpoint: "/v1/create-agent/deploy-economy", statusCode: 400 });
@@ -5565,7 +5573,7 @@ router.post("/v1/create-agent/deploy-economy", async (req: any, res: Response) =
           evmPrivateKey = wallet.privateKey;
           evmAddress = wallet.address;
 
-          const result = await createAgentWallet(humanId, publicKey, wallet.address);
+          const result = await createAgentWallet(humanId, publicKey, wallet.address, chain);
           if (!result.success) throw new Error(result.error || "Failed to register wallet");
 
           deployWalletKeys.set(sessionId, {
@@ -5577,16 +5585,18 @@ router.post("/v1/create-agent/deploy-economy", async (req: any, res: Response) =
 
           logActivity("wallet_creation", humanId, publicKey, agent.deviceId || undefined, {
             address: wallet.address,
+            chain,
             method: "deploy-economy"
           });
 
-          return { walletAddress: wallet.address };
+          return { walletAddress: wallet.address, chain };
         });
 
         await runPipelineStep('request_gas', async () => {
-          const result = await sendGasSubsidy(humanId, publicKey);
+          const result = await sendGasSubsidy(humanId, publicKey, chain);
           if (!result.success) throw new Error(result.error || "Gas subsidy failed");
-          return { txHash: result.txHash, amountCelo: result.amountCelo };
+          const chainConfig = getChainConfig(chain);
+          return { txHash: result.txHash, amountNative: result.amountNative, nativeCurrency: chainConfig.nativeCurrency, chain };
         });
 
         await runPipelineStep('deploy_token', async () => {
@@ -5606,9 +5616,10 @@ router.post("/v1/create-agent/deploy-economy", async (req: any, res: Response) =
           const { createWalletClient } = await import("viem");
           const { AbiCoder } = await import("ethers");
 
+          const deployChainConfig = getChainConfig(chain);
           const account = privateKeyToAccount(evmPrivateKey as `0x${string}`);
-          const deployPublicClient = createPublicClient({ chain: celo, transport: http() });
-          const walletClient = createWalletClient({ account, chain: celo, transport: http() });
+          const deployPublicClient = getChainPublicClient(chain);
+          const walletClient = createWalletClient({ account, chain: deployChainConfig.viemChain, transport: http(deployChainConfig.rpcPrimary) });
 
           const decimals = 18;
           const supplyWithDecimals = parseUnits(totalSupply.toString(), decimals);
@@ -5645,7 +5656,8 @@ router.post("/v1/create-agent/deploy-economy", async (req: any, res: Response) =
           return {
             tokenAddress: deployedTokenAddress,
             txHash,
-            celoscanUrl: `https://celoscan.io/token/${deployedTokenAddress}`,
+            explorerUrl: chainExplorerUrl(chain, 'token', deployedTokenAddress),
+            chain,
           };
         });
 
@@ -5676,7 +5688,7 @@ router.post("/v1/create-agent/deploy-economy", async (req: any, res: Response) =
             const rawSponsorKey = process.env.SELFCLAW_SPONSOR_PRIVATE_KEY || process.env.CELO_PRIVATE_KEY;
             const sponsorKey = rawSponsorKey && !rawSponsorKey.startsWith("0x") ? `0x${rawSponsorKey}` : rawSponsorKey;
 
-            const selfclawAddress = "0xCD88f99Adf75A9110c0bcd22695A32A20eC54ECb";
+            const selfclawAddress = getChainConfig(chain).selfclawToken;
 
             const availableBalance = await getSelfclawBalance(sponsorKey);
             const available = parseFloat(availableBalance);
@@ -5699,8 +5711,9 @@ router.post("/v1/create-agent/deploy-economy", async (req: any, res: Response) =
             const { privateKeyToAccount } = await import("viem/accounts");
             const { createWalletClient } = await import("viem");
 
+            const sponsorChainConfig = getChainConfig(chain);
             const agentAccount = privateKeyToAccount(evmPrivateKey as `0x${string}`);
-            const agentWalletClient = createWalletClient({ account: agentAccount, chain: celo, transport: http() });
+            const agentWalletClient = createWalletClient({ account: agentAccount, chain: sponsorChainConfig.viemChain, transport: http(sponsorChainConfig.rpcPrimary) });
 
             const poolTokenPercent = 0.3;
             const tokenAmountForPool = Math.floor(Number(totalSupply) * poolTokenPercent).toString();
@@ -5719,7 +5732,7 @@ router.post("/v1/create-agent/deploy-economy", async (req: any, res: Response) =
               args: [sponsorAddress as `0x${string}`, parseUnits(tokenAmountToTransfer, 18)],
             });
 
-            const transferPublicClient = createPublicClient({ chain: celo, transport: http() });
+            const transferPublicClient = getChainPublicClient(chain);
             await transferPublicClient.waitForTransactionReceipt({ hash: transferHash, timeout: 60_000 });
 
             const tokenLower = deployedTokenAddress.toLowerCase();
@@ -5764,6 +5777,7 @@ router.post("/v1/create-agent/deploy-economy", async (req: any, res: Response) =
               poolAddress: v4PoolId,
               v4PositionTokenId: positionTokenId,
               poolVersion: "v4",
+              chain,
               sponsoredAmountCelo: finalSelfclaw,
               sponsorTxHash: poolResult.txHash || "",
               status: "completed",
@@ -5776,6 +5790,7 @@ router.post("/v1/create-agent/deploy-economy", async (req: any, res: Response) =
                 tokenAddress: deployedTokenAddress,
                 tokenSymbol,
                 tokenName,
+                chain,
                 pairedWith: "SELFCLAW",
                 humanId,
                 agentPublicKey: publicKey,
@@ -5935,6 +5950,7 @@ router.get("/v1/my-agents", async (req: any, res: Response) => {
       publicKey: agentWallets.publicKey,
       address: agentWallets.address,
       gasReceived: agentWallets.gasReceived,
+      chain: agentWallets.chain,
     }).from(agentWallets)
       .where(sql`${agentWallets.humanId} = ${humanId}`);
 
@@ -5944,6 +5960,7 @@ router.get("/v1/my-agents", async (req: any, res: Response) => {
       tokenSymbol: sponsoredAgents.tokenSymbol,
       poolAddress: sponsoredAgents.poolAddress,
       status: sponsoredAgents.status,
+      chain: sponsoredAgents.chain,
     }).from(sponsoredAgents)
       .where(sql`${sponsoredAgents.humanId} = ${humanId}`);
 
@@ -5987,8 +6004,11 @@ router.get("/v1/my-agents", async (req: any, res: Response) => {
           hasGas: wallet?.gasReceived || false,
           hasToken: !!sponsor?.tokenAddress,
           tokenSymbol: sponsor?.tokenSymbol || null,
+          tokenAddress: sponsor?.tokenAddress || null,
           hasPool: !!sponsor?.poolAddress,
+          poolAddress: sponsor?.poolAddress || null,
           sponsorStatus: sponsor?.status || null,
+          chain: wallet?.chain || sponsor?.chain || 'celo',
         },
         sponsorshipRequest: pendingReq ? {
           status: pendingReq.status,

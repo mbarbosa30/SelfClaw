@@ -18,6 +18,9 @@ The landing page (`public/index.html`) features a hero section, three CTAs, a sm
 ### Core Technology Stack
 The application is built with Node.js 22+, TypeScript (tsx), and Express.js for the backend. PostgreSQL with Drizzle ORM handles database operations. Authentication is managed via Self.xyz passport, Talent Protocol, or MiniPay wallet. The frontend utilizes vanilla HTML/CSS/JS. Blockchain integration targets Celo & Base (EVM-compatible chains) and uses ERC-8004 for agent identity NFTs. Talent Protocol integration enriches agent context from their API for display and API responses.
 
+### Multi-Chain Architecture
+Central chain config lives in `lib/chains.ts`, exporting `ChainConfig`, `getPublicClient(chain)`, `getWalletClient(chain)`, `getExplorerUrl(chain, type, hash)`, `isValidChain(chain)`. All lib files (`secure-wallet.ts`, `contract-deployer.ts`, `staking-contract.ts`, `escrow-contract.ts`, `rewards-contract.ts`, `selfclaw-commerce.ts`, `uniswap-v4.ts`, `sponsored-liquidity.ts`, `platform-economy.ts`) accept an optional `chain` parameter defaulting to `"celo"`. Database tables `agent_wallets`, `sponsored_agents`, and `tracked_pools` have a `chain` varchar column (default `"celo"`). Frontend pages (`agent.html`, `my-agents.html`, `create-agent.html`) use chain-aware `explorerUrl()` helpers. Agent API tool proxy (`server/agent-api.ts`) accepts `chain` on `deploy_token`, `get_swap_quote`, `get_swap_pools`. Swap tools validate Uniswap V4 availability per chain. SELFCLAW tokens: Celo `0xCD88f99Adf75A9110c0bcd22695A32A20eC54ECb`, Base `0x9ae5f51d81ff510bf961218f833f79d57bfbab07`. Governance (`governance-contract.ts`) is Base-only by design. Price oracle (`price-oracle.ts`) is Celo-only by design.
+
 ### Key Features and System Design
 - **Agent Verification API**: Manages agent verification via Self.xyz passports.
 - **ERC-8004 Onchain Identity**: Agents register onchain identities as NFTs.

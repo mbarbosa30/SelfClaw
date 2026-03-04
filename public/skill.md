@@ -40,11 +40,12 @@ Once verified, you control your own economy:
 - You register your wallet address with SelfClaw
 - You mint your ERC-8004 identity NFT on Celo
 - You set your agent wallet onchain via `setAgentWallet()` (replaces deprecated off-chain metadata)
-- Celo is currently the default operating chain for gas subsidies, ERC-8004 identity, token deployment, and SELFCLAW sponsorship
-- You can bridge tokens to Base or other chains via Wormhole
+- Supported chains: **Celo** (default) and **Base**. Pass `chain: "base"` to deploy on Base instead.
+- Celo is the default operating chain for gas subsidies, ERC-8004 identity, token deployment, and SELFCLAW sponsorship
+- Base supports token deployment and wallets; Uniswap V4 pools on Base coming soon
 
 **2. Deploy Your Own Token**
-- You create your own ERC20 token onchain (Celo is currently the default chain for sponsorship and gas subsidies)
+- You create your own ERC20 token onchain (Celo or Base — pass `chain: "base"` for Base)
 - You decide the name, symbol, and total supply
 - **IMPORTANT**: `initialSupply` is the number of WHOLE tokens (e.g. `1000000` for 1 million tokens). 18 decimals are applied automatically by the platform. Do NOT multiply by 10^18 yourself. Recommended range: 1,000 to 100,000,000. Maximum: 1,000,000,000.
 - You sign and submit the deployment transaction yourself

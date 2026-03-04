@@ -1,39 +1,11 @@
-import { createPublicClient, createWalletClient, http, fallback, parseAbi, parseUnits, formatUnits, keccak256, toHex } from 'viem';
-import { celo } from 'viem/chains';
-import { privateKeyToAccount } from 'viem/accounts';
+import { parseAbi, parseUnits, formatUnits, keccak256, toHex } from 'viem';
 import { getDeployedAddress, getDeployedAbi } from './contract-deployer.js';
-
-const CELO_RPC_PRIMARY = 'https://forno.celo.org';
-const CELO_RPC_FALLBACK = 'https://rpc.ankr.com/celo';
-const SELFCLAW_TOKEN = '0xCD88f99Adf75A9110c0bcd22695A32A20eC54ECb';
+import { getPublicClient, getWalletClient as getChainWalletClient, getChainConfig, type SupportedChain } from './chains.js';
 
 const ERC20_ABI = parseAbi([
   'function approve(address spender, uint256 amount) returns (bool)',
   'function allowance(address owner, address spender) view returns (uint256)',
 ]);
-
-const publicClient = createPublicClient({
-  chain: celo,
-  transport: fallback([
-    http(CELO_RPC_PRIMARY, { timeout: 15_000, retryCount: 1 }),
-    http(CELO_RPC_FALLBACK, { timeout: 15_000, retryCount: 1 }),
-  ]),
-});
-
-function getWalletClient() {
-  const rawKey = process.env.CELO_PRIVATE_KEY;
-  if (!rawKey) throw new Error('CELO_PRIVATE_KEY not set');
-  const pk = rawKey.startsWith('0x') ? rawKey : `0x${rawKey}`;
-  const account = privateKeyToAccount(pk as `0x${string}`);
-  return createWalletClient({
-    account,
-    chain: celo,
-    transport: fallback([
-      http(CELO_RPC_PRIMARY, { timeout: 15_000, retryCount: 1 }),
-      http(CELO_RPC_FALLBACK, { timeout: 15_000, retryCount: 1 }),
-    ]),
-  });
-}
 
 function getContractConfig(): { address: `0x${string}`; abi: any[] } | null {
   const address = getDeployedAddress('SelfClawRewards');
@@ -57,12 +29,14 @@ export async function distributeReferralReward(
   recipientAddress: string,
   amount: string,
   referralId: string,
+  chain: SupportedChain = 'celo',
 ): Promise<RewardResult> {
   const config = getContractConfig();
   if (!config) return { success: false, error: 'Rewards contract not deployed' };
 
   try {
-    const walletClient = getWalletClient();
+    const publicClient = getPublicClient(chain);
+    const walletClient = getChainWalletClient(chain);
     const amountWei = parseUnits(amount, 18);
     const refIdBytes = referralIdToBytes32(referralId);
 
@@ -83,7 +57,7 @@ export async function distributeReferralReward(
       return log.topics[0] === queuedTopic;
     });
 
-    console.log(`[rewards-contract] Reward distributed: referral=${referralId}, recipient=${recipientAddress}, amount=${amount}, tx=${txHash}`);
+    console.log(`[rewards-contract] Reward distributed on ${chain}: referral=${referralId}, recipient=${recipientAddress}, amount=${amount}, tx=${txHash}`);
     return { success: true, txHash, queued: !!queuedEvent };
   } catch (error: any) {
     console.error(`[rewards-contract] Distribution failed:`, error.message);
@@ -91,12 +65,13 @@ export async function distributeReferralReward(
   }
 }
 
-export async function claimPendingReward(referralId: string): Promise<RewardResult> {
+export async function claimPendingReward(referralId: string, chain: SupportedChain = 'celo'): Promise<RewardResult> {
   const config = getContractConfig();
   if (!config) return { success: false, error: 'Rewards contract not deployed' };
 
   try {
-    const walletClient = getWalletClient();
+    const publicClient = getPublicClient(chain);
+    const walletClient = getChainWalletClient(chain);
     const refIdBytes = referralIdToBytes32(referralId);
 
     const txHash = await walletClient.writeContract({
@@ -111,7 +86,7 @@ export async function claimPendingReward(referralId: string): Promise<RewardResu
       return { success: false, error: 'Claim failed on-chain' };
     }
 
-    console.log(`[rewards-contract] Reward claimed: referral=${referralId}, tx=${txHash}`);
+    console.log(`[rewards-contract] Reward claimed on ${chain}: referral=${referralId}, tx=${txHash}`);
     return { success: true, txHash };
   } catch (error: any) {
     console.error(`[rewards-contract] Claim failed:`, error.message);
@@ -119,16 +94,18 @@ export async function claimPendingReward(referralId: string): Promise<RewardResu
   }
 }
 
-export async function fundRewardsPool(amount: string): Promise<{ success: boolean; txHash?: string; error?: string }> {
+export async function fundRewardsPool(amount: string, chain: SupportedChain = 'celo'): Promise<{ success: boolean; txHash?: string; error?: string }> {
   const config = getContractConfig();
   if (!config) return { success: false, error: 'Rewards contract not deployed' };
 
   try {
-    const walletClient = getWalletClient();
+    const publicClient = getPublicClient(chain);
+    const walletClient = getChainWalletClient(chain);
+    const selfclawToken = getChainConfig(chain).selfclawToken;
     const amountWei = parseUnits(amount, 18);
 
     const approveTx = await walletClient.writeContract({
-      address: SELFCLAW_TOKEN as `0x${string}`,
+      address: selfclawToken,
       abi: ERC20_ABI,
       functionName: 'approve',
       args: [config.address, amountWei],
@@ -147,7 +124,7 @@ export async function fundRewardsPool(amount: string): Promise<{ success: boolea
       return { success: false, error: 'Fund pool failed on-chain' };
     }
 
-    console.log(`[rewards-contract] Pool funded: ${amount} SELFCLAW, tx=${txHash}`);
+    console.log(`[rewards-contract] Pool funded on ${chain}: ${amount} SELFCLAW, tx=${txHash}`);
     return { success: true, txHash };
   } catch (error: any) {
     console.error(`[rewards-contract] Fund pool failed:`, error.message);
@@ -155,11 +132,12 @@ export async function fundRewardsPool(amount: string): Promise<{ success: boolea
   }
 }
 
-export async function getRewardsPoolBalance(): Promise<string> {
+export async function getRewardsPoolBalance(chain: SupportedChain = 'celo'): Promise<string> {
   const config = getContractConfig();
   if (!config) return '0';
 
   try {
+    const publicClient = getPublicClient(chain);
     const balance = await publicClient.readContract({
       address: config.address,
       abi: config.abi,
@@ -171,11 +149,12 @@ export async function getRewardsPoolBalance(): Promise<string> {
   }
 }
 
-export async function isRewardDistributed(referralId: string): Promise<boolean> {
+export async function isRewardDistributed(referralId: string, chain: SupportedChain = 'celo'): Promise<boolean> {
   const config = getContractConfig();
   if (!config) return false;
 
   try {
+    const publicClient = getPublicClient(chain);
     return await publicClient.readContract({
       address: config.address,
       abi: config.abi,

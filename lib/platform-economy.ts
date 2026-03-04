@@ -4,6 +4,7 @@ import { eq, sql } from "drizzle-orm";
 import { erc8004Service } from "./erc8004.js";
 import { generateRegistrationFile } from "./erc8004-config.js";
 import { getAgentWallet } from "./secure-wallet.js";
+import { getPublicClient, getWalletClient as getChainWalletClient, getChainConfig, getExplorerUrl, type SupportedChain } from './chains.js';
 
 function getSponsorKey(): string {
   const raw = process.env.SELFCLAW_SPONSOR_PRIVATE_KEY || process.env.CELO_PRIVATE_KEY;
@@ -26,6 +27,7 @@ export interface PlatformDeployTokenParams {
   symbol: string;
   initialSupply: string;
   agentName: string;
+  chain?: SupportedChain;
 }
 
 export interface PlatformDeployTokenResult {
@@ -33,25 +35,20 @@ export interface PlatformDeployTokenResult {
   tokenAddress?: string;
   deployTxHash?: string;
   explorerUrl?: string;
+  chain?: string;
   error?: string;
 }
 
 export async function platformDeployToken(params: PlatformDeployTokenParams): Promise<PlatformDeployTokenResult> {
   const { publicKey, humanId, name, symbol, initialSupply, agentName } = params;
+  const chain: SupportedChain = params.chain || 'celo';
   const sponsorKey = getSponsorKey();
 
   const { parseUnits, AbiCoder } = await import("ethers");
   const { TOKEN_FACTORY_BYTECODE } = await import("./constants.js");
-  const { createPublicClient, createWalletClient, http: viemHttp } = await import("viem");
-  const { privateKeyToAccount } = await import("viem/accounts");
-  const { celo } = await import("viem/chains");
 
-  const viemClient = createPublicClient({ chain: celo, transport: viemHttp("https://forno.celo.org") });
-  const sponsorAccount = privateKeyToAccount(sponsorKey as `0x${string}`);
-  const sponsorWallet = createWalletClient({
-    account: sponsorAccount, chain: celo,
-    transport: viemHttp("https://forno.celo.org"),
-  });
+  const viemClient = getPublicClient(chain);
+  const sponsorWallet = getChainWalletClient(chain);
 
   const decimals = 18;
   const supplyWithDecimals = parseUnits(initialSupply.toString(), decimals);
@@ -65,7 +62,7 @@ export async function platformDeployToken(params: PlatformDeployTokenParams): Pr
 
   let gasEstimate: bigint;
   try {
-    gasEstimate = await viemClient.estimateGas({ account: sponsorAccount.address, data: deployData });
+    gasEstimate = await viemClient.estimateGas({ account: sponsorWallet.account!.address, data: deployData });
     gasEstimate = gasEstimate * 120n / 100n;
   } catch {
     gasEstimate = 3_000_000n;
@@ -74,6 +71,8 @@ export async function platformDeployToken(params: PlatformDeployTokenParams): Pr
   console.log(`[platform-economy] Deploying token ${name} (${symbol}) for agent ${publicKey}`);
 
   const deployTxHash = await sponsorWallet.sendTransaction({
+    account: sponsorWallet.account!,
+    chain: getChainConfig(chain).viemChain,
     data: deployData,
     gas: gasEstimate,
   });
@@ -124,7 +123,8 @@ export async function platformDeployToken(params: PlatformDeployTokenParams): Pr
     success: true,
     tokenAddress,
     deployTxHash,
-    explorerUrl: `https://celoscan.io/token/${tokenAddress}`,
+    explorerUrl: getExplorerUrl(chain, 'token', tokenAddress),
+    chain,
   };
 }
 
@@ -243,6 +243,7 @@ export interface PlatformRequestSponsorshipParams {
   agentName: string;
   walletAddress?: string;
   source?: string;
+  chain?: SupportedChain;
 }
 
 export interface PlatformRequestSponsorshipResult {
@@ -252,6 +253,7 @@ export interface PlatformRequestSponsorshipResult {
   txHash?: string;
   selfclawAmount?: string;
   remainingTransferTx?: string | null;
+  chain?: string;
   error?: string;
   sponsorWallet?: string;
   instructions?: string;
@@ -259,6 +261,7 @@ export interface PlatformRequestSponsorshipResult {
 
 export async function platformRequestSponsorship(params: PlatformRequestSponsorshipParams): Promise<PlatformRequestSponsorshipResult> {
   const { publicKey, humanId, tokenAmount, agentName, walletAddress, source } = params;
+  const chain: SupportedChain = params.chain || 'celo';
   const sponsorKey = getSponsorKey();
 
   const [bot] = await db.select().from(verifiedBots).where(eq(verifiedBots.publicKey, publicKey));
@@ -274,7 +277,7 @@ export async function platformRequestSponsorship(params: PlatformRequestSponsors
   } = await import("./uniswap-v4.js");
 
   const tokenAddress = botMeta.tokenAddress;
-  const selfclawAddress = "0xCD88f99Adf75A9110c0bcd22695A32A20eC54ECb";
+  const selfclawAddress = getChainConfig(chain).selfclawToken;
   const sponsorAddress = getSponsorAddress(sponsorKey);
 
   const agentTokenBalance = await getTokenBalance(tokenAddress, 18, sponsorKey);
@@ -397,17 +400,10 @@ export async function platformRequestSponsorship(params: PlatformRequestSponsors
       const remainingBalance = await getTokenBalance(tokenAddress, 18, sponsorKey);
       const remaining = parseFloat(remainingBalance);
       if (remaining > 0) {
-        const { createWalletClient, createPublicClient, http: viemHttp, encodeFunctionData } = await import("viem");
-        const { privateKeyToAccount } = await import("viem/accounts");
-        const { celo } = await import("viem/chains");
-        const { parseUnits: viemParseUnits } = await import("viem");
+        const { encodeFunctionData, parseUnits: viemParseUnits } = await import("viem");
 
-        const viemClient = createPublicClient({ chain: celo, transport: viemHttp("https://forno.celo.org") });
-        const sponsorAccount = privateKeyToAccount(sponsorKey as `0x${string}`);
-        const sponsorWalletClient = createWalletClient({
-          account: sponsorAccount, chain: celo,
-          transport: viemHttp("https://forno.celo.org"),
-        });
+        const viemClient = getPublicClient(chain);
+        const sponsorWalletClient = getChainWalletClient(chain);
 
         const transferData = encodeFunctionData({
           abi: [{
@@ -420,6 +416,8 @@ export async function platformRequestSponsorship(params: PlatformRequestSponsors
         });
 
         remainingTransferTx = await sponsorWalletClient.sendTransaction({
+          account: sponsorWalletClient.account!,
+          chain: getChainConfig(chain).viemChain,
           to: tokenAddress as `0x${string}`,
           data: transferData,
         });
@@ -442,5 +440,6 @@ export async function platformRequestSponsorship(params: PlatformRequestSponsors
     txHash: result.txHash,
     selfclawAmount: selfclawForPool,
     remainingTransferTx,
+    chain,
   };
 }

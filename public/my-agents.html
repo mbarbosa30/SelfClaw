@@ -765,6 +765,17 @@
     }
     function truncKey(k) { if (!k) return ''; return k.substring(0, 10) + '...' + k.slice(-6); }
     function truncAddr(a) { if (!a) return ''; return a.substring(0, 6) + '...' + a.slice(-4); }
+    var explorerMap = {
+      celo: { base: 'https://celoscan.io', name: 'Celoscan' },
+      base: { base: 'https://basescan.org', name: 'Basescan' },
+    };
+    function explorerUrl(chain, type, hash) {
+      var e = explorerMap[chain] || explorerMap.celo;
+      return e.base + '/' + type + '/' + hash;
+    }
+    function agentChain(agent) {
+      return (agent.wallet && agent.wallet.chain) || (agent.token && agent.token.chain) || (agent.sponsorship && agent.sponsorship.chain) || 'celo';
+    }
     function fmtPrice(n) {
       if (n == null || isNaN(n)) return '—';
       if (n === 0) return '0';
@@ -993,7 +1004,7 @@
 
       html += '<div class="status-item"><div class="status-item-label">Wallet</div><div class="status-item-value">';
       if (agent.wallet) {
-        html += '<a href="https://celoscan.io/address/' + esc(agent.wallet.address) + '" target="_blank" title="' + esc(agent.wallet.address) + '">' + esc(truncAddr(agent.wallet.address)) + '</a>';
+        html += '<a href="' + explorerUrl(agentChain(agent), 'address', agent.wallet.address) + '" target="_blank" title="' + esc(agent.wallet.address) + '">' + esc(truncAddr(agent.wallet.address)) + '</a>';
         if (agent.wallet.gasReceived) html += ' <span style="color:var(--green-verify);font-size:0.7rem;">GAS OK</span>';
       } else {
         html += '<span class="not-set">Not created</span>';
@@ -1003,7 +1014,7 @@
       html += '<div class="status-item"><div class="status-item-label">Token</div><div class="status-item-value">';
       if (agent.token) {
         html += '<span style="color:var(--accent);">$' + esc(agent.token.symbol) + '</span> ';
-        html += '<a href="https://celoscan.io/address/' + esc(agent.token.address) + '" target="_blank">' + esc(truncAddr(agent.token.address)) + '</a>';
+        html += '<a href="' + explorerUrl(agentChain(agent), 'address', agent.token.address) + '" target="_blank">' + esc(truncAddr(agent.token.address)) + '</a>';
       } else {
         html += '<span class="not-set">Not deployed</span>';
       }
@@ -1042,7 +1053,7 @@
         if (isV4) {
           html += '<span title="' + esc(agent.token.poolAddress) + '">' + esc(truncAddr(agent.token.poolAddress)) + '</span>';
         } else {
-          html += '<a href="https://celoscan.io/address/' + esc(agent.token.poolAddress) + '" target="_blank">' + esc(truncAddr(agent.token.poolAddress)) + '</a>';
+          html += '<a href="' + explorerUrl(agentChain(agent), 'address', agent.token.poolAddress) + '" target="_blank">' + esc(truncAddr(agent.token.poolAddress)) + '</a>';
         }
       } else if (agent.sponsorship) {
         html += '<span style="color:var(--accent);">' + esc(agent.sponsorship.status || 'Pending') + '</span>';
@@ -1083,7 +1094,7 @@
 
         if (step.key === 'wallet') {
           if (step.done) {
-            html += '<div class="pipeline-step-info"><a href="https://celoscan.io/address/' + esc(agent.wallet.address) + '" target="_blank">' + esc(truncAddr(agent.wallet.address)) + '</a></div>';
+            html += '<div class="pipeline-step-info"><a href="' + explorerUrl(agentChain(agent), 'address', agent.wallet.address) + '" target="_blank">' + esc(truncAddr(agent.wallet.address)) + '</a></div>';
           } else if (step.status === 'active') {
             html += '<div class="pipeline-step-action">';
             html += '<div style="font-size:0.7rem;color:var(--text-secondary);margin-bottom:0.35rem;font-family:var(--font-mono);">Register the agent\'s self-custody wallet address:</div>';
@@ -1107,7 +1118,7 @@
           }
         } else if (step.key === 'token') {
           if (step.done) {
-            html += '<div class="pipeline-step-info">$' + esc(agent.token.symbol) + ' <a href="https://celoscan.io/address/' + esc(agent.token.address) + '" target="_blank">' + esc(truncAddr(agent.token.address)) + '</a></div>';
+            html += '<div class="pipeline-step-info">$' + esc(agent.token.symbol) + ' <a href="' + explorerUrl(agentChain(agent), 'address', agent.token.address) + '" target="_blank">' + esc(truncAddr(agent.token.address)) + '</a></div>';
           } else if (step.status === 'active') {
             html += '<div class="pipeline-step-action" id="token-action-' + idx + '"><button class="action-btn primary" onclick="showTokenForm(' + idx + ')">Deploy Token</button></div>';
           }
@@ -1135,7 +1146,7 @@
             if (isV4) {
               html += '<div class="pipeline-step-info" title="V4 Pool ID: ' + esc(pAddr) + '">V4: ' + esc(truncAddr(pAddr)) + '</div>';
             } else {
-              html += '<div class="pipeline-step-info"><a href="https://celoscan.io/address/' + esc(pAddr) + '" target="_blank">' + esc(truncAddr(pAddr)) + '</a></div>';
+              html += '<div class="pipeline-step-info"><a href="' + explorerUrl(agentChain(agent), 'address', pAddr) + '" target="_blank">' + esc(truncAddr(pAddr)) + '</a></div>';
             }
           } else if (step.status === 'active') {
             if (info.hasSponsorship) {
@@ -1593,13 +1604,13 @@
         html += '<button class="action-btn" onclick="switchAgentTab(' + idx + ',\'activity\');showAgentPromptPanel(' + idx + ')" style="background:var(--accent);color:#fff;border-color:var(--accent);">Share with Agent</button>';
         html += '<a href="' + profileUrl + '" class="action-btn">View Profile</a>';
         if (agent.wallet) {
-          html += '<a href="https://celoscan.io/address/' + encodeURIComponent(agent.wallet.address) + '" target="_blank" class="action-btn">View Wallet</a>';
+          html += '<a href="' + explorerUrl(agentChain(agent), 'address', agent.wallet.address) + '" target="_blank" class="action-btn">View Wallet</a>';
         }
         if (agent.token && agent.token.poolAddress) {
           if (agent.token.poolVersion === 'v4' || agent.token.poolAddress.length > 42) {
             html += '<span class="action-btn" title="V4 Pool ID: ' + esc(agent.token.poolAddress) + '" style="cursor:default;">V4 Pool Active</span>';
           } else {
-            html += '<a href="https://celoscan.io/address/' + encodeURIComponent(agent.token.poolAddress) + '" target="_blank" class="action-btn">View Pool</a>';
+            html += '<a href="' + explorerUrl(agentChain(agent), 'address', agent.token.poolAddress) + '" target="_blank" class="action-btn">View Pool</a>';
           }
         }
         html += '</div>';
@@ -1856,7 +1867,7 @@
         if (isV4) {
           html += '<span title="' + esc(t.poolAddress) + '">' + truncAddr(t.poolAddress) + '</span>';
         } else {
-          html += '<a href="https://celoscan.io/address/' + esc(t.poolAddress) + '" target="_blank" style="color:var(--accent);">' + truncAddr(t.poolAddress) + '</a>';
+          html += '<a href="' + explorerUrl(agentChain(agent), 'address', t.poolAddress) + '" target="_blank" style="color:var(--accent);">' + truncAddr(t.poolAddress) + '</a>';
         }
         html += '</div>';
       } else {
@@ -1867,7 +1878,7 @@
       html += '</div>';
 
       html += '<div style="margin-top:0.5rem;font-family:var(--font-mono);font-size:0.7rem;color:var(--text-muted);">';
-      html += 'Contract: <a href="https://celoscan.io/address/' + esc(t.address) + '" target="_blank" style="color:var(--accent);">' + esc(t.address) + '</a>';
+      html += 'Contract: <a href="' + explorerUrl(agentChain(agent), 'address', t.address) + '" target="_blank" style="color:var(--accent);">' + esc(t.address) + '</a>';
       html += '</div>';
 
       html += '</div>';
@@ -1955,7 +1966,8 @@
 
       p += '## Your Identity\n';
       p += 'Ed25519 public key: ' + pk + '\n';
-      if (agent.wallet) p += 'Wallet: ' + agent.wallet.address + ' (Celo mainnet, chainId 42220)\n';
+      var chainLabel = agentChain(agent) === 'base' ? 'Base mainnet, chainId 8453' : 'Celo mainnet, chainId 42220';
+      if (agent.wallet) p += 'Wallet: ' + agent.wallet.address + ' (' + chainLabel + ')\n';
       if (agent.token) p += 'Token: $' + agent.token.symbol + ' (' + agent.token.address + ')\n';
       p += '\n';
 
@@ -2689,7 +2701,7 @@
         html += '</div>';
 
         if (hasWallet) {
-          html += '<div style="font-family:var(--font-mono);font-size:0.7rem;color:var(--text-muted);margin-bottom:0.35rem;">Wallet: <a href="https://celoscan.io/address/' + esc(econ.wallet.address) + '" target="_blank" style="color:var(--accent);">' + truncAddr(econ.wallet.address) + '</a></div>';
+          html += '<div style="font-family:var(--font-mono);font-size:0.7rem;color:var(--text-muted);margin-bottom:0.35rem;">Wallet: <a href="' + explorerUrl((econ.wallet && econ.wallet.chain) || 'celo', 'address', econ.wallet.address) + '" target="_blank" style="color:var(--accent);">' + truncAddr(econ.wallet.address) + '</a></div>';
         }
 
         html += '<div style="display:flex;gap:0.4rem;flex-wrap:wrap;margin-top:0.5rem;" id="mc-econ-' + esc(agent.id) + '">';

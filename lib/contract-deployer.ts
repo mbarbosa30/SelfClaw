@@ -1,41 +1,12 @@
-import { createPublicClient, createWalletClient, http, fallback, encodeDeployData, getContractAddress } from 'viem';
-import { celo } from 'viem/chains';
-import { privateKeyToAccount } from 'viem/accounts';
+import { encodeDeployData, getContractAddress } from 'viem';
 import * as fs from 'fs';
 import * as path from 'path';
+import { getPublicClient, getWalletClient as getChainWalletClient, getPlatformAddress as getChainPlatformAddress, getExplorerUrl, type SupportedChain } from './chains.js';
 
-const CELO_RPC_PRIMARY = 'https://forno.celo.org';
-const CELO_RPC_FALLBACK = 'https://rpc.ankr.com/celo';
 const DEPLOYMENTS_PATH = path.join(process.cwd(), 'contracts', 'deployments.json');
 
-const publicClient = createPublicClient({
-  chain: celo,
-  transport: fallback([
-    http(CELO_RPC_PRIMARY, { timeout: 30_000, retryCount: 2 }),
-    http(CELO_RPC_FALLBACK, { timeout: 30_000, retryCount: 2 }),
-  ]),
-});
-
-function getWalletClient() {
-  const rawKey = process.env.CELO_PRIVATE_KEY;
-  if (!rawKey) throw new Error('CELO_PRIVATE_KEY not set');
-  const pk = rawKey.startsWith('0x') ? rawKey : `0x${rawKey}`;
-  const account = privateKeyToAccount(pk as `0x${string}`);
-  return createWalletClient({
-    account,
-    chain: celo,
-    transport: fallback([
-      http(CELO_RPC_PRIMARY, { timeout: 30_000, retryCount: 2 }),
-      http(CELO_RPC_FALLBACK, { timeout: 30_000, retryCount: 2 }),
-    ]),
-  });
-}
-
 export function getPlatformAddress(): string {
-  const rawKey = process.env.CELO_PRIVATE_KEY;
-  if (!rawKey) throw new Error('CELO_PRIVATE_KEY not set');
-  const pk = rawKey.startsWith('0x') ? rawKey : `0x${rawKey}`;
-  return privateKeyToAccount(pk as `0x${string}`).address;
+  return getChainPlatformAddress();
 }
 
 export interface CompiledContract {
@@ -94,8 +65,10 @@ export async function compileSolidity(contractPath: string): Promise<CompiledCon
 export async function deployContract(
   compiled: CompiledContract,
   constructorArgs: any[],
+  chain: SupportedChain = 'celo',
 ): Promise<{ address: string; txHash: string; explorerUrl: string }> {
-  const walletClient = getWalletClient();
+  const walletClient = getChainWalletClient(chain);
+  const publicClient = getPublicClient(chain);
 
   const txHash = await walletClient.deployContract({
     abi: compiled.abi,
@@ -103,7 +76,7 @@ export async function deployContract(
     args: constructorArgs,
   });
 
-  console.log(`[deployer] Deploying ${compiled.contractName}... tx: ${txHash}`);
+  console.log(`[deployer] Deploying ${compiled.contractName} on ${chain}... tx: ${txHash}`);
 
   const receipt = await publicClient.waitForTransactionReceipt({
     hash: txHash,
@@ -119,8 +92,8 @@ export async function deployContract(
     throw new Error(`No contract address in receipt for ${compiled.contractName}`);
   }
 
-  const explorerUrl = `https://celoscan.io/address/${address}`;
-  console.log(`[deployer] ${compiled.contractName} deployed at ${address}`);
+  const explorerUrl = getExplorerUrl(chain, 'address', address);
+  console.log(`[deployer] ${compiled.contractName} deployed at ${address} on ${chain}`);
   console.log(`[deployer] Explorer: ${explorerUrl}`);
 
   return { address, txHash, explorerUrl };
@@ -162,4 +135,4 @@ export function getDeployedAbi(contractName: string): any[] | null {
   return deployments.contracts[contractName]?.abi || null;
 }
 
-export { publicClient };
+export { getPublicClient };

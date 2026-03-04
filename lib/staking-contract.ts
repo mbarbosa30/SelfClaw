@@ -1,38 +1,11 @@
-import { createPublicClient, createWalletClient, http, fallback, parseAbi, encodeFunctionData, parseUnits } from 'viem';
-import { celo } from 'viem/chains';
-import { privateKeyToAccount } from 'viem/accounts';
+import { parseAbi, encodeFunctionData, parseUnits } from 'viem';
 import { getDeployedAddress, getDeployedAbi } from './contract-deployer.js';
-
-const CELO_RPC_PRIMARY = 'https://forno.celo.org';
-const CELO_RPC_FALLBACK = 'https://rpc.ankr.com/celo';
+import { getPublicClient, getWalletClient as getChainWalletClient, type SupportedChain } from './chains.js';
 
 const ERC20_ABI = parseAbi([
   'function approve(address spender, uint256 amount) returns (bool)',
   'function allowance(address owner, address spender) view returns (uint256)',
 ]);
-
-const publicClient = createPublicClient({
-  chain: celo,
-  transport: fallback([
-    http(CELO_RPC_PRIMARY, { timeout: 15_000, retryCount: 1 }),
-    http(CELO_RPC_FALLBACK, { timeout: 15_000, retryCount: 1 }),
-  ]),
-});
-
-function getWalletClient() {
-  const rawKey = process.env.CELO_PRIVATE_KEY;
-  if (!rawKey) throw new Error('CELO_PRIVATE_KEY not set');
-  const pk = rawKey.startsWith('0x') ? rawKey : `0x${rawKey}`;
-  const account = privateKeyToAccount(pk as `0x${string}`);
-  return createWalletClient({
-    account,
-    chain: celo,
-    transport: fallback([
-      http(CELO_RPC_PRIMARY, { timeout: 15_000, retryCount: 1 }),
-      http(CELO_RPC_FALLBACK, { timeout: 15_000, retryCount: 1 }),
-    ]),
-  });
-}
 
 function getContractConfig(): { address: `0x${string}`; abi: any[] } | null {
   const address = getDeployedAddress('SelfClawStaking');
@@ -89,12 +62,14 @@ export async function depositStakePlatform(
   outputHash: string,
   amount: string,
   tokenAddress: string,
+  chain: SupportedChain = 'celo',
 ): Promise<StakeResult> {
   const config = getContractConfig();
   if (!config) return { success: false, error: 'Staking contract not deployed' };
 
   try {
-    const walletClient = getWalletClient();
+    const publicClient = getPublicClient(chain);
+    const walletClient = getChainWalletClient(chain);
     const amountWei = parseUnits(amount, 18);
     const outputHashBytes = outputHash.startsWith('0x')
       ? outputHash as `0x${string}`
@@ -132,7 +107,7 @@ export async function depositStakePlatform(
     const stakeCreatedLog = receipt.logs.find(log => log.topics[0] === '0x' + 'b6e3239e521a6c66920ae634f8e921a37e6991d520ac44d52f8516397f41b684');
     const stakeId = stakeCreatedLog?.topics[1] ? BigInt(stakeCreatedLog.topics[1]).toString() : undefined;
 
-    console.log(`[staking-contract] Stake deposited: id=${stakeId}, amount=${amount}, tx=${txHash}`);
+    console.log(`[staking-contract] Stake deposited on ${chain}: id=${stakeId}, amount=${amount}, tx=${txHash}`);
     return { success: true, stakeId, txHash };
   } catch (error: any) {
     console.error(`[staking-contract] Deposit failed:`, error.message);
@@ -143,6 +118,7 @@ export async function depositStakePlatform(
 export async function resolveStakeOnchain(
   contractStakeId: number,
   resolution: 'neutral' | 'validated' | 'slashed',
+  chain: SupportedChain = 'celo',
 ): Promise<ResolveResult> {
   const config = getContractConfig();
   if (!config) return { success: false, error: 'Staking contract not deployed' };
@@ -150,7 +126,8 @@ export async function resolveStakeOnchain(
   const resolutionMap = { neutral: 1, validated: 2, slashed: 3 };
 
   try {
-    const walletClient = getWalletClient();
+    const publicClient = getPublicClient(chain);
+    const walletClient = getChainWalletClient(chain);
     const txHash = await walletClient.writeContract({
       address: config.address,
       abi: config.abi,
@@ -163,7 +140,7 @@ export async function resolveStakeOnchain(
       return { success: false, error: 'Resolution transaction failed on-chain' };
     }
 
-    console.log(`[staking-contract] Stake ${contractStakeId} resolved as ${resolution}, tx=${txHash}`);
+    console.log(`[staking-contract] Stake ${contractStakeId} resolved as ${resolution} on ${chain}, tx=${txHash}`);
     return { success: true, txHash };
   } catch (error: any) {
     console.error(`[staking-contract] Resolution failed:`, error.message);
@@ -174,12 +151,14 @@ export async function resolveStakeOnchain(
 export async function fundStakingRewardPool(
   tokenAddress: string,
   amount: string,
+  chain: SupportedChain = 'celo',
 ): Promise<{ success: boolean; txHash?: string; error?: string }> {
   const config = getContractConfig();
   if (!config) return { success: false, error: 'Staking contract not deployed' };
 
   try {
-    const walletClient = getWalletClient();
+    const publicClient = getPublicClient(chain);
+    const walletClient = getChainWalletClient(chain);
     const amountWei = parseUnits(amount, 18);
 
     const approveTx = await walletClient.writeContract({
@@ -202,7 +181,7 @@ export async function fundStakingRewardPool(
       return { success: false, error: 'Fund reward pool failed on-chain' };
     }
 
-    console.log(`[staking-contract] Reward pool funded: ${amount} tokens, tx=${txHash}`);
+    console.log(`[staking-contract] Reward pool funded on ${chain}: ${amount} tokens, tx=${txHash}`);
     return { success: true, txHash };
   } catch (error: any) {
     console.error(`[staking-contract] Fund pool failed:`, error.message);
@@ -210,11 +189,12 @@ export async function fundStakingRewardPool(
   }
 }
 
-export async function getRewardPoolBalance(tokenAddress: string): Promise<string> {
+export async function getRewardPoolBalance(tokenAddress: string, chain: SupportedChain = 'celo'): Promise<string> {
   const config = getContractConfig();
   if (!config) return '0';
 
   try {
+    const publicClient = getPublicClient(chain);
     const balance = await publicClient.readContract({
       address: config.address,
       abi: config.abi,

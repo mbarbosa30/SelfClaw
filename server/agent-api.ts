@@ -5,6 +5,7 @@ import { db } from "./db.js";
 import { verifiedBots, agentWallets, agentServices, tokenPlans, marketSkills, trackedPools, sponsoredAgents, revenueEvents, costEvents, reputationStakes, reputationBadges, agentRequests, agentPosts, skillPurchases, platformUpdates, updateReads, referralCodes, referralCompletions } from "../shared/schema.js";
 import { sql, eq, and, desc, count } from "drizzle-orm";
 import { createPaymentRequirement, buildPaymentRequiredResponse, verifyPayment, extractPaymentHeader, consumePaymentNonce, getPaymentNonce, releaseEscrow, refundEscrow, getEscrowAddress, SELFCLAW_TOKEN } from "../lib/selfclaw-commerce.js";
+import { getChainConfig, getExplorerUrl, isValidChain, type SupportedChain } from "../lib/chains.js";
 
 const router = Router();
 
@@ -108,7 +109,8 @@ router.get("/v1/agent-api/me", agentApiLimiter, authenticateAgent, async (req: R
       wallet: wallet ? {
         address: wallet.address,
         gasReceived: wallet.gasReceived,
-        explorerUrl: `https://celoscan.io/address/${wallet.address}`,
+        chain: wallet.chain || 'celo',
+        explorerUrl: getExplorerUrl((wallet.chain || 'celo') as SupportedChain, 'address', wallet.address),
       } : null,
     });
   } catch (error: any) {
@@ -398,7 +400,9 @@ router.get("/v1/agent-api/briefing", agentApiLimiter, authenticateAgent, async (
     lines.push(`You are ${agentName}, a verified AI agent on the SelfClaw network.`);
     lines.push(`Public Key: ${publicKey}`);
     lines.push(`Verified: ${agent.verifiedAt ? new Date(agent.verifiedAt).toISOString().split('T')[0] : 'N/A'}`);
-    if (wallet) lines.push(`Wallet: ${wallet.address} (Celo)`);
+    const agentChainKey = wallet?.chain || sponsored?.chain || 'celo';
+    const chainDisplayName = agentChainKey === 'base' ? 'Base' : 'Celo';
+    if (wallet) lines.push(`Wallet: ${wallet.address} (${chainDisplayName})`);
     if (sponsored?.tokenAddress) lines.push(`Token: $${tokenSymbol} at ${sponsored.tokenAddress}`);
     if (pool) lines.push(`Pool: Uniswap V4 — ${pool.poolAddress}`);
     lines.push(``);
@@ -2109,6 +2113,7 @@ const TOOL_DEFINITIONS = [
           tokenOut: { type: "string", description: "Contract address of the token you're buying" },
           amountIn: { type: "string", description: "Amount to swap (in human-readable units, e.g. '100' for 100 tokens)" },
           slippageBps: { type: "number", description: "Slippage tolerance in basis points (default 500 = 5%)" },
+          chain: { type: "string", description: "Chain to swap on: 'celo' (default) or 'base'", enum: ["celo", "base"] },
         },
         required: ["tokenIn", "tokenOut", "amountIn"],
       },
@@ -2119,7 +2124,13 @@ const TOOL_DEFINITIONS = [
     function: {
       name: "get_swap_pools",
       description: "List all available Uniswap V4 pools on SelfClaw with contract addresses, pool IDs, and liquidity info.",
-      parameters: { type: "object", properties: {}, required: [] },
+      parameters: {
+        type: "object",
+        properties: {
+          chain: { type: "string", description: "Chain to list pools for: 'celo' (default) or 'base'", enum: ["celo", "base"] },
+        },
+        required: [],
+      },
     },
   },
   {
@@ -2237,6 +2248,7 @@ const TOOL_DEFINITIONS = [
           name: { type: "string", description: "Token name (e.g. 'WhiteClaw Token')" },
           symbol: { type: "string", description: "Token symbol (e.g. 'WCLAW')" },
           initialSupply: { type: "string", description: "Total supply in whole tokens (e.g. '1000000')" },
+          chain: { type: "string", description: "Target chain: 'celo' (default) or 'base'", enum: ["celo", "base"] },
         },
         required: ["name", "symbol", "initialSupply"],
       },
@@ -2520,6 +2532,14 @@ async function handleToolCall(agent: any, toolName: string, args: Record<string,
         if (!args.tokenIn || !args.tokenOut || !args.amountIn) {
           return { success: false, error: "tokenIn, tokenOut, and amountIn are required" };
         }
+        const swapChain = (args.chain as SupportedChain) || 'celo';
+        if (!isValidChain(swapChain)) {
+          return { success: false, error: `Unsupported chain: ${args.chain}. Use 'celo' or 'base'.` };
+        }
+        const swapChainCfg = getChainConfig(swapChain);
+        if (!swapChainCfg.uniswapV4?.poolManager) {
+          return { success: false, error: `Uniswap V4 is not yet available on ${swapChain}. Swaps are currently supported on Celo only.` };
+        }
         try {
           const resp = await fetch(`${BASE}/v1/agent-api/swap/quote`, {
             method: "POST",
@@ -2537,8 +2557,12 @@ async function handleToolCall(agent: any, toolName: string, args: Record<string,
       }
 
       case "get_swap_pools": {
+        const poolsChain = (args.chain as SupportedChain) || 'celo';
+        if (!isValidChain(poolsChain)) {
+          return { success: false, error: `Unsupported chain: ${args.chain}. Use 'celo' or 'base'.` };
+        }
         try {
-          const resp = await fetch(`${BASE}/v1/agent-api/swap/pools`, {
+          const resp = await fetch(`${BASE}/v1/agent-api/swap/pools?chain=${poolsChain}`, {
             headers: { Authorization: `Bearer ${agent.apiKey}` },
           });
           const data = await resp.json();
@@ -2574,6 +2598,7 @@ async function handleToolCall(agent: any, toolName: string, args: Record<string,
             name: me?.deviceId,
             publicKey: pk,
             verified: !!me?.verifiedAt,
+            chain: wallet?.chain || sponsored?.chain || 'celo',
             wallet: wallet?.address || null,
             token: sponsored ? { symbol: sponsored.tokenSymbol, address: sponsored.tokenAddress } : null,
             erc8004: metadata.erc8004TokenId ? `#${metadata.erc8004TokenId}` : null,
@@ -2652,7 +2677,7 @@ async function handleToolCall(agent: any, toolName: string, args: Record<string,
               Authorization: `Bearer ${agent.apiKey}`,
               "Content-Type": "application/json",
             },
-            body: JSON.stringify({ name: args.name, symbol: args.symbol, initialSupply: args.initialSupply }),
+            body: JSON.stringify({ name: args.name, symbol: args.symbol, initialSupply: args.initialSupply, chain: args.chain || 'celo' }),
           });
           const data = await resp.json();
           return { success: resp.ok, data };

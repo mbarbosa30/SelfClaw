@@ -1,18 +1,13 @@
-import { createPublicClient, createWalletClient, http, formatUnits, parseUnits } from 'viem';
-import { celo } from 'viem/chains';
+import { formatUnits, parseUnits } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { db } from '../server/db.js';
 import { agentWallets, agentActivity, verifiedBots } from '../shared/schema.js';
 import { eq, sql, and } from 'drizzle-orm';
+import { getPublicClient, getWalletClient as getChainWalletClient, type SupportedChain } from './chains.js';
 
-const GAS_AMOUNT_CELO = process.env.GAS_SUBSIDY_CELO || '1';
+const GAS_AMOUNT = process.env.GAS_SUBSIDY_CELO || '1';
 const rawGasKey = process.env.SELFCLAW_SPONSOR_PRIVATE_KEY || process.env.CELO_PRIVATE_KEY;
 const SELFCLAW_GAS_PRIVATE_KEY = rawGasKey && !rawGasKey.startsWith('0x') ? `0x${rawGasKey}` : rawGasKey;
-
-const publicClient = createPublicClient({
-  chain: celo,
-  transport: http(undefined, { timeout: 15_000, retryCount: 1 })
-});
 
 export interface WalletCreationResult {
   success: boolean;
@@ -22,7 +17,7 @@ export interface WalletCreationResult {
   alreadyExists?: boolean;
 }
 
-export async function createAgentWallet(humanId: string, agentPublicKey: string, walletAddress: string): Promise<WalletCreationResult> {
+export async function createAgentWallet(humanId: string, agentPublicKey: string, walletAddress: string, chain: SupportedChain = 'celo'): Promise<WalletCreationResult> {
   try {
     const verified = await db.select()
       .from(verifiedBots)
@@ -61,7 +56,7 @@ export async function createAgentWallet(humanId: string, agentPublicKey: string,
     if (!addressRegex.test(walletAddress)) {
       return {
         success: false,
-        error: 'Invalid wallet address format. Must be a valid Ethereum/Celo address (0x + 40 hex characters)'
+        error: 'Invalid wallet address format. Must be a valid EVM address (0x + 40 hex characters)'
       };
     }
 
@@ -69,9 +64,10 @@ export async function createAgentWallet(humanId: string, agentPublicKey: string,
       humanId,
       publicKey: agentPublicKey,
       address: walletAddress,
+      chain,
     });
 
-    console.log(`[secure-wallet] Registered wallet ${walletAddress} for agent ${agentPublicKey.substring(0, 20)}...`);
+    console.log(`[secure-wallet] Registered wallet ${walletAddress} for agent ${agentPublicKey.substring(0, 20)}... on ${chain}`);
 
     return {
       success: true,
@@ -155,8 +151,9 @@ export async function switchWallet(
 export async function getAgentWallet(agentPublicKey: string): Promise<{
   address?: string;
   publicKey?: string;
+  chain?: string;
   gasReceived?: boolean;
-  balance?: { celo: string; };
+  balance?: { native: string; };
 } | null> {
   try {
     const wallets = await db.select()
@@ -169,15 +166,18 @@ export async function getAgentWallet(agentPublicKey: string): Promise<{
     }
     
     const wallet = wallets[0];
+    const chain = (wallet.chain || 'celo') as SupportedChain;
     
-    const celoBalance = await publicClient.getBalance({ address: wallet.address as `0x${string}` });
+    const client = getPublicClient(chain);
+    const nativeBalance = await client.getBalance({ address: wallet.address as `0x${string}` });
     
     return {
       address: wallet.address,
       publicKey: wallet.publicKey,
+      chain,
       gasReceived: wallet.gasReceived || false,
       balance: {
-        celo: formatUnits(celoBalance, 18)
+        native: formatUnits(nativeBalance, 18)
       },
     };
   } catch (error) {
@@ -189,8 +189,9 @@ export async function getAgentWallet(agentPublicKey: string): Promise<{
 export async function getAgentWalletByHumanId(humanId: string): Promise<{
   address?: string;
   publicKey?: string;
+  chain?: string;
   gasReceived?: boolean;
-  balance?: { celo: string; };
+  balance?: { native: string; };
 } | null> {
   try {
     const wallets = await db.select()
@@ -203,15 +204,18 @@ export async function getAgentWalletByHumanId(humanId: string): Promise<{
     }
     
     const wallet = wallets[0];
+    const chain = (wallet.chain || 'celo') as SupportedChain;
     
-    const celoBalance = await publicClient.getBalance({ address: wallet.address as `0x${string}` });
+    const client = getPublicClient(chain);
+    const nativeBalance = await client.getBalance({ address: wallet.address as `0x${string}` });
     
     return {
       address: wallet.address,
       publicKey: wallet.publicKey,
+      chain,
       gasReceived: wallet.gasReceived || false,
       balance: {
-        celo: formatUnits(celoBalance, 18)
+        native: formatUnits(nativeBalance, 18)
       }
     };
   } catch (error) {
@@ -223,12 +227,13 @@ export async function getAgentWalletByHumanId(humanId: string): Promise<{
 export interface GasSubsidyResult {
   success: boolean;
   txHash?: string;
-  amountCelo?: string;
+  amountNative?: string;
+  chain?: string;
   error?: string;
   alreadyReceived?: boolean;
 }
 
-export async function sendGasSubsidy(humanId: string, agentPublicKey: string): Promise<GasSubsidyResult> {
+export async function sendGasSubsidy(humanId: string, agentPublicKey: string, chain: SupportedChain = 'celo'): Promise<GasSubsidyResult> {
   try {
     const wallets = await db.select()
       .from(agentWallets)
@@ -282,7 +287,8 @@ export async function sendGasSubsidy(humanId: string, agentPublicKey: string): P
         return {
           success: true,
           txHash: wallet.gasTxHash,
-          amountCelo: GAS_AMOUNT_CELO,
+          amountNative: GAS_AMOUNT,
+          chain,
           alreadyReceived: true
         };
       }
@@ -325,7 +331,8 @@ export async function sendGasSubsidy(humanId: string, agentPublicKey: string): P
           return {
             success: true,
             txHash: current[0].gasTxHash,
-            amountCelo: GAS_AMOUNT_CELO,
+            amountNative: GAS_AMOUNT,
+            chain,
             alreadyReceived: true
           };
         }
@@ -345,34 +352,33 @@ export async function sendGasSubsidy(humanId: string, agentPublicKey: string): P
     }
     
     try {
-      const sponsorAccount = privateKeyToAccount(SELFCLAW_GAS_PRIVATE_KEY as `0x${string}`);
-      const sponsorWallet = createWalletClient({
-        account: sponsorAccount,
-        chain: celo,
-        transport: http()
-      });
+      const sponsorWallet = getChainWalletClient(chain);
       
-      const amountWei = parseUnits(GAS_AMOUNT_CELO, 18);
+      const amountWei = parseUnits(GAS_AMOUNT, 18);
       
       const txHash = await sponsorWallet.sendTransaction({
         to: wallet.address as `0x${string}`,
         value: amountWei
       });
       
-      await publicClient.waitForTransactionReceipt({ hash: txHash });
+      const client = getPublicClient(chain);
+      await client.waitForTransactionReceipt({ hash: txHash });
       
       await db.execute(sql`
         UPDATE agent_wallets 
-        SET gas_tx_hash = ${txHash}, gas_received = true, updated_at = NOW() 
+        SET gas_tx_hash = ${txHash}, gas_received = true, chain = ${chain}, updated_at = NOW() 
         WHERE public_key = ${agentPublicKey}
       `);
       
-      console.log(`[secure-wallet] Sent ${GAS_AMOUNT_CELO} CELO gas to ${wallet.address} (tx: ${txHash})`);
+      const { getChainConfig } = await import('./chains.js');
+      const chainConfig = getChainConfig(chain);
+      console.log(`[secure-wallet] Sent ${GAS_AMOUNT} ${chainConfig.nativeCurrency} gas to ${wallet.address} on ${chain} (tx: ${txHash})`);
       
       return {
         success: true,
         txHash,
-        amountCelo: GAS_AMOUNT_CELO
+        amountNative: GAS_AMOUNT,
+        chain,
       };
     } catch (txError: any) {
       await db.execute(sql`
@@ -405,10 +411,11 @@ export async function sendGasSubsidy(humanId: string, agentPublicKey: string): P
   }
 }
 
-export async function getGasWalletInfo(): Promise<{
+export async function getGasWalletInfo(chain: SupportedChain = 'celo'): Promise<{
   address: string;
-  balanceCelo: string;
+  balanceNative: string;
   gasAmountPerAgent: string;
+  chain: string;
   canSubsidize: boolean;
   totalSubsidized: number;
 }> {
@@ -416,15 +423,17 @@ export async function getGasWalletInfo(): Promise<{
     if (!SELFCLAW_GAS_PRIVATE_KEY) {
       return {
         address: 'Not configured',
-        balanceCelo: '0',
-        gasAmountPerAgent: GAS_AMOUNT_CELO,
+        balanceNative: '0',
+        gasAmountPerAgent: GAS_AMOUNT,
+        chain,
         canSubsidize: false,
         totalSubsidized: 0
       };
     }
     
     const account = privateKeyToAccount(SELFCLAW_GAS_PRIVATE_KEY as `0x${string}`);
-    const balance = await publicClient.getBalance({ address: account.address });
+    const client = getPublicClient(chain);
+    const balance = await client.getBalance({ address: account.address });
     const formattedBalance = formatUnits(balance, 18);
     
     const subsidizedCount = await db.select({ count: sql<number>`count(*)` })
@@ -433,17 +442,19 @@ export async function getGasWalletInfo(): Promise<{
     
     return {
       address: account.address,
-      balanceCelo: formattedBalance,
-      gasAmountPerAgent: GAS_AMOUNT_CELO,
-      canSubsidize: parseFloat(formattedBalance) >= parseFloat(GAS_AMOUNT_CELO),
+      balanceNative: formattedBalance,
+      gasAmountPerAgent: GAS_AMOUNT,
+      chain,
+      canSubsidize: parseFloat(formattedBalance) >= parseFloat(GAS_AMOUNT),
       totalSubsidized: Number(subsidizedCount[0]?.count || 0)
     };
   } catch (error) {
     console.error('[secure-wallet] Gas wallet info error:', error);
     return {
       address: 'Error',
-      balanceCelo: '0',
-      gasAmountPerAgent: GAS_AMOUNT_CELO,
+      balanceNative: '0',
+      gasAmountPerAgent: GAS_AMOUNT,
+      chain,
       canSubsidize: false,
       totalSubsidized: 0
     };

@@ -395,6 +395,16 @@
 
         <div class="agent-form" id="economy-form">
           <div class="form-group">
+            <label for="deploy-chain">Deploy Chain</label>
+            <select id="deploy-chain" class="input" onchange="updateChainInfo()">
+              <option value="celo" selected>Celo</option>
+              <option value="base">Base</option>
+            </select>
+            <div id="chain-info" style="font-size:0.75rem;color:var(--text-muted);margin-top:0.3rem;font-family:var(--font-mono);">
+              Native gas: CELO &middot; Explorer: celoscan.io
+            </div>
+          </div>
+          <div class="form-group">
             <label for="token-name">Token Name</label>
             <input type="text" id="token-name" class="input" placeholder="My Agent Token" maxlength="32">
           </div>
@@ -721,6 +731,16 @@
       el.innerHTML = html;
     }
 
+    var chainInfoMap = {
+      celo: { native: 'CELO', explorer: 'celoscan.io' },
+      base: { native: 'ETH', explorer: 'basescan.org' },
+    };
+    function updateChainInfo() {
+      var chain = document.getElementById('deploy-chain').value || 'celo';
+      var info = chainInfoMap[chain] || chainInfoMap.celo;
+      document.getElementById('chain-info').innerHTML = 'Native gas: ' + info.native + ' &middot; Explorer: ' + info.explorer;
+    }
+
     function updateElapsed() {
       if (!pipelineStartTime) return;
       var seconds = Math.floor((Date.now() - pipelineStartTime) / 1000);
@@ -779,6 +799,7 @@
             tokenSymbol: tokenSymbol,
             totalSupply: totalSupply,
             selfclawForPool: selfclawBudget || '0',
+            chain: document.getElementById('deploy-chain').value || 'celo',
           }),
         });
 

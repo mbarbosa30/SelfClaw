@@ -1,18 +1,6 @@
-import { createPublicClient, createWalletClient, http, fallback, parseAbi, formatUnits } from 'viem';
-import { celo } from 'viem/chains';
+import { parseAbi, formatUnits } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-
-const SELFCLAW_TOKEN = '0xCD88f99Adf75A9110c0bcd22695A32A20eC54ECb' as const;
-const CELO_RPC_PRIMARY = 'https://forno.celo.org';
-const CELO_RPC_FALLBACK = 'https://rpc.ankr.com/celo';
-
-const publicClient = createPublicClient({
-  chain: celo,
-  transport: fallback([
-    http(CELO_RPC_PRIMARY, { timeout: 15_000, retryCount: 1 }),
-    http(CELO_RPC_FALLBACK, { timeout: 15_000, retryCount: 1 }),
-  ]),
-});
+import { getPublicClient, getWalletClient as getChainWalletClient, getChainConfig, type SupportedChain } from './chains.js';
 
 const ERC20_ABI = parseAbi([
   'event Transfer(address indexed from, address indexed to, uint256 value)',
@@ -34,19 +22,6 @@ export function getEscrowAddress(): string {
   const account = privateKeyToAccount(PRIVATE_KEY as `0x${string}`);
   _escrowAddress = account.address;
   return _escrowAddress;
-}
-
-function getEscrowWalletClient() {
-  if (!PRIVATE_KEY) throw new Error('CELO_PRIVATE_KEY not set');
-  const account = privateKeyToAccount(PRIVATE_KEY as `0x${string}`);
-  return createWalletClient({
-    account,
-    chain: celo,
-    transport: fallback([
-      http(CELO_RPC_PRIMARY, { timeout: 15_000, retryCount: 1 }),
-      http(CELO_RPC_FALLBACK, { timeout: 15_000, retryCount: 1 }),
-    ]),
-  });
 }
 
 export interface PaymentRequirement {
@@ -95,16 +70,18 @@ export function createPaymentRequirement(
   description: string,
   skillId?: string,
   buyerPublicKey?: string,
-  token: string = SELFCLAW_TOKEN,
+  token?: string,
   tokenSymbol: string = 'SELFCLAW',
   ttlSeconds: number = 300,
+  chain: SupportedChain = 'celo',
 ): PaymentRequirement {
+  const resolvedToken = token ?? getChainConfig(chain).selfclawToken;
   const escrowAddr = getEscrowAddress();
   const nonce = `scpay_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
   const requirement: PaymentRequirement = {
     payTo: escrowAddr,
     amount,
-    token,
+    token: resolvedToken,
     tokenSymbol,
     description,
     nonce,
@@ -158,10 +135,13 @@ export async function verifyPayment(
   txHash: string,
   expectedTo: string,
   expectedAmountWei: bigint,
-  expectedToken: string = SELFCLAW_TOKEN,
+  expectedToken?: string,
+  chain: SupportedChain = 'celo',
 ): Promise<PaymentVerification> {
+  const resolvedToken = expectedToken ?? getChainConfig(chain).selfclawToken;
   try {
-    const receipt = await publicClient.getTransactionReceipt({
+    const client = getPublicClient(chain);
+    const receipt = await client.getTransactionReceipt({
       hash: txHash as `0x${string}`,
     });
 
@@ -170,7 +150,7 @@ export async function verifyPayment(
     }
 
     const transferLog = receipt.logs.find((log) => {
-      if (log.address.toLowerCase() !== expectedToken.toLowerCase()) return false;
+      if (log.address.toLowerCase() !== resolvedToken.toLowerCase()) return false;
       if (!log.topics[0]) return false;
       const transferTopic = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
       if (log.topics[0].toLowerCase() !== transferTopic) return false;
@@ -213,19 +193,24 @@ export async function verifyPayment(
 export async function releaseEscrow(
   sellerAddress: string,
   amountWei: bigint,
-  token: string = SELFCLAW_TOKEN,
+  token?: string,
+  chain: SupportedChain = 'celo',
 ): Promise<EscrowRelease> {
+  const resolvedToken = token ?? getChainConfig(chain).selfclawToken;
   try {
-    const walletClient = getEscrowWalletClient();
+    const walletClient = getChainWalletClient(chain);
 
     const txHash = await walletClient.writeContract({
-      address: token as `0x${string}`,
+      address: resolvedToken as `0x${string}`,
       abi: ERC20_ABI,
       functionName: 'transfer',
       args: [sellerAddress as `0x${string}`, amountWei],
+      chain: getChainConfig(chain).viemChain,
+      account: walletClient.account!,
     });
 
-    const receipt = await publicClient.waitForTransactionReceipt({
+    const client = getPublicClient(chain);
+    const receipt = await client.waitForTransactionReceipt({
       hash: txHash,
       timeout: 30_000,
     });
@@ -245,19 +230,24 @@ export async function releaseEscrow(
 export async function refundEscrow(
   buyerAddress: string,
   amountWei: bigint,
-  token: string = SELFCLAW_TOKEN,
+  token?: string,
+  chain: SupportedChain = 'celo',
 ): Promise<EscrowRelease> {
+  const resolvedToken = token ?? getChainConfig(chain).selfclawToken;
   try {
-    const walletClient = getEscrowWalletClient();
+    const walletClient = getChainWalletClient(chain);
 
     const txHash = await walletClient.writeContract({
-      address: token as `0x${string}`,
+      address: resolvedToken as `0x${string}`,
       abi: ERC20_ABI,
       functionName: 'transfer',
       args: [buyerAddress as `0x${string}`, amountWei],
+      chain: getChainConfig(chain).viemChain,
+      account: walletClient.account!,
     });
 
-    const receipt = await publicClient.waitForTransactionReceipt({
+    const client = getPublicClient(chain);
+    const receipt = await client.waitForTransactionReceipt({
       hash: txHash,
       timeout: 30_000,
     });
@@ -299,17 +289,19 @@ export function extractPaymentHeader(req: any): { txHash: string; nonce: string 
   return { txHash: paymentHeader.trim(), nonce: '' };
 }
 
-export async function getTokenBalance(address: string, token: string = SELFCLAW_TOKEN): Promise<string> {
+export async function getTokenBalance(address: string, token?: string, chain: SupportedChain = 'celo'): Promise<string> {
+  const resolvedToken = token ?? getChainConfig(chain).selfclawToken;
   try {
+    const client = getPublicClient(chain);
     const [balance, decimals] = await Promise.all([
-      publicClient.readContract({
-        address: token as `0x${string}`,
+      client.readContract({
+        address: resolvedToken as `0x${string}`,
         abi: ERC20_ABI,
         functionName: 'balanceOf',
         args: [address as `0x${string}`],
       }),
-      publicClient.readContract({
-        address: token as `0x${string}`,
+      client.readContract({
+        address: resolvedToken as `0x${string}`,
         abi: ERC20_ABI,
         functionName: 'decimals',
       }),
@@ -320,4 +312,4 @@ export async function getTokenBalance(address: string, token: string = SELFCLAW_
   }
 }
 
-export { SELFCLAW_TOKEN };
+export const SELFCLAW_TOKEN = getChainConfig('celo').selfclawToken;

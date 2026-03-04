@@ -1,38 +1,11 @@
-import { createPublicClient, createWalletClient, http, fallback, parseAbi, encodeFunctionData, parseUnits, keccak256, toHex } from 'viem';
-import { celo } from 'viem/chains';
-import { privateKeyToAccount } from 'viem/accounts';
+import { parseAbi, encodeFunctionData, parseUnits, keccak256, toHex } from 'viem';
 import { getDeployedAddress, getDeployedAbi } from './contract-deployer.js';
-
-const CELO_RPC_PRIMARY = 'https://forno.celo.org';
-const CELO_RPC_FALLBACK = 'https://rpc.ankr.com/celo';
+import { getPublicClient, getWalletClient as getChainWalletClient, type SupportedChain } from './chains.js';
 
 const ERC20_ABI = parseAbi([
   'function approve(address spender, uint256 amount) returns (bool)',
   'function allowance(address owner, address spender) view returns (uint256)',
 ]);
-
-const publicClient = createPublicClient({
-  chain: celo,
-  transport: fallback([
-    http(CELO_RPC_PRIMARY, { timeout: 15_000, retryCount: 1 }),
-    http(CELO_RPC_FALLBACK, { timeout: 15_000, retryCount: 1 }),
-  ]),
-});
-
-function getWalletClient() {
-  const rawKey = process.env.CELO_PRIVATE_KEY;
-  if (!rawKey) throw new Error('CELO_PRIVATE_KEY not set');
-  const pk = rawKey.startsWith('0x') ? rawKey : `0x${rawKey}`;
-  const account = privateKeyToAccount(pk as `0x${string}`);
-  return createWalletClient({
-    account,
-    chain: celo,
-    transport: fallback([
-      http(CELO_RPC_PRIMARY, { timeout: 15_000, retryCount: 1 }),
-      http(CELO_RPC_FALLBACK, { timeout: 15_000, retryCount: 1 }),
-    ]),
-  });
-}
 
 function getContractConfig(): { address: `0x${string}`; abi: any[] } | null {
   const address = getDeployedAddress('SelfClawEscrow');
@@ -57,12 +30,14 @@ export async function createOnchainEscrow(
   amount: string,
   tokenAddress: string,
   purchaseId: string,
+  chain: SupportedChain = 'celo',
 ): Promise<EscrowResult> {
   const config = getContractConfig();
   if (!config) return { success: false, error: 'Escrow contract not deployed' };
 
   try {
-    const walletClient = getWalletClient();
+    const publicClient = getPublicClient(chain);
+    const walletClient = getChainWalletClient(chain);
     const amountWei = parseUnits(amount, 18);
     const purchaseIdBytes = purchaseIdToBytes32(purchaseId);
 
@@ -100,7 +75,7 @@ export async function createOnchainEscrow(
     );
     const escrowId = escrowCreatedLog?.topics[1] ? BigInt(escrowCreatedLog.topics[1]).toString() : undefined;
 
-    console.log(`[escrow-contract] Escrow created: id=${escrowId}, amount=${amount}, purchase=${purchaseId}, tx=${txHash}`);
+    console.log(`[escrow-contract] Escrow created on ${chain}: id=${escrowId}, amount=${amount}, purchase=${purchaseId}, tx=${txHash}`);
     return { success: true, escrowId, txHash };
   } catch (error: any) {
     console.error(`[escrow-contract] Create escrow failed:`, error.message);
@@ -108,12 +83,13 @@ export async function createOnchainEscrow(
   }
 }
 
-export async function releaseOnchainEscrow(escrowId: number): Promise<EscrowResult> {
+export async function releaseOnchainEscrow(escrowId: number, chain: SupportedChain = 'celo'): Promise<EscrowResult> {
   const config = getContractConfig();
   if (!config) return { success: false, error: 'Escrow contract not deployed' };
 
   try {
-    const walletClient = getWalletClient();
+    const publicClient = getPublicClient(chain);
+    const walletClient = getChainWalletClient(chain);
     const txHash = await walletClient.writeContract({
       address: config.address,
       abi: config.abi,
@@ -126,7 +102,7 @@ export async function releaseOnchainEscrow(escrowId: number): Promise<EscrowResu
       return { success: false, error: 'Escrow release failed on-chain' };
     }
 
-    console.log(`[escrow-contract] Escrow ${escrowId} released, tx=${txHash}`);
+    console.log(`[escrow-contract] Escrow ${escrowId} released on ${chain}, tx=${txHash}`);
     return { success: true, escrowId: escrowId.toString(), txHash };
   } catch (error: any) {
     console.error(`[escrow-contract] Release failed:`, error.message);
@@ -134,12 +110,13 @@ export async function releaseOnchainEscrow(escrowId: number): Promise<EscrowResu
   }
 }
 
-export async function refundOnchainEscrow(escrowId: number): Promise<EscrowResult> {
+export async function refundOnchainEscrow(escrowId: number, chain: SupportedChain = 'celo'): Promise<EscrowResult> {
   const config = getContractConfig();
   if (!config) return { success: false, error: 'Escrow contract not deployed' };
 
   try {
-    const walletClient = getWalletClient();
+    const publicClient = getPublicClient(chain);
+    const walletClient = getChainWalletClient(chain);
     const txHash = await walletClient.writeContract({
       address: config.address,
       abi: config.abi,
@@ -152,7 +129,7 @@ export async function refundOnchainEscrow(escrowId: number): Promise<EscrowResul
       return { success: false, error: 'Escrow refund failed on-chain' };
     }
 
-    console.log(`[escrow-contract] Escrow ${escrowId} refunded, tx=${txHash}`);
+    console.log(`[escrow-contract] Escrow ${escrowId} refunded on ${chain}, tx=${txHash}`);
     return { success: true, escrowId: escrowId.toString(), txHash };
   } catch (error: any) {
     console.error(`[escrow-contract] Refund failed:`, error.message);

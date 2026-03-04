@@ -1,20 +1,11 @@
-import { createPublicClient, createWalletClient, http, parseUnits, formatUnits, encodeFunctionData, encodePacked, encodeAbiParameters, parseAbiParameters, maxUint256 } from 'viem';
-import { celo } from 'viem/chains';
-import { privateKeyToAccount } from 'viem/accounts';
+import { parseUnits, formatUnits, encodeFunctionData, encodePacked, encodeAbiParameters, parseAbiParameters, maxUint256 } from 'viem';
 import { db } from '../server/db.js';
 import { sponsoredAgents, verifiedBots } from '../shared/schema.js';
 import { eq, sql } from 'drizzle-orm';
-
-const publicClient = createPublicClient({
-  chain: celo,
-  transport: http(undefined, { timeout: 15_000, retryCount: 1 })
-});
+import { getPublicClient, getWalletClient as getChainWalletClient, getChainConfig, getExplorerUrl, type SupportedChain } from './chains.js';
 
 const SPONSORED_LIQUIDITY_AMOUNT = process.env.SPONSORED_LIQUIDITY_CELO || '100';
-const rawSponsorKey = process.env.SELFCLAW_SPONSOR_PRIVATE_KEY || process.env.CELO_PRIVATE_KEY;
-const SELFCLAW_SPONSOR_PRIVATE_KEY = rawSponsorKey && !rawSponsorKey.startsWith('0x') ? `0x${rawSponsorKey}` : rawSponsorKey;
 
-const CELO_NATIVE = '0x471EcE3750Da237f93B8E339c536989b8978a438' as `0x${string}`;
 const USDC_ADDRESS = '0xcebA9300f2b948710d2653dD7B07f33A8B32118C' as `0x${string}`;
 
 const ERC20_ABI = [
@@ -22,6 +13,10 @@ const ERC20_ABI = [
   { name: 'transfer', type: 'function', stateMutability: 'nonpayable', inputs: [{ name: 'to', type: 'address' }, { name: 'amount', type: 'uint256' }], outputs: [{ name: '', type: 'bool' }] },
   { name: 'approve', type: 'function', stateMutability: 'nonpayable', inputs: [{ name: 'spender', type: 'address' }, { name: 'amount', type: 'uint256' }], outputs: [{ name: '', type: 'bool' }] },
 ] as const;
+
+function hasSponsorKey(): boolean {
+  return !!(process.env.SELFCLAW_SPONSOR_PRIVATE_KEY || process.env.CELO_PRIVATE_KEY);
+}
 
 export interface SponsorshipConfig {
   amountCelo: string;
@@ -35,12 +30,13 @@ export interface SponsorshipResult {
   amountCelo?: string;
   error?: string;
   alreadySponsored?: boolean;
+  chain?: string;
 }
 
-export async function getSponsorshipConfig(): Promise<SponsorshipConfig> {
+export async function getSponsorshipConfig(chain: SupportedChain = 'celo'): Promise<SponsorshipConfig> {
   const amountCelo = SPONSORED_LIQUIDITY_AMOUNT;
   
-  if (!SELFCLAW_SPONSOR_PRIVATE_KEY) {
+  if (!hasSponsorKey()) {
     return {
       amountCelo,
       enabled: false,
@@ -49,8 +45,9 @@ export async function getSponsorshipConfig(): Promise<SponsorshipConfig> {
   }
   
   try {
-    const account = privateKeyToAccount(SELFCLAW_SPONSOR_PRIVATE_KEY as `0x${string}`);
-    const balance = await publicClient.getBalance({ address: account.address });
+    const walletClient = getChainWalletClient(chain);
+    const publicClient = getPublicClient(chain);
+    const balance = await publicClient.getBalance({ address: walletClient.account!.address });
     const formattedBalance = formatUnits(balance, 18);
     
     return {
@@ -118,7 +115,8 @@ export async function checkSponsorshipEligibility(humanId: string): Promise<{
 export async function reserveSponsorship(
   humanId: string,
   agentId: string,
-  publicKey?: string
+  publicKey?: string,
+  chain: SupportedChain = 'celo'
 ): Promise<SponsorshipResult> {
   try {
     const eligibility = await checkSponsorshipEligibility(humanId);
@@ -126,11 +124,12 @@ export async function reserveSponsorship(
       return {
         success: false,
         error: eligibility.reason,
-        alreadySponsored: eligibility.reason?.includes('already received')
+        alreadySponsored: eligibility.reason?.includes('already received'),
+        chain
       };
     }
     
-    const config = await getSponsorshipConfig();
+    const config = await getSponsorshipConfig(chain);
     
     await db.insert(sponsoredAgents).values({
       humanId,
@@ -143,13 +142,15 @@ export async function reserveSponsorship(
     
     return {
       success: true,
-      amountCelo: config.amountCelo
+      amountCelo: config.amountCelo,
+      chain
     };
   } catch (error: any) {
     console.error('[sponsored-liquidity] Reserve error:', error);
     return {
       success: false,
-      error: error.message || 'Failed to reserve sponsorship'
+      error: error.message || 'Failed to reserve sponsorship',
+      chain
     };
   }
 }
@@ -159,7 +160,8 @@ export async function executeSponsoredLiquidity(
   tokenAddress: string,
   tokenSymbol: string,
   agentWalletAddress: string,
-  agentId?: string
+  agentId?: string,
+  chain: SupportedChain = 'celo'
 ): Promise<SponsorshipResult> {
   try {
     const verified = await db.select()
@@ -170,15 +172,17 @@ export async function executeSponsoredLiquidity(
     if (verified.length === 0) {
       return {
         success: false,
-        error: 'Only verified agents can receive sponsored liquidity'
+        error: 'Only verified agents can receive sponsored liquidity',
+        chain
       };
     }
     
-    const config = await getSponsorshipConfig();
+    const config = await getSponsorshipConfig(chain);
     if (!config.enabled) {
       return {
         success: false,
-        error: 'Sponsorship program is currently unavailable'
+        error: 'Sponsorship program is currently unavailable',
+        chain
       };
     }
     
@@ -232,7 +236,8 @@ export async function executeSponsoredLiquidity(
         return {
           success: false,
           error: 'Sponsorship transfer already in progress',
-          alreadySponsored: true
+          alreadySponsored: true,
+          chain
         };
       }
       throw txError;
@@ -243,41 +248,42 @@ export async function executeSponsoredLiquidity(
         return {
           success: false,
           error: 'This human identity has already received sponsored liquidity',
-          alreadySponsored: true
+          alreadySponsored: true,
+          chain
         };
       }
       
       return {
         success: false,
         error: 'Sponsorship already in progress or completed',
-        alreadySponsored: true
+        alreadySponsored: true,
+        chain
       };
     }
     
     sponsorshipId = lockResult.id!;
     amountCelo = lockResult.amount!;
     
-    if (!SELFCLAW_SPONSOR_PRIVATE_KEY) {
+    if (!hasSponsorKey()) {
       await db.update(sponsoredAgents)
         .set({ status: 'failed' })
         .where(eq(sponsoredAgents.id, sponsorshipId));
       return {
         success: false,
-        error: 'Sponsor wallet not configured'
+        error: 'Sponsor wallet not configured',
+        chain
       };
     }
     
     try {
-      const account = privateKeyToAccount(SELFCLAW_SPONSOR_PRIVATE_KEY as `0x${string}`);
-      const walletClient = createWalletClient({
-        account,
-        chain: celo,
-        transport: http()
-      });
+      const walletClient = getChainWalletClient(chain);
+      const publicClient = getPublicClient(chain);
       
       const amountWei = parseUnits(amountCelo, 18);
       
       const txHash = await walletClient.sendTransaction({
+        account: walletClient.account!,
+        chain: getChainConfig(chain).viemChain,
         to: agentWalletAddress as `0x${string}`,
         value: amountWei
       });
@@ -299,7 +305,8 @@ export async function executeSponsoredLiquidity(
       return {
         success: true,
         txHash,
-        amountCelo
+        amountCelo,
+        chain
       };
     } catch (txError: any) {
       console.error('[sponsored-liquidity] Transaction error:', txError);
@@ -310,7 +317,8 @@ export async function executeSponsoredLiquidity(
       
       return {
         success: false,
-        error: txError.message || 'Failed to send sponsored CELO'
+        error: txError.message || 'Failed to send sponsored CELO',
+        chain
       };
     }
   } catch (error: any) {
@@ -318,7 +326,8 @@ export async function executeSponsoredLiquidity(
     
     return {
       success: false,
-      error: error.message || 'Failed to execute sponsored liquidity'
+      error: error.message || 'Failed to execute sponsored liquidity',
+      chain
     };
   }
 }
@@ -354,7 +363,7 @@ export async function getSponsorshipStatus(humanId: string): Promise<{
   }
 }
 
-export async function getSponsorWalletInfo(): Promise<{
+export async function getSponsorWalletInfo(chain: SupportedChain = 'celo'): Promise<{
   address: string;
   balanceCelo: string;
   sponsorAmountPerAgent: string;
@@ -362,7 +371,7 @@ export async function getSponsorWalletInfo(): Promise<{
   totalSponsored: number;
 }> {
   try {
-    if (!SELFCLAW_SPONSOR_PRIVATE_KEY) {
+    if (!hasSponsorKey()) {
       return {
         address: 'Not configured',
         balanceCelo: '0',
@@ -372,8 +381,10 @@ export async function getSponsorWalletInfo(): Promise<{
       };
     }
     
-    const account = privateKeyToAccount(SELFCLAW_SPONSOR_PRIVATE_KEY as `0x${string}`);
-    const balance = await publicClient.getBalance({ address: account.address });
+    const walletClient = getChainWalletClient(chain);
+    const publicClient = getPublicClient(chain);
+    const address = walletClient.account!.address;
+    const balance = await publicClient.getBalance({ address });
     const formattedBalance = formatUnits(balance, 18);
     
     const completedCount = await db.select({ count: sql<number>`count(*)` })
@@ -381,7 +392,7 @@ export async function getSponsorWalletInfo(): Promise<{
       .where(eq(sponsoredAgents.status, 'completed'));
     
     return {
-      address: account.address,
+      address,
       balanceCelo: formattedBalance,
       sponsorAmountPerAgent: SPONSORED_LIQUIDITY_AMOUNT,
       canSponsor: parseFloat(formattedBalance) >= parseFloat(SPONSORED_LIQUIDITY_AMOUNT),
@@ -398,11 +409,6 @@ export async function getSponsorWalletInfo(): Promise<{
     };
   }
 }
-
-const UNISWAP_V4_POSITION_MANAGER = '0xf7965f3981e4d5bc383bfbcb61501763e9068ca9' as `0x${string}`;
-const POOL_MANAGER = '0x288dc841A52FCA2707c6947B3A777c5E56cd87BC' as `0x${string}`;
-const PERMIT2 = '0x000000000022D473030F116dDEE9F6B43aC78BA3' as `0x${string}`;
-const WRAPPED_CELO = '0x471EcE3750Da237f93B8E339c536989b8978a438' as `0x${string}`;
 
 const POOL_MANAGER_ABI = [
   {
@@ -462,6 +468,7 @@ export interface SponsoredLPRequest {
   tokenSymbol: string;
   tokenAmount: string;
   initialPriceInCelo: string;
+  chain?: SupportedChain;
 }
 
 export interface SponsoredLPResult {
@@ -473,6 +480,7 @@ export interface SponsoredLPResult {
   txHash?: string;
   error?: string;
   alreadySponsored?: boolean;
+  chain?: string;
 }
 
 function priceToSqrtPriceX96(price: number): bigint {
@@ -511,8 +519,24 @@ function priceToTick(price: number): number {
 
 export async function createSponsoredLP(request: SponsoredLPRequest): Promise<SponsoredLPResult> {
   const { humanId, agentId, tokenAddress, tokenSymbol, tokenAmount, initialPriceInCelo } = request;
+  const chain: SupportedChain = request.chain || 'celo';
   
   try {
+    const chainConfig = getChainConfig(chain);
+    if (!chainConfig.uniswapV4) {
+      return {
+        success: false,
+        error: 'Uniswap V4 not available on this chain',
+        chain
+      };
+    }
+    
+    const v4Config = chainConfig.uniswapV4;
+    const WRAPPED_NATIVE = v4Config.wrappedNative;
+    const POOL_MANAGER = v4Config.poolManager;
+    const UNISWAP_V4_POSITION_MANAGER = v4Config.positionManager;
+    const PERMIT2 = v4Config.permit2;
+
     const verified = await db.select()
       .from(verifiedBots)
       .where(eq(verifiedBots.humanId, humanId))
@@ -521,22 +545,25 @@ export async function createSponsoredLP(request: SponsoredLPRequest): Promise<Sp
     if (verified.length === 0) {
       return {
         success: false,
-        error: 'Only verified agents can receive sponsored liquidity'
+        error: 'Only verified agents can receive sponsored liquidity',
+        chain
       };
     }
     
-    const config = await getSponsorshipConfig();
+    const config = await getSponsorshipConfig(chain);
     if (!config.enabled) {
       return {
         success: false,
-        error: 'Sponsorship program is currently unavailable'
+        error: 'Sponsorship program is currently unavailable',
+        chain
       };
     }
     
-    if (!SELFCLAW_SPONSOR_PRIVATE_KEY) {
+    if (!hasSponsorKey()) {
       return {
         success: false,
-        error: 'Sponsor wallet not configured'
+        error: 'Sponsor wallet not configured',
+        chain
       };
     }
     
@@ -588,7 +615,8 @@ export async function createSponsoredLP(request: SponsoredLPRequest): Promise<Sp
         return {
           success: false,
           error: 'Sponsorship creation already in progress',
-          alreadySponsored: true
+          alreadySponsored: true,
+          chain
         };
       }
       throw txError;
@@ -599,24 +627,24 @@ export async function createSponsoredLP(request: SponsoredLPRequest): Promise<Sp
         return {
           success: false,
           error: 'This human identity has already received sponsored liquidity',
-          alreadySponsored: true
+          alreadySponsored: true,
+          chain
         };
       }
       return {
         success: false,
         error: 'Sponsorship already in progress or completed',
-        alreadySponsored: true
+        alreadySponsored: true,
+        chain
       };
     }
     
     sponsorshipId = lockResult.id!;
     
-    const account = privateKeyToAccount(SELFCLAW_SPONSOR_PRIVATE_KEY as `0x${string}`);
-    const walletClient = createWalletClient({
-      account,
-      chain: celo,
-      transport: http()
-    });
+    const walletClient = getChainWalletClient(chain);
+    const publicClient = getPublicClient(chain);
+    const account = walletClient.account!;
+    const viemChain = chainConfig.viemChain;
     
     const tokenAddr = tokenAddress as `0x${string}`;
     const tokenBalance = await publicClient.readContract({
@@ -631,7 +659,8 @@ export async function createSponsoredLP(request: SponsoredLPRequest): Promise<Sp
       await db.execute(sql`UPDATE sponsored_agents SET status = 'pending' WHERE id = ${sponsorshipId}`);
       return {
         success: false,
-        error: `Insufficient tokens received. Expected ${tokenAmount}, got ${formatUnits(tokenBalance, 18)}. Send tokens to ${account.address} first.`
+        error: `Insufficient tokens received. Expected ${tokenAmount}, got ${formatUnits(tokenBalance, 18)}. Send tokens to ${account.address} first.`,
+        chain
       };
     }
     
@@ -640,7 +669,7 @@ export async function createSponsoredLP(request: SponsoredLPRequest): Promise<Sp
     
     const price = parseFloat(initialPriceInCelo);
     let addr0 = tokenAddr;
-    let addr1 = WRAPPED_CELO;
+    let addr1 = WRAPPED_NATIVE;
     let amt0 = requiredTokens;
     let amt1 = celoWei;
     let adjustedPrice = price;
@@ -671,6 +700,8 @@ export async function createSponsoredLP(request: SponsoredLPRequest): Promise<Sp
       });
 
       const createPoolHash = await walletClient.sendTransaction({
+        account,
+        chain: viemChain,
         to: POOL_MANAGER,
         data: initData,
         value: 0n
@@ -684,6 +715,8 @@ export async function createSponsoredLP(request: SponsoredLPRequest): Promise<Sp
       });
 
       const approvePermit2Hash = await walletClient.sendTransaction({
+        account,
+        chain: viemChain,
         to: tokenAddr,
         data: approvePermit2Data
       });
@@ -698,6 +731,8 @@ export async function createSponsoredLP(request: SponsoredLPRequest): Promise<Sp
       });
 
       const permit2ApproveHash = await walletClient.sendTransaction({
+        account,
+        chain: viemChain,
         to: PERMIT2,
         data: permit2ApproveData
       });
@@ -740,9 +775,11 @@ export async function createSponsoredLP(request: SponsoredLPRequest): Promise<Sp
         [actions, [mintParams, settlePairParams]]
       );
 
-      const celoValue = addr0 === WRAPPED_CELO ? amt0 : (addr1 === WRAPPED_CELO ? amt1 : 0n);
+      const celoValue = addr0 === WRAPPED_NATIVE ? amt0 : (addr1 === WRAPPED_NATIVE ? amt1 : 0n);
 
       const mintHash = await walletClient.sendTransaction({
+        account,
+        chain: viemChain,
         to: UNISWAP_V4_POSITION_MANAGER,
         data: encodeFunctionData({
           abi: V4_POSITION_MANAGER_ABI,
@@ -768,7 +805,8 @@ export async function createSponsoredLP(request: SponsoredLPRequest): Promise<Sp
         success: true,
         tokenAmount,
         celoAmount,
-        txHash: mintHash
+        txHash: mintHash,
+        chain
       };
     } catch (lpError: any) {
       console.error('[sponsored-liquidity] LP creation error:', lpError);
@@ -777,14 +815,16 @@ export async function createSponsoredLP(request: SponsoredLPRequest): Promise<Sp
       
       return {
         success: false,
-        error: lpError.message || 'Failed to create liquidity pool'
+        error: lpError.message || 'Failed to create liquidity pool',
+        chain
       };
     }
   } catch (error: any) {
     console.error('[sponsored-liquidity] LP creation error:', error);
     return {
       success: false,
-      error: error.message || 'Failed to create sponsored liquidity pool'
+      error: error.message || 'Failed to create sponsored liquidity pool',
+      chain
     };
   }
 }
