@@ -4,6 +4,7 @@ import { db } from "./db.js";
 import { sandboxTestRuns, verifiedBots, agentWallets, sponsoredAgents, trackedPools, tokenPlans } from "../shared/schema.js";
 import { desc, eq } from "drizzle-orm";
 import { createAgentWallet, sendGasSubsidy } from "../lib/secure-wallet.js";
+import { getExplorerUrl } from "../lib/chains.js";
 
 const router = Router();
 
@@ -560,7 +561,7 @@ router.post("/launch-live", async (req: Request, res: Response) => {
       return {
         tokenAddress: deployedTokenAddress,
         txHash,
-        celoscanUrl: `https://celoscan.io/token/${deployedTokenAddress}`,
+        explorerUrl: getExplorerUrl('celo', 'token', deployedTokenAddress),
       };
     });
     if (!deployResult.success) return failAndReturn(deployResult.error!);
@@ -777,7 +778,7 @@ router.post("/launch-live", async (req: Request, res: Response) => {
         symbol: tokenSymbol,
         supply: totalSupply,
         address: deployedTokenAddress,
-        celoscanUrl: `https://celoscan.io/token/${deployedTokenAddress}`,
+        explorerUrl: getExplorerUrl('celo', 'token', deployedTokenAddress),
         deployTxHash,
       },
       wallet: evmAddress!,

@@ -711,7 +711,7 @@
           } else if (s.name === 'request_gas') {
             info = '1 CELO';
           } else if (s.name === 'deploy_token' && s.result.tokenAddress) {
-            info = '<a href="https://celoscan.io/token/' + s.result.tokenAddress + '" target="_blank">' + shortAddr(s.result.tokenAddress) + '</a>';
+            info = '<a href="' + explorerUrl('token', s.result.tokenAddress) + '" target="_blank">' + shortAddr(s.result.tokenAddress) + '</a>';
           } else if (s.name === 'register_token') {
             info = 'Verified';
           } else if (s.name === 'request_sponsorship' && s.result.v4PoolId) {
@@ -735,6 +735,16 @@
       celo: { native: 'CELO', explorer: 'celoscan.io' },
       base: { native: 'ETH', explorer: 'basescan.org' },
     };
+    function explorerUrl(type, value) {
+      var chain = document.getElementById('deploy-chain').value || 'celo';
+      var info = chainInfoMap[chain] || chainInfoMap.celo;
+      return 'https://' + info.explorer + '/' + type + '/' + value;
+    }
+    function explorerName() {
+      var chain = document.getElementById('deploy-chain').value || 'celo';
+      var info = chainInfoMap[chain] || chainInfoMap.celo;
+      return info.explorer.split('.')[0].charAt(0).toUpperCase() + info.explorer.split('.')[0].slice(1);
+    }
     function updateChainInfo() {
       var chain = document.getElementById('deploy-chain').value || 'celo';
       var info = chainInfoMap[chain] || chainInfoMap.celo;
@@ -931,7 +941,8 @@
           document.getElementById('done-token').style.display = 'block';
           document.getElementById('done-token-name').textContent = document.getElementById('token-name').value;
           document.getElementById('done-token-symbol').textContent = document.getElementById('token-symbol').value.toUpperCase();
-          document.getElementById('done-token-link').href = 'https://celoscan.io/token/' + tokenStep.result.tokenAddress;
+          document.getElementById('done-token-link').href = explorerUrl('token', tokenStep.result.tokenAddress);
+          document.getElementById('done-token-link').textContent = 'View on ' + explorerName();
         }
 
         var poolStep = economyResult.steps.find(function(s) { return s.name === 'request_sponsorship' && s.status === 'success'; });

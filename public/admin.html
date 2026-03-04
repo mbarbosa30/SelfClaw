@@ -1056,6 +1056,15 @@
       });
     }
 
+    var chainExplorers = {
+      celo: 'https://celoscan.io',
+      base: 'https://basescan.org'
+    };
+    function explorerUrl(chain, type, hash) {
+      var base = chainExplorers[chain] || chainExplorers.celo;
+      return base + '/' + type + '/' + hash;
+    }
+
     function truncateAddr(addr) {
       if (!addr) return '';
       return addr.slice(0, 6) + '...' + addr.slice(-4);
@@ -1147,7 +1156,7 @@
             '<div class="wallet-panel">' +
               '<div class="wallet-panel-title">Base</div>' +
               '<div class="wallet-addr">' +
-                '<a href="https://basescan.org/address/' + walletAddr + '" target="_blank" rel="noopener">' + truncateAddr(walletAddr) + '</a>' +
+                '<a href="' + explorerUrl('base', 'address', walletAddr) + '" target="_blank" rel="noopener">' + truncateAddr(walletAddr) + '</a>' +
                 '<button class="copy-btn" onclick="copyToClipboard(\'' + walletAddr + '\', this)">Copy</button>' +
               '</div>' +
               '<div class="balance-row"><span class="balance-label">ETH</span><span class="balance-value">' + fmtBal(base.native) + '</span></div>' +
@@ -1156,7 +1165,7 @@
             '<div class="wallet-panel">' +
               '<div class="wallet-panel-title">Celo</div>' +
               '<div class="wallet-addr">' +
-                '<a href="https://celoscan.io/address/' + walletAddr + '" target="_blank" rel="noopener">' + truncateAddr(walletAddr) + '</a>' +
+                '<a href="' + explorerUrl('celo', 'address', walletAddr) + '" target="_blank" rel="noopener">' + truncateAddr(walletAddr) + '</a>' +
                 '<button class="copy-btn" onclick="copyToClipboard(\'' + walletAddr + '\', this)">Copy</button>' +
               '</div>' +
               '<div class="balance-row"><span class="balance-label">CELO</span><span class="balance-value">' + fmtBal(celo.native) + '</span></div>' +
@@ -1269,7 +1278,7 @@
           if (token.wrappedAddress) {
             wrappedRow.style.display = 'block';
             document.getElementById('token-info-wrapped').innerHTML =
-              '<a href="https://celoscan.io/address/' + token.wrappedAddress + '" target="_blank" rel="noopener" style="color:var(--text-muted);text-decoration:none;">' +
+              '<a href="' + explorerUrl('celo', 'address', token.wrappedAddress) + '" target="_blank" rel="noopener" style="color:var(--text-muted);text-decoration:none;">' +
               truncateAddr(token.wrappedAddress) + '</a>' +
               '<button class="copy-btn" onclick="copyToClipboard(\'' + token.wrappedAddress + '\', this)">Copy</button>';
           } else {

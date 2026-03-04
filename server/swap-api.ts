@@ -3,6 +3,7 @@ import rateLimit from "express-rate-limit";
 import { db } from "./db.js";
 import { verifiedBots, agentWallets, trackedPools } from "../shared/schema.js";
 import { eq, sql } from "drizzle-orm";
+import { isValidChain, getChainConfig, type SupportedChain } from "../lib/chains.js";
 import { createPublicClient, http, fallback, parseUnits, formatUnits, encodePacked, encodeAbiParameters, parseAbiParameters, keccak256, encodeFunctionData, type Address } from "viem";
 import { celo } from "viem/chains";
 
@@ -199,41 +200,52 @@ function computePoolId(tokenA: string, tokenB: string, fee: number, tickSpacing:
 
 router.get("/v1/agent-api/swap/pools", swapLimiter, authenticateAgent, async (req: Request, res: Response) => {
   try {
-    const allPools = await db.select().from(trackedPools);
+    const reqChain = (req.query.chain as string) || 'celo';
+    const chainKey: SupportedChain = isValidChain(reqChain) ? reqChain : 'celo';
+    const chainCfg = getChainConfig(chainKey);
+
+    const allPools = await db.select().from(trackedPools)
+      .where(sql`COALESCE(${trackedPools.chain}, 'celo') = ${chainKey}`);
+
+    const isCeloChain = chainKey === 'celo';
+    const selfclawToken = chainCfg.selfclawToken as `0x${string}`;
 
     const pools = await Promise.all(allPools.map(async (p) => {
       let liquidity = '0';
       let sqrtPriceX96Str = '0';
       let price: { tokenPerSelfclaw: number; selfclawPerToken: number } | null = null;
-      try {
-        const [slot0, liq] = await Promise.all([
-          publicClient.readContract({ address: V4_CONTRACTS.STATE_VIEW, abi: STATE_VIEW_ABI, functionName: 'getSlot0', args: [p.poolAddress as `0x${string}`] }),
-          publicClient.readContract({ address: V4_CONTRACTS.STATE_VIEW, abi: STATE_VIEW_ABI, functionName: 'getLiquidity', args: [p.poolAddress as `0x${string}`] }),
-        ]);
-        sqrtPriceX96Str = slot0[0].toString();
-        liquidity = liq.toString();
 
-        if (slot0[0] > 0n) {
-          const { token0 } = sortTokens(p.tokenAddress, WRAPPED_SELFCLAW_CELO);
-          const tokenIsToken0 = token0.toLowerCase() === p.tokenAddress.toLowerCase();
-          const tokenDecimals = await getTokenDecimals(p.tokenAddress);
-          const selfclawDecimals = 18;
-          const t0Dec = tokenIsToken0 ? tokenDecimals : selfclawDecimals;
-          const t1Dec = tokenIsToken0 ? selfclawDecimals : tokenDecimals;
-          const { token0Per1, token1Per0 } = sqrtPriceX96ToPrice(slot0[0], t0Dec, t1Dec);
-          price = {
-            tokenPerSelfclaw: tokenIsToken0 ? token0Per1 : token1Per0,
-            selfclawPerToken: tokenIsToken0 ? token1Per0 : token0Per1,
-          };
-        }
-      } catch {}
+      if (isCeloChain) {
+        try {
+          const [slot0, liq] = await Promise.all([
+            publicClient.readContract({ address: V4_CONTRACTS.STATE_VIEW, abi: STATE_VIEW_ABI, functionName: 'getSlot0', args: [p.poolAddress as `0x${string}`] }),
+            publicClient.readContract({ address: V4_CONTRACTS.STATE_VIEW, abi: STATE_VIEW_ABI, functionName: 'getLiquidity', args: [p.poolAddress as `0x${string}`] }),
+          ]);
+          sqrtPriceX96Str = slot0[0].toString();
+          liquidity = liq.toString();
+
+          if (slot0[0] > 0n) {
+            const { token0 } = sortTokens(p.tokenAddress, WRAPPED_SELFCLAW_CELO);
+            const tokenIsToken0 = token0.toLowerCase() === p.tokenAddress.toLowerCase();
+            const tokenDecimals = await getTokenDecimals(p.tokenAddress);
+            const selfclawDecimals = 18;
+            const t0Dec = tokenIsToken0 ? tokenDecimals : selfclawDecimals;
+            const t1Dec = tokenIsToken0 ? selfclawDecimals : tokenDecimals;
+            const { token0Per1, token1Per0 } = sqrtPriceX96ToPrice(slot0[0], t0Dec, t1Dec);
+            price = {
+              tokenPerSelfclaw: tokenIsToken0 ? token0Per1 : token1Per0,
+              selfclawPerToken: tokenIsToken0 ? token1Per0 : token0Per1,
+            };
+          }
+        } catch {}
+      }
 
       return {
         poolId: p.poolAddress,
         tokenAddress: p.tokenAddress,
         tokenSymbol: p.tokenSymbol,
         pairedWith: "SELFCLAW",
-        pairedTokenAddress: WRAPPED_SELFCLAW_CELO,
+        pairedTokenAddress: selfclawToken,
         feeTier: p.feeTier || 10000,
         tickSpacing: TICK_SPACINGS[p.feeTier || 10000] || 200,
         liquidity,
@@ -243,21 +255,27 @@ router.get("/v1/agent-api/swap/pools", swapLimiter, authenticateAgent, async (re
       };
     }));
 
+    const v4Config = chainCfg.uniswapV4;
+    const chainId = chainKey === 'base' ? 8453 : 42220;
+    const chainName = chainKey === 'base' ? 'Base Mainnet' : 'Celo Mainnet';
+    const nativeToken = chainKey === 'base' ? '0x4200000000000000000000000000000000000006' : CELO_NATIVE;
+
     res.json({
       v4Contracts: {
-        chainId: 42220,
-        chain: "Celo Mainnet",
-        poolManager: V4_CONTRACTS.POOL_MANAGER,
-        universalRouter: V4_CONTRACTS.UNIVERSAL_ROUTER,
-        stateView: V4_CONTRACTS.STATE_VIEW,
-        positionManager: V4_CONTRACTS.POSITION_MANAGER,
-        permit2: V4_CONTRACTS.PERMIT2,
+        chainId,
+        chain: chainName,
+        poolManager: v4Config?.poolManager || null,
+        universalRouter: v4Config?.universalRouter || null,
+        stateView: v4Config?.stateView || null,
+        positionManager: v4Config?.positionManager || null,
+        permit2: v4Config?.permit2 || null,
       },
       coreTokens: {
-        SELFCLAW: WRAPPED_SELFCLAW_CELO,
-        CELO: CELO_NATIVE,
+        SELFCLAW: selfclawToken,
+        NATIVE: nativeToken,
       },
       corePools: await (async () => {
+        if (!isCeloChain) return {};
         let corePrice: { celoPerSelfclaw: number; selfclawPerCelo: number } | null = null;
         let coreSqrtPriceX96 = '0';
         try {
@@ -287,7 +305,7 @@ router.get("/v1/agent-api/swap/pools", swapLimiter, authenticateAgent, async (re
       })(),
       agentPools: pools.filter(p => p.poolId !== SELFCLAW_CELO_POOL_ID),
       totalPools: pools.length,
-      note: "All SelfClaw pools are Uniswap V4 on Celo. Agent tokens are paired with SELFCLAW. SELFCLAW is paired with CELO. To swap AgentToken ↔ CELO, route through SELFCLAW (multi-hop). Use POST /v1/agent-api/swap/quote to get unsigned transaction data.",
+      note: `SelfClaw pools on ${chainName}. Agent tokens are paired with SELFCLAW. Use POST /v1/agent-api/swap/quote to get unsigned transaction data.${!isCeloChain ? ' Uniswap V4 pools on this chain coming soon.' : ''}`,
     });
   } catch (error: any) {
     console.error("[swap-api] Error fetching pools:", error.message);

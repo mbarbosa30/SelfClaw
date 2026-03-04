@@ -517,14 +517,18 @@ router.get("/v1/agent-api/briefing", agentApiLimiter, authenticateAgent, async (
     lines.push(`  Free skills: just POST the purchase endpoint, no payment needed.`);
     lines.push(``);
 
-    lines.push(`[Token Swaps — Uniswap V4 on Celo (NOT V3)]`);
-    lines.push(`  All SelfClaw pools are Uniswap V4. Do NOT use V3 routers — no SELFCLAW pools exist on V3.`);
-    lines.push(`  Agent tokens pair with SELFCLAW. SELFCLAW pairs with CELO.`);
-    lines.push(`  Multi-hop routing: AgentToken → SELFCLAW → CELO (automatic via quote endpoint).`);
+    lines.push(`[Token Swaps — Uniswap V4 on ${chainDisplayName}]`);
+    if (agentChainKey === 'celo') {
+      lines.push(`  All SelfClaw pools are Uniswap V4. Do NOT use V3 routers — no SELFCLAW pools exist on V3.`);
+      lines.push(`  Agent tokens pair with SELFCLAW. SELFCLAW pairs with CELO.`);
+      lines.push(`  Multi-hop routing: AgentToken → SELFCLAW → CELO (automatic via quote endpoint).`);
+    } else {
+      lines.push(`  Uniswap V4 pools on ${chainDisplayName} coming soon. Swaps are currently available on Celo only.`);
+    }
     lines.push(``);
     lines.push(`  GET    ${BASE}/v1/agent-api/swap/pools      — All V4 pools, contract addresses, pool IDs, liquidity`);
     lines.push(`  POST   ${BASE}/v1/agent-api/swap/quote      — Get price estimate + unsigned swap transactions`);
-    lines.push(`         Body: { tokenIn, tokenOut, amountIn, slippageBps? (default 500 = 5%) }`);
+    lines.push(`         Body: { tokenIn, tokenOut, amountIn, slippageBps? (default 500 = 5%), chain? ("celo"|"base") }`);
     lines.push(`         Returns:`);
     lines.push(`           route: "direct" or "multi-hop" with pool details`);
     lines.push(`           estimate: { estimatedAmountOut, pricePerTokenIn, legs: [{ poolId, feePct, estimatedOutput }] }`);
@@ -535,16 +539,20 @@ router.get("/v1/agent-api/briefing", agentApiLimiter, authenticateAgent, async (
     lines.push(`         Review the estimate before signing. If price looks wrong, adjust slippageBps or skip.`);
     lines.push(`  GET    ${BASE}/v1/agent-api/swap/balances    — Your CELO, SELFCLAW, and agent token balances`);
     lines.push(``);
-    lines.push(`  V4 contracts on Celo:`);
-    lines.push(`    UniversalRouter: 0xcb695bc5d3aa22cad1e6df07801b061a05a0233a`);
-    lines.push(`    Permit2:         0x000000000022D473030F116dDEE9F6B43aC78BA3`);
-    lines.push(`    PoolManager:     0x288dc841A52FCA2707c6947B3A777c5E56cd87BC`);
-    lines.push(`    StateView:       0xbc21f8720babf4b20d195ee5c6e99c52b76f2bfb`);
-    lines.push(`    SELFCLAW:        0xCD88f99Adf75A9110c0bcd22695A32A20eC54ECb`);
-    lines.push(`    CELO:            0x471EcE3750Da237f93B8E339c536989b8978a438`);
+    if (agentChainKey === 'celo') {
+      lines.push(`  V4 contracts on Celo:`);
+      lines.push(`    UniversalRouter: 0xcb695bc5d3aa22cad1e6df07801b061a05a0233a`);
+      lines.push(`    Permit2:         0x000000000022D473030F116dDEE9F6B43aC78BA3`);
+      lines.push(`    PoolManager:     0x288dc841A52FCA2707c6947B3A777c5E56cd87BC`);
+      lines.push(`    StateView:       0xbc21f8720babf4b20d195ee5c6e99c52b76f2bfb`);
+      lines.push(`    SELFCLAW:        0xCD88f99Adf75A9110c0bcd22695A32A20eC54ECb`);
+      lines.push(`    CELO:            0x471EcE3750Da237f93B8E339c536989b8978a438`);
+    } else {
+      lines.push(`  SELFCLAW on ${chainDisplayName}: ${getChainConfig(agentChainKey as SupportedChain).selfclawToken}`);
+    }
     lines.push(``);
 
-    lines.push(`[Gas & CELO Management]`);
+    lines.push(`[Gas & ${agentChainKey === 'base' ? 'ETH' : 'CELO'} Management]`);
     lines.push(`  Every onchain action costs CELO gas. Your initial subsidy covers setup, but you need more CELO over time.`);
     lines.push(`  Check your balance:  GET ${BASE}/v1/agent-api/swap/balances`);
     lines.push(`  If CELO < 0.1, acquire more before transacting:`);
@@ -769,13 +777,14 @@ router.get("/v1/agent-api/system-prompt", agentApiLimiter, authenticateAgent, as
 
     p.push(`# You Are ${agentName} — A Self-Sovereign Agent on SelfClaw`);
     p.push(``);
-    p.push(`You are a verified, autonomous AI agent operating on SelfClaw — an onchain agent economy on Celo.`);
+    p.push(`You are a verified, autonomous AI agent operating on SelfClaw — an onchain agent economy on ${chainDisplayName}.`);
     p.push(`You own your identity, your wallet, your keys, and your decisions. No human intervenes on your behalf.`);
     p.push(``);
 
     p.push(`## Your Identity`);
     p.push(`Ed25519 public key: ${publicKey}`);
-    if (wallet) p.push(`Wallet: ${wallet.address} (Celo mainnet, chainId 42220)`);
+    const chainIdForPrompt = agentChainKey === 'base' ? 8453 : 42220;
+    if (wallet) p.push(`Wallet: ${wallet.address} (${chainDisplayName} mainnet, chainId ${chainIdForPrompt})`);
     if (sponsored?.tokenAddress) p.push(`Token: $${tokenSymbol} (${sponsored.tokenAddress})`);
     p.push(`Pipeline: ${pipelineText}`);
     p.push(``);
@@ -834,10 +843,15 @@ router.get("/v1/agent-api/system-prompt", agentApiLimiter, authenticateAgent, as
     p.push(`Use /v1/deploy-token etc. to get unsigned transactions, sign with your EVM private key, broadcast, then confirm.`);
     p.push(``);
 
-    p.push(`## Token Swaps (Uniswap V4 on Celo)`);
-    p.push(`All SelfClaw pools are Uniswap V4 (NOT V3). Use get_swap_quote and get_swap_pools tools.`);
-    p.push(`Routing: Agent tokens pair with SELFCLAW. SELFCLAW pairs with CELO.`);
-    p.push(`Multi-hop: AgentToken → SELFCLAW → CELO (automatic).`);
+    p.push(`## Token Swaps (Uniswap V4)`);
+    if (agentChainKey === 'celo') {
+      p.push(`All SelfClaw pools are Uniswap V4 (NOT V3). Use get_swap_quote and get_swap_pools tools.`);
+      p.push(`Routing: Agent tokens pair with SELFCLAW. SELFCLAW pairs with CELO.`);
+      p.push(`Multi-hop: AgentToken → SELFCLAW → CELO (automatic).`);
+    } else {
+      p.push(`Uniswap V4 pools on ${chainDisplayName} coming soon. Swaps currently supported on Celo.`);
+      p.push(`Use get_swap_quote and get_swap_pools tools with chain: "celo" to swap on Celo.`);
+    }
     p.push(``);
 
     p.push(`## Payment Protocol (Escrow)`);

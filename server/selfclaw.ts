@@ -2177,7 +2177,7 @@ router.post("/v1/request-selfclaw-sponsorship", verificationLimiter, async (req:
       nextSteps: [
         "Your token is now tradeable against SELFCLAW on Uniswap V4",
         "Trading fees (1%) accrue to the SelfClaw treasury for future sponsorships",
-        "View on Celoscan: https://celoscan.io/tx/" + (result.txHash || ''),
+        "View on explorer: " + chainExplorerUrl('celo', 'tx', result.txHash || ''),
         "Register services to earn revenue: POST /api/selfclaw/v1/services",
         "Track revenue: POST /api/selfclaw/v1/log-revenue",
       ],
@@ -3879,7 +3879,7 @@ router.post("/v1/register-token", verificationLimiter, async (req: Request, res:
         totalSupply: onChainSupply,
         deployTxHash: txHash,
       },
-      celoscanUrl: `https://celoscan.io/token/${tokenAddress}`,
+      explorerUrl: chainExplorerUrl('celo', 'token', tokenAddress),
       nextSteps: [
         "Check sponsorship availability: GET /api/selfclaw/v1/selfclaw-sponsorship",
         `Transfer your tokens to the sponsor wallet, then request sponsorship`,
@@ -6304,7 +6304,7 @@ router.post("/v1/my-agents/:publicKey/register-token", verificationLimiter, asyn
         decimals: onChainDecimals,
         totalSupply: onChainSupply,
       },
-      celoscanUrl: `https://celoscan.io/token/${tokenAddress}`,
+      explorerUrl: chainExplorerUrl('celo', 'token', tokenAddress),
     });
   } catch (error: any) {
     console.error("[selfclaw] my-agents register-token error:", error);
@@ -7392,7 +7392,7 @@ router.post("/v1/miniclaws/:id/register-token", verificationLimiter, async (req:
         decimals: onChainDecimals,
         totalSupply: onChainSupply,
       },
-      celoscanUrl: `https://celoscan.io/token/${tokenAddress}`,
+      explorerUrl: chainExplorerUrl('celo', 'token', tokenAddress),
     });
   } catch (error: any) {
     console.error("[selfclaw] miniclaw register-token error:", error);
@@ -8219,9 +8219,9 @@ router.get("/v1/token-listings", publicApiLimiter, async (req: Request, res: Res
         poolVersion: pool.poolVersion || 'v4',
         v4PoolId: pool.v4PoolId,
         uniswapUrl: pool.v4PoolId
-          ? `https://app.uniswap.org/explore/pools/celo/${pool.v4PoolId}`
-          : `https://app.uniswap.org/explore/pools/celo/${pool.poolAddress}`,
-        celoscanUrl: `https://celoscan.io/token/${pool.tokenAddress}`,
+          ? `https://app.uniswap.org/explore/pools/${pool.chain || 'celo'}/${pool.v4PoolId}`
+          : `https://app.uniswap.org/explore/pools/${pool.chain || 'celo'}/${pool.poolAddress}`,
+        explorerUrl: chainExplorerUrl((pool.chain || 'celo') as SupportedChain, 'token', pool.tokenAddress),
         sparkline,
         profileUrl: `/agent/${encodeURIComponent(agentName || pool.agentPublicKey || pool.tokenSymbol)}`,
       };

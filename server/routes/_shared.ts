@@ -5,6 +5,7 @@ import * as ed from "@noble/ed25519";
 import { db } from "../db.js";
 import { verifiedBots, verificationSessions, agentWallets, agentServices, tokenPlans, trackedPools, revenueEvents, agentActivity, referralCodes } from "../../shared/schema.js";
 import { eq, and, gt, lt, sql, desc } from "drizzle-orm";
+import { getExplorerUrl, type SupportedChain, isValidChain } from "../../lib/chains.js";
 
 export const SELFCLAW_SCOPE = "selfclaw-verify";
 export const SELFCLAW_STAGING = process.env.SELFCLAW_STAGING === "true";
@@ -280,7 +281,7 @@ export async function buildAgentContext(publicKey: string, humanId: string, dept
       context.wallet = {
         address: walletResults[0].address,
         gasReceived: walletResults[0].gasReceived,
-        explorerUrl: `https://celoscan.io/address/${walletResults[0].address}`,
+        explorerUrl: getExplorerUrl(((walletResults[0] as any).chain && isValidChain((walletResults[0] as any).chain) ? (walletResults[0] as any).chain : 'celo') as SupportedChain, 'address', walletResults[0].address),
       };
     }
 

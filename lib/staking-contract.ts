@@ -64,6 +64,7 @@ export async function depositStakePlatform(
   tokenAddress: string,
   chain: SupportedChain = 'celo',
 ): Promise<StakeResult> {
+  if (chain !== 'celo') return { success: false, error: `Staking contract is not deployed on ${chain}. Only Celo is supported.` };
   const config = getContractConfig();
   if (!config) return { success: false, error: 'Staking contract not deployed' };
 
@@ -120,6 +121,7 @@ export async function resolveStakeOnchain(
   resolution: 'neutral' | 'validated' | 'slashed',
   chain: SupportedChain = 'celo',
 ): Promise<ResolveResult> {
+  if (chain !== 'celo') return { success: false, error: `Staking contract is not deployed on ${chain}. Only Celo is supported.` };
   const config = getContractConfig();
   if (!config) return { success: false, error: 'Staking contract not deployed' };
 
@@ -153,6 +155,7 @@ export async function fundStakingRewardPool(
   amount: string,
   chain: SupportedChain = 'celo',
 ): Promise<{ success: boolean; txHash?: string; error?: string }> {
+  if (chain !== 'celo') return { success: false, error: `Staking contract is not deployed on ${chain}. Only Celo is supported.` };
   const config = getContractConfig();
   if (!config) return { success: false, error: 'Staking contract not deployed' };
 
@@ -190,6 +193,7 @@ export async function fundStakingRewardPool(
 }
 
 export async function getRewardPoolBalance(tokenAddress: string, chain: SupportedChain = 'celo'): Promise<string> {
+  if (chain !== 'celo') return '0';
   const config = getContractConfig();
   if (!config) return '0';
 

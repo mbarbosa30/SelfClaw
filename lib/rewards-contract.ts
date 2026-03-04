@@ -31,6 +31,7 @@ export async function distributeReferralReward(
   referralId: string,
   chain: SupportedChain = 'celo',
 ): Promise<RewardResult> {
+  if (chain !== 'celo') return { success: false, error: `Rewards contract is not deployed on ${chain}. Only Celo is supported.` };
   const config = getContractConfig();
   if (!config) return { success: false, error: 'Rewards contract not deployed' };
 
@@ -66,6 +67,7 @@ export async function distributeReferralReward(
 }
 
 export async function claimPendingReward(referralId: string, chain: SupportedChain = 'celo'): Promise<RewardResult> {
+  if (chain !== 'celo') return { success: false, error: `Rewards contract is not deployed on ${chain}. Only Celo is supported.` };
   const config = getContractConfig();
   if (!config) return { success: false, error: 'Rewards contract not deployed' };
 
@@ -95,6 +97,7 @@ export async function claimPendingReward(referralId: string, chain: SupportedCha
 }
 
 export async function fundRewardsPool(amount: string, chain: SupportedChain = 'celo'): Promise<{ success: boolean; txHash?: string; error?: string }> {
+  if (chain !== 'celo') return { success: false, error: `Rewards contract is not deployed on ${chain}. Only Celo is supported.` };
   const config = getContractConfig();
   if (!config) return { success: false, error: 'Rewards contract not deployed' };
 
@@ -133,6 +136,7 @@ export async function fundRewardsPool(amount: string, chain: SupportedChain = 'c
 }
 
 export async function getRewardsPoolBalance(chain: SupportedChain = 'celo'): Promise<string> {
+  if (chain !== 'celo') return '0';
   const config = getContractConfig();
   if (!config) return '0';
 
@@ -150,6 +154,7 @@ export async function getRewardsPoolBalance(chain: SupportedChain = 'celo'): Pro
 }
 
 export async function isRewardDistributed(referralId: string, chain: SupportedChain = 'celo'): Promise<boolean> {
+  if (chain !== 'celo') return false;
   const config = getContractConfig();
   if (!config) return false;
 

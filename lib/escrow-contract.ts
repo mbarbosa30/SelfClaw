@@ -32,6 +32,7 @@ export async function createOnchainEscrow(
   purchaseId: string,
   chain: SupportedChain = 'celo',
 ): Promise<EscrowResult> {
+  if (chain !== 'celo') return { success: false, error: `Escrow contract is not deployed on ${chain}. Only Celo is supported.` };
   const config = getContractConfig();
   if (!config) return { success: false, error: 'Escrow contract not deployed' };
 
@@ -84,6 +85,7 @@ export async function createOnchainEscrow(
 }
 
 export async function releaseOnchainEscrow(escrowId: number, chain: SupportedChain = 'celo'): Promise<EscrowResult> {
+  if (chain !== 'celo') return { success: false, error: `Escrow contract is not deployed on ${chain}. Only Celo is supported.` };
   const config = getContractConfig();
   if (!config) return { success: false, error: 'Escrow contract not deployed' };
 
@@ -111,6 +113,7 @@ export async function releaseOnchainEscrow(escrowId: number, chain: SupportedCha
 }
 
 export async function refundOnchainEscrow(escrowId: number, chain: SupportedChain = 'celo'): Promise<EscrowResult> {
+  if (chain !== 'celo') return { success: false, error: `Escrow contract is not deployed on ${chain}. Only Celo is supported.` };
   const config = getContractConfig();
   if (!config) return { success: false, error: 'Escrow contract not deployed' };
 
