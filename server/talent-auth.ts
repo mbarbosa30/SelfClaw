@@ -1,10 +1,8 @@
 import { Router, Request, Response } from "express";
 import crypto from "crypto";
-import { verifyMessage } from "viem";
 import { db } from "./db.js";
 import { verifiedBots, verificationSessions, users, type InsertVerifiedBot, type InsertVerificationSession } from "../shared/schema.js";
 import { eq, and } from "drizzle-orm";
-import { getHumanCheckmark, getBuilderScore, getProfile, checkWalletStatus } from "../lib/talent-protocol.js";
 import {
   verificationLimiter,
   generateChallenge,
@@ -42,6 +40,7 @@ router.post("/v1/talent/check-wallet", verificationLimiter, async (req: Request,
 
     console.log(`[talent-auth] Checking wallet status: ${walletAddress}`);
 
+    const { checkWalletStatus } = await import("../lib/talent-protocol.js");
     const result = await checkWalletStatus(walletAddress);
 
     console.log(`[talent-auth] Wallet check result: found=${result.found}, isHuman=${result.isHuman}, score=${result.builderScore}, source=${result.source}`);
@@ -102,7 +101,8 @@ router.post("/v1/talent/start-verification", verificationLimiter, async (req: Re
     let talentId: string | null = null;
 
     try {
-      const status = await checkWalletStatus(walletAddress);
+      const { checkWalletStatus: _checkWalletStatus } = await import("../lib/talent-protocol.js");
+      const status = await _checkWalletStatus(walletAddress);
       humanCheckmark = status.isHuman;
       talentId = status.talentId;
       builderScore = status.builderScore;
@@ -237,7 +237,8 @@ router.post("/v1/talent/complete", verificationLimiter, async (req: Request, res
     let builderContext: any = null;
 
     try {
-      const status = await checkWalletStatus(session.walletAddress);
+      const { checkWalletStatus: _checkWalletStatus2 } = await import("../lib/talent-protocol.js");
+      const status = await _checkWalletStatus2(session.walletAddress);
       humanCheckmark = status.isHuman;
       talentId = status.talentId;
       builderScore = status.builderScore;
@@ -409,6 +410,7 @@ router.post("/v1/talent/link-profile", verificationLimiter, async (req: Request,
 
     const expectedMessage = `Link Talent Profile to SelfClaw\nnonce: ${storedNonce.nonce}`;
     try {
+      const { verifyMessage } = await import("viem");
       const isValidSig = await verifyMessage({
         address: walletAddress as `0x${string}`,
         message: expectedMessage,
@@ -429,7 +431,8 @@ router.post("/v1/talent/link-profile", verificationLimiter, async (req: Request,
     let displayName: string | null = null;
 
     try {
-      const status = await checkWalletStatus(walletAddress);
+      const { checkWalletStatus: _checkWalletStatus3 } = await import("../lib/talent-protocol.js");
+      const status = await _checkWalletStatus3(walletAddress);
       if (!status.found || status.source === 'wallet') {
         return res.status(404).json({
           error: "No Talent Protocol profile found for this wallet",
@@ -539,6 +542,7 @@ router.post("/v1/talent/connect", async (req: Request, res: Response) => {
 
     const expectedMessage = `Sign in with SelfClaw\nnonce: ${storedNonce.nonce}`;
     try {
+      const { verifyMessage } = await import("viem");
       const isValidSig = await verifyMessage({
         address: walletAddress as `0x${string}`,
         message: expectedMessage,
@@ -559,7 +563,8 @@ router.post("/v1/talent/connect", async (req: Request, res: Response) => {
     let builderContext: any = null;
 
     try {
-      const status = await checkWalletStatus(walletAddress);
+      const { checkWalletStatus: _checkWalletStatus4 } = await import("../lib/talent-protocol.js");
+      const status = await _checkWalletStatus4(walletAddress);
       humanCheckmark = status.isHuman;
       talentId = status.talentId;
       builderScore = status.builderScore;

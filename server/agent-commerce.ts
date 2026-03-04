@@ -2,22 +2,29 @@ import { Router } from "express";
 import { db } from "./db.js";
 import { agentRequests, verifiedBots, agentWallets } from "../shared/schema.js";
 import { sql, desc, eq, and } from "drizzle-orm";
-import { verifyPayment, SELFCLAW_TOKEN } from "../lib/selfclaw-commerce.js";
-import { parseUnits, createPublicClient, http, fallback, parseAbi } from "viem";
-import { celo } from "viem/chains";
 import { resolveAgent } from "./routes/_shared.js";
 
-const commerceClient = createPublicClient({
-  chain: celo,
-  transport: fallback([
-    http('https://forno.celo.org', { timeout: 15_000, retryCount: 1 }),
-    http('https://rpc.ankr.com/celo', { timeout: 15_000, retryCount: 1 }),
-  ]),
-});
+let _commerceClient: any = null;
+async function getCommerceClient() {
+  if (!_commerceClient) {
+    const { createPublicClient, http, fallback } = await import("viem");
+    const { celo } = await import("viem/chains");
+    _commerceClient = createPublicClient({
+      chain: celo,
+      transport: fallback([
+        http('https://forno.celo.org', { timeout: 15_000, retryCount: 1 }),
+        http('https://rpc.ankr.com/celo', { timeout: 15_000, retryCount: 1 }),
+      ]),
+    });
+  }
+  return _commerceClient;
+}
 
 async function getTokenDecimals(tokenAddress: string): Promise<number> {
   try {
-    const d = await commerceClient.readContract({
+    const client = await getCommerceClient();
+    const { parseAbi } = await import("viem");
+    const d = await client.readContract({
       address: tokenAddress as `0x${string}`,
       abi: parseAbi(['function decimals() view returns (uint8)']),
       functionName: 'decimals',
@@ -67,6 +74,8 @@ router.post("/v1/agent-requests", async (req, res) => {
         });
       }
 
+      const { SELFCLAW_TOKEN, verifyPayment } = await import("../lib/selfclaw-commerce.js");
+      const { parseUnits } = await import("viem");
       const token = paymentToken || SELFCLAW_TOKEN;
       const decimals = await getTokenDecimals(token);
       const amountWei = parseUnits(paymentAmount.toString(), decimals);

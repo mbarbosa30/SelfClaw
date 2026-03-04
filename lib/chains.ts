@@ -1,7 +1,3 @@
-import { createPublicClient, createWalletClient, http, fallback, type Chain, type PublicClient, type WalletClient } from 'viem';
-import { celo, base } from 'viem/chains';
-import { privateKeyToAccount } from 'viem/accounts';
-
 export type SupportedChain = 'celo' | 'base';
 
 export interface ChainContracts {
@@ -24,7 +20,7 @@ export interface ChainConfig {
   key: SupportedChain;
   name: string;
   chainId: number;
-  viemChain: Chain;
+  viemChain: any;
   rpcPrimary: string;
   rpcFallback: string;
   explorerUrl: string;
@@ -40,7 +36,7 @@ export const CHAIN_CONFIGS: Record<SupportedChain, ChainConfig> = {
     key: 'celo',
     name: 'Celo Mainnet',
     chainId: 42220,
-    viemChain: celo,
+    viemChain: null as any,
     rpcPrimary: 'https://forno.celo.org',
     rpcFallback: 'https://rpc.ankr.com/celo',
     explorerUrl: 'https://celoscan.io',
@@ -66,7 +62,7 @@ export const CHAIN_CONFIGS: Record<SupportedChain, ChainConfig> = {
     key: 'base',
     name: 'Base Mainnet',
     chainId: 8453,
-    viemChain: base,
+    viemChain: null as any,
     rpcPrimary: 'https://mainnet.base.org',
     rpcFallback: 'https://base.meowrpc.com',
     explorerUrl: 'https://basescan.org',
@@ -90,19 +86,42 @@ export const CHAIN_CONFIGS: Record<SupportedChain, ChainConfig> = {
   },
 };
 
-try {
-  const { getDeployedAddress } = await import('./contract-deployer.js');
-  const stakingAddr = getDeployedAddress('SelfClawStaking');
-  if (stakingAddr) CHAIN_CONFIGS.celo.contracts.staking = stakingAddr as `0x${string}`;
-  const escrowAddr = getDeployedAddress('SelfClawEscrow');
-  if (escrowAddr) CHAIN_CONFIGS.celo.contracts.escrow = escrowAddr as `0x${string}`;
-  const rewardsAddr = getDeployedAddress('SelfClawRewards');
-  if (rewardsAddr) CHAIN_CONFIGS.celo.contracts.rewards = rewardsAddr as `0x${string}`;
-  const govAddr = getDeployedAddress('SelfClawGovernance');
-  if (govAddr) CHAIN_CONFIGS.base.contracts.governance = govAddr as `0x${string}`;
-} catch {}
+let _viem: any = null;
+let _viemAccounts: any = null;
 
-const clientCache: Record<string, PublicClient> = {};
+const _viemReady: Promise<void> = (async () => {
+  try {
+    const [viemMod, chainsMod, accountsMod] = await Promise.all([
+      import('viem'),
+      import('viem/chains'),
+      import('viem/accounts'),
+    ]);
+    _viem = viemMod;
+    _viemAccounts = accountsMod;
+    CHAIN_CONFIGS.celo.viemChain = chainsMod.celo;
+    CHAIN_CONFIGS.base.viemChain = chainsMod.base;
+  } catch (e) {
+    console.error('[chains] Failed to load viem:', e);
+  }
+
+  try {
+    const { getDeployedAddress } = await import('./contract-deployer.js');
+    const stakingAddr = getDeployedAddress('SelfClawStaking');
+    if (stakingAddr) CHAIN_CONFIGS.celo.contracts.staking = stakingAddr as `0x${string}`;
+    const escrowAddr = getDeployedAddress('SelfClawEscrow');
+    if (escrowAddr) CHAIN_CONFIGS.celo.contracts.escrow = escrowAddr as `0x${string}`;
+    const rewardsAddr = getDeployedAddress('SelfClawRewards');
+    if (rewardsAddr) CHAIN_CONFIGS.celo.contracts.rewards = rewardsAddr as `0x${string}`;
+    const govAddr = getDeployedAddress('SelfClawGovernance');
+    if (govAddr) CHAIN_CONFIGS.base.contracts.governance = govAddr as `0x${string}`;
+  } catch {}
+})();
+
+export async function ensureViem(): Promise<void> {
+  await _viemReady;
+}
+
+const clientCache: Record<string, any> = {};
 
 export function getChainConfig(chain: SupportedChain = 'celo'): ChainConfig {
   const config = CHAIN_CONFIGS[chain];
@@ -110,41 +129,44 @@ export function getChainConfig(chain: SupportedChain = 'celo'): ChainConfig {
   return config;
 }
 
-export function getPublicClient(chain: SupportedChain = 'celo'): PublicClient {
+export function getPublicClient(chain: SupportedChain = 'celo'): any {
   if (clientCache[chain]) return clientCache[chain];
+  if (!_viem) throw new Error('viem not loaded yet — call ensureViem() first');
   const config = getChainConfig(chain);
-  const client = createPublicClient({
+  const client = _viem.createPublicClient({
     chain: config.viemChain,
-    transport: fallback([
-      http(config.rpcPrimary, { timeout: 15_000, retryCount: 1 }),
-      http(config.rpcFallback, { timeout: 15_000, retryCount: 1 }),
+    transport: _viem.fallback([
+      _viem.http(config.rpcPrimary, { timeout: 15_000, retryCount: 1 }),
+      _viem.http(config.rpcFallback, { timeout: 15_000, retryCount: 1 }),
     ]),
   });
-  clientCache[chain] = client as PublicClient;
-  return client as PublicClient;
+  clientCache[chain] = client;
+  return client;
 }
 
-export function getWalletClient(chain: SupportedChain = 'celo'): WalletClient {
+export function getWalletClient(chain: SupportedChain = 'celo'): any {
+  if (!_viem || !_viemAccounts) throw new Error('viem not loaded yet — call ensureViem() first');
   const rawKey = process.env.SELFCLAW_SPONSOR_PRIVATE_KEY || process.env.CELO_PRIVATE_KEY;
   if (!rawKey) throw new Error('CELO_PRIVATE_KEY not set');
   const pk = rawKey.startsWith('0x') ? rawKey : `0x${rawKey}`;
-  const account = privateKeyToAccount(pk as `0x${string}`);
+  const account = _viemAccounts.privateKeyToAccount(pk as `0x${string}`);
   const config = getChainConfig(chain);
-  return createWalletClient({
+  return _viem.createWalletClient({
     account,
     chain: config.viemChain,
-    transport: fallback([
-      http(config.rpcPrimary, { timeout: 30_000, retryCount: 2 }),
-      http(config.rpcFallback, { timeout: 30_000, retryCount: 2 }),
+    transport: _viem.fallback([
+      _viem.http(config.rpcPrimary, { timeout: 30_000, retryCount: 2 }),
+      _viem.http(config.rpcFallback, { timeout: 30_000, retryCount: 2 }),
     ]),
   });
 }
 
 export function getPlatformAddress(): string {
+  if (!_viemAccounts) throw new Error('viem not loaded yet — call ensureViem() first');
   const rawKey = process.env.SELFCLAW_SPONSOR_PRIVATE_KEY || process.env.CELO_PRIVATE_KEY;
   if (!rawKey) throw new Error('CELO_PRIVATE_KEY not set');
   const pk = rawKey.startsWith('0x') ? rawKey : `0x${rawKey}`;
-  return privateKeyToAccount(pk as `0x${string}`).address;
+  return _viemAccounts.privateKeyToAccount(pk as `0x${string}`).address;
 }
 
 export function getExplorerUrl(chain: SupportedChain, type: 'tx' | 'address' | 'token', hash: string): string {

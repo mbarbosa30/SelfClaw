@@ -4,17 +4,13 @@
 import { Router, Request, Response, Express, RequestHandler } from "express";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
-import { SelfBackendVerifier, AllIds, DefaultConfigStore } from "@selfxyz/core";
-import { SelfAppBuilder } from "@selfxyz/qrcode";
 import crypto from "crypto";
-import { verifyMessage } from "viem";
 import { db } from "./db.js";
 import { users, type UpsertUser } from "../shared/schema.js";
 import { eq, sql } from "drizzle-orm";
 
 const router = Router();
 
-// Self.xyz Configuration for Authentication
 const SELF_AUTH_SCOPE = "selfclaw-verify";
 const SELF_STAGING = process.env.SELFCLAW_STAGING === "true";
 function getCanonicalDomain(): string {
@@ -30,19 +26,25 @@ const SELF_ENDPOINT = process.env.SELFCLAW_AUTH_CALLBACK_URL
 console.log(`[self-auth] Callback endpoint: ${SELF_ENDPOINT}`);
 console.log(`[self-auth] Staging mode: ${SELF_STAGING}`);
 
-// Self.xyz Backend Verifier for Auth
-const selfAuthVerifier = new SelfBackendVerifier(
-  SELF_AUTH_SCOPE,
-  SELF_ENDPOINT,
-  SELF_STAGING,
-  AllIds,
-  new DefaultConfigStore({
-    minimumAge: 18,
-    excludedCountries: [],
-    ofac: false,
-  }),
-  "uuid"
-);
+let _selfAuthVerifier: any = null;
+async function getSelfAuthVerifier() {
+  if (!_selfAuthVerifier) {
+    const { SelfBackendVerifier, AllIds, DefaultConfigStore } = await import("@selfxyz/core");
+    _selfAuthVerifier = new SelfBackendVerifier(
+      SELF_AUTH_SCOPE,
+      SELF_ENDPOINT,
+      SELF_STAGING,
+      AllIds,
+      new DefaultConfigStore({
+        minimumAge: 18,
+        excludedCountries: [],
+        ofac: false,
+      }),
+      "uuid"
+    );
+  }
+  return _selfAuthVerifier;
+}
 
 // Session configuration
 export function getSession() {
@@ -116,7 +118,7 @@ function generateHumanId(nullifier: string): string {
 }
 
 // Start login flow - returns QR code data
-router.post("/start", (req: any, res: Response) => {
+router.post("/start", async (req: any, res: Response) => {
   try {
     const sessionId = crypto.randomUUID();
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
@@ -133,6 +135,7 @@ router.post("/start", (req: any, res: Response) => {
     req.session.pendingAuthSessionId = sessionId;
 
     // Build Self app config for login
+    const { SelfAppBuilder } = await import("@selfxyz/qrcode");
     const selfApp = new SelfAppBuilder({
       version: 2,
       appName: "SelfClaw Login",
@@ -272,6 +275,7 @@ async function handleAuthCallback(req: Request, res: Response) {
     // Verify the proof
     let result;
     try {
+      const selfAuthVerifier = await getSelfAuthVerifier();
       result = await selfAuthVerifier.verify(attestationId, proof, publicSignals, userContextData);
       console.log("[self-auth] Verification result: valid=", result.isValidDetails?.isValid);
     } catch (verifyError: any) {
@@ -374,6 +378,7 @@ router.post("/wallet/verify", async (req: any, res: Response) => {
       return res.status(400).json({ error: "Challenge expired" });
     }
 
+    const { verifyMessage } = await import("viem");
     const valid = await verifyMessage({
       address: address as `0x${string}`,
       message: walletChallenge.challenge,

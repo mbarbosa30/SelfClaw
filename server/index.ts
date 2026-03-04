@@ -261,7 +261,10 @@ async function initializeApp() {
   let erc8004Service: any;
 
   const routers: Array<{ path: string; name: string; importFn: () => Promise<any>; key?: string }> = [
-    { path: "/api/selfclaw", name: "selfclaw", importFn: () => import("./selfclaw.js"), key: "default" },
+    { path: "/api/selfclaw", name: "selfclaw-core", importFn: () => import("./selfclaw-core.js"), key: "default" },
+    { path: "/api/selfclaw", name: "selfclaw-agents", importFn: () => import("./selfclaw-agents.js"), key: "default" },
+    { path: "/api/selfclaw", name: "selfclaw-economy", importFn: () => import("./selfclaw-economy.js"), key: "default" },
+    { path: "/api/selfclaw", name: "selfclaw-dashboard", importFn: () => import("./selfclaw-dashboard.js"), key: "default" },
     { path: "/api/admin", name: "admin", importFn: () => import("./admin.js"), key: "default" },
     { path: "/api/admin/sandbox", name: "sandbox", importFn: () => import("./sandbox-agent.js"), key: "default" },
     { path: "/api/selfclaw", name: "hosted-agents", importFn: () => import("./hosted-agents.js"), key: "hostedAgentsRouter" },
@@ -310,18 +313,29 @@ async function initializeApp() {
       console.error(`[router] Failed to mount ${r.name}:`, mountErr.message);
     }
 
-    if (!appReady && mountedCount >= 3) {
+    if (!appReady && mountedCount >= 2) {
       appReady = true;
       console.log(`[startup] API accepting requests (${mountedCount} routers ready, rest loading in background)`);
     }
   });
 
-  await Promise.allSettled(importPromises);
+  const ROUTER_TIMEOUT_MS = 60_000;
+  const timeoutPromise = new Promise<void>((resolve) => {
+    setTimeout(() => {
+      if (!appReady) {
+        appReady = true;
+        console.log(`[startup] Router timeout reached (${ROUTER_TIMEOUT_MS / 1000}s) — accepting requests with ${mountedCount}/${routers.length} routers`);
+      }
+      resolve();
+    }, ROUTER_TIMEOUT_MS);
+  });
+
+  await Promise.race([Promise.allSettled(importPromises), timeoutPromise]);
   const totalElapsed = Date.now() - importStartMs;
   if (!appReady) {
     appReady = true;
   }
-  console.log(`[startup] All ${mountedCount}/${routers.length} routers mounted in ${totalElapsed}ms — fully initialized`);
+  console.log(`[startup] ${mountedCount}/${routers.length} routers mounted in ${totalElapsed}ms`);
 
   try {
     const feedDigestMod = await import("./feed-digest.js");
