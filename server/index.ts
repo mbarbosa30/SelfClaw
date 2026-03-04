@@ -149,6 +149,7 @@ app.get("/partners/zhc", (_req: Request, res: Response) => sendHtml(res, "partne
 app.get("/talent-postmortem", (_req: Request, res: Response) => sendHtml(res, "talent-postmortem.html", { "X-Robots-Tag": "noindex, nofollow" }));
 app.get("/graph", (_req: Request, res: Response) => sendHtml(res, "graph.html"));
 app.get("/governance", (_req: Request, res: Response) => sendHtml(res, "governance.html"));
+app.get("/hackathon", (_req: Request, res: Response) => sendHtml(res, "hackathon.html"));
 
 app.get("/skills", (_req: Request, res: Response) => res.redirect(301, "/skill-market"));
 app.get("/how-it-works", (_req: Request, res: Response) => res.redirect(301, "/"));
