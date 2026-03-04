@@ -27,7 +27,7 @@ outputType = "webview"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "npm run start"
+args = "npm run build && npm run start:prod"
 waitForPort = 5000
 
 [[ports]]

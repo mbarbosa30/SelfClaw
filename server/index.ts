@@ -25,12 +25,24 @@ app.use(helmet({
   crossOriginEmbedderPolicy: false,
 }));
 
+let appReady = false;
+
+app.use("/api/admin", (req: Request, res: Response, next) => {
+  if (!appReady && req.method !== "OPTIONS") {
+    return res.status(503).json({ error: "Server is starting up, please retry in a few seconds." });
+  }
+  next();
+});
+
 app.use("/api/selfclaw", (req: Request, res: Response, next) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Self-Proof");
   res.setHeader("Access-Control-Max-Age", "86400");
   if (req.method === "OPTIONS") return res.status(204).end();
+  if (!appReady) {
+    return res.status(503).json({ error: "Server is starting up, please retry in a few seconds." });
+  }
   next();
 });
 
@@ -267,14 +279,23 @@ async function initializeApp() {
     { path: "/api/selfclaw", name: "governance", importFn: () => import("./governance.js"), key: "default" },
   ];
 
-  for (const r of routers) {
+  console.log(`[router] Importing all ${routers.length} routers in parallel...`);
+  const importStartMs = Date.now();
+  let mountedCount = 0;
+
+  const importPromises = routers.map(async (r) => {
+    const startMs = Date.now();
+    const mod = await r.importFn();
+    const elapsed = Date.now() - startMs;
+
     try {
-      await yieldToEventLoop();
-      const mod = await r.importFn();
       const router = r.key ? mod[r.key] : mod.default;
       if (router) {
         app.use(r.path, router);
-        console.log(`[router] ${r.name} mounted at ${r.path}`);
+        mountedCount++;
+        console.log(`[router] ${r.name} mounted at ${r.path} (${elapsed}ms) [${mountedCount}/${routers.length}]`);
+      } else {
+        console.warn(`[router] ${r.name} loaded but no router exported (${elapsed}ms)`);
       }
       if (r.name === "admin" && mod.runAutoClaimPendingBridges) {
         runAutoClaimPendingBridges = mod.runAutoClaimPendingBridges;
@@ -285,10 +306,22 @@ async function initializeApp() {
       if (r.name === "hosted-agents" && mod.startAgentWorker) {
         startAgentWorker = mod.startAgentWorker;
       }
-    } catch (err: any) {
-      console.error(`[router] Failed to load ${r.name}:`, err.message);
+    } catch (mountErr: any) {
+      console.error(`[router] Failed to mount ${r.name}:`, mountErr.message);
     }
+
+    if (!appReady && mountedCount >= 3) {
+      appReady = true;
+      console.log(`[startup] API accepting requests (${mountedCount} routers ready, rest loading in background)`);
+    }
+  });
+
+  await Promise.allSettled(importPromises);
+  const totalElapsed = Date.now() - importStartMs;
+  if (!appReady) {
+    appReady = true;
   }
+  console.log(`[startup] All ${mountedCount}/${routers.length} routers mounted in ${totalElapsed}ms — fully initialized`);
 
   try {
     const feedDigestMod = await import("./feed-digest.js");

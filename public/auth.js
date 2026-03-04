@@ -41,6 +41,12 @@
       headers: { 'Content-Type': 'application/json' },
       body: '{}'
     });
+    if (!tokenRes.ok) {
+      var tErr = '';
+      try { var tErrJson = await tokenRes.json(); tErr = tErrJson.error || ''; } catch (_e) { /* not JSON */ }
+      if (tokenRes.status === 503) throw new Error(tErr || 'Server is still starting up. Please wait a moment and try again.');
+      throw new Error(tErr || 'Failed to get auth token (status ' + tokenRes.status + ')');
+    }
     var tokenData = await tokenRes.json();
     if (!tokenData.token) throw new Error('Failed to get auth token');
 
@@ -50,6 +56,12 @@
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ address: address, token: tokenData.token })
     });
+    if (!res.ok) {
+      var mErr = '';
+      try { var mErrJson = await res.json(); mErr = mErrJson.error || ''; } catch (_e) { /* not JSON */ }
+      if (res.status === 503) throw new Error(mErr || 'Server is still starting up. Please wait a moment and try again.');
+      throw new Error(mErr || 'MiniPay connection failed (status ' + res.status + ')');
+    }
     var data = await res.json();
 
     if (data.success) {
@@ -442,6 +454,12 @@
       statusEl.textContent = 'Wallet connected. Getting nonce...';
 
       var nonceRes = await fetch('/api/selfclaw/v1/talent/nonce', { credentials: 'include' });
+      if (!nonceRes.ok) {
+        var errText = '';
+        try { var errJson = await nonceRes.json(); errText = errJson.error || ''; } catch (_e) { /* response was not JSON */ }
+        if (nonceRes.status === 503) throw new Error(errText || 'Server is still starting up. Please wait a moment and try again.');
+        throw new Error(errText || 'Failed to get nonce (status ' + nonceRes.status + ')');
+      }
       var nonceData = await nonceRes.json();
 
       statusEl.textContent = 'Please sign the message...';
@@ -459,6 +477,12 @@
           sessionKey: nonceData.sessionKey
         })
       });
+      if (!connectRes.ok) {
+        var cErrText = '';
+        try { var cErrJson = await connectRes.json(); cErrText = cErrJson.error || ''; } catch (_e) { /* response was not JSON */ }
+        if (connectRes.status === 503) throw new Error(cErrText || 'Server is still starting up. Please wait a moment and try again.');
+        throw new Error(cErrText || 'Login failed (status ' + connectRes.status + ')');
+      }
       var connectData = await connectRes.json();
 
       if (!connectData.success) {
