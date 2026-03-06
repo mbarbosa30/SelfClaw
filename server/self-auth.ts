@@ -557,6 +557,86 @@ router.post("/wallet/minipay-connect", async (req: any, res: Response) => {
 });
 
 // Logout
+const pendingWalletLinkNonces = new Map<string, { nonce: string; humanId: string; createdAt: number }>();
+
+router.get("/wallet/link-nonce", (req: any, res: Response) => {
+  if (!req.session?.isAuthenticated || !req.session?.humanId) {
+    return res.status(401).json({ error: "Not authenticated" });
+  }
+  const nonce = crypto.randomUUID();
+  pendingWalletLinkNonces.set(nonce, {
+    nonce,
+    humanId: req.session.humanId,
+    createdAt: Date.now(),
+  });
+  res.json({ nonce });
+});
+
+router.post("/wallet/link", async (req: any, res: Response) => {
+  if (!req.session?.isAuthenticated || !req.session?.humanId) {
+    return res.status(401).json({ error: "Not authenticated" });
+  }
+  try {
+    const { address, signature, nonce } = req.body;
+    if (!address || !signature || !nonce) {
+      return res.status(400).json({ error: "Missing address, signature, or nonce" });
+    }
+    if (!/^0x[0-9a-fA-F]{40}$/.test(address)) {
+      return res.status(400).json({ error: "Invalid wallet address" });
+    }
+    const pending = pendingWalletLinkNonces.get(nonce);
+    if (!pending) {
+      return res.status(400).json({ error: "Invalid or expired nonce" });
+    }
+    if (pending.humanId !== req.session.humanId) {
+      return res.status(403).json({ error: "Nonce mismatch" });
+    }
+    if (Date.now() - pending.createdAt > 5 * 60 * 1000) {
+      pendingWalletLinkNonces.delete(nonce);
+      return res.status(400).json({ error: "Nonce expired" });
+    }
+    pendingWalletLinkNonces.delete(nonce);
+
+    const message = `Link wallet to SelfClaw\nnonce: ${nonce}`;
+    const { verifyMessage } = await import("viem");
+    const valid = await verifyMessage({
+      address: address as `0x${string}`,
+      message,
+      signature: signature as `0x${string}`,
+    });
+    if (!valid) {
+      return res.status(401).json({ error: "Invalid signature" });
+    }
+
+    const normalizedAddress = address.toLowerCase();
+
+    const [existing] = await db.select({ id: users.id, humanId: users.humanId })
+      .from(users)
+      .where(eq(users.walletAddress, normalizedAddress))
+      .limit(1);
+    if (existing && existing.humanId !== req.session.humanId) {
+      return res.status(409).json({ error: "This wallet is already linked to another account" });
+    }
+
+    await db.update(users)
+      .set({ walletAddress: normalizedAddress })
+      .where(eq(users.humanId, req.session.humanId));
+
+    console.log("[self-auth] Wallet linked:", normalizedAddress, "for humanId:", req.session.humanId);
+    res.json({ success: true, walletAddress: normalizedAddress });
+  } catch (error: any) {
+    console.error("[self-auth] Wallet link error:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [k, v] of pendingWalletLinkNonces.entries()) {
+    if (now - v.createdAt > 5 * 60 * 1000) pendingWalletLinkNonces.delete(k);
+  }
+}, 60 * 1000);
+
 router.post("/logout", (req: any, res: Response) => {
   req.session.destroy((err: any) => {
     if (err) {

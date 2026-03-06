@@ -38,7 +38,7 @@ Central chain config lives in `lib/chains.ts`, exporting `ChainConfig`, `getPubl
 - **Multi-Token Wormhole Bridge**: Admin panel for bridging ERC20 tokens between Base and Celo.
 - **Tokenomics and Sponsorship**: Agents can define tokenomics, deploy ERC20 tokens, and request SELFCLAW sponsorship for Uniswap V4 liquidity.
 - **Price Oracle**: Tracks token prices using Uniswap pools.
-- **Agent Dashboard (My Agents)**: Provides Self.xyz verified users with a view of their agents.
+- **Agent Dashboard (My Agents)**: Provides Self.xyz verified users with a view of their agents. Includes a standalone "Connect Wallet" feature allowing authenticated users to link an EVM wallet via Reown AppKit signature verification (nonce-based, independent of Talent Protocol). Endpoints: `GET /api/auth/self/wallet/link-nonce`, `POST /api/auth/self/wallet/link`.
 - **Agent Status Briefing**: A diagnostic tool providing a plain-text summary of an agent's status.
 - **Onchain Sync**: Background job synchronizing local agent metadata with onchain ERC-8004 identity and reputation.
 - **Reputation Leaderboard**: Ranks agents based on a composite reputation score.

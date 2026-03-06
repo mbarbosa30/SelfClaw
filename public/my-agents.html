@@ -693,6 +693,18 @@
 
     <div id="dashboard-content" style="display:none;">
       <div class="totals-bar" id="totals-bar"></div>
+
+      <div id="wallet-link-section" style="border:2px solid var(--border);padding:1.25rem;margin-bottom:1.5rem;">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.75rem;">
+          <div>
+            <div style="font-family:var(--font-mono);font-size:0.7rem;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-secondary);margin-bottom:0.35rem;">Linked Wallet</div>
+            <div id="wallet-link-display" style="font-family:var(--font-mono);font-size:0.8rem;color:var(--text-muted);">Checking...</div>
+          </div>
+          <button id="wallet-link-btn" class="btn btn-outline btn-sm" style="display:none;" onclick="linkWallet()">CONNECT WALLET</button>
+        </div>
+        <div id="wallet-link-status" style="display:none;margin-top:0.75rem;font-family:var(--font-mono);font-size:0.75rem;padding:0.5rem;border-left:3px solid var(--accent);"></div>
+      </div>
+
       <div class="alerts-section" id="alerts-section">
         <div class="alerts-title">Fund Alerts</div>
         <div id="alerts-list"></div>
@@ -894,6 +906,7 @@
         }
 
         renderDashboard(data);
+        updateWalletLinkSection(user);
         loadReferralData();
 
         if (_isMiniPayContext && hostedAgents.length > 0) {
@@ -2871,6 +2884,105 @@
       }).catch(function() {});
     }
     loadPlatformUpdates();
+  </script>
+  <script>
+    function updateWalletLinkSection(user) {
+      var display = document.getElementById('wallet-link-display');
+      var btn = document.getElementById('wallet-link-btn');
+      if (!display || !btn) return;
+      if (user && user.walletAddress) {
+        var addr = user.walletAddress;
+        var short = addr.substring(0, 6) + '...' + addr.slice(-4);
+        display.innerHTML = '<a href="https://celoscan.io/address/' + esc(addr) + '" target="_blank" style="color:var(--accent);text-decoration:none;">' + esc(short) + '</a>';
+        btn.textContent = 'CHANGE WALLET';
+        btn.style.display = '';
+      } else {
+        display.textContent = 'No wallet linked';
+        btn.textContent = 'CONNECT WALLET';
+        btn.style.display = '';
+      }
+    }
+
+    async function linkWallet() {
+      var btn = document.getElementById('wallet-link-btn');
+      var statusEl = document.getElementById('wallet-link-status');
+      if (!btn) return;
+
+      btn.disabled = true;
+      btn.textContent = 'CONNECTING...';
+      if (statusEl) { statusEl.style.display = 'none'; statusEl.textContent = ''; }
+
+      try {
+        var nonceRes = await fetch('/api/auth/self/wallet/link-nonce', { credentials: 'same-origin' });
+        if (!nonceRes.ok) {
+          var errData = await nonceRes.json().catch(function() { return {}; });
+          throw new Error(errData.error || 'Failed to get nonce');
+        }
+        var nonceData = await nonceRes.json();
+        var nonce = nonceData.nonce;
+
+        var result = await window.selfclawWaaP.connectWallet();
+        var walletAddress = result.address;
+
+        btn.textContent = 'SIGNING...';
+
+        var message = 'Link wallet to SelfClaw\nnonce: ' + nonce;
+        var signature = await window.selfclawWaaP.signMessage(message);
+
+        btn.textContent = 'LINKING...';
+
+        var linkRes = await fetch('/api/auth/self/wallet/link', {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            address: walletAddress,
+            signature: signature,
+            nonce: nonce
+          })
+        });
+
+        var linkData = await linkRes.json();
+        if (!linkRes.ok) {
+          throw new Error(linkData.error || 'Failed to link wallet');
+        }
+
+        if (statusEl) {
+          statusEl.style.display = 'block';
+          statusEl.style.borderColor = '#22c55e';
+          statusEl.style.color = '#22c55e';
+          statusEl.textContent = 'Wallet linked successfully';
+        }
+
+        var display = document.getElementById('wallet-link-display');
+        if (display) {
+          var short = walletAddress.substring(0, 6) + '...' + walletAddress.slice(-4);
+          display.innerHTML = '<a href="https://celoscan.io/address/' + esc(walletAddress) + '" target="_blank" style="color:var(--accent);text-decoration:none;">' + esc(short) + '</a>';
+        }
+        btn.textContent = 'CHANGE WALLET';
+        btn.disabled = false;
+        btn.style.borderColor = '#22c55e';
+        btn.style.color = '#22c55e';
+
+        setTimeout(function() {
+          btn.style.borderColor = '';
+          btn.style.color = '';
+        }, 3000);
+      } catch (err) {
+        btn.disabled = false;
+        var hasLinked = document.getElementById('wallet-link-display') && document.getElementById('wallet-link-display').querySelector('a');
+        btn.textContent = hasLinked ? 'CHANGE WALLET' : 'CONNECT WALLET';
+        if (statusEl) {
+          statusEl.style.display = 'block';
+          statusEl.style.borderColor = 'var(--red, #ef4444)';
+          statusEl.style.color = 'var(--red, #ef4444)';
+          statusEl.textContent = err.message || 'Failed to link wallet';
+        }
+        if (window.selfclawWaaP) {
+          await window.selfclawWaaP.disconnect().catch(function() {});
+        }
+      }
+    }
   </script>
   <script>
     var _linkSessionKey = null;
