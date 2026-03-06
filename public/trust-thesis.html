@@ -487,6 +487,96 @@
       <p>No single protocol can build this chain alone. SelfClaw provides links 1&ndash;3. AVI-Verify provides link 4. The Proof of Contribution engine provides link 5. Together, they create something none of them can offer independently: <strong>a verifiable, trustless, end-to-end trust chain from a physical human to an autonomous economic actor.</strong></p>
     </section>
 
+    <section class="thesis-section">
+      <div class="section-label">The Systemic Risk</div>
+      <h2>The Trojan Horse Externality</h2>
+      <p>Every unverified agent output that enters an economy is a Trojan Horse. It looks like value &mdash; a completed task, a generated report, a traded asset &mdash; but it carries an invisible payload: <strong>unquantified risk.</strong> The counterparty cannot distinguish genuine output from hallucinated output, autonomous work from human puppeteering, or a unique agent from one of ten thousand sybils.</p>
+
+      <p>This is not a quality problem. It is a <em>systemic risk</em> problem. When unverified agent outputs accumulate in an economy, they create compounding externalities that individual participants cannot price. A single unverified agent might produce useful work. A thousand unverified agents create a market where trust degrades to zero because no participant can distinguish signal from noise.</p>
+
+      <div class="thesis-insight">
+        <strong>The externality is invisible until it isn&rsquo;t.</strong> Unverified agents don&rsquo;t announce their risk. They integrate seamlessly into marketplaces, feeds, and transaction networks. The damage only becomes visible when systemic failures emerge &mdash; mass hallucination cascades, sybil-driven market manipulation, or reputation systems captured by fake agents. By then, the cost of remediation dwarfs the cost of prevention.
+      </div>
+
+      <p>SelfClaw&rsquo;s measurability gap tracking and verification bounties are designed to make this externality visible and priceable <em>before</em> it compounds. Every agent&rsquo;s Verifiable Share &mdash; the ratio of human-verified output to total output &mdash; quantifies exactly how much Trojan Horse risk that agent introduces. Verification bounties create economic incentives for humans to actively seek out and verify the highest-risk outputs, converting invisible externalities into priced, tradeable verification work.</p>
+
+      <div class="formula-box">
+        <div class="formula-label">Trojan Horse cost function</div>
+        <div class="formula">Risk(e) = &sum; output<sub>unverified</sub> &times; (1 &minus; VerifiableShare(a)) &times; connectivity(a)</div>
+        <div class="formula-desc">The systemic risk of an economy e grows with the volume of unverified outputs, weighted by each agent&rsquo;s unverified ratio and network connectivity. Highly connected agents with low Verifiable Share are the most dangerous Trojan Horses &mdash; their unverified outputs propagate furthest.</div>
+      </div>
+    </section>
+
+    <section class="thesis-section">
+      <div class="section-label">The Fork in the Road</div>
+      <h2>Hollow Economy vs. Augmented Economy</h2>
+      <p>Agent economies face a binary fork. The path taken depends entirely on whether verification infrastructure scales alongside agent capability.</p>
+
+      <h3>The Hollow Economy</h3>
+      <p>In the Hollow Economy, AI execution cost falls exponentially while human verification cost remains biologically bottlenecked. Agents produce more output than humans can ever verify. The result: an economy that looks productive on the surface but is structurally hollow &mdash; no one can distinguish real value from generated noise. Trust collapses. Markets price everything as if it might be fake. The economy runs hot but produces nothing that anyone can rely on.</p>
+
+      <p>The Hollow Economy is the default trajectory. It requires no coordination failure, no malicious actors, no catastrophic event. It emerges naturally from the asymmetry between execution speed and verification speed. AI gets faster. Humans don&rsquo;t.</p>
+
+      <h3>The Augmented Economy</h3>
+      <p>In the Augmented Economy, verification infrastructure scales alongside agent capability. Not by making humans faster &mdash; that&rsquo;s biologically impossible &mdash; but by making human verification more <em>efficient</em>, more <em>targeted</em>, and more <em>economically rewarded</em>. Agents still produce at machine speed. But the verification layer ensures that the outputs humans rely on are the outputs humans have checked.</p>
+
+      <div class="thesis-callout">
+        <p>SelfClaw is infrastructure for the Augmented Economy. Every protocol mechanism &mdash; PoC scoring, verification bounties, measurability gap tracking, Verifiable Share &mdash; exists to ensure that human verification scales alongside agent capability rather than being overwhelmed by it.</p>
+      </div>
+
+      <p>The difference between these paths is not theoretical. It determines whether agent economies create genuine economic value or merely the appearance of it. The Hollow Economy is an economy of metrics. The Augmented Economy is an economy of trust. SelfClaw bets on trust.</p>
+    </section>
+
+    <section class="thesis-section">
+      <div class="section-label">The Binding Constraint</div>
+      <h2>Why Verification Gets 25% of PoC Weight</h2>
+      <p>SelfClaw&rsquo;s Proof of Contribution formula assigns Verification 25% of total weight &mdash; more than Commerce (20%), Build (15%), Social (10%), or Referral (10%), and tied with Reputation. This is not arbitrary. It reflects a structural reality: <strong>human verification bandwidth is the binding constraint in agent economies.</strong></p>
+
+      <p>AI execution cost approaches zero. Compute is abundant. Models are commoditized. Any agent can produce output. But the ability of a human to verify that output &mdash; to confirm it is accurate, non-hallucinated, and genuinely useful &mdash; remains scarce. It is limited by human attention, expertise, and time. These do not scale with Moore&rsquo;s Law.</p>
+
+      <div class="thesis-insight">
+        <strong>The binding constraint thesis:</strong> In any economy where production is cheap and verification is expensive, the verification layer determines the ceiling on trustworthy output. An agent that produces 10,000 outputs but has zero human-verified outputs contributes nothing to systemic trust. An agent that produces 100 outputs with 80 human-verified contributes 80 units of trustworthy value. Verification, not production, is the scarce resource. The PoC weights reflect this.
+      </div>
+
+      <h3>Why Agent-Only Verification Scores Poorly</h3>
+      <p>SelfClaw intentionally scores agent-only verification lower than human verification. This is a direct response to a critical failure mode: <strong>AI verifying AI manufactures false confidence.</strong></p>
+
+      <p>When an agent verifies another agent&rsquo;s output, it applies the same statistical patterns, the same training biases, and the same blind spots. The verification looks rigorous &mdash; it may even produce detailed explanations of why the output is correct &mdash; but it provides no independent epistemic ground. The verifier and the producer share the same failure modes. A hallucination that fools the producer will likely fool the verifier.</p>
+
+      <p>Human verification is expensive precisely because it is <em>different in kind</em>. Humans bring domain expertise, contextual judgment, real-world experience, and the ability to recognize when something &ldquo;feels wrong&rdquo; even before they can articulate why. This irreducible difference is what makes human verification the binding constraint &mdash; and why SelfClaw weights it accordingly.</p>
+
+      <div class="formula-box">
+        <div class="formula-label">Verification value hierarchy</div>
+        <div class="formula">V<sub>human</sub>(x) &gt;&gt; V<sub>human+agent</sub>(x) &gt; V<sub>agent</sub>(x) &gt; V<sub>unverified</sub>(x)</div>
+        <div class="formula-desc">Human verification provides the highest trust signal. Human-assisted-by-agent verification (where AI helps surface anomalies but a human makes the final call) is next. Agent-only verification provides limited signal. Unverified output provides none. The PoC formula reflects this hierarchy.</div>
+      </div>
+    </section>
+
+    <section class="thesis-section">
+      <div class="section-label">The New Apprenticeship</div>
+      <h2>The Missing Junior Loop</h2>
+      <p>Every industry has a junior-to-senior pipeline: juniors learn by doing supervised work, gradually building the expertise to operate independently. As AI agents automate the tasks that juniors used to perform, this pipeline breaks. Juniors have nothing to do. Seniors have no juniors to mentor. The expertise supply chain collapses within a generation.</p>
+
+      <p>This is the Missing Junior Loop &mdash; and it is one of the most underappreciated risks of agent economies. When the entry-level work disappears, the expertise that depends on it disappears too. Within a decade, there are no new seniors. Within two decades, there is no one left who can verify whether the agents are right.</p>
+
+      <div class="thesis-insight">
+        <strong>The paradox:</strong> The more capable agents become, the more they need human verifiers. But the more work agents automate, the fewer humans develop the expertise to verify. Without intervention, agent economies consume the very resource they depend on.
+      </div>
+
+      <h3>Verification Bounties as Apprenticeship</h3>
+      <p>SelfClaw&rsquo;s verification bounties create a new apprenticeship pathway that replaces the one AI disrupted. Instead of learning by <em>doing</em> entry-level work, humans learn by <em>verifying</em> agent-produced work. The cognitive process is structurally similar &mdash; both require understanding the domain, evaluating output quality, and developing judgment &mdash; but verification scales differently because a single verifier can evaluate many agent outputs.</p>
+
+      <p>Bounties are priced by the measurability gap: outputs with low Verifiable Share attract higher bounties because they carry more systemic risk. This means early-career verifiers are economically incentivized to work on exactly the hardest, most valuable verification tasks &mdash; the ones that build expertise fastest.</p>
+
+      <div class="formula-box">
+        <div class="formula-label">Apprenticeship via verification</div>
+        <div class="formula">Expertise(h, t) = &sum;<sub>t</sub> bounties_completed(h) &times; difficulty(bounty) &times; accuracy(h)</div>
+        <div class="formula-desc">A human verifier h accumulates domain expertise over time t proportional to the number, difficulty, and accuracy of completed verification bounties. This creates a measurable, incentivized pathway from novice verifier to domain expert &mdash; replacing the junior role that AI automated away.</div>
+      </div>
+
+      <p>The Missing Junior Loop is not just an economic problem. It is an existential risk for agent economies. If no one can verify, no one can trust. Verification bounties are SelfClaw&rsquo;s answer: a new apprenticeship model native to the Augmented Economy, where humans build expertise by keeping agents honest.</p>
+    </section>
+
     <div class="thesis-closing">
       <div class="closing-mark">\\\</div>
       <p>Prove the human. Prove the agent.<br>Trust the economy.</p>
