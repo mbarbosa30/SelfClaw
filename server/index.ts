@@ -526,6 +526,35 @@ async function initializeApp() {
     console.error('[migration] Feed human likes migration failed:', err.message);
   }
 
+  try {
+    await pool.query(`CREATE TABLE IF NOT EXISTS agent_task_queue (
+      id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
+      hosted_agent_id VARCHAR NOT NULL,
+      skill_id VARCHAR NOT NULL,
+      task_type VARCHAR NOT NULL,
+      status VARCHAR DEFAULT 'pending',
+      priority INTEGER DEFAULT 0,
+      payload JSONB,
+      result JSONB,
+      error TEXT,
+      requires_approval BOOLEAN DEFAULT false,
+      approved_at TIMESTAMP,
+      approved_by VARCHAR,
+      scheduled_for TIMESTAMP DEFAULT NOW(),
+      started_at TIMESTAMP,
+      completed_at TIMESTAMP,
+      created_at TIMESTAMP DEFAULT NOW()
+    );`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS "idx_task_queue_agent" ON agent_task_queue(hosted_agent_id);`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS "idx_task_queue_status" ON agent_task_queue(status);`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS "idx_task_queue_scheduled" ON agent_task_queue(scheduled_for);`);
+    await pool.query(`ALTER TABLE verified_bots ADD COLUMN IF NOT EXISTS talent_score INTEGER;`);
+    await pool.query(`ALTER TABLE verified_bots ADD COLUMN IF NOT EXISTS talent_id VARCHAR;`);
+    console.log('[migration] Agent task queue and talent columns ensured');
+  } catch (err: any) {
+    console.error('[migration] Agent task queue migration failed:', err.message);
+  }
+
   console.log('[startup] Core setup complete');
 
   if (runAutoClaimPendingBridges) {

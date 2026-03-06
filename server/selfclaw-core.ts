@@ -974,7 +974,8 @@ async function retryQueuedRewards(): Promise<void> {
 
     for (const completion of queued) {
       try {
-        const result = await claimPendingReward(completion.id);
+        const referralId = `ref_${completion.referralCodeId}_${completion.referredPublicKey?.substring(0, 12) || completion.id}`;
+        const result = await claimPendingReward(referralId);
 
         if (result.success) {
           await db.update(referralCompletions)

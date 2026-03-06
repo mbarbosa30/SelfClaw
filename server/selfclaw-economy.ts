@@ -1946,6 +1946,18 @@ router.post("/v1/confirm-erc8004", verificationLimiter, async (req: Request, res
       });
     }
 
+    const agentWallet = await db.select().from(agentWallets)
+      .where(eq(agentWallets.agentPublicKey, auth.publicKey))
+      .limit(1);
+    if (agentWallet.length > 0 && receipt.from?.toLowerCase() !== agentWallet[0].address.toLowerCase()) {
+      logActivity("erc8004_confirmed_failed", auth.humanId, auth.publicKey, agent.deviceId ?? undefined, { error: "Transaction sender does not match agent wallet", endpoint: "/v1/confirm-erc8004", statusCode: 400 });
+      return res.status(400).json({
+        error: "Transaction sender does not match your registered agent wallet",
+        expected: agentWallet[0].address,
+        got: receipt.from,
+      });
+    }
+
     let tokenId = "0";
     const transferTopic = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
     for (const log of receipt.logs) {

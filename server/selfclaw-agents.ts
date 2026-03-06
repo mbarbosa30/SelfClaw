@@ -1702,17 +1702,23 @@ async function snapshotPrices() {
     let inserted = 0;
     for (const p of prices) {
       if (p.priceInUsd <= 0 && p.priceInCelo <= 0) continue;
+      const safeNum = (v: number) => typeof v === 'number' && isFinite(v) ? v : 0;
+      const priceUsd = safeNum(p.priceInUsd);
+      const priceCelo = safeNum(p.priceInCelo);
+      const priceSelfclaw = safeNum(p.priceInSelfclaw);
+      const marketCapUsd = safeNum(p.marketCapUsd);
+      if (priceUsd <= 0 && priceCelo <= 0) continue;
       try {
         await db.insert(tokenPriceSnapshots).values({
           tokenAddress: p.tokenAddress,
           tokenSymbol: p.tokenSymbol,
           poolId: p.poolId,
-          priceUsd: p.priceInUsd.toFixed(12),
-          priceCelo: p.priceInCelo.toFixed(12),
-          priceSelfclaw: p.priceInSelfclaw.toFixed(12),
-          marketCapUsd: p.marketCapUsd.toFixed(2),
-          totalSupply: p.totalSupply,
-          liquidity: p.liquidity,
+          priceUsd: priceUsd.toFixed(12),
+          priceCelo: priceCelo.toFixed(12),
+          priceSelfclaw: priceSelfclaw.toFixed(12),
+          marketCapUsd: marketCapUsd.toFixed(2),
+          totalSupply: p.totalSupply || '0',
+          liquidity: p.liquidity || '0',
         });
         inserted++;
       } catch (insertErr: any) {

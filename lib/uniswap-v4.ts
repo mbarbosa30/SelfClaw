@@ -654,7 +654,8 @@ export async function swapExactInput(
   tokenOut: string,
   amountIn: string,
   fee: number = 3000,
-  chain: SupportedChain = 'celo'
+  chain: SupportedChain = 'celo',
+  slippageBps: number = 200
 ): Promise<SwapResult> {
   try {
     const walletClient = getChainWalletClient(chain);
@@ -687,7 +688,33 @@ export async function swapExactInput(
       hooks: '0x0000000000000000000000000000000000000000' as `0x${string}`,
     };
 
-    const minAmountOut = amountInWei * 95n / 100n;
+    let minAmountOut: bigint;
+    try {
+      const poolId = computePoolId(token0, token1, fee, tickSpacing, '0x0000000000000000000000000000000000000000');
+      const slot0 = await pc.readContract({
+        address: uniConfig.stateView,
+        abi: STATE_VIEW_ABI,
+        functionName: 'getSlot0',
+        args: [poolId],
+      });
+      const sqrtPriceX96 = BigInt(slot0[0]);
+      const Q96 = 2n ** 96n;
+      let expectedOut: bigint;
+      if (zeroForOne) {
+        expectedOut = (amountInWei * sqrtPriceX96 / Q96) * sqrtPriceX96 / Q96;
+      } else {
+        if (sqrtPriceX96 === 0n) {
+          expectedOut = 0n;
+        } else {
+          expectedOut = (amountInWei * Q96 / sqrtPriceX96) * Q96 / sqrtPriceX96;
+        }
+      }
+      const tolerance = BigInt(slippageBps);
+      minAmountOut = expectedOut * (10000n - tolerance) / 10000n;
+      if (minAmountOut <= 0n) minAmountOut = 1n;
+    } catch {
+      minAmountOut = amountInWei * BigInt(10000 - slippageBps) / 10000n;
+    }
 
     const swapParams = encodeAbiParameters(
       parseAbiParameters('(address, address, uint24, int24, address), bool, uint128, uint128, bytes'),

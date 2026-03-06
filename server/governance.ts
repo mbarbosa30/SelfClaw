@@ -460,7 +460,7 @@ router.post("/v1/governance/proposals/:id/vote", isAuthenticated, async (req: Re
     if (isGovernanceContractDeployed() && proposal.proposalOnchainId !== null) {
       const result = await voteOnchain(proposal.proposalOnchainId, support);
       if (!result.success) {
-        console.warn("[governance] On-chain vote failed, recording in DB only:", result.error);
+        return res.status(500).json({ error: "On-chain vote failed: " + result.error });
       } else {
         txHash = result.txHash;
       }
