@@ -1,6 +1,6 @@
 import { Router, Request, Response } from "express";
 import { db } from "./db.js";
-import { verifiedBots, agentWallets, trackedPools, agentActivity, tokenPriceSnapshots, sponsoredAgents, users, agentPosts, agentServices, tokenPlans, revenueEvents, reputationStakes, reputationBadges, insuranceStakes, marketSkills } from "../shared/schema.js";
+import { verifiedBots, agentWallets, trackedPools, agentActivity, tokenPriceSnapshots, sponsoredAgents, users, agentPosts, agentServices, tokenPlans, revenueEvents, reputationStakes, reputationBadges, insuranceStakes, marketSkills, pocScores } from "../shared/schema.js";
 import { eq, and, gt, lt, desc, count, inArray, sql } from "drizzle-orm";
 import { publicApiLimiter, verificationLimiter, feedbackLimiter, feedbackCooldowns, authenticateAgentRequest as authenticateAgent, logActivity } from "./routes/_shared.js";
 import { isValidChain, getExplorerUrl as chainExplorerUrl, type SupportedChain } from '../lib/chains.js';
@@ -439,6 +439,132 @@ router.get("/v1/human/:humanId", publicApiLimiter, async (req: Request, res: Res
   } catch (error: any) {
     console.error("[selfclaw] human lookup error:", error);
     res.status(500).json({ error: error.message });
+  }
+});
+
+router.get("/v1/lookup/:identifier", publicApiLimiter, async (req: Request, res: Response) => {
+  try {
+    const identifier = req.params.identifier.trim();
+    if (!identifier || identifier.length < 2) {
+      return res.status(400).json({ success: false, error: "Identifier too short" });
+    }
+
+    let identifierType: "wallet" | "humanId" | "publicKey" | "agentName" = "agentName";
+    let matchedAgents: any[] = [];
+
+    const isWallet = /^0x[a-fA-F0-9]{40}$/.test(identifier);
+    const isLikelyPublicKey = identifier.length >= 40 && !isWallet;
+
+    const notHidden = sql`${verifiedBots.hidden} IS NOT TRUE`;
+
+    if (isWallet) {
+      identifierType = "wallet";
+      const walletRows = await db.select({
+        publicKey: agentWallets.publicKey,
+        humanId: agentWallets.humanId,
+      }).from(agentWallets).where(sql`LOWER(${agentWallets.address}) = LOWER(${identifier})`);
+
+      if (walletRows.length > 0) {
+        const pks = walletRows.map(w => w.publicKey).filter(Boolean) as string[];
+        if (pks.length > 0) {
+          matchedAgents = await db.select()
+            .from(verifiedBots)
+            .where(sql`${verifiedBots.publicKey} IN (${sql.join(pks.map(p => sql`${p}`), sql`, `)}) AND ${notHidden}`);
+        }
+      }
+
+      if (matchedAgents.length === 0) {
+        const userRows = await db.select({ humanId: users.humanId })
+          .from(users)
+          .where(sql`LOWER(${users.walletAddress}) = LOWER(${identifier})`)
+          .limit(1);
+        if (userRows.length > 0 && userRows[0].humanId) {
+          matchedAgents = await db.select()
+            .from(verifiedBots)
+            .where(sql`${verifiedBots.humanId} = ${userRows[0].humanId} AND ${notHidden}`);
+        }
+      }
+    } else if (isLikelyPublicKey) {
+      identifierType = "publicKey";
+      matchedAgents = await db.select()
+        .from(verifiedBots)
+        .where(sql`${verifiedBots.publicKey} = ${identifier} AND ${notHidden}`);
+
+      if (matchedAgents.length === 0) {
+        identifierType = "humanId";
+        matchedAgents = await db.select()
+          .from(verifiedBots)
+          .where(sql`${verifiedBots.humanId} = ${identifier} AND ${notHidden}`);
+      }
+    } else {
+      identifierType = "agentName";
+      matchedAgents = await db.select()
+        .from(verifiedBots)
+        .where(sql`LOWER(${verifiedBots.deviceId}) = LOWER(${identifier}) AND ${notHidden}`);
+
+      if (matchedAgents.length === 0) {
+        identifierType = "humanId";
+        matchedAgents = await db.select()
+          .from(verifiedBots)
+          .where(sql`${verifiedBots.humanId} = ${identifier} AND ${notHidden}`);
+      }
+    }
+
+    const agentPks = matchedAgents.map(a => a.publicKey);
+    let pocMap: Record<string, any> = {};
+    if (agentPks.length > 0) {
+      const scores = await db.select().from(pocScores).where(inArray(pocScores.agentPublicKey, agentPks));
+      for (const s of scores) {
+        pocMap[s.agentPublicKey] = s;
+      }
+    }
+
+    let walletMap: Record<string, string> = {};
+    if (agentPks.length > 0) {
+      const wallets = await db.select({
+        publicKey: agentWallets.publicKey,
+        address: agentWallets.address,
+      }).from(agentWallets).where(inArray(agentWallets.publicKey, agentPks));
+      for (const w of wallets) {
+        if (w.publicKey) walletMap[w.publicKey] = w.address ?? "";
+      }
+    }
+
+    const agents = matchedAgents.map(a => {
+      const poc = pocMap[a.publicKey];
+      return {
+        publicKey: a.publicKey,
+        agentName: a.deviceId,
+        verified: !!a.verifiedAt,
+        verifiedAt: a.verifiedAt,
+        walletAddress: walletMap[a.publicKey] || null,
+        poc: poc ? {
+          totalScore: poc.totalScore,
+          grade: poc.grade,
+          rank: poc.rank,
+          percentile: poc.percentile,
+          breakdown: {
+            verification: poc.verificationScore ?? 0,
+            commerce: poc.commerceScore ?? 0,
+            reputation: poc.reputationScore ?? 0,
+            build: poc.buildScore ?? 0,
+            social: poc.socialScore ?? 0,
+            referral: poc.referralScore ?? 0,
+          },
+          updatedAt: poc.updatedAt,
+        } : null,
+      };
+    });
+
+    res.json({
+      success: true,
+      identifierType,
+      agentCount: agents.length,
+      agents,
+    });
+  } catch (error: any) {
+    console.error("[selfclaw] lookup error:", error);
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
@@ -885,11 +1011,12 @@ router.get("/v1/poc/:publicKey", publicApiLimiter, async (req: Request, res: Res
       percentile: cached.percentile,
       throughput: cached.totalThroughput,
       breakdown: {
+        verification: cached.verificationScore ?? 0,
         commerce: cached.commerceScore,
         reputation: cached.reputationScore,
+        build: cached.buildScore,
         social: cached.socialScore,
         referral: cached.referralScore,
-        build: cached.buildScore,
       },
       updatedAt: cached.updatedAt,
     });

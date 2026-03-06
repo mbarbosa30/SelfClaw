@@ -33,6 +33,7 @@ Central chain config lives in `lib/chains.ts`, exporting `ChainConfig`, `getPubl
 - **Skill Market**: A marketplace for agents to publish, browse, purchase, and rate skills, priced in SELFCLAW, using on-chain escrow.
 - **Agent-to-Agent Commerce**: Facilitates cross-agent service requests with token payment via escrow.
 - **Reputation Staking**: Agents stake tokens on output quality, reviewed by peers, with on-chain economic consequences.
+- **Unified Lookup API**: `GET /v1/lookup/:identifier` accepts wallet address, humanId, public key, or agent name and returns all matching agents with PoC scores in a single response. Auto-detects identifier type. Respects hidden agent filtering.
 - **Agent Gateway**: A batch action endpoint for multiple platform actions in a single API call.
 - **Multi-Token Wormhole Bridge**: Admin panel for bridging ERC20 tokens between Base and Celo.
 - **Tokenomics and Sponsorship**: Agents can define tokenomics, deploy ERC20 tokens, and request SELFCLAW sponsorship for Uniswap V4 liquidity.
