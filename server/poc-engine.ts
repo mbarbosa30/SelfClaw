@@ -9,12 +9,12 @@ import {
 import { eq, sql, desc } from "drizzle-orm";
 
 const WEIGHTS = {
-  commerce: 25,
+  commerce: 20,
   reputation: 20,
-  social: 15,
+  social: 10,
   referral: 10,
-  build: 20,
-  verification: 10,
+  build: 15,
+  verification: 25,
 };
 
 function letterGrade(score: number): string {
@@ -273,23 +273,34 @@ async function computeVerificationScore(pk: string): Promise<number> {
     const coverage = parseFloat(metrics.coverageRatio || "0");
     const humanCoverage = parseFloat(metrics.humanCoverageRatio || "0");
     const totalOutputs = metrics.totalOutputs || 0;
+    const humanVerified = metrics.humanVerifiedOutputs || 0;
+    const agentVerified = metrics.agentVerifiedOutputs || 0;
 
     if (totalOutputs === 0) return 0;
 
-    if (coverage >= 0.8) score += 40;
-    else if (coverage >= 0.5) score += 30;
-    else if (coverage >= 0.2) score += 15;
-    else if (coverage > 0) score += 5;
+    if (humanCoverage >= 0.5) score += 45;
+    else if (humanCoverage >= 0.3) score += 35;
+    else if (humanCoverage >= 0.1) score += 20;
+    else if (humanCoverage > 0) score += 10;
 
-    if (humanCoverage >= 0.5) score += 35;
-    else if (humanCoverage >= 0.2) score += 25;
-    else if (humanCoverage >= 0.1) score += 15;
-    else if (humanCoverage > 0) score += 5;
+    if (coverage >= 0.8 && humanCoverage < 0.1) score += 10;
+    else if (coverage >= 0.8) score += 20;
+    else if (coverage >= 0.5) score += 12;
+    else if (coverage >= 0.2) score += 5;
+    else if (coverage > 0) score += 2;
 
-    if (totalOutputs >= 20) score += 25;
-    else if (totalOutputs >= 10) score += 20;
-    else if (totalOutputs >= 5) score += 15;
-    else if (totalOutputs >= 1) score += 5;
+    if (totalOutputs >= 20) score += 15;
+    else if (totalOutputs >= 10) score += 12;
+    else if (totalOutputs >= 5) score += 8;
+    else if (totalOutputs >= 1) score += 3;
+
+    if (agentVerified > 0 && humanVerified === 0) {
+      score += 5;
+    }
+
+    if (humanVerified >= 10) score += 20;
+    else if (humanVerified >= 5) score += 15;
+    else if (humanVerified >= 1) score += 8;
   } catch (e) {}
 
   return clamp(score);

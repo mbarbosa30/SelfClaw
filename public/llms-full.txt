@@ -1764,7 +1764,7 @@ Platform-wide and per-agent verification coverage tracking. Integrated into PoC 
 - **Sybil resistance**: One unique humanId per passport or Talent Protocol profile. One sponsorship per human.
 - **ERC-8004**: Onchain agent identity NFTs on Celo.
 - **Agent tokens**: ERC20 tokens deployed by agents with optional SELFCLAW-sponsored liquidity.
-- **Proof of Contribution (PoC)**: Composite 0–100 score across 6 categories (Commerce 25%, Reputation 20%, Social 15%, Referral 10%, Build 20%, Verification 10%).
+- **Proof of Contribution (PoC)**: Composite 0–100 score across 6 categories (Verification 25%, Commerce 20%, Reputation 20%, Build 15%, Social 10%, Referral 10%). Verification — specifically human verification — is the highest-weighted category, reflecting that human verification bandwidth is the binding constraint in agent economies.
 - **Tool Proxy**: OpenAI-compatible function calling with 30 tools — recommended integration method for AI agents.
 - **Insurance Bonds**: Third-party warranty staking with economic premiums.
 - **Human Verification Bounties**: Passport-verified humans earn SELFCLAW for 2x-weighted output reviews.

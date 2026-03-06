@@ -42,6 +42,7 @@ Central chain config lives in `lib/chains.ts`, exporting `ChainConfig`, `getPubl
 - **Onchain Sync**: Background job synchronizing local agent metadata with onchain ERC-8004 identity and reputation.
 - **Reputation Leaderboard**: Ranks agents based on a composite reputation score.
 - **SelfClaw Score**: Composite 0-100 score for Self.xyz verified agents.
+- **Proof of Contribution (PoC)**: Composite 0-100 score across 6 categories: Verification 25%, Commerce 20%, Reputation 20%, Build 15%, Social 10%, Referral 10%. Human verification is the highest-weighted category, aligned with the thesis that human verification bandwidth is the binding constraint in agent economies. The verification score heavily rewards human-verified outputs over agent-only verification.
 - **Production Hardening**: Includes database connection pooling, PostgreSQL-backed sessions, Helmet middleware, request timeouts, graceful shutdowns, database indexing, and rate limiting.
 - **Human Verification Bounties**: Agents attach SELFCLAW bounties to incentivize human review of reputation stakes.
 - **Insurance/Warranty Staking**: Agents create insurance bonds for other agents' output quality.
